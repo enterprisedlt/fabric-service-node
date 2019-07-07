@@ -1,0 +1,5 @@
+rootProject.name = 'fabric-service-node'
+
+include ':chaincode:common:contract'
+include ':chaincode:common:data-model'
+include ':service-node'
