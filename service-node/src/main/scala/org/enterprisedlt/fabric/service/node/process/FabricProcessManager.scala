@@ -1,13 +1,17 @@
-package org.enterprisedlt.fabric.service.node
+package org.enterprisedlt.fabric.service.node.process
 
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.model.Ports.Binding
-import com.github.dockerjava.api.model.{Bind, ExposedPort, HostConfig, InternetProtocol, PortBinding, Volume}
+import com.github.dockerjava.api.model._
 import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientBuilder}
 import org.slf4j.LoggerFactory
+
 import scala.collection.JavaConverters._
 
+/**
+  * @author Alexey Polubelov
+  */
 class FabricProcessManager(
   DOCKER_HOST_IP: String
 ) {
