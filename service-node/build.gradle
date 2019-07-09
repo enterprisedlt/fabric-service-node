@@ -26,6 +26,8 @@ dependencies {
     compile 'org.slf4j:jcl-over-slf4j:1.7.25'
     compile 'org.slf4j:jul-to-slf4j:1.7.25'
     
+    compile group: 'com.github.docker-java', name: 'docker-java', version: '3.1.2'
+    
     // testing libraries
     testCompile 'junit:junit:4.12'
     testCompile 'org.scalatest:scalatest_2.12:3.0.5'

@@ -30,14 +30,17 @@ object ServiceNode extends App {
     val MAINTENANCE_EXTERNAL_HOST = Option(ENVS.get("MAINTENANCE_EXTERNAL_HOST")).getOrElse(throw new Exception("Mandatory environment variable missing MAINTENANCE_EXTERNAL_HOST!"))
     val networkConfigFile = Option(ENVS.get("NETWORK_CONFIG")).getOrElse(throw new Exception("Mandatory environment variable missing NETWORK_CONFIG!"))
     val CHAINCODE_NAME = Option(ENVS.get("CHAINCODE_NAME")).filter(_.trim.nonEmpty).getOrElse("common")
-
+    val DOCKER_HOST_IP = Option(ENVS.get("DOCKER_HOST_IP")).filter(_.trim.nonEmpty).getOrElse("unix:///host/var/run/docker.sock")
     //
     setupLogging(LOG_LEVEL)
     private val logger = LoggerFactory.getLogger(getClass)
     //
     logger.info("Starting...")
     val networkConfig = loadNetworkConfig(networkConfigFile)
-    val server: Server = createServer(new FabricNetworkManager(networkConfig))
+    val server: Server = createServer(
+        new FabricNetworkManager(networkConfig),
+        new FabricProcessManager(DOCKER_HOST_IP)
+    )
     setupShutdownHook()
     server.start()
     logger.info("Started.")
@@ -56,16 +59,18 @@ object ServiceNode extends App {
 
     //=========================================================================
     private def createServer(
-        network: FabricNetworkManager
+        network: FabricNetworkManager,
+        processManager: FabricProcessManager
     ): Server = {
         val server = new Server(MAINTENANCE_PORT)
-        server.setHandler(new EndpointHandler(network))
+        server.setHandler(new EndpointHandler(network, processManager))
         server
     }
 
     //=========================================================================
     private class EndpointHandler(
-        network: FabricNetworkManager
+        network: FabricNetworkManager,
+        processManager: FabricProcessManager
     ) extends AbstractHandler {
         override def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {
             request.getMethod match {
@@ -377,6 +382,12 @@ object ServiceNode extends App {
           .getLogger("org.hyperledger.fabric.sdk.PeerEventServiceClient")
           .asInstanceOf[ch.qos.logback.classic.Logger]
           .setLevel(ch.qos.logback.classic.Level.OFF)
+
+        LoggerFactory
+          .getLogger("com.github.dockerjava.api")
+          .asInstanceOf[ch.qos.logback.classic.Logger]
+          .setLevel(ch.qos.logback.classic.Level.INFO)
+
     }
 
     //=========================================================================
