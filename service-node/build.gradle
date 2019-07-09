@@ -43,6 +43,6 @@ shadowJar {
     classifier = null
 
     manifest {
-        attributes 'Main-Class': 'com.github.apolubelov.fabric.service.ServiceNode'
+        attributes 'Main-Class': 'org.enterprisedlt.fabric.service.node.ServiceNode'
     }
 }
