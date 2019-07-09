@@ -5,7 +5,7 @@ import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.model.Ports.Binding
 import com.github.dockerjava.api.model._
 import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientBuilder}
-import org.enterprisedlt.fabric.service.node.IFabricProcessManager
+import org.enterprisedlt.fabric.service.node.FabricProcessManager
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.slf4j.LoggerFactory
 
@@ -18,7 +18,7 @@ class DockerBasedProcessManager(
     hostHomePath: String,
     dockerSocket: String,
     config: ServiceConfig
-) extends IFabricProcessManager {
+) extends FabricProcessManager {
     private val logger = LoggerFactory.getLogger(getClass)
     private val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
     private val dockerConfig = DefaultDockerClientConfig.createDefaultConfigBuilder.withDockerHost(dockerSocket).build
