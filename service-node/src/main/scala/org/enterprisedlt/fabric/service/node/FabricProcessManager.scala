@@ -159,7 +159,7 @@ class FabricProcessManager(
           .withHostConfig(configHost)
           .exec().getId
         docker.startContainerCmd(peerContainerId).exec
-        logger.info(s"Orderer container started with ID ${peerContainerId}")
+        logger.info(s"Peer container started with ID ${peerContainerId}")
         logger.info("====================================================")
         peerContainerId
     }
@@ -188,7 +188,7 @@ class FabricProcessManager(
           .withHostConfig(configHost)
           .exec().getId
         docker.startContainerCmd(couchDBContainerId).exec
-        logger.info(s"Orderer container started with ID ${couchDBContainerId}")
+        logger.info(s"CouchDB container started with ID ${couchDBContainerId}")
         logger.info("====================================================")
         couchDBContainerId
     }
