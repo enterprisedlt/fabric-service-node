@@ -1,7 +1,7 @@
-package org.enterprisedlt.fabric.service.node
+package org.enterprisedlt.fabric.service.node.model
 
 case class CreateChannelRequest(
-    name: String,
+    name: String
 //    orderer: String,
 //    fileName: String
 )
@@ -11,41 +11,27 @@ case class AddPeerRequest(
     peer: String
 )
 
-case class AddAnchorsToChRequest(
+case class AddAnchorToChannelRequest(
     channelName: String,
     peerName: String
 )
 
-case class InstallCCRequest(
+case class InstallChainCodeRequest(
     channelName: String,
     chainCodeName: String,
     chainCodeVersion: String
 )
 
-case class InitCCRequest(
+case class InstantiateChainCodeRequest(
     channelName: String,
     chainCodeName: String,
     version: String,
     arguments: Array[String]
 )
 
-case class QuertyRequest(
+case class QueryChainCodeRequest(
     channelName: String,
     chainCodeName: String,
     functionName: String,
     arguments: Array[String]
-)
-
-case class Invite(
-    address: String
-)
-
-case class JoinRequest(
-    genesisConfig : String,
-    mspId: String
-)
-
-case class JoinResponse(
-    genesis: String,
-    version: String
 )

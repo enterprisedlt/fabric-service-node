@@ -1,0 +1,35 @@
+{
+  "organization": {
+    "name": "org1",
+    "domain": "example.com",
+    "location": "San Francisco",
+    "state": "California",
+    "country": "US"
+  },
+  "network": {
+    "name": "test_net",
+    "orderingNodes": [
+      {
+        "name": "osn1",
+        "port": 7001
+      },
+      {
+        "name": "osn2",
+        "port": 7002
+      },
+      {
+        "name": "osn3",
+        "port": 7003
+      }
+    ],
+    "peerNodes": [
+      {
+        "name": "peer0",
+        "port": 7010,
+        "couchDB": {
+          "port": 7011
+        }
+      }
+    ]
+  }
+}

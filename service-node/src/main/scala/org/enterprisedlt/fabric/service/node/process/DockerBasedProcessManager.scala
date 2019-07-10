@@ -83,7 +83,7 @@ class DockerBasedProcessManager(
         val osnContainerId: String = docker.createContainerCmd("hyperledger/fabric-orderer")
           .withName(osnFullName)
           .withEnv(
-              "FABRIC_LOGGING_SPEC=DEBUG",
+              "FABRIC_LOGGING_SPEC=INFO",
               "ORDERER_GENERAL_LISTENADDRESS=0.0.0.0",
               s"ORDERER_GENERAL_LISTENPORT=$port",
               "ORDERER_GENERAL_GENESISMETHOD=file",
@@ -133,7 +133,7 @@ class DockerBasedProcessManager(
           .withEnv(List(
               "CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock",
               "CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=testnet",
-              "FABRIC_LOGGING_SPEC=DEBUG",
+              "FABRIC_LOGGING_SPEC=INFO",
               "CORE_PEER_TLS_ENABLED=true",
               "CORE_PEER_GOSSIP_USELEADERELECTION=true",
               "CORE_PEER_GOSSIP_ORGLEADER=false",

@@ -1,4 +1,4 @@
-package org.enterprisedlt.fabric.service.node
+package org.enterprisedlt.fabric.service.node.proto
 
 import org.hyperledger.fabric.protos.common.Configtx
 import org.hyperledger.fabric.protos.common.Configtx.{ConfigUpdate, ConfigValue}
@@ -11,7 +11,7 @@ import org.hyperledger.fabric.protos.peer.Configuration.{AnchorPeer, AnchorPeers
 /**
   * @author Alexey Polubelov
   */
-object ChannelUpdate {
+object FabricChannel {
 
     //=========================================================================
     def AddAnchorPeer(orgName: String, host: String, port: Int)

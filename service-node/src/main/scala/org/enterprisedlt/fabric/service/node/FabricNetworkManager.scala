@@ -1,22 +1,17 @@
 package org.enterprisedlt.fabric.service.node
 
-import java.io.{File, FileReader, InputStream}
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Paths}
-import java.security.PrivateKey
+import java.io.InputStream
 import java.util
+import java.util.Properties
 import java.util.concurrent.{CompletableFuture, TimeUnit}
-import java.util.{Collections, Properties}
 
-import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
-import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
-import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
+import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, PeerConfig, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
 import org.hyperledger.fabric.protos.common.Configtx
 import org.hyperledger.fabric.protos.common.Configtx.ConfigUpdate
-import org.hyperledger.fabric.sdk._
-import org.hyperledger.fabric.sdk.identity.X509Enrollment
 import org.hyperledger.fabric.sdk.security.CryptoSuite
+import org.hyperledger.fabric.sdk.{BlockEvent, ChannelConfiguration, Peer, _}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
@@ -25,17 +20,19 @@ import scala.collection.JavaConverters._
   * @author Alexey Polubelov
   */
 class FabricNetworkManager(
-    val config: NetworkConfig
+    config: ServiceConfig,
+    orderingAdmin: User,
+    executionAdmin: User
 ) {
     type TransactionEvent = BlockEvent#TransactionEvent
 
     private val logger = LoggerFactory.getLogger(this.getClass)
-    private val organizationAdmin = loadUser(config.orgAdmin.name, config.orgID, config.orgAdmin.msp)
-    private val orderingAdmin = loadUser(config.orderingAdmin.name, s"osn-${config.orgID}", config.orderingAdmin.msp)
+    private val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
 
-    private val fabricClient = getHFClient(organizationAdmin)
-    private val osnByName = config.orderingNodes.map { config => (config.name, mkOSN(config)) }.toMap
-    private val peerByName = config.peerNodes.map { config => (config.name, mkPeer(config)) }.toMap
+    private val fabricClient = getHFClient(executionAdmin)
+
+    private val osnByName = config.network.orderingNodes.map { cfg => (cfg.name, mkOSN(cfg)) }.toMap
+    private val peerByName = config.network.peerNodes.map { cfg => (cfg.name, mkPeer(cfg)) }.toMap
 
     private lazy val systemClient = getHFClient(orderingAdmin)
     private lazy val systemChannel = connectToSystemChannel
@@ -48,7 +45,7 @@ class FabricNetworkManager(
     def createChannel(channelName: String, channelTx: Envelope): Unit = {
         val osn = osnByName.head._2 // for now, just use first
         val chCfg = new ChannelConfiguration(channelTx.toByteArray)
-        val sign = fabricClient.getChannelConfigurationSignature(chCfg, organizationAdmin)
+        val sign = fabricClient.getChannelConfigurationSignature(chCfg, executionAdmin)
         fabricClient.newChannel(channelName, osn, chCfg, sign)
     }
 
@@ -87,23 +84,23 @@ class FabricNetworkManager(
     def addAnchorsToChannel(channelName: String, peerName: String): Either[String, Unit] = {
         getChannel(channelName)
           .flatMap { channel =>
-              config.peerNodes
+              config.network.peerNodes
                 .find(_.name == peerName)
                 .toRight(s"Unknown peer $peerName")
                 .map { peerConfig =>
-                    applyChannelUpdate(channel, organizationAdmin, ChannelUpdate.AddAnchorPeer(config.orgID, peerConfig.host, peerConfig.port))
+                    applyChannelUpdate(channel, executionAdmin, FabricChannel.AddAnchorPeer(config.organization.name, s"${peerConfig.name}.$organizationFullName", peerConfig.port))
                 }
           }
     }
 
     //=========================================================================
-    def installChainCode(channelName: String, ccName: String, version: String, chainCodeTarGzStream: InputStream): Either[String, util.Collection[ProposalResponse]] = {
+    def installChainCode(channelName: String, chainCodeName: String, version: String, chainCodeTarGzStream: InputStream): Either[String, util.Collection[ProposalResponse]] = {
         getChannel(channelName)
           .map { channel =>
               val installProposal = fabricClient.newInstallProposalRequest()
               val chaincodeID =
                   ChaincodeID.newBuilder()
-                    .setName(ccName)
+                    .setName(chainCodeName)
                     .setVersion(version)
                     .build
 
@@ -120,7 +117,7 @@ class FabricNetworkManager(
 
     //=========================================================================
     def instantiateChainCode(
-        channelName: String, ccName: String, version: String,
+        channelName: String, chainCodeName: String, version: String,
         endorsementPolicy: Option[ChaincodeEndorsementPolicy] = None,
         collectionConfig: Option[ChaincodeCollectionConfiguration] = None,
         arguments: Array[String] = Array.empty
@@ -130,7 +127,7 @@ class FabricNetworkManager(
               val instantiateProposalRequest = fabricClient.newInstantiationProposalRequest
               val chaincodeID =
                   ChaincodeID.newBuilder()
-                    .setName(ccName)
+                    .setName(chainCodeName)
                     .setVersion(version)
                     .build
               instantiateProposalRequest.setChaincodeID(chaincodeID)
@@ -165,7 +162,7 @@ class FabricNetworkManager(
                   val toSend = responses.asJavaCollection
                   logger.debug("Sending transaction to orderer...")
                   val te = channel
-                    .sendTransaction(toSend, organizationAdmin)
+                    .sendTransaction(toSend, executionAdmin)
                     .get(5, TimeUnit.MINUTES)
                   Right(te)
               }
@@ -219,7 +216,7 @@ class FabricNetworkManager(
                   val toSend = responses.asJavaCollection
                   logger.debug("Sending transaction to orderer...")
                   val te = channel
-                    .sendTransaction(toSend, organizationAdmin)
+                    .sendTransaction(toSend, executionAdmin)
                     .get(5, TimeUnit.MINUTES)
                   Right(te)
               }
@@ -286,7 +283,7 @@ class FabricNetworkManager(
           .getGroupsMap.entrySet().iterator().next()
         applyChannelUpdate(
             systemChannel, orderingAdmin,
-            ChannelUpdate.AddApplicationOrg(appOrg.getKey, appOrg.getValue)
+            FabricChannel.AddApplicationOrg(appOrg.getKey, appOrg.getValue)
         )
         logger.info("Adding ordering org...")
         val orderingOrg = newOrgConfig.getChannelGroup
@@ -294,7 +291,7 @@ class FabricNetworkManager(
           .getGroupsMap.entrySet().iterator().next()
         applyChannelUpdate(
             systemChannel, orderingAdmin,
-            ChannelUpdate.AddOrderingOrg(orderingOrg.getKey, orderingOrg.getValue)
+            FabricChannel.AddOrderingOrg(orderingOrg.getKey, orderingOrg.getValue)
         )
         logger.info("Adding peers org...")
         val consortiumOrg = newOrgConfig.getChannelGroup
@@ -303,13 +300,13 @@ class FabricNetworkManager(
           .getGroupsMap.entrySet().iterator().next()
         applyChannelUpdate(
             systemChannel, orderingAdmin,
-            ChannelUpdate.AddConsortiumOrg(consortiumOrg.getKey, consortiumOrg.getValue)
+            FabricChannel.AddConsortiumOrg(consortiumOrg.getKey, consortiumOrg.getValue)
         )
         logger.info("Adding OSN 1...")
         val metadata = Util.extractConsensusMetadata(newOrgConfig)
         applyChannelUpdate(
             systemChannel, orderingAdmin,
-            ChannelUpdate.AddConsenter(metadata.getConsenters(0))
+            FabricChannel.AddConsenter(metadata.getConsenters(0))
         )
     }
 
@@ -323,8 +320,8 @@ class FabricNetworkManager(
                 .getGroupsMap.get("SampleConsortium")
                 .getGroupsMap.entrySet().iterator().next()
               applyChannelUpdate(
-                  channel, organizationAdmin,
-                  ChannelUpdate.AddApplicationOrg(consortiumOrg.getKey, consortiumOrg.getValue),
+                  channel, executionAdmin,
+                  FabricChannel.AddApplicationOrg(consortiumOrg.getKey, consortiumOrg.getValue),
               )
               logger.info("Adding ordering org...")
               val orderingOrg = newOrgConfig.getChannelGroup
@@ -332,13 +329,13 @@ class FabricNetworkManager(
                 .getGroupsMap.entrySet().iterator().next()
               applyChannelUpdate(
                   channel, orderingAdmin,
-                  ChannelUpdate.AddOrderingOrg(orderingOrg.getKey, orderingOrg.getValue)
+                  FabricChannel.AddOrderingOrg(orderingOrg.getKey, orderingOrg.getValue)
               )
               logger.info("Adding OSN 1...")
               val metadata = Util.extractConsensusMetadata(newOrgConfig)
               applyChannelUpdate(
                   channel, orderingAdmin,
-                  ChannelUpdate.AddConsenter(metadata.getConsenters(0))
+                  FabricChannel.AddConsenter(metadata.getConsenters(0))
               )
           }
     }
@@ -359,39 +356,6 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    private def loadUser(usernName: String, orgName: String, mspPath: String): User = {
-        val signedCert = loadSignedCertFromFile(mspPath)
-        val privateKey = loadPrivateKeyFromFile(mspPath)
-        val adminEnrollment = new X509Enrollment(privateKey, signedCert)
-        FabricUserImpl(usernName, Collections.emptySet(), "", "", adminEnrollment, orgName)
-    }
-
-    //=========================================================================
-    private def loadPrivateKeyFromFile(filePath: String): PrivateKey = {
-        val fileName = new File(s"$filePath/keystore").listFiles(n => n.getAbsolutePath.endsWith("_sk"))(0)
-        val pemReader = new FileReader(fileName)
-        val pemParser = new PEMParser(pemReader)
-        try {
-            pemParser.readObject() match {
-                case pemKeyPair: PEMKeyPair => new JcaPEMKeyConverter().getKeyPair(pemKeyPair).getPrivate
-                case keyInfo: PrivateKeyInfo => new JcaPEMKeyConverter().getPrivateKey(keyInfo)
-                case null => throw new Exception(s"Unable to read PEM object")
-                case other => throw new Exception(s"Unsupported PEM object ${other.getClass.getCanonicalName}")
-            }
-        } finally {
-            pemParser.close()
-            pemReader.close()
-        }
-    }
-
-    //=========================================================================
-    private def loadSignedCertFromFile(filePath: String): String = {
-        val fileName = new File(s"$filePath/signcerts").listFiles(n => n.getAbsolutePath.endsWith(".pem"))(0)
-        val r = Files.readAllBytes(Paths.get(fileName.toURI))
-        new String(r, StandardCharsets.UTF_8)
-    }
-
-    //=========================================================================
     private def getChannel(channelName: String): Either[String, Channel] =
         Option(fabricClient.getChannel(channelName))
           .toRight(s"Unknown channel $channelName")
@@ -400,21 +364,33 @@ class FabricNetworkManager(
     //=========================================================================
     private def mkPeer(config: PeerConfig): Peer = {
         val properties = new Properties()
-        properties.put("pemFile", config.tls)
-        fabricClient.newPeer(config.name, s"grpcs://${config.host}:${config.port}", properties)
+        properties.put("pemFile", defaultPeerTLSPath(config.name))
+        fabricClient.newPeer(config.name, s"grpcs://${config.name}.$organizationFullName:${config.port}", properties)
+    }
+
+    //=========================================================================
+    private def defaultPeerTLSPath(name: String): String = {
+        s"/opt/profile/crypto/peerOrganizations/$organizationFullName/peers/$name.$organizationFullName/tls/server.crt"
     }
 
     //=========================================================================
     private def mkOSN(config: OSNConfig): Orderer = {
         val properties = new Properties()
-        properties.put("pemFile", config.tls)
-        fabricClient.newOrderer(config.name, s"grpcs://${config.host}:${config.port}", properties)
+        properties.put("pemFile", defaultOSNTLSPath(config.name))
+        fabricClient.newOrderer(config.name, s"grpcs://${config.name}.$organizationFullName:${config.port}", properties)
+    }
+
+    //=========================================================================
+    private def defaultOSNTLSPath(name: String): String = {
+        s"/opt/profile/crypto/ordererOrganizations/$organizationFullName/orderers/$name.$organizationFullName/tls/server.crt"
     }
 
     //=========================================================================
     private def connectToSystemChannel: Channel = {
         val channel = systemClient.newChannel("system-channel")
-        config.orderingNodes /*.headOption*/ .foreach { config => channel.addOrderer(mkOSN(config)) }
+        config.network.orderingNodes /*.headOption*/ .foreach { cfg =>
+            channel.addOrderer(mkOSN(cfg))
+        }
         channel.initialize()
     }
 
