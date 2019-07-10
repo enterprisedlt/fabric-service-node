@@ -11,8 +11,8 @@ trait ContractInitialize {
     self: Main.type =>
 
     @ContractInit
-    def init(context: ContractContext, organizationCode: String, organizationName: String, chainCodeVersion: String, networkVersion: String): ContractResponse = {
-        addOrganisation(context, organizationCode, organizationName)
-        setCCVersion(context, chainCodeVersion, networkVersion)
+    def init(context: ContractContext, code: String, name: String, orgNumber: Long, ccVer: String, networkVer: String): ContractResponse = {
+        addOrganisation(context, code, name, orgNumber)
+        setCCVersion(context, "service", ccVer, networkVer)
     }
 }

@@ -23,7 +23,7 @@ import scala.collection.JavaConverters._
 /**
   * @author Alexey Polubelov
   */
-object FabricBlock extends App {
+object FabricBlock {
     //
     //    val commonChannelDefinition = ChannelDefinition(
     //        channelName = "common",

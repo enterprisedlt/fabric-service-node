@@ -1,81 +1,98 @@
 package org.enterprisedlt.fabric.service.node.flow
 
-import java.io.{File, FileInputStream, FileOutputStream}
+import java.io.File
 
-import com.google.protobuf.ByteString
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
-import org.enterprisedlt.fabric.service.node.proto.{ApplicationDefinition, CapabilityValue, ChannelDefinition, ConsortiumDefinition, ConsortiumsDefinition, FabricBlock, MemberClassifier, NodeVerificationConfig, OrderingNodeDefinition, OrderingServiceDefinition, OrganizationDefinition, PoliciesDefinition, SignedByOneOf}
+import org.enterprisedlt.fabric.service.node.proto._
 import org.enterprisedlt.fabric.service.node.{FabricCryptoManager, FabricNetworkManager, FabricProcessManager, Util}
-import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
 import org.hyperledger.fabric.protos.common.MspPrincipal.MSPRole
+import org.slf4j.LoggerFactory
 
 /**
   * @author Alexey Polubelov
   */
 object Bootstrap {
+    private val logger = LoggerFactory.getLogger(this.getClass)
+    val ServiceChannelName = "service"
+    val DefaultConsortiumName = "SampleConsortium"
 
     def bootstrapOrganization(config: ServiceConfig, cryptoManager: FabricCryptoManager, processManager: FabricProcessManager): FabricNetworkManager = {
-        //
+        val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
+        logger.info(s"[ $organizationFullName ] - Generating certificates ...")
         cryptoManager.generateCryptoMaterial()
 
         //
+        logger.info(s"[ $organizationFullName ] - Creating genesis ...")
         val genesisDefinition = newGenesisDefinition("/opt/profile", config)
         val genesis = FabricBlock.create(genesisDefinition)
-        storeToFile("/opt/profile/artifacts/genesis.block", genesis)
+        Util.storeToFile("/opt/profile/artifacts/genesis.block", genesis)
 
         //
+        logger.info(s"[ $organizationFullName ] - Starting ordering nodes ...")
         config.network.orderingNodes.foreach { osnConfig =>
             processManager.startOrderingNode(osnConfig.name, osnConfig.port)
         }
-//        config.network.orderingNodes.foreach { osnConfig =>
-//            processManager.awaitOrderingJoinedRaft(osnConfig.name)
-//        }
-//
-//        //
-//        config.network.peerNodes.foreach { peerConfig =>
-//            processManager.startPeerNode(peerConfig.name, peerConfig.port)
-//        }
-//
-//        //
+        config.network.orderingNodes.foreach { osnConfig =>
+            processManager.osnAwaitJoinedToRaft(osnConfig.name)
+        }
+
+        //
+        logger.info(s"[ $organizationFullName ] - Starting peer nodes ...")
+        config.network.peerNodes.foreach { peerConfig =>
+            processManager.startPeerNode(peerConfig.name, peerConfig.port)
+        }
+
+        //
+        logger.info(s"[ $organizationFullName ] - Initializing network ...")
         val orderingAdmin = cryptoManager.loadOrderingAdmin
         val executionAdmin = cryptoManager.loadExecutionAdmin
         val network = new FabricNetworkManager(config, orderingAdmin, executionAdmin)
-//        //
-//        createChannel(network, "service")
-//
-//        //
-//        config.network.peerNodes.foreach { peerConfig =>
-//            network.addPeerToChannel("service", peerConfig.name)
-//        }
-//
-//        //
-//        config.network.peerNodes.foreach { peerConfig =>
-//            network.addAnchorsToChannel("service", peerConfig.name)
-//        }
-//
-//        //
-//        val chainCodePkg = Util.generateTarGzInputStream(new File(s"/opt/chaincode/common"))
-//        network.installChainCode("service", "service", "1.0.0", chainCodePkg)
-//
-//        //
-//        network.instantiateChainCode(
-//            "service",
-//            "service",
-//            "1.0.0", // {chainCodeVersion}.{networkVersion}
-//            arguments = Array(
-//                config.organization.name, // organizationCode
-//                config.organization.name, // organizationName
-//                "1.0", // chainCodeVersion
-//                "0" // networkVersion
-//            )
-//        )
 
         //
+        logger.info(s"[ $organizationFullName ] - Creating channel ...")
+        network.createChannel(ServiceChannelName, FabricChannel.CreateChannel(ServiceChannelName, DefaultConsortiumName, config.organization.name))
+
+        //
+        logger.info(s"[ $organizationFullName ] - Adding peers to channel ...")
+        config.network.peerNodes.foreach { peerConfig =>
+            network.addPeerToChannel("service", peerConfig.name)
+        }
+
+        //
+        logger.info(s"[ $organizationFullName ] - Updating anchors for channel ...")
+        config.network.peerNodes.foreach { peerConfig =>
+            network.addAnchorsToChannel("service", peerConfig.name)
+        }
+
+        //
+        logger.info(s"[ $organizationFullName ] - Preparing service chain code ...")
+        val chainCodePkg = Util.generateTarGzInputStream(new File(s"/opt/chaincode/common"))
+
+        logger.info(s"[ $organizationFullName ] - Installing service chain code ...")
+        network.installChainCode("service", "service", "1.0.0", chainCodePkg)
+
+        //
+        logger.info(s"[ $organizationFullName ] - Instantiating service chain code ...")
+        network.instantiateChainCode(
+            "service",
+            "service",
+            "1.0.0", // {chainCodeVersion}.{networkVersion}
+            arguments = Array(
+                config.organization.name, // organizationCode
+                config.organization.name, // organizationName
+                "1", // orgNumber
+                "1.0", // chainCodeVersion
+                "0" // networkVersion
+            )
+        )
+
+        //
+        logger.info(s"[ $organizationFullName ] - Bootstrap done.")
         network
     }
 
     //=========================================================================
-    private def newGenesisDefinition(profilePath: String, config: ServiceConfig): ChannelDefinition = {
+    def newGenesisDefinition(profilePath: String, config: ServiceConfig): ChannelDefinition = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
         val orderingOrganizationPath = s"$profilePath/crypto/ordererOrganizations/$organizationFullName"
         val executionOrganizationPath = s"$profilePath/crypto/peerOrganizations/$organizationFullName"
@@ -84,16 +101,16 @@ object Bootstrap {
         val ExecutionOrg =
             OrganizationDefinition(
                 mspId = executionOrgMspId,
-                caCerts = Seq(readAsByteString(s"$executionOrganizationPath/msp/cacerts/ca.$organizationFullName-cert.pem")),
-                tlsCACerts = Seq(readAsByteString(s"$executionOrganizationPath/msp/tlscacerts/tlsca.$organizationFullName-cert.pem")),
-                adminCerts = Seq(readAsByteString(s"$executionOrganizationPath/msp/admincerts/Admin@$organizationFullName-cert.pem")),
+                caCerts = Seq(Util.readAsByteString(s"$executionOrganizationPath/msp/cacerts/ca.$organizationFullName-cert.pem")),
+                tlsCACerts = Seq(Util.readAsByteString(s"$executionOrganizationPath/msp/tlscacerts/tlsca.$organizationFullName-cert.pem")),
+                adminCerts = Seq(Util.readAsByteString(s"$executionOrganizationPath/msp/admincerts/Admin@$organizationFullName-cert.pem")),
                 nodesVerification = Option(
                     NodeVerificationConfig(
                         peerOUValue = "peer",
-                        peerOUCerts = readAsByteString(s"$executionOrganizationPath/msp/cacerts/ca.$organizationFullName-cert.pem"),
+                        peerOUCerts = Util.readAsByteString(s"$executionOrganizationPath/msp/cacerts/ca.$organizationFullName-cert.pem"),
 
                         clientOUValue = "client",
-                        clientOUCerts = readAsByteString(s"$executionOrganizationPath/msp/cacerts/ca.$organizationFullName-cert.pem")
+                        clientOUCerts = Util.readAsByteString(s"$executionOrganizationPath/msp/cacerts/ca.$organizationFullName-cert.pem")
                     )
                 ),
                 policies = PoliciesDefinition(
@@ -119,9 +136,9 @@ object Bootstrap {
         val OrderingOrg =
             OrganizationDefinition(
                 mspId = orderingMspId,
-                caCerts = Seq(readAsByteString(s"$orderingOrganizationPath/msp/cacerts/ca.$organizationFullName-cert.pem")),
-                tlsCACerts = Seq(readAsByteString(s"$orderingOrganizationPath/msp/tlscacerts/tlsca.$organizationFullName-cert.pem")),
-                adminCerts = Seq(readAsByteString(s"$orderingOrganizationPath/msp/admincerts/Admin@$organizationFullName-cert.pem")),
+                caCerts = Seq(Util.readAsByteString(s"$orderingOrganizationPath/msp/cacerts/ca.$organizationFullName-cert.pem")),
+                tlsCACerts = Seq(Util.readAsByteString(s"$orderingOrganizationPath/msp/tlscacerts/tlsca.$organizationFullName-cert.pem")),
+                adminCerts = Seq(Util.readAsByteString(s"$orderingOrganizationPath/msp/admincerts/Admin@$organizationFullName-cert.pem")),
                 policies = PoliciesDefinition(
                     admins = SignedByOneOf(MemberClassifier(orderingMspId, MSPRole.MSPRoleType.ADMIN)),
                     writers = SignedByOneOf(MemberClassifier(orderingMspId, MSPRole.MSPRoleType.MEMBER)),
@@ -145,8 +162,8 @@ object Bootstrap {
                             OrderingNodeDefinition(
                                 host = s"${osnConfig.name}.$organizationFullName",
                                 port = osnConfig.port,
-                                clientTlsCert = readAsByteString(s"$orderingOrganizationPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"),
-                                serverTlsCert = readAsByteString(s"$orderingOrganizationPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt")
+                                clientTlsCert = Util.readAsByteString(s"$orderingOrganizationPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"),
+                                serverTlsCert = Util.readAsByteString(s"$orderingOrganizationPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt")
                             )
                         },
                       organizations = Seq(OrderingOrg)
@@ -163,7 +180,7 @@ object Bootstrap {
               ConsortiumsDefinition(
                   Seq(
                       ConsortiumDefinition(
-                          name = "SampleConsortium",
+                          name = DefaultConsortiumName,
                           organizations = Seq(ExecutionOrg)
                       )
                   )
@@ -171,28 +188,4 @@ object Bootstrap {
         )
     }
 
-    //=========================================================================
-    private def createChannel(network: FabricNetworkManager, channelName: String): Unit = {
-        val channelTx = Envelope.parseFrom(new FileInputStream(s"/opt/profile/artifacts/$channelName.tx"))
-        network.createChannel(channelName, channelTx)
-    }
-
-    //=========================================================================
-    private def readAsByteString(path: String): ByteString =
-        ByteString.readFrom(new FileInputStream(path))
-
-    //=========================================================================
-    private def storeToFile(path: String, block: Block): Unit = {
-        val parent = new File(path).getParentFile
-        if(!parent.exists()){
-            parent.mkdirs()
-        }
-        val out = new FileOutputStream(path)
-        try {
-            block.writeTo(out)
-            out.flush()
-        } finally {
-            out.close()
-        }
-    }
 }

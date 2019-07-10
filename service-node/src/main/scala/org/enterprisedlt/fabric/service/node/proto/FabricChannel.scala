@@ -1,8 +1,13 @@
 package org.enterprisedlt.fabric.service.node.proto
 
+import java.util.concurrent.TimeUnit
+
+import com.google.protobuf.Timestamp
+import org.hyperledger.fabric.protos.common.Common.{ChannelHeader, Envelope, Header, HeaderType, Payload}
 import org.hyperledger.fabric.protos.common.Configtx
-import org.hyperledger.fabric.protos.common.Configtx.{ConfigUpdate, ConfigValue}
-import org.hyperledger.fabric.protos.common.Configuration.OrdererAddresses
+import org.hyperledger.fabric.protos.common.Configtx.{ConfigUpdate, ConfigUpdateEnvelope, ConfigValue}
+import org.hyperledger.fabric.protos.common.Configuration.{Consortium, OrdererAddresses}
+import org.hyperledger.fabric.protos.common.Policies.ImplicitMetaPolicy
 import org.hyperledger.fabric.protos.ext.orderer.Configuration.ConsensusType
 import org.hyperledger.fabric.protos.ext.orderer.etcdraft.Configuration
 import org.hyperledger.fabric.protos.ext.orderer.etcdraft.Configuration.ConfigMetadata
@@ -12,6 +17,86 @@ import org.hyperledger.fabric.protos.peer.Configuration.{AnchorPeer, AnchorPeers
   * @author Alexey Polubelov
   */
 object FabricChannel {
+
+    //=========================================================================
+    def CreateChannel(channelName: String, consortiumName: String, orgName: String): Envelope = {
+        val readSet = Configtx.ConfigGroup.newBuilder
+        readSet.putGroups("Application",
+            Configtx.ConfigGroup.newBuilder
+              .putGroups(orgName,
+                  Configtx.ConfigGroup.newBuilder.build
+              )
+              .build
+        )
+        readSet.putValues("Consortium", Configtx.ConfigValue.newBuilder.build)
+
+        val writeSet = Configtx.ConfigGroup.newBuilder()
+        val appGroup = Configtx.ConfigGroup.newBuilder
+          .putGroups(orgName, Configtx.ConfigGroup.newBuilder.build)
+          .setModPolicy(ModPolicyValue.Admins)
+          .setVersion(1)
+
+        FabricBlock.putPolicies(
+            appGroup,
+            PoliciesDefinition(
+                admins = ImplicitPolicy(ImplicitMetaPolicy.Rule.ANY, ImplicitSubPolicyValue.Admins), //ImplicitMetaPolicy.Rule.MAJORITY
+                writers = ImplicitPolicy(ImplicitMetaPolicy.Rule.ANY, ImplicitSubPolicyValue.Writers),
+                readers = ImplicitPolicy(ImplicitMetaPolicy.Rule.ANY, ImplicitSubPolicyValue.Readers)
+            )
+        )
+
+        FabricBlock.putCapabilities(appGroup, Set(CapabilityValue.V1_3))
+
+        writeSet.putGroups("Application", appGroup.build)
+        writeSet.putValues("Consortium",
+            Configtx.ConfigValue.newBuilder
+              .setValue(
+                  Consortium.newBuilder()
+                    .setName(consortiumName)
+                    .build.toByteString
+              )
+              .build
+        )
+
+        val configUpdate = ConfigUpdate.newBuilder
+          .setReadSet(readSet.build)
+          .setWriteSet(writeSet.build)
+          .setChannelId(channelName)
+          .build
+
+        val configUpdateEnvelope =
+            ConfigUpdateEnvelope.newBuilder
+              .setConfigUpdate(configUpdate.toByteString)
+              .build
+
+        val payloadChannelHeader =
+            ChannelHeader.newBuilder()
+              .setChannelId(channelName)
+              .setEpoch(0)
+              .setTimestamp(
+                  Timestamp.newBuilder()
+                    .setSeconds(TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis()))
+                    .setNanos(0)
+              )
+              .setType(HeaderType.CONFIG_UPDATE.getNumber)
+              .setVersion(0)
+              .build
+
+        val payloadHeader =
+            Header.newBuilder()
+              .setChannelHeader(payloadChannelHeader.toByteString)
+              .build
+
+        val payload =
+            Payload.newBuilder()
+              .setHeader(payloadHeader)
+              .setData(configUpdateEnvelope.toByteString)
+              .build
+
+        Envelope.newBuilder
+          .setPayload(payload.toByteString)
+          .build
+    }
 
     //=========================================================================
     def AddAnchorPeer(orgName: String, host: String, port: Int)

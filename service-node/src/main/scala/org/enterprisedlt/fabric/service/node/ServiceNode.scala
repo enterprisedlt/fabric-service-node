@@ -2,12 +2,11 @@ package org.enterprisedlt.fabric.service.node
 
 import java.io.FileReader
 
-import com.google.gson.{Gson, GsonBuilder}
 import org.eclipse.jetty.server.Server
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
-import org.slf4j.{Logger, LoggerFactory}
+import org.slf4j.LoggerFactory
 
 /**
   * @author Alexey Polubelov
@@ -21,24 +20,26 @@ object ServiceNode extends App {
     private val ServiceExternalIP = Option(Environment.get("SERVICE_EXTERNAL_IP")).getOrElse(throw new Exception("Mandatory environment variable missing SERVICE_EXTERNAL_IP!"))
     private val ProfilePath = Option(Environment.get("PROFILE_PATH")).getOrElse(throw new Exception("Mandatory environment variable missing PROFILE_PATH!"))
     private val DockerSocket = Option(Environment.get("DOCKER_SOCKET")).getOrElse(throw new Exception("Mandatory environment variable missing DOCKER_SOCKET!"))
+    private val InitialName = Option(Environment.get("INITIAL_NAME")).getOrElse(throw new Exception("Mandatory environment variable missing INITIAL_NAME!"))
 
-    setupLogging(LogLevel)
+    Util.setupLogging(LogLevel)
     private val logger = LoggerFactory.getLogger(getClass)
 
     logger.info("Starting...")
-    logger.info(s"SERVICE_BIND_PORT:\t\t$ServiceBindPort")
-    logger.info(s"SERVICE_EXTERNAL_PORT:\t\t$ServiceExternalPort")
-    logger.info(s"SERVICE_EXTERNAL_IP:\t\t$ServiceExternalIP")
+    logger.info(s"\tSERVICE_BIND_PORT\t:\t$ServiceBindPort")
+    logger.info(s"\tSERVICE_EXTERNAL_PORT\t:\t$ServiceExternalPort")
+    logger.info(s"\tSERVICE_EXTERNAL_IP\t:\t$ServiceExternalIP")
 
     private val config = loadConfig("/opt/profile/service.json")
-    logger.info("Loaded configuration:")
-    logger.info(s"Organization:\t\t${config.organization.name}.${config.organization.domain}")
-    logger.info(s"Ordering nodes count:\t\t${config.network.orderingNodes.length}")
-    logger.info(s"Peer node count:\t\t${config.network.peerNodes.length}")
+    logger.info("Loaded configuration")
+    logger.info(s"\tOrganization\t:\t${config.organization.name}.${config.organization.domain}")
+    logger.info(s"\tOrdering nodes count\t:\t${config.network.orderingNodes.length}")
+    logger.info(s"\tPeer node count\t:\t${config.network.peerNodes.length}")
 
     private val server = new Server(ServiceBindPort)
     server.setHandler(
         new RestEndpoint(
+            s"$ServiceExternalIP:$ServiceExternalPort",
             config,
             cryptoManager = new FileBasedCryptoManager(
                 config,"/opt/profile/crypto"
@@ -46,6 +47,7 @@ object ServiceNode extends App {
             processManager = new DockerBasedProcessManager(
                 ProfilePath,
                 DockerSocket,
+                InitialName,
                 config
             )
         )
@@ -59,19 +61,8 @@ object ServiceNode extends App {
     //=========================================================================
     // Utilities
     //=========================================================================
-    private def codec: Gson = (new GsonBuilder).create()
-
-    //=========================================================================
     private def loadConfig(configFile: String): ServiceConfig =
-        codec.fromJson(new FileReader(configFile), classOf[ServiceConfig])
-
-    //=========================================================================
-    private def setupLogging(logLevel: String): Unit = {
-        LoggerFactory
-          .getLogger(Logger.ROOT_LOGGER_NAME)
-          .asInstanceOf[ch.qos.logback.classic.Logger]
-          .setLevel(ch.qos.logback.classic.Level.toLevel(logLevel))
-    }
+        Util.codec.fromJson(new FileReader(configFile), classOf[ServiceConfig])
 
     //=========================================================================
     private def setupShutdownHook(): Unit = {

@@ -1,9 +1,9 @@
 package org.enterprisedlt.fabric.service.contract.contract
 
-import com.github.apolubelov.fabric.contract.annotation.ContractOperation
-import com.github.apolubelov.fabric.contract.{ContractContext, ContractResponse, Error, Success}
 import org.enterprisedlt.fabric.service.contract.Main
 import org.enterprisedlt.fabric.service.contract.model.{CCVersion, Organisation}
+import com.github.apolubelov.fabric.contract.annotation.ContractOperation
+import com.github.apolubelov.fabric.contract.{ContractContext, ContractResponse, Error, Success}
 
 /**
   * @author pandelie
@@ -12,10 +12,10 @@ trait OrgMethods {
     self: Main.type =>
 
     @ContractOperation
-    def addOrganisation(context: ContractContext, code: String, name: String): ContractResponse = {
+    def addOrganisation(context: ContractContext, code: String, name: String, orgNumber: Long): ContractResponse = {
         if (!code.isEmpty) {
-            context.store.put[Organisation](code, Organisation(code, name))
-            Success(s"Organization $name was stored")
+            context.store.put[Organisation](code, Organisation(code, name, orgNumber))
+            Success(s"org $name was stored")
         }
         else {
             Error(s"There isn't crucial key to store the org $name")
@@ -29,33 +29,33 @@ trait OrgMethods {
 
 
     @ContractOperation
-    def getOrganisation(context: ContractContext, organizationCode: String): ContractResponse = {
-        context.store.get[Organisation](organizationCode)
+    def getOrganisation(context: ContractContext, orgKey: String): ContractResponse = {
+        context.store.get[Organisation](orgKey)
           .map(Success(_))
-          .getOrElse(Error(s"There is no organization with code $organizationCode"))
+          .getOrElse(Error(s"There is no org with key $orgKey"))
     }
 
     @ContractOperation
-    def setCCVersion(context: ContractContext, ccVer: String, networkVer: String): ContractResponse = {
-        context.store.put[CCVersion]("chaincode", CCVersion(ccVer, networkVer))
+    def setCCVersion(context: ContractContext, ccName: String, ccVer: String, networkVer: String): ContractResponse = {
+        context.store.put[CCVersion](ccName, CCVersion(ccVer, networkVer))
         Success()
     }
 
     @ContractOperation
-    def getCCVersion(context: ContractContext): ContractResponse = {
-        context.store.get[CCVersion]("chaincode")
+    def getCCVersion(context: ContractContext, ccName: String): ContractResponse = {
+        context.store.get[CCVersion](ccName)
           .map(Success(_))
-          .getOrElse(Error(s"There is no chain code entity"))
+          .getOrElse(Error(s"There is no chaincode entity"))
     }
 
     @ContractOperation
-    def delOrganisation(context: ContractContext, organizationCode: String): ContractResponse = {
-        context.store.get[Organisation](organizationCode) match {
+    def delOrganisation(context: ContractContext, orgKey: String): ContractResponse = {
+        context.store.get[Organisation](orgKey) match {
             case Some(asset) =>
-                context.store.del[Organisation](organizationCode)
+                context.store.del[Organisation](orgKey)
                 Success()
 
-            case _ => Error(s"No organization with code $organizationCode exist")
+            case _ => Error(s"No Account with key $orgKey exist")
         }
 
     }

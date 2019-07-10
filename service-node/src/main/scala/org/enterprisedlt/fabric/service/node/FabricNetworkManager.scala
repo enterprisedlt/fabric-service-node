@@ -422,4 +422,18 @@ class FabricNetworkManager(
         val sign = channel.getUpdateChannelConfigurationSignature(update, user)
         channel.updateChannelConfiguration(update, sign)
     }
+
+    //=========================================================================
+    def fetchCollectionsConfig(peerName: String, channelName: String, chainCodeName: String): Either[String, Iterable[PrivateCollectionConfiguration]] = {
+        getChannel(channelName)
+          .flatMap { channel =>
+              peerByName
+                .get(peerName)
+                .toRight(s"Unknown peer $peerName")
+                .map { peer =>
+                    val collectionConfigPackage = channel.queryCollectionsConfig(chainCodeName, peer, executionAdmin)
+                    Util.parseCollectionPackage(collectionConfigPackage)
+                }
+          }
+    }
 }

@@ -35,3 +35,17 @@ case class QueryChainCodeRequest(
     functionName: String,
     arguments: Array[String]
 )
+
+case class Invite(
+    address: String
+)
+
+case class JoinRequest(
+    genesisConfig: String,
+    mspId: String
+)
+
+case class JoinResponse(
+    genesis: String,
+    version: String
+)

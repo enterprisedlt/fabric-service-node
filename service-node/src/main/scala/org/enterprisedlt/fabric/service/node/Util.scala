@@ -1,10 +1,17 @@
 package org.enterprisedlt.fabric.service.node
 
 import java.io._
+import java.nio.charset.StandardCharsets
 
+import com.google.gson.{Gson, GsonBuilder}
+import com.google.protobuf.{ByteString, MessageLite}
 import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveOutputStream}
 import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream
 import org.apache.commons.io.{FilenameUtils, IOUtils}
+import org.apache.http.client.methods.HttpPost
+import org.apache.http.entity.{ByteArrayEntity, ContentType}
+import org.apache.http.impl.client.HttpClients
+import org.apache.http.util.EntityUtils
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope, Payload}
 import org.hyperledger.fabric.protos.common.Configtx
@@ -15,6 +22,7 @@ import org.hyperledger.fabric.protos.ext.orderer.Configuration.ConsensusType
 import org.hyperledger.fabric.protos.ext.orderer.etcdraft.Configuration.ConfigMetadata
 import org.hyperledger.fabric.sdk.helper.Utils
 import org.hyperledger.fabric.sdk.{ChaincodeCollectionConfiguration, ChaincodeEndorsementPolicy}
+import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.JavaConverters._
 
@@ -22,6 +30,7 @@ import scala.collection.JavaConverters._
   * @author Alexey Polubelov
   */
 object Util {
+    private val logger = LoggerFactory.getLogger(this.getClass)
 
     //=========================================================================
     //TODO: this is adopted "copy paste" from SDK tests, quite ugly inefficient code, need to rewrite.
@@ -129,12 +138,93 @@ object Util {
         configEnvelope.getConfig
     }
 
+    //=========================================================================
+    def parseCollectionPackage(configPackage: org.hyperledger.fabric.sdk.CollectionConfigPackage): Iterable[PrivateCollectionConfiguration] = {
+        configPackage.getCollectionConfigs.asScala.map { config =>
+            PrivateCollectionConfiguration(
+                name = config.getName,
+                blocksToLive = config.getBlockToLive,
+                minPeersToSpread = config.getRequiredPeerCount,
+                maxPeersToSpread = config.getMaximumPeerCount,
+                memberIds = parseCollectionPolicy(config.getCollectionConfig.getStaticCollectionConfig.getMemberOrgsPolicy)
+            )
+        }
+    }
+
+    //=========================================================================
+    def parseCollectionPolicy(policy: CollectionPolicyConfig): Iterable[String] = {
+        policy.getSignaturePolicy.getIdentitiesList.asScala.map(_.getPrincipal.toStringUtf8)
+    }
+
+    //=========================================================================
+    def storeToFile(path: String, protoMsg: MessageLite): Unit = {
+        val parent = new File(path).getParentFile
+        if (!parent.exists()) {
+            parent.mkdirs()
+        }
+        val out = new FileOutputStream(path)
+        try {
+            protoMsg.writeTo(out)
+            out.flush()
+        } finally {
+            out.close()
+        }
+    }
+
+    //=========================================================================
+    def storeToFile(path: String, msg: Array[Byte]): Unit = {
+        val parent = new File(path).getParentFile
+        if (!parent.exists()) {
+            parent.mkdirs()
+        }
+        val out = new FileOutputStream(path)
+        try {
+            out.write(msg)
+            out.flush()
+        } finally {
+            out.close()
+        }
+    }
+
+    //=========================================================================
+    def readAsByteString(path: String): ByteString =
+        ByteString.readFrom(new FileInputStream(path))
+
+    //=========================================================================
+    def codec: Gson = (new GsonBuilder).create()
+
+    //=========================================================================
+    def setupLogging(logLevel: String): Unit = {
+        LoggerFactory
+          .getLogger(Logger.ROOT_LOGGER_NAME)
+          .asInstanceOf[ch.qos.logback.classic.Logger]
+          .setLevel(ch.qos.logback.classic.Level.toLevel(logLevel))
+    }
+
+    //=========================================================================
+    def executePostRequest[T](url: String, request: AnyRef, responseClass: Class[T]): T = {
+        logger.info(s"Executing request to $url ...")
+        val post = new HttpPost(url)
+        val body = codec.toJson(request).getBytes(StandardCharsets.UTF_8)
+        val entity = new ByteArrayEntity(body, ContentType.APPLICATION_JSON)
+        post.setEntity(entity)
+        val response = HttpClients.createDefault().execute(post)
+        try {
+            logger.info(s"Got status from remote: ${response.getStatusLine.toString}")
+            val entity = response.getEntity
+            val result = codec.fromJson(new InputStreamReader(entity.getContent), responseClass)
+            EntityUtils.consume(entity) // ensure it is fully consumed
+            result
+        } finally {
+            response.close()
+        }
+    }
 }
 
 case class PrivateCollectionConfiguration(
     name: String,
     memberIds: Iterable[String],
-    blocksToLive: Int = 0, // Infinity by default
+    blocksToLive: Long = 0, // Infinity by default
     minPeersToSpread: Int = 0, // not require to disseminate before commit
     maxPeersToSpread: Int = 0 // can be disseminated before commit
 )
