@@ -2,6 +2,7 @@ package org.enterprisedlt.fabric.service.node.flow
 
 import java.io.File
 
+import org.enterprisedlt.fabric.service.model.{Organization, ServiceVersion}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.proto._
@@ -76,11 +77,19 @@ object Bootstrap {
             ServiceChannelName, ServiceChainCodeName,
             "1.0.0", // {chainCodeVersion}.{networkVersion}
             arguments = Array(
-                config.organization.name, // organizationCode
-                config.organization.name, // organizationName
-                "1", // orgNumber
-                "1.0", // chainCodeVersion
-                "0" // networkVersion
+                Util.codec.toJson(
+                    Organization(
+                        mspId = config.organization.name,
+                        name = config.organization.name,
+                        memberNumber = 1
+                    )
+                ),
+                Util.codec.toJson(
+                    ServiceVersion(
+                        chainCodeVersion = "1.0",
+                        networkVersion = "0"
+                    )
+                )
             )
         )
 

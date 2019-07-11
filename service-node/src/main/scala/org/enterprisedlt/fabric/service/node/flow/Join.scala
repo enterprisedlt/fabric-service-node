@@ -3,7 +3,7 @@ package org.enterprisedlt.fabric.service.node.flow
 import java.io.File
 import java.util.Base64
 
-import org.enterprisedlt.fabric.service.contract.model.{CCVersion, Organisation, OrganizationsOrdering}
+import org.enterprisedlt.fabric.service.model.{ServiceVersion, Organization, OrganizationsOrdering}
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
@@ -101,9 +101,9 @@ object Join {
         // fetch current network version
         logger.info(s"[ $organizationFullName ] - Warming up service chain code ...")
         network
-          .queryChainCode(ServiceChannelName, ServiceChainCodeName, "getCCVersion", ServiceChainCodeName)
+          .queryChainCode(ServiceChannelName, ServiceChainCodeName, "getServiceVersion")
           .map(_.head) //TODO: proper handling of empty result
-          .map(Util.codec.fromJson(_, classOf[CCVersion]))
+          .map(Util.codec.fromJson(_, classOf[ServiceVersion]))
 
         network
     }
@@ -122,33 +122,32 @@ object Join {
 
         for {
             // join new org to service channel
-            _ <- network
-              .joinToChannel(ServiceChannelName, newOrgConfig)
+            _ <- network.joinToChannel(ServiceChannelName, newOrgConfig)
 
             // fetch current network version
             chainCodeVersion <- network
-              .queryChainCode(ServiceChannelName, ServiceChainCodeName, "getCCVersion", ServiceChainCodeName)
+              .queryChainCode(ServiceChannelName, ServiceChainCodeName, "getServiceVersion")
               .map(_.head) //TODO: proper handling of empty result
-              .map(Util.codec.fromJson(_, classOf[CCVersion]))
+              .map(Util.codec.fromJson(_, classOf[ServiceVersion]))
 
             // fetch current list of organizations
             orgs <- network
-              .queryChainCode(ServiceChannelName, ServiceChainCodeName, "listOrganisations")
+              .queryChainCode(ServiceChannelName, ServiceChainCodeName, "listOrganizations")
               .map(_.head) //TODO: proper handling of empty result
-              .map(Util.codec.fromJson(_, classOf[Array[Organisation]]).sorted(OrganizationsOrdering))
+              .map(Util.codec.fromJson(_, classOf[Array[Organization]]).sorted(OrganizationsOrdering))
 
             // fetch list of private collections if require
             currentCollections <- fetchCurrentCollection(config, network, orgs)
 
         } yield {
             // increment network version
-            val nextNetworkVersion = chainCodeVersion.networkVer.toInt + 1
-            val nextVersion = s"${chainCodeVersion.ccVer}.$nextNetworkVersion"
-            logger.info(s"Installing next version of service to $nextNetworkVersion ...")
+            val nextNetworkVersion = chainCodeVersion.networkVersion.toInt + 1
+            val nextVersion = s"${chainCodeVersion.chainCodeVersion}.$nextNetworkVersion"
+            logger.info(s"Installing next version of service $nextVersion ...")
             val gunZipFile = Util.generateTarGzInputStream(new File(s"/opt/chaincode/common"))
             network.installChainCode(ServiceChannelName, ServiceChainCodeName, nextVersion, gunZipFile)
             // update endorsement policy and private collections config
-            val orgCodes = orgs.map(_.code) :+ joinRequest.mspId
+            val orgCodes = orgs.map(_.mspId) :+ joinRequest.mspId
             val policyForCCUpgrade = Util.policyAnyOf(orgCodes)
             val nextCollections = currentCollections ++ mkCollectionsToAdd(orgCodes, joinRequest.mspId)
             logger.info(s"Upgrading version of service to $nextVersion ...")
@@ -156,17 +155,25 @@ object Join {
                 endorsementPolicy = Option(policyForCCUpgrade),
                 collectionConfig = Option(Util.createCollectionsConfig(nextCollections)),
                 arguments = Array(
-                    joinRequest.mspId, // organizationCode
-                    joinRequest.mspId, // organizationName
-                    orgs.length.toString, // orgNumber
-                    chainCodeVersion.ccVer, // chainCodeVersion
-                    nextNetworkVersion.toString // networkVersion
+                    Util.codec.toJson(
+                        Organization(
+                            mspId = joinRequest.mspId,
+                            name = joinRequest.mspId,
+                            memberNumber = orgs.length
+                        )
+                    ),
+                    Util.codec.toJson(
+                        ServiceVersion(
+                            chainCodeVersion = chainCodeVersion.chainCodeVersion,
+                            networkVersion = nextNetworkVersion.toString
+                        )
+                    )
                 )
             )
 
             // clean out old chain code container
             config.network.peerNodes.foreach { peer =>
-              val previousVersion = s"${chainCodeVersion.ccVer}.${chainCodeVersion.networkVer}"
+                val previousVersion = s"${chainCodeVersion.chainCodeVersion}.${chainCodeVersion.networkVersion}"
                 logger.info(s"Removing previous version [$previousVersion] of service on ${peer.name} ...")
                 processManager.terminateChainCode(peer.name, ServiceChainCodeName, previousVersion)
             }
@@ -184,7 +191,7 @@ object Join {
     private def fetchCurrentCollection(
         config: ServiceConfig,
         network: FabricNetworkManager,
-        currentOrgs: Array[Organisation]
+        currentOrgs: Array[Organization]
     ): Either[String, Iterable[PrivateCollectionConfiguration]] =
         if (currentOrgs.length == 1) {
             Right(Seq.empty)

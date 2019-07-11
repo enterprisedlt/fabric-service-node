@@ -1,4 +1,4 @@
-package org.enterprisedlt.fabric.service.contract.model
+package org.enterprisedlt.fabric.service.model
 
 case class Contract(
     name: String,
