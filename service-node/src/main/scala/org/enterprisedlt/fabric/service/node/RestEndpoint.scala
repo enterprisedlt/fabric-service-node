@@ -1,7 +1,5 @@
 package org.enterprisedlt.fabric.service.node
 
-import java.io.{FileInputStream, FileOutputStream}
-import java.util.Base64
 import java.util.concurrent.locks.ReentrantLock
 
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
@@ -9,16 +7,17 @@ import org.apache.http.entity.ContentType
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
+import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
-import org.enterprisedlt.fabric.service.node.model.{Invite, JoinRequest, JoinResponse}
-import org.enterprisedlt.fabric.service.node.proto.FabricBlock
+import org.enterprisedlt.fabric.service.node.model.{Invite, JoinRequest}
 import org.slf4j.LoggerFactory
 
 /**
   * @author Alexey Polubelov
   */
 class RestEndpoint(
-    externalURL: String,
+    bindPort: Int,
+    externalAddress: Option[ExternalAddress],
     config: ServiceConfig,
     cryptoManager: FabricCryptoManager,
     processManager: FabricProcessManager
@@ -35,10 +34,38 @@ class RestEndpoint(
                         response.getWriter.println("Pong")
                         response.setStatus(HttpServletResponse.SC_OK)
 
+                    case "/listOrganizations" =>
+                        logger.info(s"ListOrganizations ...")
+                        val result =
+                            networkManager
+                              .toRight("Network is not initialized yet")
+                              .flatMap { network =>
+                                  network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listOrganizations")
+                                    .flatMap(_.headOption.toRight("No results"))
+                              }
+                              .merge
+                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                        response.getWriter.println(result)
+                        response.setStatus(HttpServletResponse.SC_OK)
+
+                    case "/collections" =>
+                        logger.info(s"Collections ...")
+                        val result =
+                            networkManager
+                              .toRight("Network is not initialized yet")
+                              .flatMap { network =>
+                                  network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listCollections")
+                                    .flatMap(_.headOption.toRight("No results"))
+                              }
+                              .merge
+                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                        response.getWriter.println(result)
+                        response.setStatus(HttpServletResponse.SC_OK)
+
                     case "/bootstrap" =>
                         logger.info(s"Bootstrapping organization ${config.organization.name}...")
                         try {
-                            initNetworkManager(Bootstrap.bootstrapOrganization(config, cryptoManager, processManager))
+                            initNetworkManager(Bootstrap.bootstrapOrganization(config, cryptoManager, processManager, externalAddress))
                             response.setStatus(HttpServletResponse.SC_OK)
                         } catch {
                             case ex: Exception =>
@@ -50,7 +77,10 @@ class RestEndpoint(
                         logger.info(s"Creating invite ${config.organization.name}...")
                         response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                         val out = response.getOutputStream
-                        val invite = Invite(externalURL)
+                        val address = externalAddress
+                          .map(ea => s"${ea.host}:${ea.port}")
+                          .getOrElse(s"service.${config.organization.name}.${config.organization.domain}:$bindPort")
+                        val invite = Invite(address)
                         out.println(Util.codec.toJson(invite))
                         out.flush()
                         response.setStatus(HttpServletResponse.SC_OK)
@@ -65,10 +95,7 @@ class RestEndpoint(
                     case "/request-join" =>
                         logger.info("Requesting to joining network ...")
                         val invite = Util.codec.fromJson(request.getReader, classOf[Invite])
-                        initNetworkManager(Join.join(config, cryptoManager, processManager, invite))
-//                        val writer = response.getWriter
-//                        writer.println(joinResponse.version)
-//                        response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                        initNetworkManager(Join.join(config, cryptoManager, processManager, invite, externalAddress))
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/join-network" =>

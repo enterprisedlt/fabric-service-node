@@ -1,7 +1,7 @@
 package org.enterprisedlt.fabric.service
 
 import com.github.apolubelov.fabric.contract.ContractBase
-import org.enterprisedlt.fabric.service.operations.{ContractInitialize, OrganizationOperations, ServiceVersionOperations}
+import org.enterprisedlt.fabric.service.operations.{ContractInitialize, OrganizationOperations, ServiceOperations, ServiceVersionOperations}
 import org.slf4j.{Logger, LoggerFactory}
 
 /**
@@ -12,6 +12,7 @@ object Main extends ContractBase
   with ContractInitialize
   with ServiceVersionOperations
   with OrganizationOperations
+  with ServiceOperations
   //
 {
 

@@ -6,7 +6,8 @@ package org.enterprisedlt.fabric.service.model
 case class Organization(
     mspId: String,
     name: String,
-    memberNumber: Long
+    memberNumber: Long,
+    externalIP: String
 )
 
 

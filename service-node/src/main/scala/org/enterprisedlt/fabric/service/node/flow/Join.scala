@@ -2,8 +2,9 @@ package org.enterprisedlt.fabric.service.node.flow
 
 import java.io.File
 import java.util.Base64
+import java.util.concurrent.TimeUnit
 
-import org.enterprisedlt.fabric.service.model.{ServiceVersion, Organization, OrganizationsOrdering}
+import org.enterprisedlt.fabric.service.model.{Organization, OrganizationsOrdering, ServiceVersion}
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
@@ -19,7 +20,11 @@ object Join {
 
     private val logger = LoggerFactory.getLogger(this.getClass)
 
-    def join(config: ServiceConfig, cryptoManager: FabricCryptoManager, processManager: FabricProcessManager, invite: Invite): FabricNetworkManager = {
+    def join(
+        config: ServiceConfig, cryptoManager: FabricCryptoManager,
+        processManager: FabricProcessManager, invite: Invite,
+        externalAddress : Option[ExternalAddress]
+    ): FabricNetworkManager = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
         logger.info(s"[ $organizationFullName ] - Generating certificates ...")
         cryptoManager.generateCryptoMaterial()
@@ -31,7 +36,8 @@ object Join {
         val genesisConfig = Util.extractConfig(genesis)
         val joinRequest = JoinRequest(
             genesisConfig = Base64.getEncoder.encodeToString(genesisConfig.toByteArray),
-            mspId = config.organization.name
+            mspId = config.organization.name,
+            externalHost = externalAddress.map(_.host).getOrElse("")
         )
 
         //
@@ -100,6 +106,7 @@ object Join {
 
         // fetch current network version
         logger.info(s"[ $organizationFullName ] - Warming up service chain code ...")
+        implicit val timeout: OperationTimeout = OperationTimeout(5, TimeUnit.MINUTES)
         network
           .queryChainCode(ServiceChannelName, ServiceChainCodeName, "getServiceVersion")
           .map(_.head) //TODO: proper handling of empty result
@@ -159,7 +166,8 @@ object Join {
                         Organization(
                             mspId = joinRequest.mspId,
                             name = joinRequest.mspId,
-                            memberNumber = orgs.length
+                            memberNumber = orgs.length + 1,
+                            joinRequest.externalHost
                         )
                     ),
                     Util.codec.toJson(

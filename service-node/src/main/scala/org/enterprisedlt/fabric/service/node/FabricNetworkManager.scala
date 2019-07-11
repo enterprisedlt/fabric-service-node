@@ -176,7 +176,8 @@ class FabricNetworkManager(
         endorsementPolicy: Option[ChaincodeEndorsementPolicy] = None,
         collectionConfig: Option[ChaincodeCollectionConfiguration] = None,
         arguments: Array[String] = Array.empty
-    ): Unit = {
+    )  (implicit timeout: OperationTimeout = OperationTimeout(5, TimeUnit.MINUTES))
+    : Unit = {
         getChannel(channelName)
           .flatMap { channel =>
               val upgradeProposalRequest = fabricClient.newUpgradeProposalRequest
@@ -189,7 +190,7 @@ class FabricNetworkManager(
               upgradeProposalRequest.setChaincodeVersion(version)
 
               upgradeProposalRequest.setChaincodeLanguage(TransactionRequest.Type.JAVA) // TODO
-              upgradeProposalRequest.setProposalWaitTime(TimeUnit.MINUTES.toMillis(5)) // TODO
+              upgradeProposalRequest.setProposalWaitTime(timeout.milliseconds)
 
               upgradeProposalRequest.setFcn("init")
               upgradeProposalRequest.setArgs(arguments: _*)
@@ -224,12 +225,16 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def queryChainCode(channelName: String, chainCodeName: String, functionName: String, arguments: String*): Either[String, Iterable[String]] = {
+    def queryChainCode
+    (channelName: String, chainCodeName: String, functionName: String, arguments: String*)
+      (implicit timeout: OperationTimeout = OperationTimeout(35, TimeUnit.SECONDS))
+    : Either[String, Iterable[String]] =
         getChannel(channelName)
           .map { channel =>
               val request = fabricClient.newQueryProposalRequest()
               request.setFcn(functionName)
               request.setArgs(arguments: _*)
+              request.setProposalWaitTime(timeout.milliseconds)
               request.setChaincodeID(ChaincodeID.newBuilder().setName(chainCodeName).build)
               val queryProposals = channel.queryByChaincode(request)
               queryProposals.asScala
@@ -240,16 +245,18 @@ class FabricNetworkManager(
                 .map(_.trim)
                 .filter(_.nonEmpty)
           }
-    }
 
     //=========================================================================
-    def invokeChainCode(channelName: String, chainCodeName: String, functionName: String, arguments: String*): Either[String, CompletableFuture[TransactionEvent]] = {
+    def invokeChainCode(channelName: String, chainCodeName: String, functionName: String, arguments: String*)
+      (implicit timeout: OperationTimeout = OperationTimeout(35, TimeUnit.SECONDS))
+    : Either[String, CompletableFuture[TransactionEvent]] = {
         getChannel(channelName)
           .flatMap { channel =>
               val transactionProposalRequest = fabricClient.newTransactionProposalRequest()
               transactionProposalRequest.setChaincodeID(ChaincodeID.newBuilder().setName(chainCodeName).build)
               transactionProposalRequest.setFcn(functionName)
               transactionProposalRequest.setArgs(arguments: _*)
+              transactionProposalRequest.setProposalWaitTime(timeout.milliseconds)
               logger.debug(s"Sending transaction proposal: $functionName${arguments.mkString("(", ",", ")")}")
               val invokePropResp = channel.sendTransactionProposal(transactionProposalRequest).asScala
               val byStatus = invokePropResp.groupBy { response => response.getStatus }
@@ -436,4 +443,11 @@ class FabricNetworkManager(
                 }
           }
     }
+}
+
+case class OperationTimeout(
+    value: Long,
+    timeUnit: TimeUnit = TimeUnit.MILLISECONDS
+) {
+    def milliseconds: Long = timeUnit.toMillis(value)
 }

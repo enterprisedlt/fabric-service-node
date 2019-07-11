@@ -42,7 +42,8 @@ case class Invite(
 
 case class JoinRequest(
     genesisConfig: String,
-    mspId: String
+    mspId: String,
+    externalHost: String
 )
 
 case class JoinResponse(

@@ -6,7 +6,7 @@ import org.enterprisedlt.fabric.service.model.{Organization, ServiceVersion}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.proto._
-import org.enterprisedlt.fabric.service.node.{FabricCryptoManager, FabricNetworkManager, FabricProcessManager, Util}
+import org.enterprisedlt.fabric.service.node._
 import org.hyperledger.fabric.protos.common.MspPrincipal.MSPRole
 import org.slf4j.LoggerFactory
 
@@ -16,7 +16,12 @@ import org.slf4j.LoggerFactory
 object Bootstrap {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
-    def bootstrapOrganization(config: ServiceConfig, cryptoManager: FabricCryptoManager, processManager: FabricProcessManager): FabricNetworkManager = {
+    def bootstrapOrganization(
+        config: ServiceConfig,
+        cryptoManager: FabricCryptoManager,
+        processManager: FabricProcessManager,
+        externalAddress : Option[ExternalAddress]
+    ): FabricNetworkManager = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
         logger.info(s"[ $organizationFullName ] - Generating certificates ...")
         cryptoManager.generateCryptoMaterial()
@@ -81,7 +86,8 @@ object Bootstrap {
                     Organization(
                         mspId = config.organization.name,
                         name = config.organization.name,
-                        memberNumber = 1
+                        memberNumber = 1,
+                        externalIP = externalAddress.map(_.host).getOrElse("")
                     )
                 ),
                 Util.codec.toJson(
