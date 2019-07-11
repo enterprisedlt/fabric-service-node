@@ -1,10 +1,9 @@
 package org.enterprisedlt.fabric.service.operations
 
 import com.github.apolubelov.fabric.contract.annotation.ContractOperation
-import com.github.apolubelov.fabric.contract.{ContractContext, ContractResponse, Error, Success}
-import com.sun.xml.internal.ws.spi.db.RepeatedElementBridge.CollectionHandler
+import com.github.apolubelov.fabric.contract.{ContractContext, ContractResponse, Success}
 import org.enterprisedlt.fabric.service.Main
-import org.enterprisedlt.fabric.service.model.{App, CollectionsHelper, ContractConfirm, InviteRequest, InviteResponse, Organization, OrganizationsOrdering, ResponseCheck}
+import org.enterprisedlt.fabric.service.model.{CollectionsHelper, Organization, OrganizationsOrdering}
 
 /**
   * @author pandelie
