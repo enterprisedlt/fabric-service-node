@@ -3,7 +3,6 @@ plugins {
     id "com.github.johnrengelman.shadow" version "4.0.1"
 }
 
-sourceCompatibility = 1.8
 compileScala.targetCompatibility = 1.8
 
 ext.chaincodeModulePrefix = { -> if (project.hasProperty("chaincodeModuleRoot")) { project.property("chaincodeModuleRoot") } else '' }
