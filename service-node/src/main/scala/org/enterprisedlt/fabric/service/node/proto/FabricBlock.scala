@@ -87,7 +87,7 @@ object FabricBlock {
           .setHeader(
               BlockHeader.newBuilder()
                 .setNumber(0)
-                .setDataHash(ByteString.copyFrom(sha256HashBytes(blockData.toByteArray)))
+                .setDataHash(ByteString.copyFrom(sha256HashBytes(payloadEnvelope.toByteArray)))
                 //.setPreviousHash(null)
                 .build
           )

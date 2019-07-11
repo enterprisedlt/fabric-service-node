@@ -1,6 +1,6 @@
 {
   "organization": {
-    "name": "org2",
+    "name": "org3",
     "domain": "example.com",
     "location": "San Francisco",
     "state": "California",
@@ -11,15 +11,15 @@
     "orderingNodes": [
       {
         "name": "osn1",
-        "port": 6001
+        "port": 5001
       }
     ],
     "peerNodes": [
       {
         "name": "peer0",
-        "port": 6010,
+        "port": 5010,
         "couchDB": {
-          "port": 6011
+          "port": 5011
         }
       }
     ]

@@ -65,7 +65,7 @@ class RestEndpoint(
                     case "/request-join" =>
                         logger.info("Requesting to joining network ...")
                         val invite = Util.codec.fromJson(request.getReader, classOf[Invite])
-                        Join.join(config, cryptoManager, processManager, invite)
+                        initNetworkManager(Join.join(config, cryptoManager, processManager, invite))
 //                        val writer = response.getWriter
 //                        writer.println(joinResponse.version)
 //                        response.setContentType(ContentType.TEXT_PLAIN.getMimeType)

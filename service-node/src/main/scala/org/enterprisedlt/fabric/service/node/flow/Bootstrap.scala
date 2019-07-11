@@ -3,6 +3,7 @@ package org.enterprisedlt.fabric.service.node.flow
 import java.io.File
 
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
+import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.proto._
 import org.enterprisedlt.fabric.service.node.{FabricCryptoManager, FabricNetworkManager, FabricProcessManager, Util}
 import org.hyperledger.fabric.protos.common.MspPrincipal.MSPRole
@@ -13,8 +14,6 @@ import org.slf4j.LoggerFactory
   */
 object Bootstrap {
     private val logger = LoggerFactory.getLogger(this.getClass)
-    val ServiceChannelName = "service"
-    val DefaultConsortiumName = "SampleConsortium"
 
     def bootstrapOrganization(config: ServiceConfig, cryptoManager: FabricCryptoManager, processManager: FabricProcessManager): FabricNetworkManager = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
@@ -55,13 +54,13 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Adding peers to channel ...")
         config.network.peerNodes.foreach { peerConfig =>
-            network.addPeerToChannel("service", peerConfig.name)
+            network.addPeerToChannel(ServiceChannelName, peerConfig.name)
         }
 
         //
         logger.info(s"[ $organizationFullName ] - Updating anchors for channel ...")
         config.network.peerNodes.foreach { peerConfig =>
-            network.addAnchorsToChannel("service", peerConfig.name)
+            network.addAnchorsToChannel(ServiceChannelName, peerConfig.name)
         }
 
         //
@@ -69,13 +68,12 @@ object Bootstrap {
         val chainCodePkg = Util.generateTarGzInputStream(new File(s"/opt/chaincode/common"))
 
         logger.info(s"[ $organizationFullName ] - Installing service chain code ...")
-        network.installChainCode("service", "service", "1.0.0", chainCodePkg)
+        network.installChainCode(ServiceChannelName, ServiceChainCodeName, "1.0.0", chainCodePkg)
 
         //
         logger.info(s"[ $organizationFullName ] - Instantiating service chain code ...")
         network.instantiateChainCode(
-            "service",
-            "service",
+            ServiceChannelName, ServiceChainCodeName,
             "1.0.0", // {chainCodeVersion}.{networkVersion}
             arguments = Array(
                 config.organization.name, // organizationCode
@@ -147,7 +145,7 @@ object Bootstrap {
             )
 
         ChannelDefinition(
-            channelName = "system-channel",
+            channelName = SystemChannelName,
             capabilities = Set(CapabilityValue.V1_3),
             ordering =
               Option(
