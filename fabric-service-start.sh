@@ -24,7 +24,7 @@ serviceID=`docker run -d \
  -p ${SERVICE_BIND_PORT}:${SERVICE_BIND_PORT} \
  --volume=${PROFILE_PATH}/hosts:/etc/hosts \
  --volume=${PROFILE_PATH}:/opt/profile \
- --volume=${SERVICE_NODE_HOME}/chaincode:/opt/chaincode \
+ --volume=${SERVICE_NODE_HOME}/service-chain-code:/opt/service-chain-code \
  --volume=${SERVICE_NODE_HOME}:/opt/service \
  --volume=/var/run/:/host/var/run/ \
  --name $INITIAL_NAME \

@@ -17,7 +17,7 @@ dependencies {
     compile('org.hyperledger.fabric-sdk-java:fabric-sdk-java:1.4.3') {
         exclude group: 'commons-logging', module: 'commons-logging'
     }
-    compile project(":chaincode:common:data-model")
+    compile project(":service-chain-code:data-model")
     compile 'org.apache.httpcomponents:httpclient:4.5.7'
     compile 'org.apache.httpcomponents:httpmime:4.5.7'
 

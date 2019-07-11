@@ -1,3 +1,0 @@
-rootProject.name = 'common'
-include ':contract'
-include ':data-model'

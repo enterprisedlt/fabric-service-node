@@ -9,7 +9,7 @@ compileScala.targetCompatibility = 1.8
 ext.chaincodeModulePrefix = { -> if (project.hasProperty("chaincodeModuleRoot")) { project.property("chaincodeModuleRoot") } else '' }
 
 dependencies {
-    compile project("${chaincodeModulePrefix}:contract")
+    compile project("${chaincodeModulePrefix}:service")
 }
 
 repositories {

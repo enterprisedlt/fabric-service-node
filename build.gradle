@@ -1,2 +1,2 @@
-ext.chaincodeModuleRoot = ':chaincode:common'
+ext.chaincodeModuleRoot = ':service-chain-code'
 
