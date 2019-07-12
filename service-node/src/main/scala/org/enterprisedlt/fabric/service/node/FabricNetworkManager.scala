@@ -5,6 +5,7 @@ import java.util
 import java.util.Properties
 import java.util.concurrent.{CompletableFuture, TimeUnit}
 
+import com.google.protobuf.ByteString
 import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, PeerConfig, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
@@ -176,7 +177,7 @@ class FabricNetworkManager(
         endorsementPolicy: Option[ChaincodeEndorsementPolicy] = None,
         collectionConfig: Option[ChaincodeCollectionConfiguration] = None,
         arguments: Array[String] = Array.empty
-    )  (implicit timeout: OperationTimeout = OperationTimeout(5, TimeUnit.MINUTES))
+    )(implicit timeout: OperationTimeout = OperationTimeout(5, TimeUnit.MINUTES))
     : Unit = {
         getChannel(channelName)
           .flatMap { channel =>
@@ -228,7 +229,7 @@ class FabricNetworkManager(
     def queryChainCode
     (channelName: String, chainCodeName: String, functionName: String, arguments: String*)
       (implicit timeout: OperationTimeout = OperationTimeout(35, TimeUnit.SECONDS))
-    : Either[String, Iterable[String]] =
+    : Either[String, Iterable[ByteString]] =
         getChannel(channelName)
           .map { channel =>
               val request = fabricClient.newQueryProposalRequest()
@@ -241,10 +242,11 @@ class FabricNetworkManager(
                 .flatMap(x => Option(x.getProposalResponse))
                 .flatMap(x => Option(x.getResponse))
                 .flatMap(x => Option(x.getPayload))
-                .flatMap(x => Option(x.toStringUtf8))
-                .map(_.trim)
-                .filter(_.nonEmpty)
           }
+
+    //=========================================================================
+    def setupBlockListener(channelName: String, listener: BlockListener): Either[String, String] =
+        getChannel(channelName).map(_.registerBlockListener(listener))
 
     //=========================================================================
     def invokeChainCode(channelName: String, chainCodeName: String, functionName: String, arguments: String*)

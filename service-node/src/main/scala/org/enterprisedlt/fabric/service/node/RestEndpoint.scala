@@ -41,7 +41,7 @@ class RestEndpoint(
                               .toRight("Network is not initialized yet")
                               .flatMap { network =>
                                   network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listOrganizations")
-                                    .flatMap(_.headOption.toRight("No results"))
+                                    .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
                               }
                               .merge
                         response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
@@ -55,7 +55,7 @@ class RestEndpoint(
                               .toRight("Network is not initialized yet")
                               .flatMap { network =>
                                   network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listCollections")
-                                    .flatMap(_.headOption.toRight("No results"))
+                                    .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
                               }
                               .merge
                         response.setContentType(ContentType.APPLICATION_JSON.getMimeType)

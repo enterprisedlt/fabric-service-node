@@ -22,7 +22,7 @@ object ServiceNode extends App {
     private val InitialName = Option(Environment.get("INITIAL_NAME")).getOrElse(throw new Exception("Mandatory environment variable missing INITIAL_NAME!"))
 
     Util.setupLogging(LogLevel)
-    private val logger = LoggerFactory.getLogger(getClass)
+    private val logger = LoggerFactory.getLogger(this.getClass)
 
     logger.info("Starting...")
     private val config = loadConfig("/opt/profile/service.json")

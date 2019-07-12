@@ -20,7 +20,7 @@ object Bootstrap {
         config: ServiceConfig,
         cryptoManager: FabricCryptoManager,
         processManager: FabricProcessManager,
-        externalAddress : Option[ExternalAddress]
+        externalAddress: Option[ExternalAddress]
     ): FabricNetworkManager = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
         logger.info(s"[ $organizationFullName ] - Generating certificates ...")
@@ -78,26 +78,29 @@ object Bootstrap {
 
         //
         logger.info(s"[ $organizationFullName ] - Instantiating service chain code ...")
+        val organization =
+            Organization(
+                mspId = config.organization.name,
+                name = config.organization.name,
+                memberNumber = 1,
+                externalIP = externalAddress.map(_.host).getOrElse("")
+            )
+        val serviceVersion =
+            ServiceVersion(
+                chainCodeVersion = "1.0",
+                networkVersion = "0"
+            )
+
         network.instantiateChainCode(
             ServiceChannelName, ServiceChainCodeName,
             "1.0.0", // {chainCodeVersion}.{networkVersion}
             arguments = Array(
-                Util.codec.toJson(
-                    Organization(
-                        mspId = config.organization.name,
-                        name = config.organization.name,
-                        memberNumber = 1,
-                        externalIP = externalAddress.map(_.host).getOrElse("")
-                    )
-                ),
-                Util.codec.toJson(
-                    ServiceVersion(
-                        chainCodeVersion = "1.0",
-                        networkVersion = "0"
-                    )
-                )
+                Util.codec.toJson(organization),
+                Util.codec.toJson(serviceVersion)
             )
         )
+
+        network.setupBlockListener(ServiceChannelName, new NetworkMonitor(config, network, processManager, serviceVersion))
 
         //
         logger.info(s"[ $organizationFullName ] - Bootstrap done.")

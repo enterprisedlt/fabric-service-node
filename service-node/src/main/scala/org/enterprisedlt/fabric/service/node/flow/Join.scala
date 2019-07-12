@@ -23,7 +23,7 @@ object Join {
     def join(
         config: ServiceConfig, cryptoManager: FabricCryptoManager,
         processManager: FabricProcessManager, invite: Invite,
-        externalAddress : Option[ExternalAddress]
+        externalAddress: Option[ExternalAddress]
     ): FabricNetworkManager = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
         logger.info(s"[ $organizationFullName ] - Generating certificates ...")
@@ -109,10 +109,14 @@ object Join {
         implicit val timeout: OperationTimeout = OperationTimeout(5, TimeUnit.MINUTES)
         network
           .queryChainCode(ServiceChannelName, ServiceChainCodeName, "getServiceVersion")
-          .map(_.head) //TODO: proper handling of empty result
+          .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("Empty result"))
           .map(Util.codec.fromJson(_, classOf[ServiceVersion]))
-
-        network
+        match {
+            case Left(error) => throw new Exception(s"Failed to warn up service chain code: $error")
+            case Right(serviceVersion) =>
+                network.setupBlockListener(ServiceChannelName, new NetworkMonitor(config, network, processManager, serviceVersion))
+                network
+        }
     }
 
     def joinOrgToNetwork(
@@ -134,13 +138,13 @@ object Join {
             // fetch current network version
             chainCodeVersion <- network
               .queryChainCode(ServiceChannelName, ServiceChainCodeName, "getServiceVersion")
-              .map(_.head) //TODO: proper handling of empty result
+              .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("Empty result"))
               .map(Util.codec.fromJson(_, classOf[ServiceVersion]))
 
             // fetch current list of organizations
             orgs <- network
               .queryChainCode(ServiceChannelName, ServiceChainCodeName, "listOrganizations")
-              .map(_.head) //TODO: proper handling of empty result
+              .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("Empty result"))
               .map(Util.codec.fromJson(_, classOf[Array[Organization]]).sorted(OrganizationsOrdering))
 
             // fetch list of private collections if require
