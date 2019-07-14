@@ -11,6 +11,7 @@ import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
 import org.hyperledger.fabric.protos.common.Configtx
 import org.hyperledger.fabric.protos.common.Configtx.ConfigUpdate
+import org.hyperledger.fabric.sdk.helper.Config
 import org.hyperledger.fabric.sdk.security.CryptoSuite
 import org.hyperledger.fabric.sdk.{BlockEvent, ChannelConfiguration, Peer, _}
 import org.slf4j.LoggerFactory
@@ -26,6 +27,14 @@ class FabricNetworkManager(
     executionAdmin: User
 ) {
     type TransactionEvent = BlockEvent#TransactionEvent
+
+    // ---------------------------------------------------------------------------------------------------------------
+    // Setup some defaults for Fabric SDK
+    // time out for block fetch operations (default 5 Second):
+    System.setProperty(Config.GENESISBLOCK_WAIT_TIME, TimeUnit.MINUTES.toMillis(5).toString)
+    // time out for OSN response (default 10 Second):
+    System.setProperty(Config.ORDERER_WAIT_TIME, TimeUnit.MINUTES.toMillis(1).toString)
+    // ---------------------------------------------------------------------------------------------------------------
 
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
