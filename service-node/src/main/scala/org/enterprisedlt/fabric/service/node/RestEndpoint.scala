@@ -64,8 +64,11 @@ class RestEndpoint(
 
                     case "/bootstrap" =>
                         logger.info(s"Bootstrapping organization ${config.organization.name}...")
+                        val start = System.currentTimeMillis()
                         try {
                             initNetworkManager(Bootstrap.bootstrapOrganization(config, cryptoManager, processManager, externalAddress))
+                            val end = System.currentTimeMillis() - start
+                            logger.info(s"Bootstrap done ($end ms)")
                             response.setStatus(HttpServletResponse.SC_OK)
                         } catch {
                             case ex: Exception =>
@@ -94,8 +97,11 @@ class RestEndpoint(
                 request.getPathInfo match {
                     case "/request-join" =>
                         logger.info("Requesting to joining network ...")
+                        val start = System.currentTimeMillis()
                         val invite = Util.codec.fromJson(request.getReader, classOf[Invite])
                         initNetworkManager(Join.join(config, cryptoManager, processManager, invite, externalAddress))
+                        val end = System.currentTimeMillis() - start
+                        logger.info(s"Joined ($end ms)")
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/join-network" =>
