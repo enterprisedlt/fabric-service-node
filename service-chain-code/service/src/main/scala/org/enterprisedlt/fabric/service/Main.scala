@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service
 
-import com.github.apolubelov.fabric.contract.ContractBase
+import org.enterprisedlt.fabric.contract.ContractBase
 import org.enterprisedlt.fabric.service.operations.{ContractInitialize, OrganizationOperations, ServiceOperations, ServiceVersionOperations}
 import org.slf4j.{Logger, LoggerFactory}
 

@@ -1,7 +1,7 @@
 package org.enterprisedlt.fabric.service.operations
 
-import com.github.apolubelov.fabric.contract.annotation.ContractOperation
-import com.github.apolubelov.fabric.contract.{ContractContext, ContractResponse, Success}
+import org.enterprisedlt.fabric.contract.annotation.ContractOperation
+import org.enterprisedlt.fabric.contract.{ContractContext, ContractResponse, Success}
 import org.enterprisedlt.fabric.service.Main
 import org.enterprisedlt.fabric.service.model.{CollectionsHelper, Organization, OrganizationsOrdering}
 

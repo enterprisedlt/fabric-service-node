@@ -1,9 +1,9 @@
 package org.enterprisedlt.fabric.service.operations
 
 import org.enterprisedlt.fabric.service.model.{Constant, Organization, ServiceVersion}
-import com.github.apolubelov.fabric.contract.annotation.ContractOperation
-import com.github.apolubelov.fabric.contract.{ContractContext, ContractResponse, Error, Success}
-import com.github.apolubelov.fabric.contract.ContractResponseConversions._
+import org.enterprisedlt.fabric.contract.annotation.ContractOperation
+import org.enterprisedlt.fabric.contract.{ContractContext, ContractResponse, Error, Success}
+import org.enterprisedlt.fabric.contract.ContractResponseConversions._
 import org.enterprisedlt.fabric.service.Main
 
 /**

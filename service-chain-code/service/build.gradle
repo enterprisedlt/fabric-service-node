@@ -9,7 +9,7 @@ ext.chaincodeModulePrefix = { -> if (project.hasProperty("chaincodeModuleRoot"))
 dependencies {
     compile 'org.scala-lang:scala-library:2.12.0'
     compile 'org.scala-lang.modules:scala-xml_2.12:1.1.0'
-    compile 'com.github.apolubelov.fabric-contract-base:fabric-contract-base:1.4.0.13'
+    compile 'org.enterprisedlt.fabric.chaincode:fabric-chaincode-scala:1.4.0.13'
     compile project("${chaincodeModulePrefix}:data-model")
 
     // testing libraries
@@ -22,6 +22,5 @@ repositories {
     mavenLocal()
     mavenCentral()
     jcenter()
-    maven { url 'https://dl.bintray.com/apolubelov/hyperledger-fabric-extensions' }
-    maven { url 'https://dl.bintray.com/apolubelov/general' }
+    maven { url 'https://dl.bintray.com/enterprisedlt/fabric' }
 }
