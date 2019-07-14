@@ -141,7 +141,7 @@ class DockerBasedProcessManager(
               s"CORE_PEER_ID=$peerFullName",
               s"CORE_PEER_ADDRESS=0.0.0.0:$port",
               s"CORE_PEER_LISTENADDRESS=0.0.0.0:$port",
-              "CORE_CHAINCODE_JAVA_RUNTIME=enterprisedlt/fabric-scalaenv",
+              "CORE_CHAINCODE_JAVA_RUNTIME=enterprisedlt/fabric-jar-env",
               s"CORE_PEER_GOSSIP_BOOTSTRAP=$peerFullName:$port",
               s"CORE_PEER_GOSSIP_EXTERNALENDPOINT=$peerFullName:$port",
               s"CORE_PEER_LOCALMSPID=${config.organization.name}"

@@ -71,7 +71,7 @@ object Bootstrap {
 
         //
         logger.info(s"[ $organizationFullName ] - Preparing service chain code ...")
-        val chainCodePkg = Util.generateTarGzInputStream(new File(s"/opt/service-chain-code"))
+        val chainCodePkg = Util.generateTarGzInputStream(new File("/opt/service-chain-code/build/libs"))
 
         logger.info(s"[ $organizationFullName ] - Installing service chain code ...")
         network.installChainCode(ServiceChannelName, ServiceChainCodeName, "1.0.0", chainCodePkg)

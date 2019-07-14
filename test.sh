@@ -2,7 +2,9 @@
 
 ./clean-docker.sh
 
-gradle clean service-node:shadowJar
+gradle clean
+gradle service-node:shadowJar
+gradle service-chain-code:shadowJar
 
 # start ORG1
 ./fabric-service-start.sh ./test/org1
