@@ -5,6 +5,13 @@
 gradle clean
 gradle service-node:shadowJar
 gradle service-chain-code:shadowJar
+pushd ./service-chain-code/
+ cd ./build/
+ mv ./libs ./src
+ tar -czf ../chain-code.tgz ./src/chaincode.jar
+ rm -rf ./src
+popd
+
 
 # start ORG1
 ./fabric-service-start.sh ./test/org1

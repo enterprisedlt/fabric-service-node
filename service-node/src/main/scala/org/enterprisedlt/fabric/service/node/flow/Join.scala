@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node.flow
 
-import java.io.File
+import java.io.{BufferedInputStream, FileInputStream}
 import java.util.Base64
 import java.util.concurrent.TimeUnit
 
@@ -99,7 +99,7 @@ object Join {
 
         //
         logger.info(s"[ $organizationFullName ] - Preparing service chain code ...")
-        val chainCodePkg = Util.generateTarGzInputStream(new File("/opt/service-chain-code/build/libs"))
+        val chainCodePkg = new BufferedInputStream(new FileInputStream("/opt/service-chain-code/chain-code.tgz"))
 
         logger.info(s"[ $organizationFullName ] - Installing service chain code ...")
         network.installChainCode(ServiceChannelName, ServiceChainCodeName, joinResponse.version, chainCodePkg)
@@ -155,12 +155,13 @@ object Join {
             val nextNetworkVersion = chainCodeVersion.networkVersion.toInt + 1
             val nextVersion = s"${chainCodeVersion.chainCodeVersion}.$nextNetworkVersion"
             logger.info(s"Installing next version of service $nextVersion ...")
-            val gunZipFile = Util.generateTarGzInputStream(new File("/opt/service-chain-code/build/libs"))
-            network.installChainCode(ServiceChannelName, ServiceChainCodeName, nextVersion, gunZipFile)
+            val chainCodePkg = new BufferedInputStream(new FileInputStream("/opt/service-chain-code/chain-code.tgz"))
+            network.installChainCode(ServiceChannelName, ServiceChainCodeName, nextVersion, chainCodePkg)
             // update endorsement policy and private collections config
-            val orgCodes = orgs.map(_.mspId) :+ joinRequest.mspId
+            val existingOrgCodes = orgs.map(_.mspId)
+            val orgCodes =  existingOrgCodes :+ joinRequest.mspId
             val policyForCCUpgrade = Util.policyAnyOf(orgCodes)
-            val nextCollections = currentCollections ++ mkCollectionsToAdd(orgCodes, joinRequest.mspId)
+            val nextCollections = currentCollections ++ mkCollectionsToAdd(existingOrgCodes, joinRequest.mspId)
             logger.info(s"Upgrading version of service to $nextVersion ...")
             network.upgradeChainCode(ServiceChannelName, ServiceChainCodeName, nextVersion,
                 endorsementPolicy = Option(policyForCCUpgrade),

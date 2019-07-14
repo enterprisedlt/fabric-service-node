@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node
 
-import java.io.File
+import java.io.{BufferedInputStream, File, FileInputStream}
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 
@@ -62,7 +62,7 @@ class NetworkMonitor(
         currentVersion = version
         if (mspId != config.organization.name) {
             logger.info(s"[ $organizationFullName ] - Preparing service chain code ...")
-            val chainCodePkg = Util.generateTarGzInputStream(new File("/opt/service-chain-code/build/libs"))
+            val chainCodePkg = new BufferedInputStream(new FileInputStream("/opt/service-chain-code/chain-code.tgz"))
 
             logger.info(s"[ $organizationFullName ] - Installing service chain code ...")
             val chainCodeVersion = s"${version.chainCodeVersion}.${version.networkVersion}"

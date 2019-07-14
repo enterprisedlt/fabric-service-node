@@ -21,7 +21,7 @@ trait ServiceOperations {
                   .toSeq
                   .sorted(OrganizationsOrdering)
                   .map(_.mspId)
-            )
+            ).toArray
         )
 
 

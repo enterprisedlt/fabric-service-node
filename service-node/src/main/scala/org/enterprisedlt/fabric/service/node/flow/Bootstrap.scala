@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node.flow
 
-import java.io.File
+import java.io.{BufferedInputStream, File, FileInputStream}
 
 import org.enterprisedlt.fabric.service.model.{Organization, ServiceVersion}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
@@ -71,7 +71,7 @@ object Bootstrap {
 
         //
         logger.info(s"[ $organizationFullName ] - Preparing service chain code ...")
-        val chainCodePkg = Util.generateTarGzInputStream(new File("/opt/service-chain-code/build/libs"))
+        val chainCodePkg = new BufferedInputStream(new FileInputStream("/opt/service-chain-code/chain-code.tgz"))
 
         logger.info(s"[ $organizationFullName ] - Installing service chain code ...")
         network.installChainCode(ServiceChannelName, ServiceChainCodeName, "1.0.0", chainCodePkg)
