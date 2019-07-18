@@ -36,7 +36,7 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Starting ordering nodes ...")
         config.network.orderingNodes.foreach { osnConfig =>
-            processManager.startOrderingNode(osnConfig.name, osnConfig.port)
+            processManager.startOrderingNode(osnConfig.name)
         }
         config.network.orderingNodes.foreach { osnConfig =>
             processManager.osnAwaitJoinedToRaft(osnConfig.name)
@@ -45,7 +45,7 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Starting peer nodes ...")
         config.network.peerNodes.foreach { peerConfig =>
-            processManager.startPeerNode(peerConfig.name, peerConfig.port)
+            processManager.startPeerNode(peerConfig.name)
         }
 
         //
