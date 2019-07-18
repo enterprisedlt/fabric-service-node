@@ -2,7 +2,7 @@ package org.enterprisedlt.fabric.service.node.flow
 
 import java.io.{BufferedInputStream, File, FileInputStream}
 
-import org.enterprisedlt.fabric.service.model.{Organization, ServiceVersion}
+import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, ServiceVersion}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.proto._
@@ -20,6 +20,7 @@ object Bootstrap {
         config: ServiceConfig,
         cryptoManager: FabricCryptoManager,
         processManager: FabricProcessManager,
+        hostsManager: HostsManager,
         externalAddress: Option[ExternalAddress]
     ): FabricNetworkManager = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
@@ -83,7 +84,12 @@ object Bootstrap {
                 mspId = config.organization.name,
                 name = config.organization.name,
                 memberNumber = 1,
-                externalIP = externalAddress.map(_.host).getOrElse("")
+                knownHosts = externalAddress.map { address =>
+                    config.network.orderingNodes.map(osn => KnownHostRecord(address.host, s"${osn.name}.$organizationFullName")) ++
+                      config.network.peerNodes.map(peer => KnownHostRecord(address.host, s"${peer.name}.$organizationFullName")) :+
+                      KnownHostRecord(address.host, s"service.$organizationFullName")
+                }
+                  .getOrElse(Array.empty)
             )
         val serviceVersion =
             ServiceVersion(
@@ -100,7 +106,7 @@ object Bootstrap {
             )
         )
 
-        network.setupBlockListener(ServiceChannelName, new NetworkMonitor(config, network, processManager, serviceVersion))
+        network.setupBlockListener(ServiceChannelName, new NetworkMonitor(config, network, processManager, hostsManager, serviceVersion))
 
         //
         logger.info(s"[ $organizationFullName ] - Bootstrap done.")

@@ -36,6 +36,10 @@ object ServiceNode extends App {
             processManager = new DockerBasedProcessManager(
                 ProfilePath, DockerSocket,
                 InitialName, config
+            ),
+            hostsManager = new HostsManager(
+                "/opt/profile/hosts",
+                config
             )
         )
     )

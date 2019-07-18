@@ -1,9 +1,11 @@
 package org.enterprisedlt.fabric.service.node.model
 
+import org.enterprisedlt.fabric.service.model.Organization
+
 case class CreateChannelRequest(
     name: String
-//    orderer: String,
-//    fileName: String
+    //    orderer: String,
+    //    fileName: String
 )
 
 case class AddPeerRequest(
@@ -42,11 +44,11 @@ case class Invite(
 
 case class JoinRequest(
     genesisConfig: String,
-    mspId: String,
-    externalHost: String
+    organization: Organization
 )
 
 case class JoinResponse(
     genesis: String,
-    version: String
+    version: String,
+    knownOrganizations: Array[Organization]
 )

@@ -4,7 +4,7 @@ import java.io.{BufferedInputStream, FileInputStream}
 import java.util.Base64
 import java.util.concurrent.TimeUnit
 
-import org.enterprisedlt.fabric.service.model.{Organization, OrganizationsOrdering, ServiceVersion}
+import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, OrganizationsOrdering, ServiceVersion}
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
@@ -23,7 +23,7 @@ object Join {
     def join(
         config: ServiceConfig, cryptoManager: FabricCryptoManager,
         processManager: FabricProcessManager, invite: Invite,
-        externalAddress: Option[ExternalAddress]
+        externalAddress: Option[ExternalAddress], hostsManager: HostsManager
     ): FabricNetworkManager = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
         logger.info(s"[ $organizationFullName ] - Generating certificates ...")
@@ -36,13 +36,24 @@ object Join {
         val genesisConfig = Util.extractConfig(genesis)
         val joinRequest = JoinRequest(
             genesisConfig = Base64.getEncoder.encodeToString(genesisConfig.toByteArray),
-            mspId = config.organization.name,
-            externalHost = externalAddress.map(_.host).getOrElse("")
+            Organization(
+                mspId = config.organization.name,
+                name = config.organization.name,
+                memberNumber = 0,
+                knownHosts = externalAddress.map { address =>
+                    config.network.orderingNodes.map(osn => KnownHostRecord(address.host, s"${osn.name}.$organizationFullName")) ++
+                      config.network.peerNodes.map(peer => KnownHostRecord(address.host, s"${peer.name}.$organizationFullName")) :+
+                      KnownHostRecord(address.host, s"service.$organizationFullName")
+                }
+                  .getOrElse(Array.empty)
+            )
         )
 
         //
         logger.info(s"[ $organizationFullName ] - Sending JoinRequest to ${invite.address} ...")
         val joinResponse = Util.executePostRequest(s"http://${invite.address}/join-network", joinRequest, classOf[JoinResponse])
+
+        joinResponse.knownOrganizations.foreach(hostsManager.addOrganization)
 
         //
         logger.info(s"[ $organizationFullName ] - Saving genesis to boot from ...")
@@ -114,7 +125,7 @@ object Join {
         match {
             case Left(error) => throw new Exception(s"Failed to warn up service chain code: $error")
             case Right(serviceVersion) =>
-                network.setupBlockListener(ServiceChannelName, new NetworkMonitor(config, network, processManager, serviceVersion))
+                network.setupBlockListener(ServiceChannelName, new NetworkMonitor(config, network, processManager, hostsManager, serviceVersion))
                 network
         }
     }
@@ -122,13 +133,12 @@ object Join {
     def joinOrgToNetwork(
         config: ServiceConfig, cryptoManager: FabricCryptoManager,
         processManager: FabricProcessManager, network: FabricNetworkManager,
-        joinRequest: JoinRequest
+        joinRequest: JoinRequest, hostsManager: HostsManager
     ): Either[String, JoinResponse] = {
-        logger.info(s"Joining ${joinRequest.mspId} to network ...")
+        logger.info(s"Joining ${joinRequest.organization.name} to network ...")
         val newOrgConfig = Configtx.Config.parseFrom(Base64.getDecoder.decode(joinRequest.genesisConfig))
-        logger.info(s"Joining ${joinRequest.mspId} to consortium ...")
+        logger.info(s"Joining ${joinRequest.organization.name} to consortium ...")
         network.joinToNetwork(newOrgConfig)
-
         logger.info("Joining to channel 'service' ...")
 
         for {
@@ -142,13 +152,13 @@ object Join {
               .map(Util.codec.fromJson(_, classOf[ServiceVersion]))
 
             // fetch current list of organizations
-            orgs <- network
+            currentOrganizations <- network
               .queryChainCode(ServiceChannelName, ServiceChainCodeName, "listOrganizations")
               .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("Empty result"))
               .map(Util.codec.fromJson(_, classOf[Array[Organization]]).sorted(OrganizationsOrdering))
 
             // fetch list of private collections if require
-            currentCollections <- fetchCurrentCollection(config, network, orgs)
+            currentCollections <- fetchCurrentCollection(config, network, currentOrganizations)
 
         } yield {
             // increment network version
@@ -158,21 +168,18 @@ object Join {
             val chainCodePkg = new BufferedInputStream(new FileInputStream("/opt/service-chain-code/chain-code.tgz"))
             network.installChainCode(ServiceChannelName, ServiceChainCodeName, nextVersion, chainCodePkg)
             // update endorsement policy and private collections config
-            val existingOrgCodes = orgs.map(_.mspId)
-            val orgCodes =  existingOrgCodes :+ joinRequest.mspId
+            val existingMspIds = currentOrganizations.map(_.mspId)
+            val orgCodes = existingMspIds :+ joinRequest.organization.mspId
             val policyForCCUpgrade = Util.policyAnyOf(orgCodes)
-            val nextCollections = currentCollections ++ mkCollectionsToAdd(existingOrgCodes, joinRequest.mspId)
+            val nextCollections = currentCollections ++ mkCollectionsToAdd(existingMspIds, joinRequest.organization.mspId)
             logger.info(s"Upgrading version of service to $nextVersion ...")
             network.upgradeChainCode(ServiceChannelName, ServiceChainCodeName, nextVersion,
                 endorsementPolicy = Option(policyForCCUpgrade),
                 collectionConfig = Option(Util.createCollectionsConfig(nextCollections)),
                 arguments = Array(
                     Util.codec.toJson(
-                        Organization(
-                            mspId = joinRequest.mspId,
-                            name = joinRequest.mspId,
-                            memberNumber = orgs.length + 1,
-                            joinRequest.externalHost
+                        joinRequest.organization.copy(
+                            memberNumber = currentOrganizations.length + 1
                         )
                     ),
                     Util.codec.toJson(
@@ -191,12 +198,15 @@ object Join {
                 processManager.terminateChainCode(peer.name, ServiceChainCodeName, previousVersion)
             }
 
+            hostsManager.addOrganization(joinRequest.organization)
+
             // create result
             logger.info(s"Preparing JoinResponse ...")
             val latestBlock = network.fetchLatestSystemBlock
             JoinResponse(
                 genesis = Base64.getEncoder.encodeToString(latestBlock.toByteArray),
-                version = nextVersion
+                version = nextVersion,
+                knownOrganizations = currentOrganizations
             )
         }
     }

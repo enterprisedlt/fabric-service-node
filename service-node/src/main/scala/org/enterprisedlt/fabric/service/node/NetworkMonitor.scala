@@ -21,6 +21,7 @@ class NetworkMonitor(
     config: ServiceConfig,
     network: FabricNetworkManager,
     processManager: FabricProcessManager,
+    hostsManager: HostsManager,
     initialVersion: ServiceVersion
 ) extends BlockListener {
     private val logger = LoggerFactory.getLogger(this.getClass)
@@ -56,11 +57,11 @@ class NetworkMonitor(
         }
     }
 
-    def onServiceUpgrade(mspId: String, organization: Organization, version: ServiceVersion): Unit = {
-        logger.info(s"Detected service upgrade [ From $mspId, Version: $version] ")
+    def onServiceUpgrade(updaterMspId: String, organization: Organization, version: ServiceVersion): Unit = {
+        logger.info(s"Detected service upgrade [ From $updaterMspId, Version: $version] ")
         val oldVersion = currentVersion
         currentVersion = version
-        if (mspId != config.organization.name) {
+        if (updaterMspId != config.organization.name) {
             logger.info(s"[ $organizationFullName ] - Preparing service chain code ...")
             val chainCodePkg = new BufferedInputStream(new FileInputStream("/opt/service-chain-code/chain-code.tgz"))
 
@@ -82,6 +83,7 @@ class NetworkMonitor(
                 logger.info(s"Removing previous version [$previousVersion] of service on ${peer.name} ...")
                 processManager.terminateChainCode(peer.name, ServiceChainCodeName, previousVersion)
             }
+            hostsManager.addOrganization(organization)
         } else {
             logger.info("Skipping upgrade from self")
         }

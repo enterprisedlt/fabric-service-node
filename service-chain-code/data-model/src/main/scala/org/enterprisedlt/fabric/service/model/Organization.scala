@@ -7,7 +7,5 @@ case class Organization(
     mspId: String,
     name: String,
     memberNumber: Long,
-    externalIP: String
+    knownHosts: Array[KnownHostRecord]
 )
-
-

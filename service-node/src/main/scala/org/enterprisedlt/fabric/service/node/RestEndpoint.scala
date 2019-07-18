@@ -20,7 +20,8 @@ class RestEndpoint(
     externalAddress: Option[ExternalAddress],
     config: ServiceConfig,
     cryptoManager: FabricCryptoManager,
-    processManager: FabricProcessManager
+    processManager: FabricProcessManager,
+    hostsManager: HostsManager
 ) extends AbstractHandler {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -66,7 +67,7 @@ class RestEndpoint(
                         logger.info(s"Bootstrapping organization ${config.organization.name}...")
                         val start = System.currentTimeMillis()
                         try {
-                            initNetworkManager(Bootstrap.bootstrapOrganization(config, cryptoManager, processManager, externalAddress))
+                            initNetworkManager(Bootstrap.bootstrapOrganization(config, cryptoManager, processManager, hostsManager, externalAddress))
                             val end = System.currentTimeMillis() - start
                             logger.info(s"Bootstrap done ($end ms)")
                             response.setStatus(HttpServletResponse.SC_OK)
@@ -99,18 +100,21 @@ class RestEndpoint(
                         logger.info("Requesting to joining network ...")
                         val start = System.currentTimeMillis()
                         val invite = Util.codec.fromJson(request.getReader, classOf[Invite])
-                        initNetworkManager(Join.join(config, cryptoManager, processManager, invite, externalAddress))
+                        initNetworkManager(Join.join(config, cryptoManager, processManager, invite, externalAddress, hostsManager))
                         val end = System.currentTimeMillis() - start
                         logger.info(s"Joined ($end ms)")
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/join-network" =>
-                        val joinRequest = Util.codec.fromJson(request.getReader, classOf[JoinRequest])
-                        Join.joinOrgToNetwork(
-                            config, cryptoManager, processManager,
-                            networkManager.getOrElse(throw new IllegalStateException("Network is not initialized yet")),
-                            joinRequest
-                        ) match {
+                        networkManager
+                          .toRight("Network is not initialized yet")
+                          .flatMap { network =>
+                              val joinRequest = Util.codec.fromJson(request.getReader, classOf[JoinRequest])
+                              Join.joinOrgToNetwork(
+                                  config, cryptoManager, processManager,
+                                  network, joinRequest, hostsManager
+                              )
+                          } match {
                             case Right(joinResponse) =>
                                 val out = response.getOutputStream
                                 out.print(Util.codec.toJson(joinResponse))
