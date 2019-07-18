@@ -14,6 +14,7 @@ import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientBuilde
 import org.enterprisedlt.fabric.service.node.FabricProcessManager
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.slf4j.LoggerFactory
+
 import scala.collection.JavaConverters._
 
 /**
@@ -58,130 +59,128 @@ class DockerBasedProcessManager(
 
 
     //=========================================================================
-    override def startOrderingNode(name: String): String = {
+    override def startOrderingNode(name: String): Either[String, String] = {
         val osnFullName = s"$name.$organizationFullName"
         logger.info(s"Starting $osnFullName ...")
         if (checkContainerExistence(osnFullName: String)) {
             stopAndRemoveContainer(osnFullName: String)
         }
-        config.network.orderingNodes.find(_.name == name) match {
-            case Some(ordererConfig) =>
+        config.network.orderingNodes
+          .find(_.name == name)
+          .toRight(s"There is no configuration for $osnFullName")
+          .map { osnConfig =>
+              val configHost = new HostConfig()
+                .withBinds(
+                    new Bind(s"$hostHomePath/hosts", new Volume("/etc/hosts")),
+                    new Bind(s"$hostHomePath/artifacts/genesis.block", new Volume("/var/hyperledger/orderer/orderer.genesis.block")),
+                    new Bind(s"$hostHomePath/crypto/ordererOrganizations/$organizationFullName/orderers/$name.$organizationFullName/msp", new Volume("/var/hyperledger/orderer/msp")),
+                    new Bind(s"$hostHomePath/crypto/ordererOrganizations/$organizationFullName/orderers/$name.$organizationFullName/tls", new Volume("/var/hyperledger/orderer/tls"))
+                )
+                .withPortBindings(
+                    new PortBinding(new Binding("0.0.0.0", osnConfig.port.toString), new ExposedPort(osnConfig.port, InternetProtocol.TCP))
+                )
+                .withNetworkMode(config.network.name)
 
-                val configHost = new HostConfig()
-                  .withBinds(
-                      new Bind(s"$hostHomePath/hosts", new Volume("/etc/hosts")),
-                      new Bind(s"$hostHomePath/artifacts/genesis.block", new Volume("/var/hyperledger/orderer/orderer.genesis.block")),
-                      new Bind(s"$hostHomePath/crypto/ordererOrganizations/$organizationFullName/orderers/$name.$organizationFullName/msp", new Volume("/var/hyperledger/orderer/msp")),
-                      new Bind(s"$hostHomePath/crypto/ordererOrganizations/$organizationFullName/orderers/$name.$organizationFullName/tls", new Volume("/var/hyperledger/orderer/tls"))
-                  )
-                  .withPortBindings(
-                      new PortBinding(new Binding("0.0.0.0", ordererConfig.port.toString), new ExposedPort(ordererConfig.port, InternetProtocol.TCP))
-                  )
-                  .withNetworkMode(config.network.name)
-
-                val osnContainerId: String = docker.createContainerCmd("hyperledger/fabric-orderer")
-                  .withName(osnFullName)
-                  .withEnv(
-                      "FABRIC_LOGGING_SPEC=INFO",
-                      "ORDERER_GENERAL_LISTENADDRESS=0.0.0.0",
-                      s"ORDERER_GENERAL_LISTENPORT=${ordererConfig.port.toString}",
-                      "ORDERER_GENERAL_GENESISMETHOD=file",
-                      "ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block",
-                      s"ORDERER_GENERAL_LOCALMSPID=osn-${config.organization.name}",
-                      "ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp",
-                      "ORDERER_GENERAL_TLS_ENABLED=true",
-                      "ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key",
-                      "ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt",
-                      "ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]",
-                      "ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt",
-                      "ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key",
-                      "ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]"
-                  )
-                  .withWorkingDir("/opt/gopath/src/github.com/hyperledger/fabric")
-                  .withCmd("orderer")
-                  .withExposedPorts(new ExposedPort(ordererConfig.port, InternetProtocol.TCP))
-                  .withHostConfig(configHost)
-                  .withLabels(DefaultLabels)
-                  .exec().getId
-                docker.startContainerCmd(osnContainerId).exec
-                logger.info(s"OSN $osnFullName started, ID: $osnContainerId")
-                osnContainerId
-            case _ => s"There is no configuration for ${osnFullName}"
-        }
+              val osnContainerId: String = docker.createContainerCmd("hyperledger/fabric-orderer")
+                .withName(osnFullName)
+                .withEnv(
+                    "FABRIC_LOGGING_SPEC=INFO",
+                    "ORDERER_GENERAL_LISTENADDRESS=0.0.0.0",
+                    s"ORDERER_GENERAL_LISTENPORT=${osnConfig.port}",
+                    "ORDERER_GENERAL_GENESISMETHOD=file",
+                    "ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block",
+                    s"ORDERER_GENERAL_LOCALMSPID=osn-${config.organization.name}",
+                    "ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp",
+                    "ORDERER_GENERAL_TLS_ENABLED=true",
+                    "ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key",
+                    "ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt",
+                    "ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]",
+                    "ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt",
+                    "ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key",
+                    "ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]"
+                )
+                .withWorkingDir("/opt/gopath/src/github.com/hyperledger/fabric")
+                .withCmd("orderer")
+                .withExposedPorts(new ExposedPort(osnConfig.port, InternetProtocol.TCP))
+                .withHostConfig(configHost)
+                .withLabels(DefaultLabels)
+                .exec().getId
+              docker.startContainerCmd(osnContainerId).exec
+              logger.info(s"OSN $osnFullName started, ID: $osnContainerId")
+              osnContainerId
+          }
     }
 
     //=============================================================================
-    override def startPeerNode(name: String): String = {
+    override def startPeerNode(name: String): Either[String, String] = {
         val peerFullName = s"$name.$organizationFullName"
         logger.info(s"Starting $peerFullName ...")
         if (checkContainerExistence(peerFullName: String)) {
             stopAndRemoveContainer(peerFullName: String)
         }
-        config.network.peerNodes.find(_.name == name) match {
-            case Some(peerConfig) =>
-
-                val couchEnv = if (peerConfig.couchDB != null) {
-                    val couchDBName = s"$name.couchdb"
-                    this.startCouchDB(couchDBName, peerConfig.couchDB.port)
-
+        config.network.peerNodes
+          .find(_.name == name)
+          .toRight(s"There is no configuration for $peerFullName")
+          .map { peerConfig =>
+              val couchEnv = Option(peerConfig.couchDB)
+                .map { couchDBConfig =>
+                    val couchDBName = s"couchdb.$name"
+                    this.startCouchDB(couchDBName, couchDBConfig.port)
                     List("CORE_LEDGER_STATE_STATEDATABASE=CouchDB",
-                        s"CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=${couchDBName}.${organizationFullName}:5984",
+                        s"CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=$couchDBName.$organizationFullName:5984",
                         s"CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=",
                         s"CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=")
-                } else List.empty
+                }
+                .getOrElse(List.empty)
 
-                val configHost = new HostConfig()
-                  .withBinds(
-                      new Bind(s"$hostHomePath/hosts", new Volume("/etc/hosts")),
-                      new Bind(s"$hostHomePath/crypto/peerOrganizations/$organizationFullName/peers/$peerFullName/msp", new Volume("/etc/hyperledger/fabric/msp")),
-                      new Bind(s"$hostHomePath/crypto/peerOrganizations/$organizationFullName/peers/$peerFullName/tls", new Volume("/etc/hyperledger/fabric/tls")),
-                      new Bind(s"/var/run", new Volume("/host/var/run/"))
-                  )
-                  .withPortBindings(
-                      new PortBinding(new Binding("0.0.0.0", peerConfig.port.toString), new ExposedPort(peerConfig.port, InternetProtocol.TCP))
-                  )
-                  .withNetworkMode(config.network.name)
-
-
-                val peerContainerId: String = docker.createContainerCmd("hyperledger/fabric-peer")
-                  .withName(peerFullName)
-                  .withEnv(
-                      (List("CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock",
-                          s"CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${config.network.name}",
-                          "FABRIC_LOGGING_SPEC=INFO",
-                          "CORE_PEER_TLS_ENABLED=true",
-                          "CORE_PEER_GOSSIP_USELEADERELECTION=true",
-                          "CORE_PEER_GOSSIP_ORGLEADER=false",
-                          "CORE_PEER_PROFILE_ENABLED=false",
-                          "CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt",
-                          "CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key",
-                          "CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt",
-                          s"CORE_PEER_ID=${peerFullName}",
-                          s"CORE_PEER_ADDRESS=0.0.0.0:${peerConfig.port.toString}",
-                          s"CORE_PEER_LISTENADDRESS=0.0.0.0:${peerConfig.port.toString}",
-                          "CORE_CHAINCODE_JAVA_RUNTIME=enterprisedlt/fabric-jar-env",
-                          s"CORE_PEER_GOSSIP_BOOTSTRAP=$peerFullName:${peerConfig.port.toString}",
-                          s"CORE_PEER_GOSSIP_EXTERNALENDPOINT=$peerFullName:${peerConfig.port.toString}",
-                          s"CORE_PEER_LOCALMSPID=${config.organization.name}"
-                      ) ++ couchEnv): _*
-                  )
-                  .withWorkingDir("/opt/gopath/src/github.com/hyperledger/fabric/peer")
-                  .withCmd("peer", "node", "start")
-                  .withExposedPorts(new ExposedPort(peerConfig.port, InternetProtocol.TCP))
-                  .withHostConfig(configHost)
-                  .withLabels(DefaultLabels)
-                  .exec().getId
-                docker.startContainerCmd(peerContainerId).exec
-
-                awaitPeerStarted(peerFullName)
-
-                logger.info(s"Peer $peerFullName started, ID $peerContainerId")
-                peerContainerId
-
-            case _ => s"There is no configuration for ${peerFullName}"
-        }
+              val configHost = new HostConfig()
+                .withBinds(
+                    new Bind(s"$hostHomePath/hosts", new Volume("/etc/hosts")),
+                    new Bind(s"$hostHomePath/crypto/peerOrganizations/$organizationFullName/peers/$peerFullName/msp", new Volume("/etc/hyperledger/fabric/msp")),
+                    new Bind(s"$hostHomePath/crypto/peerOrganizations/$organizationFullName/peers/$peerFullName/tls", new Volume("/etc/hyperledger/fabric/tls")),
+                    new Bind(s"/var/run", new Volume("/host/var/run/"))
+                )
+                .withPortBindings(
+                    new PortBinding(new Binding("0.0.0.0", peerConfig.port.toString), new ExposedPort(peerConfig.port, InternetProtocol.TCP))
+                )
+                .withNetworkMode(config.network.name)
 
 
+              val peerContainerId: String = docker.createContainerCmd("hyperledger/fabric-peer")
+                .withName(peerFullName)
+                .withEnv(
+                    List("CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock",
+                        s"CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${config.network.name}",
+                        "FABRIC_LOGGING_SPEC=INFO",
+                        "CORE_PEER_TLS_ENABLED=true",
+                        "CORE_PEER_GOSSIP_USELEADERELECTION=true",
+                        "CORE_PEER_GOSSIP_ORGLEADER=false",
+                        "CORE_PEER_PROFILE_ENABLED=false",
+                        "CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt",
+                        "CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key",
+                        "CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt",
+                        s"CORE_PEER_ID=$peerFullName",
+                        s"CORE_PEER_ADDRESS=0.0.0.0:${peerConfig.port}",
+                        s"CORE_PEER_LISTENADDRESS=0.0.0.0:${peerConfig.port}",
+                        "CORE_CHAINCODE_JAVA_RUNTIME=enterprisedlt/fabric-jar-env",
+                        s"CORE_PEER_GOSSIP_BOOTSTRAP=$peerFullName:${peerConfig.port}",
+                        s"CORE_PEER_GOSSIP_EXTERNALENDPOINT=$peerFullName:${peerConfig.port}",
+                        s"CORE_PEER_LOCALMSPID=${config.organization.name}"
+                    ) ++ couchEnv: _*
+                )
+                .withWorkingDir("/opt/gopath/src/github.com/hyperledger/fabric/peer")
+                .withCmd("peer", "node", "start")
+                .withExposedPorts(new ExposedPort(peerConfig.port, InternetProtocol.TCP))
+                .withHostConfig(configHost)
+                .withLabels(DefaultLabels)
+                .exec().getId
+              docker.startContainerCmd(peerContainerId).exec
+
+              awaitPeerStarted(peerFullName)
+
+              logger.info(s"Peer $peerFullName started, ID $peerContainerId")
+              peerContainerId
+          }
     }
 
     //=============================================================================
