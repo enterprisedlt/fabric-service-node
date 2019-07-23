@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node.cryptography
 
-import java.io.{File, FileReader, FileWriter}
+import java.io.{File, FileReader}
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 import java.security.PrivateKey
@@ -24,40 +24,28 @@ class FileBasedCryptoManager(
 ) extends FabricCryptoManager {
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val orgFullName = s"${config.organization.name}.${config.organization.domain}"
-    private val NodeOUConfig =
-        s"""
-           |NodeOUs:
-           |  Enable: true
-           |  ClientOUIdentifier:
-           |    Certificate: cacerts/ca.$orgFullName-cert.pem
-           |    OrganizationalUnitIdentifier: client
-           |  PeerOUIdentifier:
-           |    Certificate: cacerts/ca.$orgFullName-cert.pem
-           |    OrganizationalUnitIdentifier: peer
-           |
-        """.stripMargin
 
+    //
+    // Initialization
+    //
 
-    override def generateCryptoMaterial(): Unit = {
-        logger.info(s"Generating crypto for $orgFullName...")
-        FabricCryptoMaterial.generateOrgCrypto(config.organization, orgFullName, s"$rootDir/ordererOrganizations/$orgFullName", "orderers", None, Array("osn1", "osn2", "osn3"))
-        FabricCryptoMaterial.generateOrgCrypto(config.organization, orgFullName, s"$rootDir/peerOrganizations/$orgFullName", "peers", Some("peer"), Array("peer0"))
-        printNodeOUConfig(s"$rootDir/peerOrganizations/$orgFullName/msp/config.yaml")
-        logger.info(s"Generated crypto for $orgFullName.")
-    }
+    logger.info(s"Generating crypto for $orgFullName...")
+    FabricCryptoMaterial.generateOrgCrypto(
+        config.organization, orgFullName, rootDir,
+        config.network.orderingNodes.map(o => FabricComponent("orderers", o.name)) ++
+          config.network.peerNodes.map(p => FabricComponent("peers", p.name, Option("peer")))
+    )
+    logger.info(s"Generated crypto for $orgFullName.")
 
-    override def loadExecutionAdmin: User =
+    //=========================================================================
+    // Methods
+    //=========================================================================
+
+    override def loadAdmin: User =
         loadUser(
             "Admin",
             config.organization.name,
-            s"/opt/profile/crypto/peerOrganizations/$orgFullName/users/Admin@$orgFullName/msp/"
-        )
-
-    override def loadOrderingAdmin: User =
-        loadUser(
-            "Admin",
-            s"osn-${config.organization.name}",
-            s"/opt/profile/crypto/ordererOrganizations/$orgFullName/users/Admin@$orgFullName/msp/"
+            s"/opt/profile/crypto/users/Admin@$orgFullName/msp/"
         )
 
     //=========================================================================
@@ -92,12 +80,4 @@ class FileBasedCryptoManager(
         val r = Files.readAllBytes(Paths.get(fileName.toURI))
         new String(r, StandardCharsets.UTF_8)
     }
-
-    //=========================================================================
-    private def printNodeOUConfig(path: String): Unit = {
-        val writer = new FileWriter(path)
-        writer.write(NodeOUConfig)
-        writer.close()
-    }
-
 }

@@ -73,8 +73,8 @@ class DockerBasedProcessManager(
                 .withBinds(
                     new Bind(s"$hostHomePath/hosts", new Volume("/etc/hosts")),
                     new Bind(s"$hostHomePath/artifacts/genesis.block", new Volume("/var/hyperledger/orderer/orderer.genesis.block")),
-                    new Bind(s"$hostHomePath/crypto/ordererOrganizations/$organizationFullName/orderers/$name.$organizationFullName/msp", new Volume("/var/hyperledger/orderer/msp")),
-                    new Bind(s"$hostHomePath/crypto/ordererOrganizations/$organizationFullName/orderers/$name.$organizationFullName/tls", new Volume("/var/hyperledger/orderer/tls"))
+                    new Bind(s"$hostHomePath/crypto/orderers/$name.$organizationFullName/msp", new Volume("/var/hyperledger/orderer/msp")),
+                    new Bind(s"$hostHomePath/crypto/orderers/$name.$organizationFullName/tls", new Volume("/var/hyperledger/orderer/tls"))
                 )
                 .withPortBindings(
                     new PortBinding(new Binding("0.0.0.0", osnConfig.port.toString), new ExposedPort(osnConfig.port, InternetProtocol.TCP))
@@ -89,7 +89,7 @@ class DockerBasedProcessManager(
                     s"ORDERER_GENERAL_LISTENPORT=${osnConfig.port}",
                     "ORDERER_GENERAL_GENESISMETHOD=file",
                     "ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block",
-                    s"ORDERER_GENERAL_LOCALMSPID=osn-${config.organization.name}",
+                    s"ORDERER_GENERAL_LOCALMSPID=${config.organization.name}",
                     "ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp",
                     "ORDERER_GENERAL_TLS_ENABLED=true",
                     "ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key",
@@ -136,8 +136,8 @@ class DockerBasedProcessManager(
               val configHost = new HostConfig()
                 .withBinds(
                     new Bind(s"$hostHomePath/hosts", new Volume("/etc/hosts")),
-                    new Bind(s"$hostHomePath/crypto/peerOrganizations/$organizationFullName/peers/$peerFullName/msp", new Volume("/etc/hyperledger/fabric/msp")),
-                    new Bind(s"$hostHomePath/crypto/peerOrganizations/$organizationFullName/peers/$peerFullName/tls", new Volume("/etc/hyperledger/fabric/tls")),
+                    new Bind(s"$hostHomePath/crypto/peers/$peerFullName/msp", new Volume("/etc/hyperledger/fabric/msp")),
+                    new Bind(s"$hostHomePath/crypto/peers/$peerFullName/tls", new Volume("/etc/hyperledger/fabric/tls")),
                     new Bind(s"/var/run", new Volume("/host/var/run/"))
                 )
                 .withPortBindings(

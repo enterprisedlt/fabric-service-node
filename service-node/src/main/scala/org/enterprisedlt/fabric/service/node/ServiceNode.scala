@@ -27,12 +27,10 @@ object ServiceNode extends App {
     logger.info("Starting...")
     private val config = loadConfig("/opt/profile/service.json")
     private val server = new Server(ServiceBindPort)
+    val cryptography = new FileBasedCryptoManager(config,"/opt/profile/crypto")
     server.setHandler(
         new RestEndpoint(
-            ServiceBindPort, ServiceExternalAddress, config,
-            cryptoManager = new FileBasedCryptoManager(
-                config,"/opt/profile/crypto"
-            ),
+            ServiceBindPort, ServiceExternalAddress, config, cryptography,
             processManager = new DockerBasedProcessManager(
                 ProfilePath, DockerSocket,
                 InitialName, config

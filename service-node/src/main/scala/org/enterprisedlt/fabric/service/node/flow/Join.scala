@@ -27,11 +27,10 @@ object Join {
     ): FabricNetworkManager = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
         logger.info(s"[ $organizationFullName ] - Generating certificates ...")
-        cryptoManager.generateCryptoMaterial()
 
         //
         logger.info(s"[ $organizationFullName ] - Creating JoinRequest ...")
-        val genesisDefinition = Bootstrap.newGenesisDefinition("/opt/profile", config)
+        val genesisDefinition = Genesis.newDefinition("/opt/profile", config)
         val genesis = FabricBlock.create(genesisDefinition)
         val genesisConfig = Util.extractConfig(genesis)
         val joinRequest = JoinRequest(
@@ -78,9 +77,8 @@ object Join {
 
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
-        val orderingAdmin = cryptoManager.loadOrderingAdmin
-        val executionAdmin = cryptoManager.loadExecutionAdmin
-        val network = new FabricNetworkManager(config, orderingAdmin, executionAdmin)
+        val admin = cryptoManager.loadAdmin
+        val network = new FabricNetworkManager(config, admin)
 
 
         //

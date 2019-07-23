@@ -23,8 +23,7 @@ import scala.collection.JavaConverters._
   */
 class FabricNetworkManager(
     config: ServiceConfig,
-    orderingAdmin: User,
-    executionAdmin: User
+    admin: User
 ) {
     type TransactionEvent = BlockEvent#TransactionEvent
 
@@ -39,12 +38,11 @@ class FabricNetworkManager(
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
 
-    private val fabricClient = getHFClient(executionAdmin)
+    private val fabricClient = getHFClient(admin)
 
     private val osnByName = config.network.orderingNodes.map { cfg => (cfg.name, mkOSN(cfg)) }.toMap
     private val peerByName = config.network.peerNodes.map { cfg => (cfg.name, mkPeer(cfg)) }.toMap
 
-    private lazy val systemClient = getHFClient(orderingAdmin)
     private lazy val systemChannel = connectToSystemChannel
 
     //
@@ -55,7 +53,7 @@ class FabricNetworkManager(
     def createChannel(channelName: String, channelTx: Envelope): Unit = {
         val osn = osnByName.head._2 // for now, just use first
         val chCfg = new ChannelConfiguration(channelTx.toByteArray)
-        val sign = fabricClient.getChannelConfigurationSignature(chCfg, executionAdmin)
+        val sign = fabricClient.getChannelConfigurationSignature(chCfg, admin)
         fabricClient.newChannel(channelName, osn, chCfg, sign)
     }
 
@@ -98,7 +96,7 @@ class FabricNetworkManager(
                 .find(_.name == peerName)
                 .toRight(s"Unknown peer $peerName")
                 .map { peerConfig =>
-                    applyChannelUpdate(channel, executionAdmin, FabricChannel.AddAnchorPeer(config.organization.name, s"${peerConfig.name}.$organizationFullName", peerConfig.port))
+                    applyChannelUpdate(channel, admin, FabricChannel.AddAnchorPeer(config.organization.name, s"${peerConfig.name}.$organizationFullName", peerConfig.port))
                 }
           }
     }
@@ -170,9 +168,9 @@ class FabricNetworkManager(
               } else {
                   logger.debug("Successfully received transaction proposal responses.")
                   val toSend = responses.asJavaCollection
-                  logger.debug("Sending transaction to orderer...")
+                  logger.debug("Sending transaction to osn...")
                   val te = channel
-                    .sendTransaction(toSend, executionAdmin)
+                    .sendTransaction(toSend, admin)
                     .get(5, TimeUnit.MINUTES)
                   Right(te)
               }
@@ -225,9 +223,9 @@ class FabricNetworkManager(
               } else {
                   logger.debug("Successfully received transaction proposal responses.")
                   val toSend = responses.asJavaCollection
-                  logger.debug("Sending transaction to orderer...")
+                  logger.debug("Sending transaction to osn...")
                   val te = channel
-                    .sendTransaction(toSend, executionAdmin)
+                    .sendTransaction(toSend, admin)
                     .get(5, TimeUnit.MINUTES)
                   Right(te)
               }
@@ -300,7 +298,7 @@ class FabricNetworkManager(
           .getGroupsMap.get("Application")
           .getGroupsMap.entrySet().iterator().next()
         applyChannelUpdate(
-            systemChannel, orderingAdmin,
+            systemChannel, admin,
             FabricChannel.AddApplicationOrg(appOrg.getKey, appOrg.getValue)
         )
         logger.info("Adding ordering org...")
@@ -308,7 +306,7 @@ class FabricNetworkManager(
           .getGroupsMap.get("Orderer")
           .getGroupsMap.entrySet().iterator().next()
         applyChannelUpdate(
-            systemChannel, orderingAdmin,
+            systemChannel, admin,
             FabricChannel.AddOrderingOrg(orderingOrg.getKey, orderingOrg.getValue)
         )
         logger.info("Adding peers org...")
@@ -317,13 +315,13 @@ class FabricNetworkManager(
           .getGroupsMap.get("SampleConsortium")
           .getGroupsMap.entrySet().iterator().next()
         applyChannelUpdate(
-            systemChannel, orderingAdmin,
+            systemChannel, admin,
             FabricChannel.AddConsortiumOrg(consortiumOrg.getKey, consortiumOrg.getValue)
         )
         logger.info("Adding OSN 1...")
         val metadata = Util.extractConsensusMetadata(newOrgConfig)
         applyChannelUpdate(
-            systemChannel, orderingAdmin,
+            systemChannel, admin,
             FabricChannel.AddConsenter(metadata.getConsenters(0))
         )
     }
@@ -338,7 +336,7 @@ class FabricNetworkManager(
                 .getGroupsMap.get("SampleConsortium")
                 .getGroupsMap.entrySet().iterator().next()
               applyChannelUpdate(
-                  channel, executionAdmin,
+                  channel, admin,
                   FabricChannel.AddApplicationOrg(consortiumOrg.getKey, consortiumOrg.getValue),
               )
               logger.info("Adding ordering org...")
@@ -346,13 +344,13 @@ class FabricNetworkManager(
                 .getGroupsMap.get("Orderer")
                 .getGroupsMap.entrySet().iterator().next()
               applyChannelUpdate(
-                  channel, orderingAdmin,
+                  channel, admin,
                   FabricChannel.AddOrderingOrg(orderingOrg.getKey, orderingOrg.getValue)
               )
               logger.info("Adding OSN 1...")
               val metadata = Util.extractConsensusMetadata(newOrgConfig)
               applyChannelUpdate(
-                  channel, orderingAdmin,
+                  channel, admin,
                   FabricChannel.AddConsenter(metadata.getConsenters(0))
               )
           }
@@ -388,7 +386,7 @@ class FabricNetworkManager(
 
     //=========================================================================
     private def defaultPeerTLSPath(name: String): String = {
-        s"/opt/profile/crypto/peerOrganizations/$organizationFullName/peers/$name.$organizationFullName/tls/server.crt"
+        s"/opt/profile/crypto/peers/$name.$organizationFullName/tls/server.crt"
     }
 
     //=========================================================================
@@ -400,12 +398,12 @@ class FabricNetworkManager(
 
     //=========================================================================
     private def defaultOSNTLSPath(name: String): String = {
-        s"/opt/profile/crypto/ordererOrganizations/$organizationFullName/orderers/$name.$organizationFullName/tls/server.crt"
+        s"/opt/profile/crypto/orderers/$name.$organizationFullName/tls/server.crt"
     }
 
     //=========================================================================
     private def connectToSystemChannel: Channel = {
-        val channel = systemClient.newChannel("system-channel")
+        val channel = fabricClient.newChannel("system-channel")
         config.network.orderingNodes /*.headOption*/ .foreach { cfg =>
             channel.addOrderer(mkOSN(cfg))
         }
@@ -449,7 +447,7 @@ class FabricNetworkManager(
                 .get(peerName)
                 .toRight(s"Unknown peer $peerName")
                 .map { peer =>
-                    val collectionConfigPackage = channel.queryCollectionsConfig(chainCodeName, peer, executionAdmin)
+                    val collectionConfigPackage = channel.queryCollectionsConfig(chainCodeName, peer, admin)
                     Util.parseCollectionPackage(collectionConfigPackage)
                 }
           }

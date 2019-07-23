@@ -12,7 +12,7 @@ import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
   */
 object FabricCryptoMaterial {
 
-    def generateOrgCrypto(orgConfig: OrganizationConfig, orgFullName: String, path: String, componentsName: String, componentsType: Option[String], components: Array[String]): Unit = {
+    def generateOrgCrypto(orgConfig: OrganizationConfig, orgFullName: String, path: String, components: Array[FabricComponent]): Unit = {
         //    CA
         val caCert = FabricCryptoMaterial.generateCACert(
             organization = orgFullName,
@@ -72,49 +72,56 @@ object FabricCryptoMaterial {
         mkDir(s"$mspDir/tlscacerts")
         writeToPemFile(s"$mspDir/tlscacerts/tlsca.$orgFullName-cert.pem", tlscaCert.certificate)
 
-        components.foreach { name =>
-            createComponentDir(orgConfig, orgFullName, name, componentsType, s"$path/$componentsName/$name.$orgFullName", caCert, tlscaCert, adminCert)
+        components.foreach { component =>
+            createComponentDir(orgConfig, orgFullName, component, path, caCert, tlscaCert, adminCert)
         }
     }
 
-    private def createComponentDir(orgConfig: OrganizationConfig, orgFullName: String, component: String, componentType: Option[String], path: String, caCert: CertAndKey, tlscaCert: CertAndKey, adminCert: CertAndKey): Unit = {
+    private def createComponentDir(
+        orgConfig: OrganizationConfig,
+        orgFullName: String,
+        component: FabricComponent,
+        path: String,
+        caCert: CertAndKey,
+        tlscaCert: CertAndKey,
+        adminCert: CertAndKey): Unit = {
+        val outPath = s"$path/${component.group}/${component.name}.$orgFullName"
+        mkDir(s"$outPath/msp/admincerts")
+        writeToPemFile(s"$outPath/msp/admincerts/Admin@$orgFullName-cert.pem", adminCert.certificate)
 
-        mkDir(s"$path/msp/admincerts")
-        writeToPemFile(s"$path/msp/admincerts/Admin@$orgFullName-cert.pem", adminCert.certificate)
+        mkDir(s"$outPath/msp/cacerts")
+        writeToPemFile(s"$outPath/msp/cacerts/ca.$orgFullName-cert.pem", caCert.certificate)
 
-        mkDir(s"$path/msp/cacerts")
-        writeToPemFile(s"$path/msp/cacerts/ca.$orgFullName-cert.pem", caCert.certificate)
-
-        mkDir(s"$path/msp/tlscacerts")
-        writeToPemFile(s"$path/msp/tlscacerts/tlsca.$orgFullName-cert.pem", tlscaCert.certificate)
+        mkDir(s"$outPath/msp/tlscacerts")
+        writeToPemFile(s"$outPath/msp/tlscacerts/tlsca.$orgFullName-cert.pem", tlscaCert.certificate)
 
         val theCert = FabricCryptoMaterial.generateComponentCert(
-            componentName = component,
-            organizationUnit = componentType,
+            componentName = component.name,
+            organizationUnit = component.unit,
             organization = orgFullName,
             location = orgConfig.location,
             state = orgConfig.state,
             country = orgConfig.country,
             caCert
         )
-        mkDir(s"$path/msp/keystore")
-        writeToPemFile(s"$path/msp/keystore/${component}_sk", theCert.key)
+        mkDir(s"$outPath/msp/keystore")
+        writeToPemFile(s"$outPath/msp/keystore/${component}_sk", theCert.key)
 
-        mkDir(s"$path/msp/signcerts")
-        writeToPemFile(s"$path/msp/signcerts/$component.$orgFullName-cert.pem", theCert.certificate)
+        mkDir(s"$outPath/msp/signcerts")
+        writeToPemFile(s"$outPath/msp/signcerts/$component.$orgFullName-cert.pem", theCert.certificate)
 
         val tlsCert = FabricCryptoMaterial.generateComponentTlsCert(
-            componentName = component,
+            componentName = component.name,
             organization = orgFullName,
             location = orgConfig.location,
             state = orgConfig.state,
             country = orgConfig.country,
             tlscaCert
         )
-        mkDir(s"$path/tls")
-        writeToPemFile(s"$path/tls/ca.crt", tlscaCert.certificate)
-        writeToPemFile(s"$path/tls/server.crt", tlsCert.certificate)
-        writeToPemFile(s"$path/tls/server.key", tlsCert.key)
+        mkDir(s"$outPath/tls")
+        writeToPemFile(s"$outPath/tls/ca.crt", tlscaCert.certificate)
+        writeToPemFile(s"$outPath/tls/server.crt", tlsCert.certificate)
+        writeToPemFile(s"$outPath/tls/server.key", tlsCert.key)
     }
 
 
@@ -265,3 +272,9 @@ object FabricCryptoMaterial {
     }
 
 }
+
+case class FabricComponent(
+    group: String,
+    name: String,
+    unit: Option[String] = None
+)
