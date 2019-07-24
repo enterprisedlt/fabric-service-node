@@ -24,19 +24,6 @@ import scala.collection.JavaConverters._
   * @author Alexey Polubelov
   */
 object FabricBlock {
-    //
-    //    val commonChannelDefinition = ChannelDefinition(
-    //        channelName = "common",
-    //        consortiumDetails = ConsortiumName("SampleConsortium"),
-    //        capabilities = Set(CapabilityValue.V1_3),
-    //        application = Option(
-    //              ApplicationDefinition(
-    //                  capabilities = Set(CapabilityValue.V1_3),
-    //                  organizations = Seq(Org1)
-    //              )
-    //          )
-    //    )
-    //
 
     def create(channelDefinition: ChannelDefinition): Block = {
         val payloadSignatureHeader = newSignatureHeader(ByteString.copyFrom(newNonce()))
