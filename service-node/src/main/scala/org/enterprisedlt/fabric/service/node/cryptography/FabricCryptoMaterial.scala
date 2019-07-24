@@ -22,8 +22,8 @@ object FabricCryptoMaterial {
         )
         val caDir = s"$path/ca"
         mkDir(caDir)
-        writeToPemFile(s"$caDir/ca.$orgFullName-cert.pem", caCert.certificate)
-        writeToPemFile(s"$caDir/ca_sk", caCert.key)
+        writeToPemFile(s"$caDir/ca.crt", caCert.certificate)
+        writeToPemFile(s"$caDir/ca.key", caCert.key)
 
         //    TLS CA
         val tlscaCert = FabricCryptoMaterial.generateTLSCACert(
@@ -34,8 +34,8 @@ object FabricCryptoMaterial {
         )
         val tlscaDir = s"$path/tlsca"
         mkDir(tlscaDir)
-        writeToPemFile(s"$tlscaDir/tlsca.$orgFullName-cert.pem", tlscaCert.certificate)
-        writeToPemFile(s"$tlscaDir/tlsca_sk", tlscaCert.key)
+        writeToPemFile(s"$tlscaDir/tlsca.crt", tlscaCert.certificate)
+        writeToPemFile(s"$tlscaDir/tlsca.key", tlscaCert.key)
 
         //    Admin
         val adminCert = FabricCryptoMaterial.generateAdminCert(
@@ -45,36 +45,16 @@ object FabricCryptoMaterial {
             country = orgConfig.country,
             caCert
         )
-        val adminDir = s"$path/users/Admin@$orgFullName/msp"
-        mkDir(s"$adminDir/admincerts")
-        writeToPemFile(s"$adminDir/admincerts/Admin@$orgFullName-cert.pem", adminCert.certificate)
-
-        mkDir(s"$adminDir/cacerts")
-        writeToPemFile(s"$adminDir/cacerts/ca.$orgFullName-cert.pem", caCert.certificate)
-
-        mkDir(s"$adminDir/keystore")
-        writeToPemFile(s"$adminDir/keystore/admin_sk", adminCert.key)
-
-        mkDir(s"$adminDir/signcerts")
-        writeToPemFile(s"$adminDir/signcerts/Admin@$orgFullName-cert.pem", adminCert.certificate)
-
-        mkDir(s"$adminDir/tlscacerts")
-        writeToPemFile(s"$adminDir/tlscacerts/tlsca.$orgFullName-cert.pem", tlscaCert.certificate)
-
-        // MSP
-        val mspDir = s"$path/msp"
-        mkDir(s"$mspDir/admincerts")
-        writeToPemFile(s"$mspDir/admincerts/Admin@$orgFullName-cert.pem", adminCert.certificate)
-
-        mkDir(s"$mspDir/cacerts")
-        writeToPemFile(s"$mspDir/cacerts/ca.$orgFullName-cert.pem", caCert.certificate)
-
-        mkDir(s"$mspDir/tlscacerts")
-        writeToPemFile(s"$mspDir/tlscacerts/tlsca.$orgFullName-cert.pem", tlscaCert.certificate)
+        val adminDir = s"$path/users/admin/"
+        mkDir(adminDir)
+        writeToPemFile(s"$adminDir/admin.crt", adminCert.certificate)
+        writeToPemFile(s"$adminDir/admin.key", adminCert.key)
 
         components.foreach { component =>
             createComponentDir(orgConfig, orgFullName, component, path, caCert, tlscaCert, adminCert)
         }
+
+        createServiceDir(orgConfig, orgFullName, path, caCert, tlscaCert)
     }
 
     private def createComponentDir(
@@ -84,7 +64,8 @@ object FabricCryptoMaterial {
         path: String,
         caCert: CertAndKey,
         tlscaCert: CertAndKey,
-        adminCert: CertAndKey): Unit = {
+        adminCert: CertAndKey
+    ): Unit = {
         val outPath = s"$path/${component.group}/${component.name}.$orgFullName"
         mkDir(s"$outPath/msp/admincerts")
         writeToPemFile(s"$outPath/msp/admincerts/Admin@$orgFullName-cert.pem", adminCert.certificate)
@@ -124,6 +105,27 @@ object FabricCryptoMaterial {
         writeToPemFile(s"$outPath/tls/server.key", tlsCert.key)
     }
 
+    private def createServiceDir(
+        orgConfig: OrganizationConfig,
+        organizationFullName: String,
+        path: String,
+        caCert: CertAndKey,
+        tlscaCert: CertAndKey
+    ): Unit = {
+        val outPath = s"$path/service"
+
+        val tlsCert = FabricCryptoMaterial.generateComponentTlsCert(
+            componentName = "service",
+            organization = organizationFullName,
+            location = orgConfig.location,
+            state = orgConfig.state,
+            country = orgConfig.country,
+            tlscaCert
+        )
+        mkDir(s"$outPath/tls")
+        writeToPemFile(s"$outPath/tls/server.crt", tlsCert.certificate)
+        writeToPemFile(s"$outPath/tls/server.key", tlsCert.key)
+    }
 
     private def writeToPemFile(fileName: String, o: AnyRef): Unit = {
         val writer = new JcaPEMWriter(new FileWriter(fileName))

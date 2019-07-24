@@ -13,15 +13,15 @@ object Genesis {
 
     def newDefinition(profilePath: String, config: ServiceConfig): ChannelDefinition = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
-        val cryptoMaterialPath = s"$profilePath/crypto"
+        val certificatesPath = s"$profilePath/crypto"
 
         val orgMspId = config.organization.name
         val organizationDefinition =
             OrganizationDefinition(
                 mspId = orgMspId,
-                caCerts = Seq(Util.readAsByteString(s"$cryptoMaterialPath/msp/cacerts/ca.$organizationFullName-cert.pem")),
-                tlsCACerts = Seq(Util.readAsByteString(s"$cryptoMaterialPath/msp/tlscacerts/tlsca.$organizationFullName-cert.pem")),
-                adminCerts = Seq(Util.readAsByteString(s"$cryptoMaterialPath/msp/admincerts/Admin@$organizationFullName-cert.pem")),
+                caCerts = Seq(Util.readAsByteString(s"$certificatesPath/ca/ca.crt")),
+                tlsCACerts = Seq(Util.readAsByteString(s"$certificatesPath/tlsca/tlsca.crt")),
+                adminCerts = Seq(Util.readAsByteString(s"$certificatesPath/users/admin/admin.crt")),
                 policies = PoliciesDefinition(
                     admins = SignedByOneOf(MemberClassifier(orgMspId, MSPRole.MSPRoleType.ADMIN)),
                     writers = SignedByOneOf(MemberClassifier(orgMspId, MSPRole.MSPRoleType.MEMBER)),
@@ -45,8 +45,8 @@ object Genesis {
                             OrderingNodeDefinition(
                                 host = s"${osnConfig.name}.$organizationFullName",
                                 port = osnConfig.port,
-                                clientTlsCert = Util.readAsByteString(s"$cryptoMaterialPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"),
-                                serverTlsCert = Util.readAsByteString(s"$cryptoMaterialPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt")
+                                clientTlsCert = Util.readAsByteString(s"$certificatesPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"),
+                                serverTlsCert = Util.readAsByteString(s"$certificatesPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt")
                             )
                         },
                       organizations = Seq(organizationDefinition)

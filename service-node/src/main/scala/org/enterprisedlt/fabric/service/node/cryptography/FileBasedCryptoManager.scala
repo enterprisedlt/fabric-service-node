@@ -45,20 +45,19 @@ class FileBasedCryptoManager(
         loadUser(
             "Admin",
             config.organization.name,
-            s"/opt/profile/crypto/users/Admin@$orgFullName/msp/"
+            s"/opt/profile/crypto/users/admin"
         )
 
     //=========================================================================
     private def loadUser(userName: String, mspId: String, mspPath: String): User = {
-        val signedCert = loadSignedCertFromFile(mspPath)
-        val privateKey = loadPrivateKeyFromFile(mspPath)
-        val adminEnrollment = new X509Enrollment(privateKey, signedCert)
-        FabricUserImpl(userName, Collections.emptySet(), "", "", adminEnrollment, mspId)
+        val signedCert = loadSignedCertFromFile(s"$mspPath/$userName.crt")
+        val privateKey = loadPrivateKeyFromFile(s"$mspPath/$userName.key")
+        val enrollment = new X509Enrollment(privateKey, signedCert)
+        FabricUserImpl(userName, Collections.emptySet(), "", "", enrollment, mspId)
     }
 
     //=========================================================================
-    private def loadPrivateKeyFromFile(filePath: String): PrivateKey = {
-        val fileName = new File(s"$filePath/keystore").listFiles(n => n.getAbsolutePath.endsWith("_sk"))(0)
+    private def loadPrivateKeyFromFile(fileName: String): PrivateKey = {
         val pemReader = new FileReader(fileName)
         val pemParser = new PEMParser(pemReader)
         try {
@@ -75,9 +74,9 @@ class FileBasedCryptoManager(
     }
 
     //=========================================================================
-    private def loadSignedCertFromFile(filePath: String): String = {
-        val fileName = new File(s"$filePath/signcerts").listFiles(n => n.getAbsolutePath.endsWith(".pem"))(0)
-        val r = Files.readAllBytes(Paths.get(fileName.toURI))
+    private def loadSignedCertFromFile(fileName: String): String = {
+        val file = new File(fileName)
+        val r = Files.readAllBytes(Paths.get(file.toURI))
         new String(r, StandardCharsets.UTF_8)
     }
 }
