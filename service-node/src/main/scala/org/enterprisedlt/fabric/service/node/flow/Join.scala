@@ -21,7 +21,7 @@ object Join {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
     def join(
-        config: ServiceConfig, cryptoManager: FabricCryptoManager,
+        config: ServiceConfig, cryptoManager: CryptoManager,
         processManager: FabricProcessManager, invite: Invite,
         externalAddress: Option[ExternalAddress], hostsManager: HostsManager
     ): FabricNetworkManager = {
@@ -50,7 +50,7 @@ object Join {
 
         //
         logger.info(s"[ $organizationFullName ] - Sending JoinRequest to ${invite.address} ...")
-        val joinResponse = Util.executePostRequest(s"http://${invite.address}/join-network", joinRequest, classOf[JoinResponse])
+        val joinResponse = Util.executePostRequest(s"https://${invite.address}/join-network", joinRequest, classOf[JoinResponse])
 
         joinResponse.knownOrganizations.foreach(hostsManager.addOrganization)
 
@@ -129,7 +129,7 @@ object Join {
     }
 
     def joinOrgToNetwork(
-        config: ServiceConfig, cryptoManager: FabricCryptoManager,
+        config: ServiceConfig, cryptoManager: CryptoManager,
         processManager: FabricProcessManager, network: FabricNetworkManager,
         joinRequest: JoinRequest, hostsManager: HostsManager
     ): Either[String, JoinResponse] = {

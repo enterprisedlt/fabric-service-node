@@ -19,7 +19,7 @@ class RestEndpoint(
     bindPort: Int,
     externalAddress: Option[ExternalAddress],
     config: ServiceConfig,
-    cryptoManager: FabricCryptoManager,
+    cryptoManager: CryptoManager,
     processManager: FabricProcessManager,
     hostsManager: HostsManager
 ) extends AbstractHandler {

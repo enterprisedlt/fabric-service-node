@@ -18,7 +18,7 @@ object Bootstrap {
 
     def bootstrapOrganization(
         config: ServiceConfig,
-        cryptoManager: FabricCryptoManager,
+        cryptography: CryptoManager,
         processManager: FabricProcessManager,
         hostsManager: HostsManager,
         externalAddress: Option[ExternalAddress]
@@ -49,7 +49,7 @@ object Bootstrap {
 
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
-        val admin = cryptoManager.loadAdmin
+        val admin = cryptography.loadAdmin
         val network = new FabricNetworkManager(config, admin)
 
         //

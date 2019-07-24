@@ -5,12 +5,11 @@ import java.nio.charset.StandardCharsets
 
 import com.google.gson.{Gson, GsonBuilder}
 import com.google.protobuf.{ByteString, MessageLite}
-import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveOutputStream}
-import org.apache.commons.compress.compressors.gzip.GzipCompressorOutputStream
-import org.apache.commons.io.{FilenameUtils, IOUtils}
 import org.apache.http.client.methods.HttpPost
+import org.apache.http.conn.ssl.{NoopHostnameVerifier, SSLConnectionSocketFactory, TrustAllStrategy}
 import org.apache.http.entity.{ByteArrayEntity, ContentType}
-import org.apache.http.impl.client.HttpClients
+import org.apache.http.impl.client.{CloseableHttpClient, HttpClients}
+import org.apache.http.ssl.SSLContexts
 import org.apache.http.util.EntityUtils
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope, Payload}
@@ -20,7 +19,6 @@ import org.hyperledger.fabric.protos.common.MspPrincipal.{MSPPrincipal, MSPRole}
 import org.hyperledger.fabric.protos.common.Policies.{SignaturePolicy, SignaturePolicyEnvelope}
 import org.hyperledger.fabric.protos.ext.orderer.Configuration.ConsensusType
 import org.hyperledger.fabric.protos.ext.orderer.etcdraft.Configuration.ConfigMetadata
-import org.hyperledger.fabric.sdk.helper.Utils
 import org.hyperledger.fabric.sdk.{ChaincodeCollectionConfiguration, ChaincodeEndorsementPolicy}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -32,37 +30,37 @@ import scala.collection.JavaConverters._
 object Util {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
-//    //=========================================================================
-//    //TODO: this is adopted "copy paste" from SDK tests, quite ugly inefficient code, need to rewrite.
-//    def generateTarGzInputStream(folderPath: File): InputStream = {
-//        val sourceDirectory = folderPath
-//        val bos = new ByteArrayOutputStream(500000)
-//        val sourcePath = sourceDirectory.getAbsolutePath
-//        val archiveOutputStream = new TarArchiveOutputStream(new GzipCompressorOutputStream(new BufferedOutputStream(bos)))
-//        archiveOutputStream.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU)
-//        try {
-//            val childrenFiles = org.apache.commons.io.FileUtils.listFiles(sourceDirectory, null, true)
-//            import scala.collection.JavaConverters._
-//            for (childFile <- childrenFiles.asScala) {
-//                val childPath = childFile.getAbsolutePath
-//                var relativePath = childPath.substring(sourcePath.length + 1, childPath.length)
-//                relativePath = Utils.combinePaths("src", relativePath)
-//                relativePath = FilenameUtils.separatorsToUnix(relativePath)
-//                val archiveEntry = new TarArchiveEntry(childFile, relativePath)
-//                val fileInputStream = new FileInputStream(childFile)
-//                try {
-//                    archiveOutputStream.putArchiveEntry(archiveEntry)
-//                    IOUtils.copy(fileInputStream, archiveOutputStream)
-//                } finally {
-//                    fileInputStream.close()
-//                    archiveOutputStream.closeArchiveEntry()
-//                }
-//            }
-//        } finally {
-//            archiveOutputStream.close()
-//        }
-//        new ByteArrayInputStream(bos.toByteArray)
-//    }
+    //    //=========================================================================
+    //    //TODO: this is adopted "copy paste" from SDK tests, quite ugly inefficient code, need to rewrite.
+    //    def generateTarGzInputStream(folderPath: File): InputStream = {
+    //        val sourceDirectory = folderPath
+    //        val bos = new ByteArrayOutputStream(500000)
+    //        val sourcePath = sourceDirectory.getAbsolutePath
+    //        val archiveOutputStream = new TarArchiveOutputStream(new GzipCompressorOutputStream(new BufferedOutputStream(bos)))
+    //        archiveOutputStream.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU)
+    //        try {
+    //            val childrenFiles = org.apache.commons.io.FileUtils.listFiles(sourceDirectory, null, true)
+    //            import scala.collection.JavaConverters._
+    //            for (childFile <- childrenFiles.asScala) {
+    //                val childPath = childFile.getAbsolutePath
+    //                var relativePath = childPath.substring(sourcePath.length + 1, childPath.length)
+    //                relativePath = Utils.combinePaths("src", relativePath)
+    //                relativePath = FilenameUtils.separatorsToUnix(relativePath)
+    //                val archiveEntry = new TarArchiveEntry(childFile, relativePath)
+    //                val fileInputStream = new FileInputStream(childFile)
+    //                try {
+    //                    archiveOutputStream.putArchiveEntry(archiveEntry)
+    //                    IOUtils.copy(fileInputStream, archiveOutputStream)
+    //                } finally {
+    //                    fileInputStream.close()
+    //                    archiveOutputStream.closeArchiveEntry()
+    //                }
+    //            }
+    //        } finally {
+    //            archiveOutputStream.close()
+    //        }
+    //        new ByteArrayInputStream(bos.toByteArray)
+    //    }
 
     //=========================================================================
     def policyAnyOf(members: Iterable[String]): ChaincodeEndorsementPolicy = {
@@ -208,7 +206,7 @@ object Util {
         val body = codec.toJson(request).getBytes(StandardCharsets.UTF_8)
         val entity = new ByteArrayEntity(body, ContentType.APPLICATION_JSON)
         post.setEntity(entity)
-        val response = HttpClients.createDefault().execute(post)
+        val response = httpsClient().execute(post)
         try {
             logger.info(s"Got status from remote: ${response.getStatusLine.toString}")
             val entity = response.getEntity
@@ -219,6 +217,23 @@ object Util {
             response.close()
         }
     }
+
+    //=========================================================================
+    private def httpsClient(): CloseableHttpClient =
+        HttpClients.custom()
+          .setSSLSocketFactory(
+              new SSLConnectionSocketFactory(
+                  SSLContexts.custom()
+                    .loadTrustMaterial(TrustAllStrategy.INSTANCE)
+                    // TODO: .loadKeyMaterial(keyStore, "password".toCharArray())
+                    // TODO: .loadTrustMaterial(trustStore, new TrustSelfSignedStrategy())
+                    .build(),
+                  null,
+                  null,
+                  NoopHostnameVerifier.INSTANCE // TODO
+              )
+          ).build()
+
 }
 
 case class PrivateCollectionConfiguration(

@@ -2,7 +2,9 @@ package org.enterprisedlt.fabric.service.node
 
 import java.io.FileReader
 
-import org.eclipse.jetty.server.Server
+import org.eclipse.jetty.http.HttpVersion
+import org.eclipse.jetty.server._
+import org.eclipse.jetty.util.ssl.SslContextFactory
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
@@ -26,21 +28,19 @@ object ServiceNode extends App {
 
     logger.info("Starting...")
     private val config = loadConfig("/opt/profile/service.json")
-    private val server = new Server(ServiceBindPort)
-    val cryptography = new FileBasedCryptoManager(config,"/opt/profile/crypto")
-    server.setHandler(
-        new RestEndpoint(
-            ServiceBindPort, ServiceExternalAddress, config, cryptography,
-            processManager = new DockerBasedProcessManager(
-                ProfilePath, DockerSocket,
-                InitialName, config
-            ),
-            hostsManager = new HostsManager(
-                "/opt/profile/hosts",
-                config
-            )
+    private val cryptography = new FileBasedCryptoManager(config, "/opt/profile/crypto")
+    private val restEndpoint = new RestEndpoint(
+        ServiceBindPort, ServiceExternalAddress, config, cryptography,
+        processManager = new DockerBasedProcessManager(
+            ProfilePath, DockerSocket,
+            InitialName, config
+        ),
+        hostsManager = new HostsManager(
+            "/opt/profile/hosts",
+            config
         )
     )
+    private val server = createServer(ServiceBindPort, cryptography, restEndpoint)
     setupShutdownHook()
     server.start()
     logger.info("Started.")
@@ -71,6 +71,41 @@ object ServiceNode extends App {
                 logger.info("Shutdown complete.")
             }
         })
+    }
+
+    private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: Handler): Server = {
+        val server = new Server()
+        val connector = createTLSConnector(bindPort, server, cryptography)
+        server.setConnectors(Array(connector))
+        server.setHandler(endpoint)
+        server
+    }
+
+    private def createTLSConnector(bindPort: Int, server: Server, cryptography: CryptoManager): ServerConnector = {
+        val httpConfiguration = new HttpConfiguration()
+        httpConfiguration.setSecureScheme("https")
+        httpConfiguration.setSecurePort(bindPort)
+        //        httpConfiguration.setOutputBufferSize(32768)
+        //
+        val sslContextFactory = new SslContextFactory.Server()
+        val password = "password" // this will live only in our process memory so could be anything
+        val keyStore = cryptography.createServiceTLSKeyStore(password)
+        sslContextFactory.setKeyStore(keyStore)
+        sslContextFactory.setKeyStorePassword(password)
+        //
+        val httpsConfiguration = new HttpConfiguration(httpConfiguration)
+        val src = new SecureRequestCustomizer()
+        //        src.setStsMaxAge(2000)
+        //        src.setStsIncludeSubDomains(true)
+        httpsConfiguration.addCustomizer(src)
+        //
+        val httpsConnector = new ServerConnector(server,
+            new SslConnectionFactory(sslContextFactory, HttpVersion.HTTP_1_1.asString()),
+            new HttpConnectionFactory(httpsConfiguration))
+        httpsConnector.setPort(bindPort)
+        //        https.setIdleTimeout(500000)
+        //
+        httpsConnector
     }
 }
 
