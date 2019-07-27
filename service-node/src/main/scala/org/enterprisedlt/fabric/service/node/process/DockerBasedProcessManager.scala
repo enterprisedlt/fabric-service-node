@@ -104,7 +104,7 @@ class DockerBasedProcessManager(
                     "LOGS_PATH=/var/hyperledger/production/orderer"
                 )
                 .withWorkingDir("/opt/gopath/src/github.com/hyperledger/fabric")
-                .withCmd("/opt/scripts/with-logs.sh orderer")
+                .withCmd(List("/opt/scripts/with-logs.sh", "orderer").asJava)
                 .withExposedPorts(new ExposedPort(osnConfig.port, InternetProtocol.TCP))
                 .withHostConfig(configHost)
                 .withLabels(DefaultLabels)
