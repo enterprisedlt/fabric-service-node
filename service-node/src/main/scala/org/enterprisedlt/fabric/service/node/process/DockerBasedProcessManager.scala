@@ -77,7 +77,7 @@ class DockerBasedProcessManager(
                     new Bind(s"$hostHomePath/crypto/ordererOrganizations/$organizationFullName/orderers/$name.$organizationFullName/msp", new Volume("/var/hyperledger/orderer/msp")),
                     new Bind(s"$hostHomePath/crypto/ordererOrganizations/$organizationFullName/orderers/$name.$organizationFullName/tls", new Volume("/var/hyperledger/orderer/tls")),
                     new Bind(s"$serviceNodeHome/scripts/with-logs.sh", new Volume("/opt/scripts/with-logs.sh")),
-                    new Bind(s"$hostHomePath/data/orderer", new Volume("/var/hyperledger/production/orderer"))
+                    new Bind(s"$hostHomePath/data/orderer/$osnFullName", new Volume("/var/hyperledger/production/orderer"))
                 )
                 .withPortBindings(
                     new PortBinding(new Binding("0.0.0.0", osnConfig.port.toString), new ExposedPort(osnConfig.port, InternetProtocol.TCP))
@@ -142,7 +142,9 @@ class DockerBasedProcessManager(
                     new Bind(s"$hostHomePath/hosts", new Volume("/etc/hosts")),
                     new Bind(s"$hostHomePath/crypto/peerOrganizations/$organizationFullName/peers/$peerFullName/msp", new Volume("/etc/hyperledger/fabric/msp")),
                     new Bind(s"$hostHomePath/crypto/peerOrganizations/$organizationFullName/peers/$peerFullName/tls", new Volume("/etc/hyperledger/fabric/tls")),
-                    new Bind(s"/var/run", new Volume("/host/var/run/"))
+                    new Bind(s"/var/run", new Volume("/host/var/run/")),
+                    new Bind(s"$serviceNodeHome/scripts/with-logs.sh", new Volume("/opt/scripts/with-logs.sh")),
+                    new Bind(s"$hostHomePath/data/peer", new Volume("/var/hyperledger/production/peer"))
                 )
                 .withPortBindings(
                     new PortBinding(new Binding("0.0.0.0", peerConfig.port.toString), new ExposedPort(peerConfig.port, InternetProtocol.TCP))
@@ -169,11 +171,12 @@ class DockerBasedProcessManager(
                         "CORE_CHAINCODE_JAVA_RUNTIME=enterprisedlt/fabric-jar-env",
                         s"CORE_PEER_GOSSIP_BOOTSTRAP=$peerFullName:${peerConfig.port}",
                         s"CORE_PEER_GOSSIP_EXTERNALENDPOINT=$peerFullName:${peerConfig.port}",
-                        s"CORE_PEER_LOCALMSPID=${config.organization.name}"
+                        s"CORE_PEER_LOCALMSPID=${config.organization.name}",
+                        "LOGS_PATH=/var/hyperledger/production/peer"
                     ) ++ couchEnv: _*
                 )
                 .withWorkingDir("/opt/gopath/src/github.com/hyperledger/fabric/peer")
-                .withCmd("peer", "node", "start")
+                .withCmd(List("/opt/scripts/with-logs.sh", "peer", "node", "start").asJava)
                 .withExposedPorts(new ExposedPort(peerConfig.port, InternetProtocol.TCP))
                 .withHostConfig(configHost)
                 .withLabels(DefaultLabels)
@@ -195,6 +198,9 @@ class DockerBasedProcessManager(
             stopAndRemoveContainer(couchDBFullName)
         }
         val configHost = new HostConfig()
+          .withBinds(
+              new Bind(s"$serviceNodeHome/scripts/with-logs.sh", new Volume("/opt/scripts/with-logs.sh")),
+              new Bind(s"$hostHomePath/data/couchdb", new Volume("/opt/couchdb/data"))          )
           .withPortBindings(
               new PortBinding(new Binding("0.0.0.0", port.toString), new ExposedPort(5984, InternetProtocol.TCP))
           )
@@ -206,6 +212,7 @@ class DockerBasedProcessManager(
               "COUCHDB_USER=",
               "COUCHDB_PASSWORD="
           )
+          .withCmd(List("/opt/scripts/with-logs.sh", "/opt/couchdb/bin/couchdb").asJava)
           .withExposedPorts(new ExposedPort(5984, InternetProtocol.TCP))
           .withHostConfig(configHost)
           .withLabels(DefaultLabels)
