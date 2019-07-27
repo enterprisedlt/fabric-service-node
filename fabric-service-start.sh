@@ -20,17 +20,19 @@ serviceID=`docker run -d \
  -e "SERVICE_BIND_PORT=${SERVICE_BIND_PORT}" \
  -e "SERVICE_EXTERNAL_ADDRESS=${SERVICE_EXTERNAL_ADDRESS}" \
  -e "DOCKER_SOCKET=unix:///host/var/run/docker.sock" \
+ -e "LOGS_PATH=/opt/service/data/${INITIAL_NAME}" \
  -p ${SERVICE_BIND_PORT}:${SERVICE_BIND_PORT} \
  --volume=${PROFILE_PATH}/hosts:/etc/hosts \
  --volume=${PROFILE_PATH}:/opt/profile \
- --volume=${SERVICE_NODE_HOME}/service-chain-code:/opt/service-chain-code \
  --volume=${SERVICE_NODE_HOME}:/opt/service \
+ --volume=${SERVICE_NODE_HOME}/service-chain-code:/opt/service-chain-code \
+ --volume=${SERVICE_NODE_HOME}/data/${INITIAL_NAME}:/opt/service/data/${INITIAL_NAME} \
  --volume=/var/run/:/host/var/run/ \
  --name $INITIAL_NAME \
-openjdk:8-jre java -jar /opt/service/service-node/build/libs/service-node.jar`
+openjdk:8-jre /opt/service/with-logs.sh java -jar /opt/service/service-node/build/libs/service-node.jar`
 echo "Service ID: ${serviceID}"
 
 # await service node to start up
-grep -m 1 "ServiceNode\$ - Started" <(docker logs -f ${serviceID} 2>&1)
+grep -m 1 "ServiceNode\$ - Started" <( tail -f data/$INITIAL_NAME/stdout.log)
 
 echo "======================================================================"
