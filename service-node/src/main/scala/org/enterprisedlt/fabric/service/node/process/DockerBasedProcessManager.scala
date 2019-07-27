@@ -210,7 +210,8 @@ class DockerBasedProcessManager(
           .withName(couchDBFullName)
           .withEnv(
               "COUCHDB_USER=",
-              "COUCHDB_PASSWORD="
+              "COUCHDB_PASSWORD=",
+              "LOGS_PATH=/opt/couchdb/data"
           )
           .withCmd(List("/opt/scripts/with-logs.sh", "/opt/couchdb/bin/couchdb").asJava)
           .withExposedPorts(new ExposedPort(5984, InternetProtocol.TCP))
