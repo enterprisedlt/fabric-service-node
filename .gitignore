@@ -14,5 +14,3 @@ crypto
 
 #
 *.tgz
-
-!data

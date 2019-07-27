@@ -32,6 +32,6 @@ openjdk:8-jre /opt/service/with-logs.sh java -jar /opt/service/service-node/buil
 echo "Service ID: ${serviceID}"
 
 # await service node to start up
-grep -m 1 "ServiceNode\$ - Started" <( tail -f $PROFILE_PATH/data/$INITIAL_NAME/stdout.log)
+grep -m 1 "ServiceNode\$ - Started" <( tail -f ${PROFILE_PATH}/data/${INITIAL_NAME}/stdout.log)
 
 echo "======================================================================"
