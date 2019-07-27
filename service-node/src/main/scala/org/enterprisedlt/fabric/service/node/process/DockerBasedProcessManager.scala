@@ -22,6 +22,7 @@ import scala.collection.JavaConverters._
   */
 class DockerBasedProcessManager(
     hostHomePath: String,
+    serviceNodeHome: String,
     dockerSocket: String,
     selfContainerName: String,
     config: ServiceConfig,
@@ -74,7 +75,9 @@ class DockerBasedProcessManager(
                     new Bind(s"$hostHomePath/hosts", new Volume("/etc/hosts")),
                     new Bind(s"$hostHomePath/artifacts/genesis.block", new Volume("/var/hyperledger/orderer/orderer.genesis.block")),
                     new Bind(s"$hostHomePath/crypto/ordererOrganizations/$organizationFullName/orderers/$name.$organizationFullName/msp", new Volume("/var/hyperledger/orderer/msp")),
-                    new Bind(s"$hostHomePath/crypto/ordererOrganizations/$organizationFullName/orderers/$name.$organizationFullName/tls", new Volume("/var/hyperledger/orderer/tls"))
+                    new Bind(s"$hostHomePath/crypto/ordererOrganizations/$organizationFullName/orderers/$name.$organizationFullName/tls", new Volume("/var/hyperledger/orderer/tls")),
+                    new Bind(s"$serviceNodeHome/scripts/with-logs.sh", new Volume("/opt/scripts/with-logs.sh")),
+                    new Bind(s"$hostHomePath/data/orderer", new Volume("/var/hyperledger/production/orderer"))
                 )
                 .withPortBindings(
                     new PortBinding(new Binding("0.0.0.0", osnConfig.port.toString), new ExposedPort(osnConfig.port, InternetProtocol.TCP))
@@ -97,10 +100,11 @@ class DockerBasedProcessManager(
                     "ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]",
                     "ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt",
                     "ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key",
-                    "ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]"
+                    "ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]",
+                    "LOGS_PATH=/var/hyperledger/production/orderer"
                 )
                 .withWorkingDir("/opt/gopath/src/github.com/hyperledger/fabric")
-                .withCmd("orderer")
+                .withCmd("/opt/scripts/with-logs.sh orderer")
                 .withExposedPorts(new ExposedPort(osnConfig.port, InternetProtocol.TCP))
                 .withHostConfig(configHost)
                 .withLabels(DefaultLabels)

@@ -20,6 +20,7 @@ object ServiceNode extends App {
     private val ProfilePath = Option(Environment.get("PROFILE_PATH")).getOrElse(throw new Exception("Mandatory environment variable missing PROFILE_PATH!"))
     private val DockerSocket = Option(Environment.get("DOCKER_SOCKET")).getOrElse(throw new Exception("Mandatory environment variable missing DOCKER_SOCKET!"))
     private val InitialName = Option(Environment.get("INITIAL_NAME")).getOrElse(throw new Exception("Mandatory environment variable missing INITIAL_NAME!"))
+    private val ServiceNodeHome = Option(Environment.get("SERVICE_NODE_HOME")).getOrElse(throw new Exception("Mandatory environment variable missing SERVICE_NODE_HOME!"))
 
     Util.setupLogging(LogLevel)
     private val logger = LoggerFactory.getLogger(this.getClass)
@@ -31,10 +32,10 @@ object ServiceNode extends App {
         new RestEndpoint(
             ServiceBindPort, ServiceExternalAddress, config,
             cryptoManager = new FileBasedCryptoManager(
-                config,"/opt/profile/crypto"
+                config, "/opt/profile/crypto"
             ),
             processManager = new DockerBasedProcessManager(
-                ProfilePath, DockerSocket,
+                ProfilePath, ServiceNodeHome, DockerSocket,
                 InitialName, config
             ),
             hostsManager = new HostsManager(

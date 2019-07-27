@@ -17,6 +17,7 @@ serviceID=`docker run -d \
  -e "INITIAL_NAME=${INITIAL_NAME}" \
  -e "PROFILE_PATH=${PROFILE_PATH}" \
  -e "SERVICE_BIND_PORT=${SERVICE_BIND_PORT}" \
+  -e "SERVICE_NODE_HOME=${SERVICE_NODE_HOME}" \
  -e "SERVICE_EXTERNAL_ADDRESS=${SERVICE_EXTERNAL_ADDRESS}" \
  -e "DOCKER_SOCKET=unix:///host/var/run/docker.sock" \
  -e "LOGS_PATH=/opt/service/data/${INITIAL_NAME}" \
