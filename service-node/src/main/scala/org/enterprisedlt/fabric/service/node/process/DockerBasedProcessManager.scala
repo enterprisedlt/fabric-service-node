@@ -231,11 +231,11 @@ class DockerBasedProcessManager(
         val osnLog = new BufferedReader(new InputStreamReader(Tail.follow(new File(fileLogOsnPath))))
         @tailrec
         def readLine: Any = {
-            val l = osnLog.readLine
-            if (!l.contains("Raft leader changed")) {
+            val line = osnLog.readLine
+            if (!line.contains("Raft leader changed")) {
                 readLine
             }
-            else l
+            else line
         }
         logger.info(s"$osnFullName:\n$readLine")
     }
