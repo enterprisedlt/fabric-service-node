@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node.process
 
-import java.io.Closeable
+import java.io.{BufferedReader, Closeable, File, InputStreamReader}
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicReference
@@ -11,10 +11,11 @@ import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.model.Ports.Binding
 import com.github.dockerjava.api.model._
 import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientBuilder}
-import org.enterprisedlt.fabric.service.node.FabricProcessManager
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
+import org.enterprisedlt.fabric.service.node.{FabricProcessManager, Tail}
 import org.slf4j.LoggerFactory
 
+import scala.annotation.tailrec
 import scala.collection.JavaConverters._
 
 /**
@@ -200,7 +201,7 @@ class DockerBasedProcessManager(
         val configHost = new HostConfig()
           .withBinds(
               new Bind(s"$serviceNodeHome/scripts/with-logs.sh", new Volume("/opt/scripts/with-logs.sh")),
-              new Bind(s"$hostHomePath/data/couchdb", new Volume("/opt/couchdb/data"))          )
+              new Bind(s"$hostHomePath/data/couchdb", new Volume("/opt/couchdb/data")))
           .withPortBindings(
               new PortBinding(new Binding("0.0.0.0", port.toString), new ExposedPort(5984, InternetProtocol.TCP))
           )
@@ -226,20 +227,17 @@ class DockerBasedProcessManager(
     override def osnAwaitJoinedToRaft(name: String): Unit = {
         val osnFullName = s"$name.$organizationFullName"
         logger.info(s"Awaiting for $osnFullName to join RAFT cluster ...")
-        val findResult = docker.logContainerCmd(osnFullName)
-          .withStdOut(true)
-          .withStdErr(true)
-          .withTail(LogWindow)
-          .withFollowStream(true)
-          .exec(new FindInLog("Raft leader changed"))
-        findResult.get() match {
-            case Some(logLine) =>
-                logger.info(s"$osnFullName:\n$logLine")
-            case _ =>
-                val msg = s"$osnFullName is failed to join RAFT cluster"
-                logger.error(msg)
-                throw new Exception(msg)
+        val fileLogOsnPath = s"/opt/profile/data/orderer/$osnFullName/stderr.log"
+        val osnLog = new BufferedReader(new InputStreamReader(Tail.follow(new File(fileLogOsnPath))))
+        @tailrec
+        def readLine: Any = {
+            val l = osnLog.readLine
+            if (!l.contains("Raft leader changed")) {
+                readLine
+            }
+            else l
         }
+        logger.info(s"$osnFullName:\n$readLine")
     }
 
     override def osnAwaitJoinedToChannel(name: String, channelName: String): Unit = {
