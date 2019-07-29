@@ -10,4 +10,5 @@ import org.hyperledger.fabric.sdk.User
 trait CryptoManager {
     def loadAdmin: User
     def createServiceTLSKeyStore(password: String): KeyStore
+    def createServiceTrustStore(password: String): KeyStore
 }

@@ -72,6 +72,17 @@ class FileBasedCryptoManager(
     }
 
     //=========================================================================
+    override def createServiceTrustStore(password: String): KeyStore = {
+        val keystore = KeyStore.getInstance("JKS")
+        keystore.load(null)
+        //
+        val path = "/opt/profile/crypto/"
+        keystore.setCertificateEntry("ca", loadCertificateFromFile(s"$path/ca/ca.crt")) // accept Fabric users
+        keystore.setCertificateEntry("service-ca", loadCertificateFromFile(s"$path/service/ca/server.crt")) // accept Service users
+        keystore
+    }
+
+    //=========================================================================
     private def loadPrivateKeyFromFile(fileName: String): PrivateKey = {
         val pemReader = new FileReader(fileName)
         val pemParser = new PEMParser(pemReader)
@@ -110,5 +121,4 @@ class FileBasedCryptoManager(
             pemReader.close()
         }
     }
-
 }

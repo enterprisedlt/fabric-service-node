@@ -125,6 +125,16 @@ object FabricCryptoMaterial {
         mkDir(s"$outPath/tls")
         writeToPemFile(s"$outPath/tls/server.crt", tlsCert.certificate)
         writeToPemFile(s"$outPath/tls/server.key", tlsCert.key)
+
+        val serviceCACert = FabricCryptoMaterial.generateCACert(
+            organization = s"service.$organizationFullName",
+            location = orgConfig.location,
+            state = orgConfig.state,
+            country = orgConfig.country
+        )
+        mkDir(s"$outPath/ca")
+        writeToPemFile(s"$outPath/ca/server.crt", serviceCACert.certificate)
+        writeToPemFile(s"$outPath/ca/server.key", serviceCACert.key)
     }
 
     private def writeToPemFile(fileName: String, o: AnyRef): Unit = {
@@ -149,6 +159,7 @@ object FabricCryptoMaterial {
                 state = Option(state),
                 country = Option(country)
             ),
+            //TODO: should be from configuration
             Date.from(LocalDate.of(2000, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
             Date.from(LocalDate.of(2035, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
             Array(
@@ -177,6 +188,7 @@ object FabricCryptoMaterial {
                 state = Option(state),
                 country = Option(country)
             ),
+            //TODO: should be from configuration
             Date.from(LocalDate.of(2000, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
             Date.from(LocalDate.of(2035, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
             Array(
@@ -206,6 +218,7 @@ object FabricCryptoMaterial {
                 state = Option(state),
                 country = Option(country),
             ),
+            //TODO: should be from configuration
             Date.from(LocalDate.of(2000, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
             Date.from(LocalDate.of(2035, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
             Array(
@@ -233,6 +246,7 @@ object FabricCryptoMaterial {
                 state = Option(state),
                 country = Option(country)
             ),
+            //TODO: should be from configuration
             Date.from(LocalDate.of(2000, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
             Date.from(LocalDate.of(2035, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
             Array(
@@ -258,6 +272,7 @@ object FabricCryptoMaterial {
                 state = Option(state),
                 country = Option(country)
             ),
+            //TODO: should be from configuration
             Date.from(LocalDate.of(2000, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
             Date.from(LocalDate.of(2035, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
             Array(

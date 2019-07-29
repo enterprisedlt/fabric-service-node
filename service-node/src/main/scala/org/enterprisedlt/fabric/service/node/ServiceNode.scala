@@ -92,6 +92,11 @@ object ServiceNode extends App {
         val keyStore = cryptography.createServiceTLSKeyStore(password)
         sslContextFactory.setKeyStore(keyStore)
         sslContextFactory.setKeyStorePassword(password)
+
+        val trustStore = cryptography.createServiceTrustStore(password)
+        sslContextFactory.setTrustStore(trustStore)
+        sslContextFactory.setTrustStorePassword(password)
+        sslContextFactory.setNeedClientAuth(true)
         //
         val httpsConfiguration = new HttpConfiguration(httpConfiguration)
         val src = new SecureRequestCustomizer()

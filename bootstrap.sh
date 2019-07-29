@@ -15,7 +15,13 @@ fi
 echo "Bootstrapping organization ..."
 
 SERVICE_URL="localhost:${SERVICE_BIND_PORT}"
-curl -k --silent --show-error --request GET https://${SERVICE_URL}/bootstrap
+
+curl -k --silent --show-error \
+--request GET \
+--key ${PROFILE_PATH}/crypto/users/admin/admin.key \
+--cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
+https://${SERVICE_URL}/bootstrap
+
 if [[ "$?" -ne 0 ]]; then
   echo "Failed to bootstrap!"
   exit 1
