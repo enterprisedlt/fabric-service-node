@@ -39,7 +39,8 @@ case class QueryChainCodeRequest(
 )
 
 case class Invite(
-    address: String
+    address: String,
+    key: String
 )
 
 case class JoinRequest(

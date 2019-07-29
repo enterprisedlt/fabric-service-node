@@ -2,6 +2,8 @@ package org.enterprisedlt.fabric.service.node
 
 import java.io._
 import java.nio.charset.StandardCharsets
+import java.security.KeyStore
+import java.util.Base64
 
 import com.google.gson.{Gson, GsonBuilder}
 import com.google.protobuf.{ByteString, MessageLite}
@@ -200,13 +202,31 @@ object Util {
     }
 
     //=========================================================================
-    def executePostRequest[T](url: String, request: AnyRef, responseClass: Class[T]): T = {
+    def keyStoreToBase64(keyStore: KeyStore, password: String): String = {
+        val buffer = new ByteArrayOutputStream(1536) // approx. estimated size is 1.5 Kb
+        keyStore.store(buffer, password.toCharArray)
+        Base64.getEncoder.encodeToString(buffer.toByteArray)
+    }
+
+    //=========================================================================
+    def keyStoreFromBase64(encoded: String, password: String): KeyStore = {
+        val decoded = Base64.getDecoder.decode(encoded)
+        val keystore = KeyStore.getInstance("pkcs12")
+        keystore.load(new ByteArrayInputStream(decoded), password.toCharArray)
+        keystore
+    }
+
+    //=========================================================================
+    def mkDirs(path: String): Boolean = new File(path).mkdirs()
+
+    //=========================================================================
+    def executePostRequest[T](url: String, key: KeyStore, password: String, request: AnyRef, responseClass: Class[T]): T = {
         logger.info(s"Executing request to $url ...")
         val post = new HttpPost(url)
         val body = codec.toJson(request).getBytes(StandardCharsets.UTF_8)
         val entity = new ByteArrayEntity(body, ContentType.APPLICATION_JSON)
         post.setEntity(entity)
-        val response = httpsClient().execute(post)
+        val response = httpsClient(key, password).execute(post)
         try {
             logger.info(s"Got status from remote: ${response.getStatusLine.toString}")
             val entity = response.getEntity
@@ -219,13 +239,13 @@ object Util {
     }
 
     //=========================================================================
-    private def httpsClient(): CloseableHttpClient =
+    private def httpsClient(keyStore: KeyStore, password: String): CloseableHttpClient =
         HttpClients.custom()
           .setSSLSocketFactory(
               new SSLConnectionSocketFactory(
                   SSLContexts.custom()
                     .loadTrustMaterial(TrustAllStrategy.INSTANCE)
-                    // TODO: .loadKeyMaterial(keyStore, "password".toCharArray())
+                    .loadKeyMaterial(keyStore, password.toCharArray)
                     // TODO: .loadTrustMaterial(trustStore, new TrustSelfSignedStrategy())
                     .build(),
                   null,

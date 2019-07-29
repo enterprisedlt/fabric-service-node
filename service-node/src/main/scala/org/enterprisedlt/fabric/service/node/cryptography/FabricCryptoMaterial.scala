@@ -5,6 +5,7 @@ import java.time.{LocalDate, ZoneOffset}
 import java.util.Date
 
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter
+import org.enterprisedlt.fabric.service.node.Util
 import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
 
 /**
@@ -21,7 +22,7 @@ object FabricCryptoMaterial {
             country = orgConfig.country
         )
         val caDir = s"$path/ca"
-        mkDir(caDir)
+        Util.mkDirs(caDir)
         writeToPemFile(s"$caDir/ca.crt", caCert.certificate)
         writeToPemFile(s"$caDir/ca.key", caCert.key)
 
@@ -33,7 +34,7 @@ object FabricCryptoMaterial {
             country = orgConfig.country
         )
         val tlscaDir = s"$path/tlsca"
-        mkDir(tlscaDir)
+        Util.mkDirs(tlscaDir)
         writeToPemFile(s"$tlscaDir/tlsca.crt", tlscaCert.certificate)
         writeToPemFile(s"$tlscaDir/tlsca.key", tlscaCert.key)
 
@@ -46,7 +47,7 @@ object FabricCryptoMaterial {
             caCert
         )
         val adminDir = s"$path/users/admin/"
-        mkDir(adminDir)
+        Util.mkDirs(adminDir)
         writeToPemFile(s"$adminDir/admin.crt", adminCert.certificate)
         writeToPemFile(s"$adminDir/admin.key", adminCert.key)
 
@@ -67,13 +68,13 @@ object FabricCryptoMaterial {
         adminCert: CertAndKey
     ): Unit = {
         val outPath = s"$path/${component.group}/${component.name}.$orgFullName"
-        mkDir(s"$outPath/msp/admincerts")
+        Util.mkDirs(s"$outPath/msp/admincerts")
         writeToPemFile(s"$outPath/msp/admincerts/Admin@$orgFullName-cert.pem", adminCert.certificate)
 
-        mkDir(s"$outPath/msp/cacerts")
+        Util.mkDirs(s"$outPath/msp/cacerts")
         writeToPemFile(s"$outPath/msp/cacerts/ca.$orgFullName-cert.pem", caCert.certificate)
 
-        mkDir(s"$outPath/msp/tlscacerts")
+        Util.mkDirs(s"$outPath/msp/tlscacerts")
         writeToPemFile(s"$outPath/msp/tlscacerts/tlsca.$orgFullName-cert.pem", tlscaCert.certificate)
 
         val theCert = FabricCryptoMaterial.generateComponentCert(
@@ -85,10 +86,10 @@ object FabricCryptoMaterial {
             country = orgConfig.country,
             caCert
         )
-        mkDir(s"$outPath/msp/keystore")
+        Util.mkDirs(s"$outPath/msp/keystore")
         writeToPemFile(s"$outPath/msp/keystore/${component}_sk", theCert.key)
 
-        mkDir(s"$outPath/msp/signcerts")
+        Util.mkDirs(s"$outPath/msp/signcerts")
         writeToPemFile(s"$outPath/msp/signcerts/$component.$orgFullName-cert.pem", theCert.certificate)
 
         val tlsCert = FabricCryptoMaterial.generateComponentTlsCert(
@@ -99,7 +100,7 @@ object FabricCryptoMaterial {
             country = orgConfig.country,
             tlscaCert
         )
-        mkDir(s"$outPath/tls")
+        Util.mkDirs(s"$outPath/tls")
         writeToPemFile(s"$outPath/tls/ca.crt", tlscaCert.certificate)
         writeToPemFile(s"$outPath/tls/server.crt", tlsCert.certificate)
         writeToPemFile(s"$outPath/tls/server.key", tlsCert.key)
@@ -122,7 +123,7 @@ object FabricCryptoMaterial {
             country = orgConfig.country,
             tlscaCert
         )
-        mkDir(s"$outPath/tls")
+        Util.mkDirs(s"$outPath/tls")
         writeToPemFile(s"$outPath/tls/server.crt", tlsCert.certificate)
         writeToPemFile(s"$outPath/tls/server.key", tlsCert.key)
 
@@ -132,18 +133,16 @@ object FabricCryptoMaterial {
             state = orgConfig.state,
             country = orgConfig.country
         )
-        mkDir(s"$outPath/ca")
+        Util.mkDirs(s"$outPath/ca")
         writeToPemFile(s"$outPath/ca/server.crt", serviceCACert.certificate)
         writeToPemFile(s"$outPath/ca/server.key", serviceCACert.key)
     }
 
-    private def writeToPemFile(fileName: String, o: AnyRef): Unit = {
+    def writeToPemFile(fileName: String, o: AnyRef): Unit = {
         val writer = new JcaPEMWriter(new FileWriter(fileName))
         writer.writeObject(o)
         writer.close()
     }
-
-    private def mkDir(path: String): Boolean = new File(path).mkdirs()
 
     private def generateCACert(
         organization: String,
@@ -213,6 +212,33 @@ object FabricCryptoMaterial {
         CryptoUtil.createSignedCert(
             OrgMeta(
                 name = s"Admin@$organization",
+                organizationUnit = Option("client"),
+                location = Option(location),
+                state = Option(state),
+                country = Option(country),
+            ),
+            //TODO: should be from configuration
+            Date.from(LocalDate.of(2000, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
+            Date.from(LocalDate.of(2035, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
+            Array(
+                CertNotForCA,
+                UseForDigitalSignature
+            ),
+            signCert
+        )
+    }
+
+    def generateUserCert(
+        userName: String, 
+        organization: String,
+        location: String,
+        state: String,
+        country: String,
+        signCert: CertAndKey
+    ): CertAndKey = {
+        CryptoUtil.createSignedCert(
+            OrgMeta(
+                name = s"$userName@$organization",
                 organizationUnit = Option("client"),
                 location = Option(location),
                 state = Option(state),

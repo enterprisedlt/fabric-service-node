@@ -15,7 +15,12 @@ fi
 echo "Joining organization to network ..."
 
 SERVICE_URL="localhost:${SERVICE_BIND_PORT}"
-curl -k --silent --show-error --request POST --data-binary "@$2"  https://${SERVICE_URL}/request-join
+curl -k --silent --show-error \
+--key ${PROFILE_PATH}/crypto/users/admin/admin.key \
+--cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
+--request POST \
+--data-binary "@$2"  https://${SERVICE_URL}/request-join
+
 if [[ "$?" -ne 0 ]]; then
   echo "Failed to join network!"
   exit 1

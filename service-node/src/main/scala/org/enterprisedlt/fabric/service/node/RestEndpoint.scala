@@ -84,7 +84,13 @@ class RestEndpoint(
                         val address = externalAddress
                           .map(ea => s"${ea.host}:${ea.port}")
                           .getOrElse(s"service.${config.organization.name}.${config.organization.domain}:$bindPort")
-                        val invite = Invite(address)
+                        //TODO: password should be taken from request
+                        val password = "join me"
+                        val key = cryptoManager.createServiceUserKeyStore(s"j_${System.currentTimeMillis()}", password)
+                        val invite = Invite(
+                            address,
+                            Util.keyStoreToBase64(key, password)
+                        )
                         out.println(Util.codec.toJson(invite))
                         out.flush()
                         response.setStatus(HttpServletResponse.SC_OK)

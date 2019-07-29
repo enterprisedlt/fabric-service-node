@@ -50,7 +50,9 @@ object Join {
 
         //
         logger.info(s"[ $organizationFullName ] - Sending JoinRequest to ${invite.address} ...")
-        val joinResponse = Util.executePostRequest(s"https://${invite.address}/join-network", joinRequest, classOf[JoinResponse])
+        val password = "join me" // TODO: password should be taken from request
+        val key = Util.keyStoreFromBase64(invite.key, password)
+        val joinResponse = Util.executePostRequest(s"https://${invite.address}/join-network", key, password, joinRequest, classOf[JoinResponse])
 
         joinResponse.knownOrganizations.foreach(hostsManager.addOrganization)
 

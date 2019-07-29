@@ -12,8 +12,9 @@ import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
-import org.enterprisedlt.fabric.service.node.CryptoManager
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
+import org.enterprisedlt.fabric.service.node.cryptography.FabricCryptoMaterial.writeToPemFile
+import org.enterprisedlt.fabric.service.node.{CryptoManager, Util}
 import org.hyperledger.fabric.sdk.User
 import org.hyperledger.fabric.sdk.identity.X509Enrollment
 import org.slf4j.LoggerFactory
@@ -40,31 +41,21 @@ class FileBasedCryptoManager(
     )
     logger.info(s"Generated crypto for $orgFullName.")
 
-    //=========================================================================
-    // Methods
-    //=========================================================================
 
+    //=========================================================================
     override def loadAdmin: User =
         loadUser(
-            "Admin",
+            "admin",
             config.organization.name,
-            s"/opt/profile/crypto/users/admin"
+            s"$rootDir/users/admin"
         )
-
-    //=========================================================================
-    private def loadUser(userName: String, mspId: String, mspPath: String): User = {
-        val signedCert = readPEMFile(s"$mspPath/$userName.crt")
-        val privateKey = loadPrivateKeyFromFile(s"$mspPath/$userName.key")
-        val enrollment = new X509Enrollment(privateKey, signedCert)
-        FabricUserImpl(userName, Collections.emptySet(), "", "", enrollment, mspId)
-    }
 
     //=========================================================================
     override def createServiceTLSKeyStore(password: String): KeyStore = {
         val keystore = KeyStore.getInstance("JKS")
         keystore.load(null)
         //
-        val path = "/opt/profile/crypto/service/tls"
+        val path = s"$rootDir/service/tls"
         val key = loadPrivateKeyFromFile(s"$path/server.key")
         val cert = loadCertificateFromFile(s"$path/server.crt")
         keystore.setKeyEntry("key", key, password.toCharArray, Array(cert))
@@ -75,11 +66,60 @@ class FileBasedCryptoManager(
     override def createServiceTrustStore(password: String): KeyStore = {
         val keystore = KeyStore.getInstance("JKS")
         keystore.load(null)
-        //
-        val path = "/opt/profile/crypto/"
-        keystore.setCertificateEntry("ca", loadCertificateFromFile(s"$path/ca/ca.crt")) // accept Fabric users
-        keystore.setCertificateEntry("service-ca", loadCertificateFromFile(s"$path/service/ca/server.crt")) // accept Service users
+        keystore.setCertificateEntry("ca", loadCertificateFromFile(s"$rootDir/ca/ca.crt")) // accept Fabric users
+        keystore.setCertificateEntry("service-ca", loadCertificateFromFile(s"$rootDir/service/ca/server.crt")) // accept Service users
         keystore
+    }
+
+    //=========================================================================
+    override def createFabricUser(name: String): Unit = {
+        val orgConfig = config.organization
+        val caCert = loadCertAndKey(s"$rootDir/ca/ca")
+        val theCert = FabricCryptoMaterial.generateUserCert(
+            userName = name,
+            organization = orgFullName,
+            location = orgConfig.location,
+            state = orgConfig.state,
+            country = orgConfig.country,
+            caCert
+        )
+        val userDir = s"$rootDir/users/$name"
+        Util.mkDirs(userDir)
+        writeToPemFile(s"$userDir/$name.crt", theCert.certificate)
+        writeToPemFile(s"$userDir/$name.key", theCert.key)
+    }
+
+    //=========================================================================
+    override def getFabricUserKeyStore(name: String, password: String): KeyStore = {
+        createP12KeyStoreFromPems(s"$rootDir/users/$name/$name", password)
+    }
+
+    //=========================================================================
+    override def createServiceUserKeyStore(name: String, password: String): KeyStore = {
+        val path = s"$rootDir/service"
+        val orgConfig = config.organization
+        val serviceCACert = loadCertAndKey(s"$path/ca/server")
+        val theCert = FabricCryptoMaterial.generateUserCert(
+            userName = name,
+            organization = s"service.$orgFullName",
+            location = orgConfig.location,
+            state = orgConfig.state,
+            country = orgConfig.country,
+            serviceCACert
+        )
+        val userDir = s"$path/users/$name"
+        Util.mkDirs(userDir)
+        writeToPemFile(s"$userDir/$name.crt", theCert.certificate)
+        writeToPemFile(s"$userDir/$name.key", theCert.key)
+        createP12KeyStoreWith(theCert, password)
+    }
+
+    //=========================================================================
+    private def loadUser(userName: String, mspId: String, mspPath: String): User = {
+        val signedCert = readPEMFile(s"$mspPath/$userName.crt")
+        val privateKey = loadPrivateKeyFromFile(s"$mspPath/$userName.key")
+        val enrollment = new X509Enrollment(privateKey, signedCert)
+        FabricUserImpl(userName, Collections.emptySet(), "", "", enrollment, mspId)
     }
 
     //=========================================================================
@@ -120,5 +160,35 @@ class FileBasedCryptoManager(
             pemParser.close()
             pemReader.close()
         }
+    }
+
+    //=========================================================================
+    private def loadCertAndKey(path: String): CertAndKey = {
+        CertAndKey(
+            certificate = loadCertificateFromFile(s"$path.crt"),
+            key = loadPrivateKeyFromFile(s"$path.key")
+        )
+    }
+
+    //=========================================================================
+    private def createP12KeyStoreFromPems(path: String, password: String): KeyStore = {
+        createP12KeyStoreWith(
+            loadCertificateFromFile(s"$path.crt"),
+            loadPrivateKeyFromFile(s"$path.key"),
+            password
+        )
+    }
+
+    //=========================================================================
+    private def createP12KeyStoreWith(cert: CertAndKey, password: String): KeyStore =
+        createP12KeyStoreWith(cert.certificate, cert.key, password)
+
+
+    //=========================================================================
+    private def createP12KeyStoreWith(cert: X509Certificate, key: PrivateKey, password: String): KeyStore = {
+        val keystore = KeyStore.getInstance("pkcs12")
+        keystore.load(null)
+        keystore.setKeyEntry("key", key, password.toCharArray, Array(cert))
+        keystore
     }
 }
