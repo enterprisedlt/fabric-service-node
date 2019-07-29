@@ -3,16 +3,21 @@ package org.enterprisedlt.fabric.service.node
 import java.io._
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
+import java.security.cert.X509Certificate
 import java.util.Base64
 
 import com.google.gson.{Gson, GsonBuilder}
 import com.google.protobuf.{ByteString, MessageLite}
+import javax.security.auth.x500.X500Principal
+import javax.servlet.http.HttpServletRequest
 import org.apache.http.client.methods.HttpPost
 import org.apache.http.conn.ssl.{NoopHostnameVerifier, SSLConnectionSocketFactory, TrustAllStrategy}
 import org.apache.http.entity.{ByteArrayEntity, ContentType}
 import org.apache.http.impl.client.{CloseableHttpClient, HttpClients}
 import org.apache.http.ssl.SSLContexts
 import org.apache.http.util.EntityUtils
+import org.bouncycastle.asn1.x500.X500Name
+import org.bouncycastle.asn1.x500.style.{BCStyle, IETFUtils}
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope, Payload}
 import org.hyperledger.fabric.protos.common.Configtx
@@ -220,6 +225,24 @@ object Util {
     def mkDirs(path: String): Boolean = new File(path).mkdirs()
 
     //=========================================================================
+    def getUserCertificate(request: HttpServletRequest): Option[X509Certificate] = {
+        request.getAttribute("javax.servlet.request.X509Certificate") match {
+            case x: Array[java.security.cert.X509Certificate] if x.length == 1 => x.headOption
+            case _ => None
+        }
+    }
+
+    //=========================================================================
+    def getCNFromCertificate(cert: X509Certificate): Option[String] =
+        Option(cert.getSubjectX500Principal)
+          .map(_.getName(X500Principal.RFC1779))
+          .map(x => new X500Name(x))
+          .flatMap(x => Option(x.getRDNs(BCStyle.CN)))
+          .flatMap(_.headOption)
+          .flatMap(x => Option(x.getFirst).map(_.getValue))
+          .map(IETFUtils.valueToString)
+
+    //=========================================================================
     def executePostRequest[T](url: String, key: KeyStore, password: String, request: AnyRef, responseClass: Class[T]): T = {
         logger.info(s"Executing request to $url ...")
         val post = new HttpPost(url)
@@ -253,7 +276,6 @@ object Util {
                   NoopHostnameVerifier.INSTANCE // TODO
               )
           ).build()
-
 }
 
 case class PrivateCollectionConfiguration(

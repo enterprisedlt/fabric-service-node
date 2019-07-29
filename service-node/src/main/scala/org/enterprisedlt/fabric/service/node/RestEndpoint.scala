@@ -31,8 +31,12 @@ class RestEndpoint(
                 request.getPathInfo match {
                     case "/ping" =>
                         logger.info(s"Ping -> Pong")
-                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                        response.getWriter.println("Pong")
+                        response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                        val user = Util.getUserCertificate(request)
+                          .flatMap(Util.getCNFromCertificate)
+                          .getOrElse("Anon")
+
+                        response.getWriter.println(s"Hello $user")
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/listOrganizations" =>
@@ -86,13 +90,30 @@ class RestEndpoint(
                           .getOrElse(s"service.${config.organization.name}.${config.organization.domain}:$bindPort")
                         //TODO: password should be taken from request
                         val password = "join me"
-                        val key = cryptoManager.createServiceUserKeyStore(s"j_${System.currentTimeMillis()}", password)
+                        val key = cryptoManager.createServiceUserKeyStore(s"join-${System.currentTimeMillis()}", password)
                         val invite = Invite(
                             address,
                             Util.keyStoreToBase64(key, password)
                         )
                         out.println(Util.codec.toJson(invite))
                         out.flush()
+                        response.setStatus(HttpServletResponse.SC_OK)
+
+                    case "/create-user" =>
+                        val userName = request.getParameter("name")
+                        logger.info(s"Creating new user $userName ...")
+                        cryptoManager.createFabricUser(userName)
+                        response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                        response.getWriter.println("OK")
+                        response.setStatus(HttpServletResponse.SC_OK)
+
+                    case "/get-user-key" =>
+                        val userName = request.getParameter("name")
+                        val password = request.getParameter("password")
+                        logger.info(s"Obtaining user key for $userName ...")
+                        val key = cryptoManager.getFabricUserKeyStore(userName, password)
+                        response.setContentType(ContentType.APPLICATION_OCTET_STREAM.getMimeType)
+                        key.store(response.getOutputStream, password.toCharArray)
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     // unknown GET path
