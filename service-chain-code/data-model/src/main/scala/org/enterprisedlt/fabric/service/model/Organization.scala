@@ -1,7 +1,7 @@
 package org.enterprisedlt.fabric.service.model
 
 /**
-  * @author pandelie
+  * @author Andrew Pudovikov
   */
 case class Organization(
     mspId: String,

@@ -7,7 +7,7 @@ import org.enterprisedlt.fabric.contract.ContractResponseConversions._
 import org.enterprisedlt.fabric.service.Main
 
 /**
-  * @author pandelie
+  * @author Andrew Pudovikov
   */
 trait OrganizationOperations {
     self: Main.type =>

@@ -6,7 +6,7 @@ import org.enterprisedlt.fabric.service.Main
 import org.enterprisedlt.fabric.service.model.{CollectionsHelper, Organization, OrganizationsOrdering}
 
 /**
-  * @author pandelie
+  * @author Andrew Pudovikov
   */
 trait ServiceOperations {
     self: Main.type =>

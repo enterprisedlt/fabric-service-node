@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory
 import scala.collection.JavaConverters._
 
 /**
-  * @author pandelie
+  * @author Andrew Pudovikov
   */
 class DockerBasedProcessManager(
     hostHomePath: String,
