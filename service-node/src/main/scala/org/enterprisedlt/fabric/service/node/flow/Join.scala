@@ -79,7 +79,7 @@ object Join {
 
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
-        val admin = cryptoManager.loadAdmin
+        val admin = cryptoManager.loadDefaultAdmin
         val network = new FabricNetworkManager(config, admin)
 
 

@@ -20,7 +20,7 @@ curl -k --silent --show-error \
 --key ${PROFILE_PATH}/crypto/users/admin/admin.key \
 --cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
 --request GET \
---output "$2" https://${SERVICE_URL}/create-invite
+--output "$2" https://${SERVICE_URL}/admin/create-invite
 
 if [[ "$?" -ne 0 ]]; then
   echo "Failed to create invite."

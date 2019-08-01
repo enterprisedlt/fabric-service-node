@@ -20,7 +20,7 @@ curl -k -G --silent --show-error \
 --key ${PROFILE_PATH}/crypto/users/admin/admin.key \
 --cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
 --request GET \
-https://${SERVICE_URL}/create-user \
+https://${SERVICE_URL}/admin/create-user \
 -d name=$2
 
 if [[ "$?" -ne 0 ]]; then

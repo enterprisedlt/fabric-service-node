@@ -5,13 +5,14 @@ import org.hyperledger.fabric.sdk.{Enrollment, User}
 /**
   * @author Alexey Polubelov
   */
-case class FabricUserImpl(
+case class UserAccount(
     name: String,
     role: java.util.Set[String],
     account: String,
     affiliation: String,
     enrollment: Enrollment,
-    mspId: String
+    mspId: String,
+    accountType: AccountType
 ) extends User {
 
     override def getName: String = name
@@ -25,4 +26,11 @@ case class FabricUserImpl(
     override def getEnrollment: Enrollment = enrollment
 
     override def getMspId: String = mspId
+}
+
+sealed trait AccountType
+
+object AccountType{
+    case object Fabric extends AccountType
+    case object Service extends AccountType
 }

@@ -211,7 +211,7 @@ object FabricCryptoMaterial {
     ): CertAndKey = {
         CryptoUtil.createSignedCert(
             OrgMeta(
-                name = s"Admin@$organization",
+                name = s"admin@$organization",
                 organizationUnit = Option("client"),
                 location = Option(location),
                 state = Option(state),

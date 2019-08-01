@@ -19,7 +19,7 @@ curl -k --silent --show-error \
 --key ${PROFILE_PATH}/crypto/users/admin/admin.key \
 --cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
 --request POST \
---data-binary "@$2"  https://${SERVICE_URL}/request-join
+--data-binary "@$2"  https://${SERVICE_URL}/admin/request-join
 
 if [[ "$?" -ne 0 ]]; then
   echo "Failed to join network!"

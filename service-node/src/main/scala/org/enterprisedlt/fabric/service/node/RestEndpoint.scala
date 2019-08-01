@@ -10,19 +10,19 @@ import org.enterprisedlt.fabric.service.model.Message
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
-import org.enterprisedlt.fabric.service.node.model.{Invite, JoinRequest, DeleteMessageRequest, GetMessageRequest}
+import org.enterprisedlt.fabric.service.node.model.{DeleteMessageRequest, GetMessageRequest, Invite, JoinRequest}
 import org.slf4j.LoggerFactory
 
 /**
   * @author Alexey Polubelov
   */
 class RestEndpoint(
-  bindPort: Int,
-  externalAddress: Option[ExternalAddress],
-  config: ServiceConfig,
-  cryptoManager: CryptoManager,
-  processManager: FabricProcessManager,
-  hostsManager: HostsManager
+    bindPort: Int,
+    externalAddress: Option[ExternalAddress],
+    config: ServiceConfig,
+    cryptoManager: CryptoManager,
+    processManager: FabricProcessManager,
+    hostsManager: HostsManager
 ) extends AbstractHandler {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -30,7 +30,7 @@ class RestEndpoint(
         request.getMethod match {
             case "GET" =>
                 request.getPathInfo match {
-                    case "/ping" =>
+                    case "/service/ping" =>
                         logger.info(s"Ping -> Pong")
                         response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
                         val user = Util.getUserCertificate(request)
@@ -40,7 +40,7 @@ class RestEndpoint(
                         response.getWriter.println(s"Hello $user")
                         response.setStatus(HttpServletResponse.SC_OK)
 
-                    case "/list-organizations" =>
+                    case "/service/list-organizations" =>
                         logger.info(s"ListOrganizations ...")
                         val result =
                             networkManager
@@ -54,7 +54,7 @@ class RestEndpoint(
                         response.getWriter.println(result)
                         response.setStatus(HttpServletResponse.SC_OK)
 
-                    case "/collections" =>
+                    case "/service/list-collections" =>
                         logger.info(s"Collections ...")
                         val result =
                             networkManager
@@ -68,7 +68,7 @@ class RestEndpoint(
                         response.getWriter.println(result)
                         response.setStatus(HttpServletResponse.SC_OK)
 
-                    case "/bootstrap" =>
+                    case "/admin/bootstrap" =>
                         logger.info(s"Bootstrapping organization ${config.organization.name}...")
                         val start = System.currentTimeMillis()
                         try {
@@ -82,7 +82,7 @@ class RestEndpoint(
                                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                         }
 
-                    case "/create-invite" =>
+                    case "/admin/create-invite" =>
                         logger.info(s"Creating invite ${config.organization.name}...")
                         response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                         val out = response.getOutputStream
@@ -100,7 +100,7 @@ class RestEndpoint(
                         out.flush()
                         response.setStatus(HttpServletResponse.SC_OK)
 
-                    case "/create-user" =>
+                    case "/admin/create-user" =>
                         val userName = request.getParameter("name")
                         logger.info(s"Creating new user $userName ...")
                         cryptoManager.createFabricUser(userName)
@@ -108,7 +108,7 @@ class RestEndpoint(
                         response.getWriter.println("OK")
                         response.setStatus(HttpServletResponse.SC_OK)
 
-                    case "/get-user-key" =>
+                    case "/admin/get-user-key" =>
                         val userName = request.getParameter("name")
                         val password = request.getParameter("password")
                         logger.info(s"Obtaining user key for $userName ...")
@@ -117,7 +117,7 @@ class RestEndpoint(
                         key.store(response.getOutputStream, password.toCharArray)
                         response.setStatus(HttpServletResponse.SC_OK)
 
-                    case "/list-messages" =>
+                    case "/service/list-messages" =>
                         logger.info(s"Querying messages for ${config.organization.name}...")
                         val result =
                             networkManager
@@ -139,7 +139,7 @@ class RestEndpoint(
                 }
             case "POST" =>
                 request.getPathInfo match {
-                    case "/request-join" =>
+                    case "/admin/request-join" =>
                         logger.info("Requesting to joining network ...")
                         val start = System.currentTimeMillis()
                         val invite = Util.codec.fromJson(request.getReader, classOf[Invite])
@@ -169,7 +169,7 @@ class RestEndpoint(
                                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                         }
 
-                    case "/put-message" =>
+                    case "/service/send-message" =>
                         val message = Util.codec.fromJson(request.getReader, classOf[Message])
                         logger.info(s"Sending message to ${message.to} ...")
                         networkManager
@@ -188,7 +188,7 @@ class RestEndpoint(
                                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                         }
 
-                    case "/get-message" =>
+                    case "/service/get-message" =>
                         val messageRequest = Util.codec.fromJson(request.getReader, classOf[GetMessageRequest])
                         logger.info("Obtaining message ...")
                         val result =
@@ -202,7 +202,7 @@ class RestEndpoint(
                         response.getWriter.println(result)
                         response.setStatus(HttpServletResponse.SC_OK)
 
-                    case "/del-message" =>
+                    case "/service/del-message" =>
                         val delMessageRequest = Util.codec.fromJson(request.getReader, classOf[DeleteMessageRequest])
                         logger.info("Requesting for deleting message ...")
                         val result =

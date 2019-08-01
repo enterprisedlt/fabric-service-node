@@ -8,6 +8,7 @@ import java.security.{KeyStore, PrivateKey}
 import java.util.Collections
 
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
+import org.bouncycastle.asn1.x500.style.BCStyle
 import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
@@ -43,12 +44,41 @@ class FileBasedCryptoManager(
 
 
     //=========================================================================
-    override def loadAdmin: User =
+    override def loadDefaultAdmin: UserAccount =
         loadUser(
             "admin",
             config.organization.name,
-            s"$rootDir/users/admin"
+            s"$rootDir/users/admin",
+            AccountType.Fabric
         )
+
+    //=========================================================================
+    override def findUser(user: X509Certificate): Either[String, UserAccount] = {
+        Util.certificateRDN(user, BCStyle.CN)
+          .toRight("No CN in certificate")
+          .flatMap { cn =>
+              cn.split("@") match {
+                  case Array(name, organization) if organization == orgFullName =>
+                      findUser(s"$rootDir/users", name, AccountType.Fabric)
+
+                  case Array(name, organization) if organization == s"service.$orgFullName" =>
+                      findUser(s"$rootDir/service/users", name, AccountType.Service)
+
+                  case _ => Left(s"Invalid CN: $cn")
+              }
+          }
+    }
+
+    //=========================================================================
+    private def findUser(usersBaseDir: String, userName: String, aType: AccountType): Either[String, UserAccount] = {
+        val userBaseDir = s"$usersBaseDir/$userName"
+        val f = new File(userBaseDir)
+        if (f.exists() && f.isDirectory) {
+            Right(loadUser(userName, config.organization.name, userBaseDir, aType))
+        } else {
+            Left(s"Unknown user $userName")
+        }
+    }
 
     //=========================================================================
     override def createServiceTLSKeyStore(password: String): KeyStore = {
@@ -115,11 +145,11 @@ class FileBasedCryptoManager(
     }
 
     //=========================================================================
-    private def loadUser(userName: String, mspId: String, mspPath: String): User = {
+    private def loadUser(userName: String, mspId: String, mspPath: String, aType: AccountType): UserAccount = {
         val signedCert = readPEMFile(s"$mspPath/$userName.crt")
         val privateKey = loadPrivateKeyFromFile(s"$mspPath/$userName.key")
         val enrollment = new X509Enrollment(privateKey, signedCert)
-        FabricUserImpl(userName, Collections.emptySet(), "", "", enrollment, mspId)
+        UserAccount(userName, Collections.emptySet(), "", "", enrollment, mspId, aType)
     }
 
     //=========================================================================

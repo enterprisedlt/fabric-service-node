@@ -49,7 +49,7 @@ object Bootstrap {
 
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
-        val admin = cryptography.loadAdmin
+        val admin = cryptography.loadDefaultAdmin
         val network = new FabricNetworkManager(config, admin)
 
         //

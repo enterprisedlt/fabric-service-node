@@ -3,9 +3,12 @@ package org.enterprisedlt.fabric.service.node
 import java.io.FileReader
 
 import org.eclipse.jetty.http.HttpVersion
+import org.eclipse.jetty.security.{ConstraintMapping, ConstraintSecurityHandler}
 import org.eclipse.jetty.server._
-import org.eclipse.jetty.server.handler.{ContextHandler, ContextHandlerCollection, ResourceHandler}
+import org.eclipse.jetty.server.handler.{ContextHandler, ContextHandlerCollection, HandlerList, ResourceHandler}
+import org.eclipse.jetty.util.security.Constraint
 import org.eclipse.jetty.util.ssl.SslContextFactory
+import org.enterprisedlt.fabric.service.node.auth.{FabricAuthenticator, Role}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
@@ -78,9 +81,23 @@ object ServiceNode extends App {
 
     private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: Handler, webAppResource: String): Server = {
         val server = new Server()
+
         val connector = createTLSConnector(bindPort, server, cryptography)
         server.setConnectors(Array(connector))
 
+        val security = new ConstraintSecurityHandler
+        security.setConstraintMappings(
+            Array(
+                newConstraint("admin", "/admin/*", Role.Admin),
+                newConstraint("join", "/join-network", Role.Admin, Role.JoinToken),
+                newConstraint("service", "/service/*", Role.Admin, Role.User),
+                newConstraint("webapp", "/webapp", Role.Admin, Role.User),
+
+            )
+        )
+        security.setAuthenticator(new FabricAuthenticator(cryptography))
+
+        //
         val endpointContext = new ContextHandler("/")
         endpointContext.setHandler(endpoint)
 
@@ -94,7 +111,9 @@ object ServiceNode extends App {
         webApp.setWelcomeFiles(Array("index.html"))
         webAppContext.setHandler(webApp)
 
-        server.setHandler(new ContextHandlerCollection(webAppContext, endpointContext))
+        security.setHandler(new ContextHandlerCollection(webAppContext, endpointContext))
+
+        server.setHandler(security)
         server
     }
 
@@ -128,6 +147,17 @@ object ServiceNode extends App {
         //        https.setIdleTimeout(500000)
         //
         httpsConnector
+    }
+
+    private def newConstraint(name: String, path: String, roles: String*): ConstraintMapping = {
+        val c = new Constraint()
+        c.setName(name)
+        c.setAuthenticate(true)
+        c.setRoles(roles.toArray)
+        val result = new ConstraintMapping
+        result.setConstraint(c)
+        result.setPathSpec(path)
+        result
     }
 }
 

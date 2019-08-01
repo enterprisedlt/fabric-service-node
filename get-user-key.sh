@@ -13,7 +13,7 @@ fi
 
 . ${PROFILE_PATH}/settings
 
-echo "Creating invite ..."
+echo "Obtaining user key ..."
 
 SERVICE_URL="localhost:${SERVICE_BIND_PORT}"
 curl -k -G --silent --show-error \
@@ -21,12 +21,12 @@ curl -k -G --silent --show-error \
 --cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
 --request GET \
 --output "$4" \
-https://${SERVICE_URL}/get-user-key \
+https://${SERVICE_URL}/admin/get-user-key \
 -d name=$2 \
 -d password=$3
 
 if [[ "$?" -ne 0 ]]; then
-  echo "Failed to create invite."
+  echo "Failed to obtain user key."
   exit 1
 fi
 
