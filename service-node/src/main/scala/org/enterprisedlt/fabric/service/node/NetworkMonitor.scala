@@ -63,7 +63,7 @@ class NetworkMonitor(
         currentVersion = version
         if (updaterMspId != config.organization.name) {
             logger.info(s"[ $organizationFullName ] - Preparing service chain code ...")
-            val chainCodePkg = new BufferedInputStream(new FileInputStream("/opt/service-chain-code/chain-code.tgz"))
+            val chainCodePkg = new BufferedInputStream(new FileInputStream(ServiceChainCodePath))
 
             logger.info(s"[ $organizationFullName ] - Installing service chain code ...")
             val chainCodeVersion = s"${version.chainCodeVersion}.${version.networkVersion}"

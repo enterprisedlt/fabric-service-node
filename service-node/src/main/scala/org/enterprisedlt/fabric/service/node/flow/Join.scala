@@ -110,7 +110,7 @@ object Join {
 
         //
         logger.info(s"[ $organizationFullName ] - Preparing service chain code ...")
-        val chainCodePkg = new BufferedInputStream(new FileInputStream("/opt/service-chain-code/chain-code.tgz"))
+        val chainCodePkg = new BufferedInputStream(new FileInputStream(ServiceChainCodePath))
 
         logger.info(s"[ $organizationFullName ] - Installing service chain code ...")
         network.installChainCode(ServiceChannelName, ServiceChainCodeName, joinResponse.version, chainCodePkg)
@@ -165,7 +165,7 @@ object Join {
             val nextNetworkVersion = chainCodeVersion.networkVersion.toInt + 1
             val nextVersion = s"${chainCodeVersion.chainCodeVersion}.$nextNetworkVersion"
             logger.info(s"Installing next version of service $nextVersion ...")
-            val chainCodePkg = new BufferedInputStream(new FileInputStream("/opt/service-chain-code/chain-code.tgz"))
+            val chainCodePkg = new BufferedInputStream(new FileInputStream(ServiceChainCodePath))
             network.installChainCode(ServiceChannelName, ServiceChainCodeName, nextVersion, chainCodePkg)
             // update endorsement policy and private collections config
             val existingMspIds = currentOrganizations.map(_.mspId)
