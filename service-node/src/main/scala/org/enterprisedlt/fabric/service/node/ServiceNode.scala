@@ -5,7 +5,6 @@ import java.io.FileReader
 import org.eclipse.jetty.http.HttpVersion
 import org.eclipse.jetty.server._
 import org.eclipse.jetty.server.handler.{ContextHandler, ContextHandlerCollection, ResourceHandler}
-import org.eclipse.jetty.util.resource.Resource
 import org.eclipse.jetty.util.ssl.SslContextFactory
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
@@ -42,9 +41,9 @@ object ServiceNode extends App {
             config
         )
     )
-    private val servingEndpoint = new ResourceHandler()
+    //TODO: make web app optional, based on configuration
+    private val server = createServer(ServiceBindPort, cryptography, restEndpoint, "/opt/profile/webapp")
 
-    private val server = createServer(ServiceBindPort, cryptography, restEndpoint, servingEndpoint)
     setupShutdownHook()
     server.start()
     logger.info("Started.")
@@ -77,22 +76,25 @@ object ServiceNode extends App {
         })
     }
 
-    private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: Handler, serveEndpoint: ResourceHandler): Server = {
+    private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: Handler, webAppResource: String): Server = {
         val server = new Server()
         val connector = createTLSConnector(bindPort, server, cryptography)
         server.setConnectors(Array(connector))
 
-        val endpointsCtxHandler = new ContextHandler("/")
-        endpointsCtxHandler.setHandler(endpoint)
+        val endpointContext = new ContextHandler("/")
+        endpointContext.setHandler(endpoint)
 
-        val servingCtxHandler = new ContextHandler("/webapp")
-        serveEndpoint.setBaseResource(Resource.newResource("/opt/profile/webapp"))
-        serveEndpoint.setDirectoriesListed(true)
-        servingCtxHandler.setHandler(serveEndpoint)
+        // add serving for web app:
+        Util.mkDirs(webAppResource)
+        val webAppContext = new ContextHandler()
+        webAppContext.setContextPath("/webapp")
+        val webApp = new ResourceHandler()
+        webApp.setResourceBase(webAppResource)
+        webApp.setDirectoriesListed(false)
+        webApp.setWelcomeFiles(Array("index.html"))
+        webAppContext.setHandler(webApp)
 
-        val ctxCollection = new ContextHandlerCollection()
-        ctxCollection.setHandlers(Array(servingCtxHandler, endpointsCtxHandler))
-        server.setHandler(ctxCollection)
+        server.setHandler(new ContextHandlerCollection(webAppContext, endpointContext))
         server
     }
 

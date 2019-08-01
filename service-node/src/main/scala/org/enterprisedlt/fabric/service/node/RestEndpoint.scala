@@ -10,7 +10,7 @@ import org.enterprisedlt.fabric.service.model.Message
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
-import org.enterprisedlt.fabric.service.node.model.{Invite, JoinRequest, delMessageRequest, getMessageRequest}
+import org.enterprisedlt.fabric.service.node.model.{Invite, JoinRequest, DeleteMessageRequest, GetMessageRequest}
 import org.slf4j.LoggerFactory
 
 /**
@@ -170,12 +170,12 @@ class RestEndpoint(
                         }
 
                     case "/put-message" =>
-                        val putMessageRequest = Util.codec.fromJson(request.getReader, classOf[Message])
-                        logger.info("Requesting for getting message ...")
+                        val message = Util.codec.fromJson(request.getReader, classOf[Message])
+                        logger.info(s"Sending message to ${message.to} ...")
                         networkManager
                           .toRight("Network is not initialized yet")
                           .flatMap { network =>
-                              network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "putMessage", Util.codec.toJson(putMessageRequest))
+                              network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "putMessage", Util.codec.toJson(message))
                           } match {
                             case Right(answer) =>
                                 answer.get()
@@ -189,13 +189,13 @@ class RestEndpoint(
                         }
 
                     case "/get-message" =>
-                        val getMessageRequest = Util.codec.fromJson(request.getReader, classOf[getMessageRequest])
-                        logger.info("Requesting for getting message ...")
+                        val messageRequest = Util.codec.fromJson(request.getReader, classOf[GetMessageRequest])
+                        logger.info("Obtaining message ...")
                         val result =
                             networkManager
                               .toRight("Network is not initialized yet")
                               .flatMap { network =>
-                                  network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getMessage", getMessageRequest.messageKey, getMessageRequest.sender)
+                                  network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getMessage", messageRequest.messageKey, messageRequest.sender)
                                     .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
                               }.merge
                         response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
@@ -203,7 +203,7 @@ class RestEndpoint(
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/del-message" =>
-                        val delMessageRequest = Util.codec.fromJson(request.getReader, classOf[delMessageRequest])
+                        val delMessageRequest = Util.codec.fromJson(request.getReader, classOf[DeleteMessageRequest])
                         logger.info("Requesting for deleting message ...")
                         val result =
                             networkManager
