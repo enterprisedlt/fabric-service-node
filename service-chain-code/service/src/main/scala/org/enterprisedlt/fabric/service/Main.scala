@@ -5,7 +5,7 @@ import org.enterprisedlt.fabric.service.operations.{ContractInitialize, Organiza
 import org.slf4j.{Logger, LoggerFactory}
 
 /**
-  * @author pandelie
+  * @author Andrew Pudovikov
   */
 object Main extends ContractBase
   with App

@@ -6,7 +6,7 @@ import org.enterprisedlt.fabric.service.Main
 import org.enterprisedlt.fabric.service.model.{Organization, ServiceVersion}
 
 /**
-  * @author pandelie
+  * @author Andrew Pudovikov
   */
 trait ContractInitialize {
     self: Main.type =>

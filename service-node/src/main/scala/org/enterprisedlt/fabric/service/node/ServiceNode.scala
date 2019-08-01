@@ -4,6 +4,8 @@ import java.io.FileReader
 
 import org.eclipse.jetty.http.HttpVersion
 import org.eclipse.jetty.server._
+import org.eclipse.jetty.server.handler.{ContextHandler, ContextHandlerCollection, ResourceHandler}
+import org.eclipse.jetty.util.resource.Resource
 import org.eclipse.jetty.util.ssl.SslContextFactory
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
@@ -12,7 +14,7 @@ import org.slf4j.LoggerFactory
 
 /**
   * @author Alexey Polubelov
-  * @author pandelie
+  * @author Andrew Pudovikov
   */
 object ServiceNode extends App {
     private val Environment = System.getenv()
@@ -40,7 +42,9 @@ object ServiceNode extends App {
             config
         )
     )
-    private val server = createServer(ServiceBindPort, cryptography, restEndpoint)
+    private val servingEndpoint = new ResourceHandler()
+
+    private val server = createServer(ServiceBindPort, cryptography, restEndpoint, servingEndpoint)
     setupShutdownHook()
     server.start()
     logger.info("Started.")
@@ -73,11 +77,22 @@ object ServiceNode extends App {
         })
     }
 
-    private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: Handler): Server = {
+    private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: Handler, serveEndpoint: ResourceHandler): Server = {
         val server = new Server()
         val connector = createTLSConnector(bindPort, server, cryptography)
         server.setConnectors(Array(connector))
-        server.setHandler(endpoint)
+
+        val endpointsCtxHandler = new ContextHandler("/")
+        endpointsCtxHandler.setHandler(endpoint)
+
+        val servingCtxHandler = new ContextHandler("/webapp")
+        serveEndpoint.setBaseResource(Resource.newResource("/opt/profile/webapp"))
+        serveEndpoint.setDirectoriesListed(true)
+        servingCtxHandler.setHandler(serveEndpoint)
+
+        val ctxCollection = new ContextHandlerCollection()
+        ctxCollection.setHandlers(Array(servingCtxHandler, endpointsCtxHandler))
+        server.setHandler(ctxCollection)
         server
     }
 
