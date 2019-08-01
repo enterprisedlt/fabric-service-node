@@ -6,22 +6,23 @@ import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.apache.http.entity.ContentType
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
+import org.enterprisedlt.fabric.service.model.Message
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
-import org.enterprisedlt.fabric.service.node.model.{Invite, JoinRequest}
+import org.enterprisedlt.fabric.service.node.model.{Invite, JoinRequest, delMessageRequest, getMessageRequest}
 import org.slf4j.LoggerFactory
 
 /**
   * @author Alexey Polubelov
   */
 class RestEndpoint(
-    bindPort: Int,
-    externalAddress: Option[ExternalAddress],
-    config: ServiceConfig,
-    cryptoManager: CryptoManager,
-    processManager: FabricProcessManager,
-    hostsManager: HostsManager
+  bindPort: Int,
+  externalAddress: Option[ExternalAddress],
+  config: ServiceConfig,
+  cryptoManager: CryptoManager,
+  processManager: FabricProcessManager,
+  hostsManager: HostsManager
 ) extends AbstractHandler {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -39,7 +40,7 @@ class RestEndpoint(
                         response.getWriter.println(s"Hello $user")
                         response.setStatus(HttpServletResponse.SC_OK)
 
-                    case "/listOrganizations" =>
+                    case "/list-organizations" =>
                         logger.info(s"ListOrganizations ...")
                         val result =
                             networkManager
@@ -116,6 +117,21 @@ class RestEndpoint(
                         key.store(response.getOutputStream, password.toCharArray)
                         response.setStatus(HttpServletResponse.SC_OK)
 
+                    case "/list-messages" =>
+                        logger.info(s"Querying messages for ${config.organization.name}...")
+                        val result =
+                            networkManager
+                              .toRight("Network is not initialized yet")
+                              .flatMap { network =>
+                                  network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listMessages")
+                                    .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
+                              }
+                              .merge
+                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                        response.getWriter.println(result)
+                        response.setStatus(HttpServletResponse.SC_OK)
+
+
                     // unknown GET path
                     case path =>
                         logger.info(s"Unknown path: $path")
@@ -152,6 +168,52 @@ class RestEndpoint(
                                 logger.error(error)
                                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                         }
+
+                    case "/put-message" =>
+                        val putMessageRequest = Util.codec.fromJson(request.getReader, classOf[Message])
+                        logger.info("Requesting for getting message ...")
+                        networkManager
+                          .toRight("Network is not initialized yet")
+                          .flatMap { network =>
+                              network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "putMessage", Util.codec.toJson(putMessageRequest))
+                          } match {
+                            case Right(answer) =>
+                                answer.get()
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                response.getWriter.println(answer)
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(err) =>
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                response.getWriter.println(err)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
+
+                    case "/get-message" =>
+                        val getMessageRequest = Util.codec.fromJson(request.getReader, classOf[getMessageRequest])
+                        logger.info("Requesting for getting message ...")
+                        val result =
+                            networkManager
+                              .toRight("Network is not initialized yet")
+                              .flatMap { network =>
+                                  network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getMessage", getMessageRequest.messageKey, getMessageRequest.sender)
+                                    .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
+                              }.merge
+                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                        response.getWriter.println(result)
+                        response.setStatus(HttpServletResponse.SC_OK)
+
+                    case "/del-message" =>
+                        val delMessageRequest = Util.codec.fromJson(request.getReader, classOf[delMessageRequest])
+                        logger.info("Requesting for deleting message ...")
+                        val result =
+                            networkManager
+                              .toRight("Network is not initialized yet")
+                              .flatMap { network =>
+                                  network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delMessage", delMessageRequest.messageKey, delMessageRequest.sender)
+                              }.merge
+                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                        response.getWriter.println(result)
+                        response.setStatus(HttpServletResponse.SC_OK)
 
                     // unknown POST path
                     case path =>

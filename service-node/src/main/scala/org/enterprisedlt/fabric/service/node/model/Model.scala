@@ -53,3 +53,13 @@ case class JoinResponse(
     version: String,
     knownOrganizations: Array[Organization]
 )
+
+case class getMessageRequest(
+  messageKey: String,
+  sender: String
+)
+
+case class delMessageRequest(
+  messageKey: String,
+  sender: String
+)
