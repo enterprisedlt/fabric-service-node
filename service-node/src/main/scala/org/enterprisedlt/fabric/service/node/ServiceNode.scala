@@ -8,6 +8,8 @@ import org.eclipse.jetty.server._
 import org.eclipse.jetty.server.handler.{ContextHandler, ContextHandlerCollection, HandlerList, ResourceHandler}
 import org.eclipse.jetty.util.security.Constraint
 import org.eclipse.jetty.util.ssl.SslContextFactory
+import org.eclipse.jetty.websocket.server.WebSocketHandler
+import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory
 import org.enterprisedlt.fabric.service.node.auth.{FabricAuthenticator, Role}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
@@ -91,8 +93,8 @@ object ServiceNode extends App {
                 newConstraint("admin", "/admin/*", Role.Admin),
                 newConstraint("join", "/join-network", Role.Admin, Role.JoinToken),
                 newConstraint("service", "/service/*", Role.Admin, Role.User),
-                newConstraint("webapp", "/webapp", Role.Admin, Role.User),
-
+                newConstraint("ws", "/ws/*", Role.Admin, Role.User),
+                newConstraint("webapp", "/webapp", Role.Admin, Role.User)
             )
         )
         security.setAuthenticator(new FabricAuthenticator(cryptography))
@@ -111,7 +113,16 @@ object ServiceNode extends App {
         webApp.setWelcomeFiles(Array("index.html"))
         webAppContext.setHandler(webApp)
 
-        security.setHandler(new ContextHandlerCollection(webAppContext, endpointContext))
+        // websocket section
+        val webServiceContext = new ContextHandler("/ws")
+        val wsHandler = new WebSocketHandler() {
+            def configure(factory: WebSocketServletFactory): Unit = {
+                factory.register(classOf[ServiceWebSocketHandler])
+            }
+        }
+        webServiceContext.setHandler(wsHandler)
+
+        security.setHandler(new ContextHandlerCollection(webAppContext, webServiceContext, endpointContext))
 
         server.setHandler(security)
         server
