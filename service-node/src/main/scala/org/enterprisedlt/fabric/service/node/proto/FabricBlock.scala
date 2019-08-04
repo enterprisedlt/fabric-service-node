@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit
 
 import com.google.protobuf.{ByteString, Timestamp}
 import org.bouncycastle.util.encoders.Hex
-import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
+import org.enterprisedlt.fabric.service.node.configuration.{RaftConfig, ServiceConfig}
 import org.hyperledger.fabric.protos.common.Common._
 import org.hyperledger.fabric.protos.common.Configtx._
 import org.hyperledger.fabric.protos.common.Configuration._
@@ -444,7 +444,14 @@ object FabricBlock {
         )
 
         putCapabilities(orderingGroup, ordering.capabilities)
-
+        val blockConfig = Option(config.etcdraft).getOrElse(
+            RaftConfig(
+                tickInterval = "500ms",
+                electionTick = 10,
+                heartbeatTick = 1,
+                maxInflightBlocks = 5,
+                snapshotIntervalSize = 20971520
+            ))
         orderingGroup.putValues(
             ConfigKey.ConsensusTypeKey,
             ConfigValue.newBuilder()
@@ -455,11 +462,11 @@ object FabricBlock {
                         ConfigMetadata.newBuilder()
                           .setOptions(
                               Options.newBuilder()
-                                .setTickInterval(config.block.tickInterval)
-                                .setElectionTick(config.block.electionTick)
-                                .setHeartbeatTick(config.block.heartbeatTick)
-                                .setMaxInflightBlocks(config.block.maxInflightBlocks)
-                                .setSnapshotIntervalSize(config.block.snapshotIntervalSize)
+                                .setTickInterval(blockConfig.tickInterval)
+                                .setElectionTick(blockConfig.electionTick)
+                                .setHeartbeatTick(blockConfig.heartbeatTick)
+                                .setMaxInflightBlocks(blockConfig.maxInflightBlocks)
+                                .setSnapshotIntervalSize(blockConfig.snapshotIntervalSize)
                           )
                           .addAllConsenters(
                               ordering.orderingNodes.map { osn =>

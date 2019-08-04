@@ -1,7 +1,7 @@
 package org.enterprisedlt.fabric.service.node.flow
 
 import org.enterprisedlt.fabric.service.node.Util
-import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
+import org.enterprisedlt.fabric.service.node.configuration.{BlockConfig, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, SystemChannelName}
 import org.enterprisedlt.fabric.service.node.proto._
 import org.hyperledger.fabric.protos.common.MspPrincipal.MSPRole
@@ -28,30 +28,35 @@ object Genesis {
                     readers = SignedByOneOf(MemberClassifier(orgMspId, MSPRole.MSPRoleType.MEMBER))
                 )
             )
-
+        val blockConfig = Option(config.block).getOrElse(
+            BlockConfig(
+                maxMessageCount = 150,
+                absoluteMaxBytes = 99 * 1024 * 1024,
+                preferredMaxBytes = 512 * 1024,
+                batchTimeOut = "1s"
+            ))
         ChannelDefinition(
             channelName = SystemChannelName,
             capabilities = Set(CapabilityValue.V1_3),
-            ordering =
-              Option(
-                  OrderingServiceDefinition(
-                      maxMessageCount = 150,
-                      absoluteMaxBytes = 99 * 1024 * 1024,
-                      preferredMaxBytes = 512 * 1024,
-                      batchTimeOut = "1s",
-                      capabilities = Set(CapabilityValue.V1_1),
-                      orderingNodes =
-                        config.network.orderingNodes.map { osnConfig =>
-                            OrderingNodeDefinition(
-                                host = s"${osnConfig.name}.$organizationFullName",
-                                port = osnConfig.port,
-                                clientTlsCert = Util.readAsByteString(s"$certificatesPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"),
-                                serverTlsCert = Util.readAsByteString(s"$certificatesPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt")
-                            )
-                        },
-                      organizations = Seq(organizationDefinition)
-                  )
-              ),
+            ordering = Option(
+                OrderingServiceDefinition(
+                    maxMessageCount = blockConfig.maxMessageCount,
+                    absoluteMaxBytes = blockConfig.absoluteMaxBytes,
+                    preferredMaxBytes = blockConfig.preferredMaxBytes,
+                    batchTimeOut = blockConfig.batchTimeOut,
+                    capabilities = Set(CapabilityValue.V1_1),
+                    orderingNodes =
+                      config.network.orderingNodes.map { osnConfig =>
+                          OrderingNodeDefinition(
+                              host = s"${osnConfig.name}.$organizationFullName",
+                              port = osnConfig.port,
+                              clientTlsCert = Util.readAsByteString(s"$certificatesPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"),
+                              serverTlsCert = Util.readAsByteString(s"$certificatesPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt")
+                          )
+                      },
+                    organizations = Seq(organizationDefinition)
+                )
+            ),
             application =
               Option(
                   ApplicationDefinition(
