@@ -455,11 +455,11 @@ object FabricBlock {
                         ConfigMetadata.newBuilder()
                           .setOptions(
                               Options.newBuilder()
-                                .setTickInterval(config.block.tickInterval.getOrElse("500ms"))
-                                .setElectionTick(config.block.electionTick.getOrElse(10))
-                                .setHeartbeatTick(config.block.heartbeatTick.getOrElse(1))
-                                .setMaxInflightBlocks(config.block.maxInflightBlocks.getOrElse(5))
-                                .setSnapshotIntervalSize(config.block.snapshotIntervalSize.getOrElse(20971520))
+                                .setTickInterval(config.block.tickInterval)
+                                .setElectionTick(config.block.electionTick)
+                                .setHeartbeatTick(config.block.heartbeatTick)
+                                .setMaxInflightBlocks(config.block.maxInflightBlocks)
+                                .setSnapshotIntervalSize(config.block.snapshotIntervalSize)
                           )
                           .addAllConsenters(
                               ordering.orderingNodes.map { osn =>

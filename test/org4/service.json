@@ -23,5 +23,12 @@
         }
       }
     ]
+  },
+  "block": {
+    "tickInterval": "500ms",
+    "electionTick": 10,
+    "heartbeatTick": 1,
+    "maxInflightBlocks": 5,
+    "snapshotIntervalSize": 20971520
   }
 }
