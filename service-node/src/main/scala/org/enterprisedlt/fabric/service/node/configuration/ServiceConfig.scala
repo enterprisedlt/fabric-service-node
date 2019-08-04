@@ -5,5 +5,6 @@ package org.enterprisedlt.fabric.service.node.configuration
   */
 case class ServiceConfig(
     organization: OrganizationConfig,
-    network: NetworkConfig
+    network: NetworkConfig,
+    block: BlockConfig
 )

@@ -31,7 +31,7 @@ object Join {
         //
         logger.info(s"[ $organizationFullName ] - Creating JoinRequest ...")
         val genesisDefinition = Genesis.newDefinition("/opt/profile", config)
-        val genesis = FabricBlock.create(genesisDefinition)
+        val genesis = FabricBlock.create(genesisDefinition, config)
         val genesisConfig = Util.extractConfig(genesis)
         val joinRequest = JoinRequest(
             genesisConfig = Base64.getEncoder.encodeToString(genesisConfig.toByteArray),

@@ -1,13 +1,12 @@
 package org.enterprisedlt.fabric.service.node.flow
 
-import java.io.{BufferedInputStream, File, FileInputStream}
+import java.io.{BufferedInputStream, FileInputStream}
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, ServiceVersion}
+import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.proto._
-import org.enterprisedlt.fabric.service.node._
-import org.hyperledger.fabric.protos.common.MspPrincipal.MSPRole
 import org.slf4j.LoggerFactory
 
 /**
@@ -29,7 +28,7 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Creating genesis ...")
         val genesisDefinition = Genesis.newDefinition("/opt/profile", config)
-        val genesis = FabricBlock.create(genesisDefinition)
+        val genesis = FabricBlock.create(genesisDefinition, config)
         Util.storeToFile("/opt/profile/artifacts/genesis.block", genesis)
 
         //
