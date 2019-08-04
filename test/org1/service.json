@@ -38,7 +38,7 @@
     "preferredMaxBytes": 524288,
     "batchTimeOut": "1s"
   },
-  "etcdraft": {
+  "raftSettings": {
     "tickInterval": "500ms",
     "electionTick": 10,
     "heartbeatTick": 1,

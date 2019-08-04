@@ -3,7 +3,7 @@ package org.enterprisedlt.fabric.service.node.configuration
 /**
   * @author Maxim Fedin
   */
-case class RaftConfig (
+case class RaftSettings (
     tickInterval: String,
     electionTick: Int,
     heartbeatTick: Int,
