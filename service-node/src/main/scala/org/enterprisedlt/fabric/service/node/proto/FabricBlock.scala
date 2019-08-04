@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit
 
 import com.google.protobuf.{ByteString, Timestamp}
 import org.bouncycastle.util.encoders.Hex
-import org.enterprisedlt.fabric.service.node.configuration.{RaftSettings, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{RaftConfig, ServiceConfig}
 import org.hyperledger.fabric.protos.common.Common._
 import org.hyperledger.fabric.protos.common.Configtx._
 import org.hyperledger.fabric.protos.common.Configuration._
@@ -444,8 +444,8 @@ object FabricBlock {
         )
 
         putCapabilities(orderingGroup, ordering.capabilities)
-        val blockConfig = Option(config.raftSettings).getOrElse(
-            RaftSettings(
+        val blockConfig = Option(config.raft).getOrElse(
+            RaftConfig(
                 tickInterval = "500ms",
                 electionTick = 10,
                 heartbeatTick = 1,

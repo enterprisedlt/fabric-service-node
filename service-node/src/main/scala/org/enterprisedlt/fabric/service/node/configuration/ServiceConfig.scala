@@ -7,5 +7,5 @@ case class ServiceConfig(
     organization: OrganizationConfig,
     network: NetworkConfig,
     block: BlockConfig,
-    raftSettings: RaftSettings
+    raft: RaftConfig
 )
