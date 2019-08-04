@@ -4,7 +4,10 @@ import java.io._
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 import java.security.cert.X509Certificate
-import java.util.Base64
+import java.time.{Duration, Period}
+import java.time.temporal.ChronoUnit
+import java.util.regex.{Matcher, Pattern}
+import java.util.{Base64, Date}
 
 import com.google.gson.{Gson, GsonBuilder}
 import com.google.protobuf.{ByteString, MessageLite}
@@ -288,6 +291,30 @@ object Util {
                   NoopHostnameVerifier.INSTANCE // TODO
               )
           ).build()
+
+
+    def parsePeriod(date: Date, period: String): Date = {
+        val periodPattern: Pattern = Pattern.compile("([0-9]+)([hdwmy])")
+        val matcher: Matcher = periodPattern.matcher(period.toLowerCase())
+        var currentDate = date.toInstant()
+
+        while (matcher.find) {
+            val num = matcher.group(1).toInt
+            val token = matcher.group(2)
+
+            currentDate = token match {
+
+                case "h" => currentDate.plus(Duration.ofHours(num))
+                case "d" => currentDate.plus(Duration.ofDays(num))
+                case "w" => currentDate.plus(Period.ofWeeks(num))
+                case "m" => currentDate.plus(Period.ofMonths(num))
+                case "y" => currentDate.plus(Period.ofYears(num))
+            }
+        }
+
+        Date.from(currentDate)
+    }
+
 }
 
 case class PrivateCollectionConfiguration(
