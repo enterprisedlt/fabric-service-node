@@ -31,5 +31,6 @@
         }
       }
     ]
-  }
+  },
+  "certificateDuration": "1Y 1M 1W"
 }

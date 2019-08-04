@@ -25,16 +25,16 @@ gradle service-chain-code:shadowJar
 ./fabric-service-start-dev.sh ./test/org2
 ./join.sh ./test/org2 ./test/invite_1.json
 
-# make invite from ORG2
-./create-invite.sh ./test/org2 ./test/invite_2.json
-
-# join ORG3 using invite
-./fabric-service-start-dev.sh ./test/org3
-./join.sh ./test/org3 ./test/invite_2.json
-
-# make invite from ORG3
-./create-invite.sh ./test/org3 ./test/invite_3.json
-
-# join ORG2 using invite
-./fabric-service-start-dev.sh ./test/org4
-./join.sh ./test/org4 ./test/invite_3.json
+## make invite from ORG2
+#./create-invite.sh ./test/org2 ./test/invite_2.json
+#
+## join ORG3 using invite
+#./fabric-service-start-dev.sh ./test/org3
+#./join.sh ./test/org3 ./test/invite_2.json
+#
+## make invite from ORG3
+#./create-invite.sh ./test/org3 ./test/invite_3.json
+#
+## join ORG2 using invite
+#./fabric-service-start-dev.sh ./test/org4
+#./join.sh ./test/org4 ./test/invite_3.json

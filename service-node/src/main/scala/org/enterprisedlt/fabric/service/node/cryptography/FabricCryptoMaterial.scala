@@ -14,6 +14,9 @@ import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
 object FabricCryptoMaterial {
 
     def generateOrgCrypto(orgConfig: OrganizationConfig, orgFullName: String, path: String, components: Array[FabricComponent]): Unit = {
+
+        val notBefore : Date = java.sql.Date.valueOf(LocalDate.now())
+        val notAfter : Date = java.sql.Date.valueOf(LocalDate.now().plusDays(1).plusMonths(1).plusWeeks(1))
         //    CA
         val caCert = FabricCryptoMaterial.generateCACert(
             organization = orgFullName,
@@ -229,7 +232,7 @@ object FabricCryptoMaterial {
     }
 
     def generateUserCert(
-        userName: String, 
+        userName: String,
         organization: String,
         location: String,
         state: String,
