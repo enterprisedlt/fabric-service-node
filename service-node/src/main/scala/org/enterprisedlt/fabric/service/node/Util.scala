@@ -4,8 +4,8 @@ import java.io._
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 import java.security.cert.X509Certificate
-import java.time.{Duration, Period}
-import java.time.temporal.ChronoUnit
+import java.time._
+import java.time.temporal.{ChronoUnit, Temporal}
 import java.util.regex.{Matcher, Pattern}
 import java.util.{Base64, Date}
 
@@ -291,30 +291,13 @@ object Util {
                   NoopHostnameVerifier.INSTANCE // TODO
               )
           ).build()
+//
 
+    def dateNow(): LocalDate = LocalDate.now()
 
-    def parsePeriod(date: Date, period: String): Date = {
-        val periodPattern: Pattern = Pattern.compile("([0-9]+)([hdwmy])")
-        val matcher: Matcher = periodPattern.matcher(period.toLowerCase())
-        var currentDate = date.toInstant()
+    def datePlus(dateNow: LocalDate, p: Period): Date = Date.from(dateNow.plus(p).atStartOfDay(ZoneOffset.UTC).toInstant)
 
-        while (matcher.find) {
-            val num = matcher.group(1).toInt
-            val token = matcher.group(2)
-
-            currentDate = token match {
-
-                case "h" => currentDate.plus(Duration.ofHours(num))
-                case "d" => currentDate.plus(Duration.ofDays(num))
-                case "w" => currentDate.plus(Period.ofWeeks(num))
-                case "m" => currentDate.plus(Period.ofMonths(num))
-                case "y" => currentDate.plus(Period.ofYears(num))
-            }
-        }
-
-        Date.from(currentDate)
-    }
-
+    def parsePeriod(periodString: String): Period = Period.parse(periodString)
 }
 
 case class PrivateCollectionConfiguration(

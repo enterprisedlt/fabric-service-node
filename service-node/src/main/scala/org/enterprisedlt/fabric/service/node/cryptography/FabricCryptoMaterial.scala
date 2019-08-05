@@ -15,8 +15,9 @@ object FabricCryptoMaterial {
 
     def generateOrgCrypto(orgConfig: OrganizationConfig, orgFullName: String, path: String, components: Array[FabricComponent], certificateDuration: String): Unit = {
 
-        val notBefore: Date = Date.from(new Date().toInstant)
-        val notAfter: Date = Util.parsePeriod(notBefore, certificateDuration)
+        val dateNow: LocalDate = Util.dateNow()
+        val notBefore = Date.from(dateNow.atStartOfDay(ZoneOffset.UTC).toInstant)
+        val notAfter = Util.datePlus(dateNow,Util.parsePeriod(certificateDuration))
         //    CA
         val caCert = FabricCryptoMaterial.generateCACert(
             organization = orgFullName,
