@@ -93,7 +93,6 @@ object ServiceNode extends App {
                 newConstraint("admin", "/admin/*", Role.Admin),
                 newConstraint("join", "/join-network", Role.Admin, Role.JoinToken),
                 newConstraint("service", "/service/*", Role.Admin, Role.User),
-                newConstraint("ws", "/ws/*", Role.Admin, Role.User),
                 newConstraint("webapp", "/webapp", Role.Admin, Role.User)
             )
         )
@@ -113,16 +112,7 @@ object ServiceNode extends App {
         webApp.setWelcomeFiles(Array("index.html"))
         webAppContext.setHandler(webApp)
 
-        // websocket section
-        val webServiceContext = new ContextHandler("/ws")
-        val wsHandler = new WebSocketHandler() {
-            def configure(factory: WebSocketServletFactory): Unit = {
-                factory.register(classOf[ServiceWebSocketHandler])
-            }
-        }
-        webServiceContext.setHandler(wsHandler)
-
-        security.setHandler(new ContextHandlerCollection(webAppContext, webServiceContext, endpointContext))
+        security.setHandler(new ContextHandlerCollection(webAppContext, endpointContext))
 
         server.setHandler(security)
         server
