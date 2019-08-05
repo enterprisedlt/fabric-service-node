@@ -1,10 +1,4 @@
 #!/bin/bash
-source common.sh
-usageMsg="$0  [org profile dir]"
-if [ ! -d "$1" ]; then
-    printUsage "$usageMsg"
-else
-
  if [ "$(uname)" = "Darwin" ]; then
     SCRIPT=$(greadlink -f "$0")
     HF_NET_HOME=$(dirname "$SCRIPT")
@@ -33,4 +27,3 @@ if [[ "$?" -ne 0 ]]; then
 fi
 
  echo "======================================================================"
-fi

@@ -11,6 +11,5 @@ out
 artifacts
 config
 crypto
-project
 #
 *.tgz
