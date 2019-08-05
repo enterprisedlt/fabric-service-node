@@ -16,7 +16,6 @@ echo "Starting Fabric Service Node ..."
 INITIAL_NAME="fabric.service.node.${SERVICE_BIND_PORT}"
 serviceID=`docker run -d \
  -e "INITIAL_NAME=${INITIAL_NAME}" \
- -e "LOG_LEVEL=${LOG_LEVEL}" \
  -e "PROFILE_PATH=${PROFILE_PATH}" \
  -e "SERVICE_BIND_PORT=${SERVICE_BIND_PORT}" \
  -e "SERVICE_EXTERNAL_ADDRESS=${SERVICE_EXTERNAL_ADDRESS}" \
