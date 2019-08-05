@@ -10,7 +10,7 @@ import org.enterprisedlt.fabric.service.model.Message
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
-import org.enterprisedlt.fabric.service.node.model.{DeleteMessageRequest, GetMessageRequest, Invite, JoinRequest}
+import org.enterprisedlt.fabric.service.node.model._
 import org.slf4j.LoggerFactory
 
 /**
@@ -170,7 +170,7 @@ class RestEndpoint(
                         }
 
                     case "/service/send-message" =>
-                        val message = Util.codec.fromJson(request.getReader, classOf[Message])
+                        val message = Util.codec.fromJson(request.getReader, classOf[SendMessageRequest])
                         logger.info(s"Sending message to ${message.to} ...")
                         networkManager
                           .toRight("Network is not initialized yet")

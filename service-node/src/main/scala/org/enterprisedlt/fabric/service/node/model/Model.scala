@@ -54,12 +54,17 @@ case class JoinResponse(
     knownOrganizations: Array[Organization]
 )
 
+case class SendMessageRequest(
+    to: String,
+    body: String
+)
+
 case class GetMessageRequest(
-  messageKey: String,
-  sender: String
+    messageKey: String,
+    sender: String
 )
 
 case class DeleteMessageRequest(
-  messageKey: String,
-  sender: String
+    messageKey: String,
+    sender: String
 )
