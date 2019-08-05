@@ -63,3 +63,20 @@ case class DeleteMessageRequest(
   messageKey: String,
   sender: String
 )
+
+case class CreateContractRequest(
+    name: String,
+    chainCodeName: String,
+    chainCodeVersion: String,
+    initArguments: Array[String],
+    endorsers: Array[String],
+    collections: Array[String]
+)
+
+case class CallContractRequest(
+    callType: String,
+    contractName: String,
+    functionName: String,
+    arguments: Array[String],
+    awaitTransaction: Boolean
+)

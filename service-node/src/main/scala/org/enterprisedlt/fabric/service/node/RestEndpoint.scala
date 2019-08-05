@@ -1,5 +1,6 @@
 package org.enterprisedlt.fabric.service.node
 
+import java.io.{BufferedInputStream, FileInputStream}
 import java.util.concurrent.locks.ReentrantLock
 
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
@@ -10,7 +11,7 @@ import org.enterprisedlt.fabric.service.model.Message
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
-import org.enterprisedlt.fabric.service.node.model.{DeleteMessageRequest, GetMessageRequest, Invite, JoinRequest}
+import org.enterprisedlt.fabric.service.node.model._
 import org.slf4j.LoggerFactory
 
 /**
@@ -30,14 +31,8 @@ class RestEndpoint(
         request.getMethod match {
             case "GET" =>
                 request.getPathInfo match {
-                    case "/service/ping" =>
-                        logger.info(s"Ping -> Pong")
-                        response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
-                        val user = Util.getUserCertificate(request)
-                          .flatMap(Util.getCNFromCertificate)
-                          .getOrElse("Anon")
-
-                        response.getWriter.println(s"Hello $user")
+                    case "/service/organization-msp-id" =>
+                        response.getWriter.println(Util.codec.toJson(config.organization.name))
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/service/list-organizations" =>
@@ -139,15 +134,6 @@ class RestEndpoint(
                 }
             case "POST" =>
                 request.getPathInfo match {
-                    case "/admin/request-join" =>
-                        logger.info("Requesting to joining network ...")
-                        val start = System.currentTimeMillis()
-                        val invite = Util.codec.fromJson(request.getReader, classOf[Invite])
-                        initNetworkManager(Join.join(config, cryptoManager, processManager, invite, externalAddress, hostsManager))
-                        val end = System.currentTimeMillis() - start
-                        logger.info(s"Joined ($end ms)")
-                        response.setStatus(HttpServletResponse.SC_OK)
-
                     case "/join-network" =>
                         networkManager
                           .toRight("Network is not initialized yet")
@@ -162,6 +148,46 @@ class RestEndpoint(
                                 val out = response.getOutputStream
                                 out.print(Util.codec.toJson(joinResponse))
                                 out.flush()
+                                response.setStatus(HttpServletResponse.SC_OK)
+
+                            case Left(error) =>
+                                logger.error(error)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
+
+                    case "/admin/request-join" =>
+                        logger.info("Requesting to joining network ...")
+                        val start = System.currentTimeMillis()
+                        val invite = Util.codec.fromJson(request.getReader, classOf[Invite])
+                        initNetworkManager(Join.join(config, cryptoManager, processManager, invite, externalAddress, hostsManager))
+                        val end = System.currentTimeMillis() - start
+                        logger.info(s"Joined ($end ms)")
+                        response.setStatus(HttpServletResponse.SC_OK)
+
+                    case "/admin/create-contract" =>
+                        logger.info("Creating contract ...")
+                        val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
+                        val contractRequest = Util.codec.fromJson(request.getReader, classOf[CreateContractRequest])
+                        //
+                        networkManager
+                          .toRight("Network is not initialized yet")
+                          .flatMap { network =>
+                              logger.info(s"[ $organizationFullName ] - Preparing ${contractRequest.name} chain code ...")
+                              val path = s"/opt/profile/chain-code/${contractRequest.chainCodeName}-${contractRequest.chainCodeVersion}.tgz"
+                              val chainCodePkg = new BufferedInputStream(new FileInputStream(path))
+
+                              logger.info(s"[ $organizationFullName ] - Installing ${contractRequest.chainCodeName}:${contractRequest.chainCodeVersion} chain code ...")
+                              network.installChainCode(ServiceChannelName, contractRequest.chainCodeName, contractRequest.chainCodeVersion, chainCodePkg)
+
+                              //
+                              logger.info(s"[ $organizationFullName ] - Instantiating ${contractRequest.chainCodeName}:${contractRequest.chainCodeVersion} chain code ...")
+                              network.instantiateChainCode(
+                                  ServiceChannelName, contractRequest.name,
+                                  contractRequest.chainCodeVersion,
+                                  arguments = contractRequest.initArguments
+                              )
+                          } match {
+                            case Right(_) =>
                                 response.setStatus(HttpServletResponse.SC_OK)
 
                             case Left(error) =>
@@ -214,6 +240,54 @@ class RestEndpoint(
                         response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                         response.getWriter.println(result)
                         response.setStatus(HttpServletResponse.SC_OK)
+
+                    case "/service/call-contract" =>
+                        logger.info("Processing request to contract ...")
+                        val contractRequest = Util.codec.fromJson(request.getReader, classOf[CallContractRequest])
+                        val result =
+                            networkManager
+                              .toRight("Network is not initialized yet")
+                              .flatMap { network =>
+                                  contractRequest.callType match {
+                                      case "query" =>
+                                          network
+                                            .queryChainCode(
+                                                ServiceChannelName,
+                                                contractRequest.contractName,
+                                                contractRequest.functionName,
+                                                contractRequest.arguments: _*
+                                            )
+                                            .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
+
+                                      case "invoke" =>
+                                          network
+                                            .invokeChainCode(
+                                                ServiceChannelName,
+                                                contractRequest.contractName,
+                                                contractRequest.functionName,
+                                                contractRequest.arguments: _*
+                                            )
+                                            .flatMap { futureResult =>
+                                                if (contractRequest.awaitTransaction) {
+                                                    try {
+                                                        futureResult.get()
+                                                        Right(""""OK"""")
+                                                    } catch {
+                                                        case e: Throwable =>
+                                                            Left(e.getMessage)
+                                                    }
+                                                } else Right(""""OK"""")
+                                            }
+
+                                      case _ =>
+                                          Left(""""Invalid contract request type"""")
+
+                                  }
+                              }.merge
+                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                        response.getWriter.println(result)
+                        response.setStatus(HttpServletResponse.SC_OK)
+
 
                     // unknown POST path
                     case path =>
