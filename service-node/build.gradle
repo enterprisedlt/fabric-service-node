@@ -13,10 +13,6 @@ dependencies {
 
     compile 'org.eclipse.jetty:jetty-server:9.4.17.v20190418'
     compile 'org.eclipse.jetty:jetty-security:9.4.17.v20190418'
-    compile 'org.eclipse.jetty.websocket:websocket-server:9.4.19.v20190610'
-    compile 'org.eclipse.jetty.websocket:websocket-client:9.4.19.v20190610'
-    
-
 
     compile('org.hyperledger.fabric-sdk-java:fabric-sdk-java:1.4.3') {
         exclude group: 'commons-logging', module: 'commons-logging'
