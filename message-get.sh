@@ -23,6 +23,8 @@ curl -k --silent --show-error \
 https://${SERVICE_URL}/service/get-message \
 -d   "{\"sender\":\"$2\",\"messageKey\":\"$3\"}"
 
+echo
+
 if [[ "$?" -ne 0 ]]; then
   echo "Failed to get message."
   exit 1

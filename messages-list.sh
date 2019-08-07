@@ -21,6 +21,8 @@ curl -k -G --silent --show-error \
 --request GET \
 https://${SERVICE_URL}/service/list-messages
 
+echo
+
 if [[ "$?" -ne 0 ]]; then
   echo "Failed to list messages."
   exit 1
