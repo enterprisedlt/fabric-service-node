@@ -82,7 +82,6 @@ object Join {
         val admin = cryptoManager.loadDefaultAdmin
         val network = new FabricNetworkManager(config, admin)
 
-
         //
         logger.info(s"[ $organizationFullName ] - Connecting to channel ...")
         network.defineChannel(ServiceChannelName)
@@ -157,9 +156,6 @@ object Join {
               .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("Empty result"))
               .map(Util.codec.fromJson(_, classOf[Array[Organization]]).sorted(OrganizationsOrdering))
 
-            // fetch list of private collections if require
-            currentCollections <- fetchCurrentCollection(config, network, currentOrganizations)
-
         } yield {
             // increment network version
             val nextNetworkVersion = chainCodeVersion.networkVersion.toInt + 1
@@ -171,7 +167,8 @@ object Join {
             val existingMspIds = currentOrganizations.map(_.mspId)
             val orgCodes = existingMspIds :+ joinRequest.organization.mspId
             val policyForCCUpgrade = Util.policyAnyOf(orgCodes)
-            val nextCollections = currentCollections ++ mkCollectionsToAdd(existingMspIds, joinRequest.organization.mspId)
+            val nextCollections = calculateCollectionsConfiguration(orgCodes)
+            logger.info(s"Next collections: ${nextCollections.map(_.name).mkString("[", ",", "]")}")
             logger.info(s"Upgrading version of service to $nextVersion ...")
             network.upgradeChainCode(ServiceChannelName, ServiceChainCodeName, nextVersion,
                 endorsementPolicy = Option(policyForCCUpgrade),
@@ -211,24 +208,24 @@ object Join {
         }
     }
 
-    private def fetchCurrentCollection(
-        config: ServiceConfig,
-        network: FabricNetworkManager,
-        currentOrgs: Array[Organization]
-    ): Either[String, Iterable[PrivateCollectionConfiguration]] =
-        if (currentOrgs.length == 1) {
-            Right(Seq.empty)
-        } else {
-            network
-              .fetchCollectionsConfig(
-                  config.network.peerNodes.head.name,
-                  ServiceChannelName, ServiceChainCodeName
-              )
-        }
+//    private def fetchCurrentCollection(
+//        config: ServiceConfig,
+//        network: FabricNetworkManager,
+//        currentOrgs: Array[Organization]
+//    ): Either[String, Iterable[PrivateCollectionConfiguration]] =
+//        if (currentOrgs.length == 1) {
+//            Right(Seq.empty)
+//        } else {
+//            network
+//              .fetchCollectionsConfig(
+//                  config.network.peerNodes.head.name,
+//                  ServiceChannelName, ServiceChainCodeName
+//              )
+//        }
 
 
     //=========================================================================
-    def mkCollectionsToAdd(
+    private def mkCollectionsToAdd(
         currentOrgCodes: Iterable[String],
         joiningOrgCode: String
     ): Iterable[PrivateCollectionConfiguration] =
@@ -238,5 +235,21 @@ object Join {
                 Array(joiningOrgCode, existingOrgCode)
             )
         )
+
+    private def calculateCollectionsConfiguration(
+        organizations: Array[String]
+    ): Iterable[PrivateCollectionConfiguration] =
+        organizations
+          .foldLeft(
+              (
+                List.empty[String], // initially we have no organization
+                List.empty[PrivateCollectionConfiguration]) // initially we have no collections
+          ) { case ((currentOrganizationsList, collectionsList), newOrganiztion) =>
+              (
+                currentOrganizationsList :+ newOrganiztion,
+                collectionsList ++ mkCollectionsToAdd(currentOrganizationsList, newOrganiztion)
+              )
+          }._2
+
 
 }

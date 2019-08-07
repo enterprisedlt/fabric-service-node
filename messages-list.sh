@@ -12,7 +12,7 @@ fi
 
  . ${PROFILE_PATH}/settings
 
- echo "Fetching for messages ..."
+ echo "Fetching messages ..."
 
 SERVICE_URL="localhost:${SERVICE_BIND_PORT}"
 curl -k -G --silent --show-error \

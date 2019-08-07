@@ -26,7 +26,7 @@ trait MessagingOperations {
               .privateStore(CollectionsHelper.collectionNameFor(senderOrganization, recipientOrganization))
               .put(context.transaction.id, message.copy(
                   from = senderOrganization.mspId,
-                  timestamp = context.transaction.timestamp.toEpochMilli()))
+                  timestamp = context.transaction.timestamp.toEpochMilli))
         }
     }
 

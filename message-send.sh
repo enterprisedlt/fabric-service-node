@@ -21,7 +21,7 @@ curl -k --silent --show-error \
 -H "Content-Type: application/json" \
 --request POST \
 https://${SERVICE_URL}/service/send-message \
--d   "{\"to\":\"$2\",\"body\":\"$BODY\"}"
+-d   "{\"to\":\"$2\",\"body\":\"$3\"}"
 
 if [[ "$?" -ne 0 ]]; then
   echo "Failed to send message."
