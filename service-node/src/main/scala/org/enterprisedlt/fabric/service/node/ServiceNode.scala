@@ -8,6 +8,8 @@ import org.eclipse.jetty.server._
 import org.eclipse.jetty.server.handler.{ContextHandler, ContextHandlerCollection, HandlerList, ResourceHandler}
 import org.eclipse.jetty.util.security.Constraint
 import org.eclipse.jetty.util.ssl.SslContextFactory
+import org.eclipse.jetty.websocket.server.WebSocketHandler
+import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory
 import org.enterprisedlt.fabric.service.node.auth.{FabricAuthenticator, Role}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
@@ -91,8 +93,7 @@ object ServiceNode extends App {
                 newConstraint("admin", "/admin/*", Role.Admin),
                 newConstraint("join", "/join-network", Role.Admin, Role.JoinToken),
                 newConstraint("service", "/service/*", Role.Admin, Role.User),
-                newConstraint("webapp", "/webapp", Role.Admin, Role.User),
-
+                newConstraint("webapp", "/webapp", Role.Admin, Role.User)
             )
         )
         security.setAuthenticator(new FabricAuthenticator(cryptography))
