@@ -1,12 +1,8 @@
 #!/bin/bash
 
-if [ "$(uname)" = "Darwin" ]; then
-    SCRIPT=$(greadlink -f "$0")
-    HF_NET_HOME=$(dirname "$SCRIPT")
+if [[ "$(uname)" = "Darwin" ]]; then
     PROFILE_PATH=$(greadlink -f "$1")
 else
-    SCRIPT=$(readlink -f "$0")
-    HF_NET_HOME=$(dirname "$SCRIPT")
     PROFILE_PATH=$(readlink -f "$1")
 fi
 
