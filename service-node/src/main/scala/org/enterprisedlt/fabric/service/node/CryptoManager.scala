@@ -18,9 +18,9 @@ trait CryptoManager {
 
     def createServiceTrustStore(password: String): KeyStore
 
-    def createFabricUser(name: String, certificateDuration: String): Unit
+    def createFabricUser(name: String): Unit
 
     def getFabricUserKeyStore(name: String, password: String): KeyStore
 
-    def createServiceUserKeyStore(name: String, password: String, certificateDuration: String): KeyStore
+    def createServiceUserKeyStore(name: String, password: String): KeyStore
 }

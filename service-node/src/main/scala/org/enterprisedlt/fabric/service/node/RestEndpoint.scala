@@ -86,7 +86,7 @@ class RestEndpoint(
                           .getOrElse(s"service.${config.organization.name}.${config.organization.domain}:$bindPort")
                         //TODO: password should be taken from request
                         val password = "join me"
-                        val key = cryptoManager.createServiceUserKeyStore(s"join-${System.currentTimeMillis()}", password, config.certificateDuration)
+                        val key = cryptoManager.createServiceUserKeyStore(s"join-${System.currentTimeMillis()}", password)
                         val invite = Invite(
                             address,
                             Util.keyStoreToBase64(key, password)
@@ -98,7 +98,7 @@ class RestEndpoint(
                     case "/admin/create-user" =>
                         val userName = request.getParameter("name")
                         logger.info(s"Creating new user $userName ...")
-                        cryptoManager.createFabricUser(userName, config.certificateDuration)
+                        cryptoManager.createFabricUser(userName)
                         response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
                         response.getWriter.println("OK")
                         response.setStatus(HttpServletResponse.SC_OK)

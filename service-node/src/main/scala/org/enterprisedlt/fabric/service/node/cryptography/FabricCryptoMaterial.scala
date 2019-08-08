@@ -1,7 +1,6 @@
 package org.enterprisedlt.fabric.service.node.cryptography
 
 import java.io.FileWriter
-import java.time.{LocalDate, ZoneOffset}
 import java.util.Date
 
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter
@@ -14,10 +13,8 @@ import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
 object FabricCryptoMaterial {
 
     def generateOrgCrypto(orgConfig: OrganizationConfig, orgFullName: String, path: String, components: Array[FabricComponent], certificateDuration: String): Unit = {
-
-        val dateNow: LocalDate = Util.dateNow()
-        val notBefore = Date.from(dateNow.atStartOfDay(ZoneOffset.UTC).toInstant)
-        val notAfter = Util.datePlus(dateNow,Util.parsePeriod(certificateDuration))
+        val notBefore = new Date()
+        val notAfter = Util.futureDate(Util.parsePeriod(certificateDuration))
         //    CA
         val caCert = FabricCryptoMaterial.generateCACert(
             organization = orgFullName,
@@ -25,7 +22,7 @@ object FabricCryptoMaterial {
             state = orgConfig.state,
             country = orgConfig.country,
             notBefore = notBefore,
-              notAfter = notAfter
+            notAfter = notAfter
         )
         val caDir = s"$path/ca"
         Util.mkDirs(caDir)
@@ -62,10 +59,10 @@ object FabricCryptoMaterial {
         writeToPemFile(s"$adminDir/admin.key", adminCert.key)
 
         components.foreach { component =>
-            createComponentDir(orgConfig, orgFullName, component, path, caCert, tlscaCert, adminCert,notBefore,notAfter)
+            createComponentDir(orgConfig, orgFullName, component, path, caCert, tlscaCert, adminCert, notBefore, notAfter)
         }
 
-        createServiceDir(orgConfig, orgFullName, path, caCert, tlscaCert,notBefore,notAfter)
+        createServiceDir(orgConfig, orgFullName, path, caCert, tlscaCert, notBefore, notAfter)
     }
 
     private def createComponentDir(
