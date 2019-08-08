@@ -23,5 +23,6 @@
         }
       }
     ]
-  }
+  },
+  "certificateDuration": "P2Y"
 }

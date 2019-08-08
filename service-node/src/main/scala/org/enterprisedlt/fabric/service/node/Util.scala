@@ -4,7 +4,10 @@ import java.io._
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 import java.security.cert.X509Certificate
-import java.util.Base64
+import java.time._
+import java.time.temporal.{ChronoUnit, Temporal}
+import java.util.regex.{Matcher, Pattern}
+import java.util.{Base64, Date}
 
 import com.google.gson.{Gson, GsonBuilder}
 import com.google.protobuf.{ByteString, MessageLite}
@@ -288,6 +291,13 @@ object Util {
                   NoopHostnameVerifier.INSTANCE // TODO
               )
           ).build()
+//
+
+    def dateNow(): LocalDate = LocalDate.now()
+
+    def datePlus(dateNow: LocalDate, p: Period): Date = Date.from(dateNow.plus(p).atStartOfDay(ZoneOffset.UTC).toInstant)
+
+    def parsePeriod(periodString: String): Period = Period.parse(periodString)
 }
 
 case class PrivateCollectionConfiguration(

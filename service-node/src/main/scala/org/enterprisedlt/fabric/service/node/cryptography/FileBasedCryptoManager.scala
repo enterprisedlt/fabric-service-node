@@ -5,7 +5,8 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 import java.security.cert.X509Certificate
 import java.security.{KeyStore, PrivateKey}
-import java.util.Collections
+import java.time.{LocalDate, ZoneOffset}
+import java.util.{Collections, Date}
 
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
 import org.bouncycastle.asn1.x500.style.BCStyle
@@ -16,7 +17,6 @@ import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FabricCryptoMaterial.writeToPemFile
 import org.enterprisedlt.fabric.service.node.{CryptoManager, Util}
-import org.hyperledger.fabric.sdk.User
 import org.hyperledger.fabric.sdk.identity.X509Enrollment
 import org.slf4j.LoggerFactory
 
@@ -38,7 +38,8 @@ class FileBasedCryptoManager(
     FabricCryptoMaterial.generateOrgCrypto(
         config.organization, orgFullName, rootDir,
         config.network.orderingNodes.map(o => FabricComponent("orderers", o.name)) ++
-          config.network.peerNodes.map(p => FabricComponent("peers", p.name, Option("peer")))
+          config.network.peerNodes.map(p => FabricComponent("peers", p.name, Option("peer"))),
+        config.certificateDuration
     )
     logger.info(s"Generated crypto for $orgFullName.")
 
@@ -102,7 +103,10 @@ class FileBasedCryptoManager(
     }
 
     //=========================================================================
-    override def createFabricUser(name: String): Unit = {
+    override def createFabricUser(name: String, certificateDuration: String): Unit = {
+        val dateNow = Util.dateNow()
+        val notBefore = Date.from(dateNow.atStartOfDay(ZoneOffset.UTC).toInstant)
+        val notAfter = Util.datePlus(dateNow, Util.parsePeriod(certificateDuration))
         val orgConfig = config.organization
         val caCert = loadCertAndKey(s"$rootDir/ca/ca")
         val theCert = FabricCryptoMaterial.generateUserCert(
@@ -111,7 +115,9 @@ class FileBasedCryptoManager(
             location = orgConfig.location,
             state = orgConfig.state,
             country = orgConfig.country,
-            caCert
+            signCert = caCert,
+            notBefore = notBefore,
+            notAfter = notAfter
         )
         val userDir = s"$rootDir/users/$name"
         Util.mkDirs(userDir)
@@ -125,7 +131,10 @@ class FileBasedCryptoManager(
     }
 
     //=========================================================================
-    override def createServiceUserKeyStore(name: String, password: String): KeyStore = {
+    override def createServiceUserKeyStore(name: String, password: String, certificateDuration: String): KeyStore = {
+        val dateNow = Util.dateNow()
+        val notBefore = Date.from(dateNow.atStartOfDay(ZoneOffset.UTC).toInstant)
+        val notAfter = Util.datePlus(dateNow, Util.parsePeriod(certificateDuration))
         val path = s"$rootDir/service"
         val orgConfig = config.organization
         val serviceCACert = loadCertAndKey(s"$path/ca/server")
@@ -135,7 +144,9 @@ class FileBasedCryptoManager(
             location = orgConfig.location,
             state = orgConfig.state,
             country = orgConfig.country,
-            serviceCACert
+            signCert = serviceCACert,
+            notBefore = notBefore,
+            notAfter = notAfter
         )
         val userDir = s"$path/users/$name"
         Util.mkDirs(userDir)

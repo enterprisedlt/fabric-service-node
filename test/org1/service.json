@@ -44,5 +44,6 @@
     "heartbeatTick": 1,
     "maxInflightBlocks": 5,
     "snapshotIntervalSize": 20971520
-  }
+  },
+  "certificateDuration": "P2Y"
 }
