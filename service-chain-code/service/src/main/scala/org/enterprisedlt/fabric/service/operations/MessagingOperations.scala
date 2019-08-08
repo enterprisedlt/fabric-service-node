@@ -23,29 +23,28 @@ trait MessagingOperations {
             recipientOrganization <- context.store.get[Organization](message.to).toRight(s"Recipient organization ${message.to} isn't registered")
         } yield {
             context
-              .privateStore(CollectionsHelper.collectionNameFor(senderOrganization, recipientOrganization)
-              )
-              .put[Message](context.transaction.id, message.copy(from = context.clientIdentity.mspId))
-            s"Stored"
+              .privateStore(CollectionsHelper.collectionNameFor(senderOrganization, recipientOrganization))
+              .put(context.transaction.id, message.copy(
+                  from = senderOrganization.mspId,
+                  timestamp = context.transaction.timestamp.toEpochMilli))
         }
     }
 
     @ContractOperation
-    def listMessages(context: ContractContext): ContractResponse =
+    def listMessages(context: ContractContext): ContractResponse = {
         Success(
             CollectionsHelper
               .collectionsFromOrganizations(
                   context.store
                     .list[Organization]
-                    .filter(_.value.name != context.clientIdentity.mspId)
-                    .map(_.value.mspId)
-              )
+                    .map(_.value.mspId))
+              .filter(e => e.endsWith(s"-${context.clientIdentity.mspId}") || e.startsWith(s"${context.clientIdentity.mspId}-"))
               .map(context.privateStore)
               .flatMap { store =>
-                  store.list[Message].map(_.value)
+                  store.list[Message]
               }.toArray
         )
-
+    }
 
     @ContractOperation
     def getMessage(context: ContractContext, messageKey: String, sender: String): ContractResponse = {

@@ -5,7 +5,7 @@ import java.io.FileReader
 import org.eclipse.jetty.http.HttpVersion
 import org.eclipse.jetty.security.{ConstraintMapping, ConstraintSecurityHandler}
 import org.eclipse.jetty.server._
-import org.eclipse.jetty.server.handler.{ContextHandler, ContextHandlerCollection, HandlerList, ResourceHandler}
+import org.eclipse.jetty.server.handler.{ContextHandler, ContextHandlerCollection, ResourceHandler}
 import org.eclipse.jetty.util.security.Constraint
 import org.eclipse.jetty.util.ssl.SslContextFactory
 import org.enterprisedlt.fabric.service.node.auth.{FabricAuthenticator, Role}
@@ -91,8 +91,7 @@ object ServiceNode extends App {
                 newConstraint("admin", "/admin/*", Role.Admin),
                 newConstraint("join", "/join-network", Role.Admin, Role.JoinToken),
                 newConstraint("service", "/service/*", Role.Admin, Role.User),
-                newConstraint("webapp", "/webapp", Role.Admin, Role.User),
-
+                newConstraint("webapp", "/webapp/*", Role.Admin, Role.User)
             )
         )
         security.setAuthenticator(new FabricAuthenticator(cryptography))
