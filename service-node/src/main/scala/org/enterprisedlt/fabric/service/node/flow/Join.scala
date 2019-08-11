@@ -8,9 +8,7 @@ import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, Or
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
-import org.enterprisedlt.fabric.service.node.model.{Invite, JoinRequest, JoinResponse}
-import org.enterprisedlt.fabric.service.node.proto.FabricBlock
-import org.hyperledger.fabric.protos.common.Configtx
+import org.enterprisedlt.fabric.service.node.model._
 import org.slf4j.LoggerFactory
 
 /**
@@ -26,16 +24,14 @@ object Join {
         externalAddress: Option[ExternalAddress], hostsManager: HostsManager
     ): FabricNetworkManager = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
+        val cryptoPath = "/opt/profile/crypto"
+        val firstOrderingNode = config.network.orderingNodes.head
         logger.info(s"[ $organizationFullName ] - Generating certificates ...")
-
         //
         logger.info(s"[ $organizationFullName ] - Creating JoinRequest ...")
-        val genesisDefinition = Genesis.newDefinition("/opt/profile", config)
-        val genesis = FabricBlock.create(genesisDefinition, config)
-        val genesisConfig = Util.extractConfig(genesis)
+        //
         val joinRequest = JoinRequest(
-            genesisConfig = Base64.getEncoder.encodeToString(genesisConfig.toByteArray),
-            Organization(
+            organization = Organization(
                 mspId = config.organization.name,
                 name = config.organization.name,
                 memberNumber = 0,
@@ -45,7 +41,19 @@ object Join {
                       KnownHostRecord(address.host, s"service.$organizationFullName")
                 }
                   .getOrElse(Array.empty)
-            )
+            ),
+            organizationCertificates = OrganizationCertificates(
+                caCerts = Array(Util.readAsByteString(s"$cryptoPath/ca/ca.crt")).map(Util.base64Encode),
+                tlsCACerts = Array(Util.readAsByteString(s"$cryptoPath/tlsca/tlsca.crt")).map(Util.base64Encode),
+                adminCerts = Array(Util.readAsByteString(s"$cryptoPath/users/admin/admin.crt")).map(Util.base64Encode)
+
+            ),
+            osnCertificates = OsnCertificates(
+                clientTlsCert = Util.base64Encode(Util.readAsByteString(s"$cryptoPath/orderers/${firstOrderingNode.name}.$organizationFullName/tls/server.crt")),
+                serverTlsCert = Util.base64Encode(Util.readAsByteString(s"$cryptoPath/orderers/${firstOrderingNode.name}.$organizationFullName/tls/server.crt"))
+            ),
+            osnHost = s"${firstOrderingNode.name}.$organizationFullName",
+            osnPort = firstOrderingNode.port
         )
 
         //
@@ -135,14 +143,13 @@ object Join {
         joinRequest: JoinRequest, hostsManager: HostsManager
     ): Either[String, JoinResponse] = {
         logger.info(s"Joining ${joinRequest.organization.name} to network ...")
-        val newOrgConfig = Configtx.Config.parseFrom(Base64.getDecoder.decode(joinRequest.genesisConfig))
         logger.info(s"Joining ${joinRequest.organization.name} to consortium ...")
-        network.joinToNetwork(newOrgConfig)
+        network.joinToNetwork(joinRequest)
         logger.info("Joining to channel 'service' ...")
 
         for {
             // join new org to service channel
-            _ <- network.joinToChannel(ServiceChannelName, newOrgConfig)
+            _ <- network.joinToChannel(ServiceChannelName, joinRequest)
 
             // fetch current network version
             chainCodeVersion <- network
@@ -208,20 +215,20 @@ object Join {
         }
     }
 
-//    private def fetchCurrentCollection(
-//        config: ServiceConfig,
-//        network: FabricNetworkManager,
-//        currentOrgs: Array[Organization]
-//    ): Either[String, Iterable[PrivateCollectionConfiguration]] =
-//        if (currentOrgs.length == 1) {
-//            Right(Seq.empty)
-//        } else {
-//            network
-//              .fetchCollectionsConfig(
-//                  config.network.peerNodes.head.name,
-//                  ServiceChannelName, ServiceChainCodeName
-//              )
-//        }
+    //    private def fetchCurrentCollection(
+    //        config: ServiceConfig,
+    //        network: FabricNetworkManager,
+    //        currentOrgs: Array[Organization]
+    //    ): Either[String, Iterable[PrivateCollectionConfiguration]] =
+    //        if (currentOrgs.length == 1) {
+    //            Right(Seq.empty)
+    //        } else {
+    //            network
+    //              .fetchCollectionsConfig(
+    //                  config.network.peerNodes.head.name,
+    //                  ServiceChannelName, ServiceChainCodeName
+    //              )
+    //        }
 
 
     //=========================================================================
@@ -244,11 +251,12 @@ object Join {
               (
                 List.empty[String], // initially we have no organization
                 List.empty[PrivateCollectionConfiguration]) // initially we have no collections
-          ) { case ((currentOrganizationsList, collectionsList), newOrganiztion) =>
-              (
-                currentOrganizationsList :+ newOrganiztion,
-                collectionsList ++ mkCollectionsToAdd(currentOrganizationsList, newOrganiztion)
-              )
+          ) {
+              case ((currentOrganizationsList, collectionsList), newOrganiztion) =>
+                  (
+                    currentOrganizationsList :+ newOrganiztion,
+                    collectionsList ++ mkCollectionsToAdd(currentOrganizationsList, newOrganiztion)
+                  )
           }._2
 
 

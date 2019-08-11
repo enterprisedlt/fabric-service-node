@@ -165,6 +165,10 @@ object Util {
     def readAsByteString(path: String): ByteString =
         ByteString.readFrom(new FileInputStream(path))
 
+    def base64Encode(bs: ByteString): String = Base64.getEncoder.encodeToString(bs.toByteArray)
+
+    def base64Decode(b64: String): ByteString = ByteString.copyFrom(Base64.getDecoder.decode(b64))
+
     //=========================================================================
     def codec: Gson = (new GsonBuilder).create()
 
@@ -270,3 +274,5 @@ case class PrivateCollectionConfiguration(
     minPeersToSpread: Int = 0, // not require to disseminate before commit
     maxPeersToSpread: Int = 0 // can be disseminated before commit
 )
+
+

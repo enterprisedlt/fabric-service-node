@@ -44,8 +44,13 @@ case class Invite(
 )
 
 case class JoinRequest(
-    genesisConfig: String,
-    organization: Organization
+    organization: Organization,
+    //
+    organizationCertificates: OrganizationCertificates,
+    //
+    osnCertificates: OsnCertificates,
+    osnHost: String,
+    osnPort: Int
 )
 
 case class JoinResponse(
@@ -84,4 +89,17 @@ case class CallContractRequest(
     functionName: String,
     arguments: Array[String],
     awaitTransaction: Boolean
+)
+
+case class OrganizationCertificates(
+    caCerts: Array[String],
+    tlsCACerts: Array[String],
+    adminCerts: Array[String],
+
+)
+
+
+case class OsnCertificates(
+    clientTlsCert: String,
+    serverTlsCert: String
 )
