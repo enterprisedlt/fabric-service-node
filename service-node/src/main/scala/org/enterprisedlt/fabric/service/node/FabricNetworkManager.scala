@@ -358,7 +358,7 @@ class FabricNetworkManager(
               val orderingOrganizationGroup = FabricBlock.newOrderingOrganizationGroup(organizationDefinition)
               applyChannelUpdate(
                   channel, admin,
-                  FabricChannel.AddConsortiumOrg(organizationDefinition.mspId, orderingOrganizationGroup)
+                  FabricChannel.AddApplicationOrg(organizationDefinition.mspId, orderingOrganizationGroup)
               )
               logger.info("Adding ordering org...")
               applyChannelUpdate(
