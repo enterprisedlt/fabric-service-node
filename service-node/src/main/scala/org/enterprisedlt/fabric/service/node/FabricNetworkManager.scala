@@ -334,28 +334,18 @@ class FabricNetworkManager(
         getChannel(channelName)
           .map { channel =>
               logger.info("Adding application org...")
-              val consortiumDefinition =
-                  ConsortiumDefinition(
-                      name = DefaultConsortiumName,
-                      organizations = Seq(joinRequest.organizationDefinition)
-                  )
-              val consortiumOrganization = FabricBlock.newConsortiumGroup(consortiumDefinition)
-                .getGroupsMap.get("Consortiums")
-                .getGroupsMap.get("SampleConsortium")
-                .getGroupsMap.entrySet().iterator().next()
+              val organizationDefinition = joinRequest.organizationDefinition
+              val orderingOrganizationGroup = FabricBlock.newOrderingOrganizationGroup(joinRequest.organizationDefinition)
               applyChannelUpdate(
                   channel, admin,
-                  FabricChannel.AddConsortiumOrg(consortiumOrganization.getKey, consortiumOrganization.getValue)
+                  FabricChannel.AddConsortiumOrg(organizationDefinition.mspId, orderingOrganizationGroup)
               )
               logger.info("Adding ordering org...")
-              val orderingOrganizationGroup = FabricBlock.newOrderingOrganizationGroup(joinRequest.organizationDefinition)
-              val orderingOrg = orderingOrganizationGroup
-                .getGroupsMap.get("Orderer")
-                .getGroupsMap.entrySet().iterator().next()
               applyChannelUpdate(
                   channel, admin,
-                  FabricChannel.AddOrderingOrg(orderingOrg.getKey, orderingOrg.getValue)
+                  FabricChannel.AddOrderingOrg(organizationDefinition.mspId, orderingOrganizationGroup)
               )
+              logger.info("Adding OSN 1...")
               val consenter = Consenter.newBuilder()
                 .setHost(joinRequest.orderingNode.host)
                 .setPort(joinRequest.orderingNode.port)

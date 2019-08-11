@@ -59,7 +59,7 @@ object Join {
             orderingNode =
               OrderingNodeDefinition(
                   host = s"$firstOrderingNode.$organizationFullName",
-                  port = config.network.orderingNodes.head.port,
+                  port = firstOrderingNode.port,
                   clientTlsCert = Util.readAsByteString(s"$cryptoPath/orderers/$firstOrderingNode.$organizationFullName/tls/server.crt"),
                   serverTlsCert = Util.readAsByteString(s"$cryptoPath/orderers/$firstOrderingNode.$organizationFullName/tls/server.crt")
               )
