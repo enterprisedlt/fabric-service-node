@@ -8,7 +8,7 @@ import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, Or
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
-import org.enterprisedlt.fabric.service.node.model.{Invite, JoinRequest, JoinResponse, OrganizationCertificates}
+import org.enterprisedlt.fabric.service.node.model._
 import org.slf4j.LoggerFactory
 
 /**
@@ -45,13 +45,15 @@ object Join {
             organizationCertificates = OrganizationCertificates(
                 caCerts = Array(Util.readAsByteString(s"$cryptoPath/ca/ca.crt")).map(Util.base64Encode),
                 tlsCACerts = Array(Util.readAsByteString(s"$cryptoPath/tlsca/tlsca.crt")).map(Util.base64Encode),
-                adminCerts = Array(Util.readAsByteString(s"$cryptoPath/users/admin/admin.crt")).map(Util.base64Encode),
+                adminCerts = Array(Util.readAsByteString(s"$cryptoPath/users/admin/admin.crt")).map(Util.base64Encode)
+
+            ),
+            osnCertificates = OsnCertificates(
                 clientTlsCert = Util.base64Encode(Util.readAsByteString(s"$cryptoPath/orderers/${firstOrderingNode.name}.$organizationFullName/tls/server.crt")),
                 serverTlsCert = Util.base64Encode(Util.readAsByteString(s"$cryptoPath/orderers/${firstOrderingNode.name}.$organizationFullName/tls/server.crt"))
             ),
-            //
-            host = s"${firstOrderingNode.name}.$organizationFullName",
-            port = firstOrderingNode.port
+            osnHost = s"${firstOrderingNode.name}.$organizationFullName",
+            osnPort = firstOrderingNode.port
         )
 
         //

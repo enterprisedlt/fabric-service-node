@@ -48,8 +48,9 @@ case class JoinRequest(
     //
     organizationCertificates: OrganizationCertificates,
     //
-    host: String,
-    port: Int
+    osnCertificates: OsnCertificates,
+    osnHost: String,
+    osnPort: Int
 )
 
 case class JoinResponse(
@@ -94,6 +95,11 @@ case class OrganizationCertificates(
     caCerts: Array[String],
     tlsCACerts: Array[String],
     adminCerts: Array[String],
+
+)
+
+
+case class OsnCertificates(
     clientTlsCert: String,
     serverTlsCert: String
 )

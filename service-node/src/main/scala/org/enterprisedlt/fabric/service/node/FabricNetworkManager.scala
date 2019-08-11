@@ -330,10 +330,10 @@ class FabricNetworkManager(
         )
         logger.info("Adding OSN 1...")
         val consenter = Consenter.newBuilder()
-          .setHost(joinRequest.host)
-          .setPort(joinRequest.port)
-          .setClientTlsCert(Util.base64Decode(joinRequest.organizationCertificates.clientTlsCert))
-          .setServerTlsCert(Util.base64Decode(joinRequest.organizationCertificates.serverTlsCert))
+          .setHost(joinRequest.osnHost)
+          .setPort(joinRequest.osnPort)
+          .setClientTlsCert(Util.base64Decode(joinRequest.osnCertificates.clientTlsCert))
+          .setServerTlsCert(Util.base64Decode(joinRequest.osnCertificates.serverTlsCert))
           .build()
         applyChannelUpdate(
             systemChannel, admin,
@@ -369,10 +369,10 @@ class FabricNetworkManager(
               )
               logger.info("Adding OSN 1...")
               val consenter = Consenter.newBuilder()
-                .setHost(joinRequest.host)
-                .setPort(joinRequest.port)
-                .setClientTlsCert(Util.base64Decode(joinRequest.organizationCertificates.clientTlsCert))
-                .setServerTlsCert(Util.base64Decode(joinRequest.organizationCertificates.serverTlsCert))
+                .setHost(joinRequest.osnHost)
+                .setPort(joinRequest.osnPort)
+                .setClientTlsCert(Util.base64Decode(joinRequest.osnCertificates.clientTlsCert))
+                .setServerTlsCert(Util.base64Decode(joinRequest.osnCertificates.serverTlsCert))
                 .build()
               applyChannelUpdate(
                   channel, admin,
