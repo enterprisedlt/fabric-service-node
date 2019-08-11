@@ -235,7 +235,7 @@ class FabricNetworkManager(
     //=========================================================================
     def queryChainCode
     (channelName: String, chainCodeName: String, functionName: String, arguments: String*)
-      (implicit timeout: OperationTimeout = OperationTimeout(35, TimeUnit.SECONDS))
+      (implicit timeout: OperationTimeout = OperationTimeout(35, TimeUnit.SECONDS), user: Option[User] = None)
     : Either[String, Iterable[ByteString]] =
         getChannel(channelName)
           .map { channel =>
@@ -244,6 +244,7 @@ class FabricNetworkManager(
               request.setArgs(arguments: _*)
               request.setProposalWaitTime(timeout.milliseconds)
               request.setChaincodeID(ChaincodeID.newBuilder().setName(chainCodeName).build)
+              user.foreach(request.setUserContext)
               val queryProposals = channel.queryByChaincode(request)
               queryProposals.asScala
                 .flatMap(x => Option(x.getProposalResponse))
@@ -257,17 +258,18 @@ class FabricNetworkManager(
 
     //=========================================================================
     def invokeChainCode(channelName: String, chainCodeName: String, functionName: String, arguments: String*)
-      (implicit timeout: OperationTimeout = OperationTimeout(35, TimeUnit.SECONDS))
+      (implicit timeout: OperationTimeout = OperationTimeout(35, TimeUnit.SECONDS), user: Option[User] = None)
     : Either[String, CompletableFuture[TransactionEvent]] = {
         getChannel(channelName)
           .flatMap { channel =>
-              val transactionProposalRequest = fabricClient.newTransactionProposalRequest()
-              transactionProposalRequest.setChaincodeID(ChaincodeID.newBuilder().setName(chainCodeName).build)
-              transactionProposalRequest.setFcn(functionName)
-              transactionProposalRequest.setArgs(arguments: _*)
-              transactionProposalRequest.setProposalWaitTime(timeout.milliseconds)
+              val request = fabricClient.newTransactionProposalRequest()
+              request.setChaincodeID(ChaincodeID.newBuilder().setName(chainCodeName).build)
+              request.setFcn(functionName)
+              request.setArgs(arguments: _*)
+              request.setProposalWaitTime(timeout.milliseconds)
+              user.foreach(request.setUserContext)
               logger.debug(s"Sending transaction proposal: $functionName${arguments.mkString("(", ",", ")")}")
-              val invokePropResp = channel.sendTransactionProposal(transactionProposalRequest).asScala
+              val invokePropResp = channel.sendTransactionProposal(request).asScala
               val byStatus = invokePropResp.groupBy { response => response.getStatus }
               val successful = byStatus.getOrElse(ChaincodeResponse.Status.SUCCESS, List.empty)
               val failed = byStatus.getOrElse(ChaincodeResponse.Status.FAILURE, List.empty)

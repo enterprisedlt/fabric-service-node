@@ -7,11 +7,12 @@ import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.apache.http.entity.ContentType
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
-import org.enterprisedlt.fabric.service.model.Message
+import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
+import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
 
 /**
@@ -28,6 +29,7 @@ class RestEndpoint(
     private val logger = LoggerFactory.getLogger(this.getClass)
 
     override def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {
+        implicit val user: Option[User] = FabricAuthenticator.getFabricUser(request)
         request.getMethod match {
             case "GET" =>
                 request.getPathInfo match {
