@@ -4,7 +4,8 @@ import java.io._
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 import java.security.cert.X509Certificate
-import java.util.Base64
+import java.time._
+import java.util.{Base64, Date}
 
 import com.google.gson.{Gson, GsonBuilder}
 import com.google.protobuf.{ByteString, MessageLite}
@@ -37,38 +38,6 @@ import scala.collection.JavaConverters._
   */
 object Util {
     private val logger = LoggerFactory.getLogger(this.getClass)
-
-    //    //=========================================================================
-    //    //TODO: this is adopted "copy paste" from SDK tests, quite ugly inefficient code, need to rewrite.
-    //    def generateTarGzInputStream(folderPath: File): InputStream = {
-    //        val sourceDirectory = folderPath
-    //        val bos = new ByteArrayOutputStream(500000)
-    //        val sourcePath = sourceDirectory.getAbsolutePath
-    //        val archiveOutputStream = new TarArchiveOutputStream(new GzipCompressorOutputStream(new BufferedOutputStream(bos)))
-    //        archiveOutputStream.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU)
-    //        try {
-    //            val childrenFiles = org.apache.commons.io.FileUtils.listFiles(sourceDirectory, null, true)
-    //            import scala.collection.JavaConverters._
-    //            for (childFile <- childrenFiles.asScala) {
-    //                val childPath = childFile.getAbsolutePath
-    //                var relativePath = childPath.substring(sourcePath.length + 1, childPath.length)
-    //                relativePath = Utils.combinePaths("src", relativePath)
-    //                relativePath = FilenameUtils.separatorsToUnix(relativePath)
-    //                val archiveEntry = new TarArchiveEntry(childFile, relativePath)
-    //                val fileInputStream = new FileInputStream(childFile)
-    //                try {
-    //                    archiveOutputStream.putArchiveEntry(archiveEntry)
-    //                    IOUtils.copy(fileInputStream, archiveOutputStream)
-    //                } finally {
-    //                    fileInputStream.close()
-    //                    archiveOutputStream.closeArchiveEntry()
-    //                }
-    //            }
-    //        } finally {
-    //            archiveOutputStream.close()
-    //        }
-    //        new ByteArrayInputStream(bos.toByteArray)
-    //    }
 
     //=========================================================================
     def policyAnyOf(members: Iterable[String]): ChaincodeEndorsementPolicy = {
@@ -288,6 +257,10 @@ object Util {
                   NoopHostnameVerifier.INSTANCE // TODO
               )
           ).build()
+
+    def futureDate(shift: Period): Date = Date.from(LocalDate.now().plus(shift).atStartOfDay(ZoneOffset.UTC).toInstant)
+
+    def parsePeriod(periodString: String): Period = Period.parse(periodString)
 }
 
 case class PrivateCollectionConfiguration(

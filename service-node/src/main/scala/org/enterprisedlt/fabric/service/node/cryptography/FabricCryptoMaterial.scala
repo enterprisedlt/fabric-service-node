@@ -1,7 +1,6 @@
 package org.enterprisedlt.fabric.service.node.cryptography
 
-import java.io.{File, FileWriter}
-import java.time.{LocalDate, ZoneOffset}
+import java.io.FileWriter
 import java.util.Date
 
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter
@@ -13,13 +12,17 @@ import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
   */
 object FabricCryptoMaterial {
 
-    def generateOrgCrypto(orgConfig: OrganizationConfig, orgFullName: String, path: String, components: Array[FabricComponent]): Unit = {
+    def generateOrgCrypto(orgConfig: OrganizationConfig, orgFullName: String, path: String, components: Array[FabricComponent], certificateDuration: String): Unit = {
+        val notBefore = new Date()
+        val notAfter = Util.futureDate(Util.parsePeriod(certificateDuration))
         //    CA
         val caCert = FabricCryptoMaterial.generateCACert(
             organization = orgFullName,
             location = orgConfig.location,
             state = orgConfig.state,
-            country = orgConfig.country
+            country = orgConfig.country,
+            notBefore = notBefore,
+            notAfter = notAfter
         )
         val caDir = s"$path/ca"
         Util.mkDirs(caDir)
@@ -31,7 +34,9 @@ object FabricCryptoMaterial {
             organization = orgFullName,
             location = orgConfig.location,
             state = orgConfig.state,
-            country = orgConfig.country
+            country = orgConfig.country,
+            notBefore = notBefore,
+            notAfter = notAfter
         )
         val tlscaDir = s"$path/tlsca"
         Util.mkDirs(tlscaDir)
@@ -44,7 +49,9 @@ object FabricCryptoMaterial {
             location = orgConfig.location,
             state = orgConfig.state,
             country = orgConfig.country,
-            caCert
+            signCert = caCert,
+            notBefore = notBefore,
+            notAfter = notAfter
         )
         val adminDir = s"$path/users/admin/"
         Util.mkDirs(adminDir)
@@ -52,10 +59,10 @@ object FabricCryptoMaterial {
         writeToPemFile(s"$adminDir/admin.key", adminCert.key)
 
         components.foreach { component =>
-            createComponentDir(orgConfig, orgFullName, component, path, caCert, tlscaCert, adminCert)
+            createComponentDir(orgConfig, orgFullName, component, path, caCert, tlscaCert, adminCert, notBefore, notAfter)
         }
 
-        createServiceDir(orgConfig, orgFullName, path, caCert, tlscaCert)
+        createServiceDir(orgConfig, orgFullName, path, caCert, tlscaCert, notBefore, notAfter)
     }
 
     private def createComponentDir(
@@ -65,7 +72,9 @@ object FabricCryptoMaterial {
         path: String,
         caCert: CertAndKey,
         tlscaCert: CertAndKey,
-        adminCert: CertAndKey
+        adminCert: CertAndKey,
+        notBefore: Date,
+        notAfter: Date
     ): Unit = {
         val outPath = s"$path/${component.group}/${component.name}.$orgFullName"
         Util.mkDirs(s"$outPath/msp/admincerts")
@@ -84,7 +93,9 @@ object FabricCryptoMaterial {
             location = orgConfig.location,
             state = orgConfig.state,
             country = orgConfig.country,
-            caCert
+            signCert = caCert,
+            notBefore = notBefore,
+            notAfter = notAfter
         )
         Util.mkDirs(s"$outPath/msp/keystore")
         writeToPemFile(s"$outPath/msp/keystore/${component}_sk", theCert.key)
@@ -98,7 +109,9 @@ object FabricCryptoMaterial {
             location = orgConfig.location,
             state = orgConfig.state,
             country = orgConfig.country,
-            tlscaCert
+            signCert = tlscaCert,
+            notBefore = notBefore,
+            notAfter = notAfter
         )
         Util.mkDirs(s"$outPath/tls")
         writeToPemFile(s"$outPath/tls/ca.crt", tlscaCert.certificate)
@@ -111,7 +124,9 @@ object FabricCryptoMaterial {
         organizationFullName: String,
         path: String,
         caCert: CertAndKey,
-        tlscaCert: CertAndKey
+        tlscaCert: CertAndKey,
+        notBefore: Date,
+        notAfter: Date
     ): Unit = {
         val outPath = s"$path/service"
 
@@ -121,7 +136,9 @@ object FabricCryptoMaterial {
             location = orgConfig.location,
             state = orgConfig.state,
             country = orgConfig.country,
-            tlscaCert
+            signCert = tlscaCert,
+            notBefore = notBefore,
+            notAfter = notAfter
         )
         Util.mkDirs(s"$outPath/tls")
         writeToPemFile(s"$outPath/tls/server.crt", tlsCert.certificate)
@@ -131,7 +148,9 @@ object FabricCryptoMaterial {
             organization = s"service.$organizationFullName",
             location = orgConfig.location,
             state = orgConfig.state,
-            country = orgConfig.country
+            country = orgConfig.country,
+            notBefore = notBefore,
+            notAfter = notAfter
         )
         Util.mkDirs(s"$outPath/ca")
         writeToPemFile(s"$outPath/ca/server.crt", serviceCACert.certificate)
@@ -148,7 +167,9 @@ object FabricCryptoMaterial {
         organization: String,
         location: String,
         state: String,
-        country: String
+        country: String,
+        notBefore: Date,
+        notAfter: Date
     ): CertAndKey = {
         CryptoUtil.createSelfSignedCert(
             OrgMeta(
@@ -158,9 +179,8 @@ object FabricCryptoMaterial {
                 state = Option(state),
                 country = Option(country)
             ),
-            //TODO: should be from configuration
-            Date.from(LocalDate.of(2000, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
-            Date.from(LocalDate.of(2035, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
+            notBefore,
+            notAfter,
             Array(
                 CertForCA,
                 UseForDigitalSignature,
@@ -177,7 +197,9 @@ object FabricCryptoMaterial {
         organization: String,
         location: String,
         state: String,
-        country: String
+        country: String,
+        notBefore: Date,
+        notAfter: Date
     ): CertAndKey = {
         CryptoUtil.createSelfSignedCert(
             OrgMeta(
@@ -187,9 +209,8 @@ object FabricCryptoMaterial {
                 state = Option(state),
                 country = Option(country)
             ),
-            //TODO: should be from configuration
-            Date.from(LocalDate.of(2000, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
-            Date.from(LocalDate.of(2035, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
+            notBefore,
+            notAfter,
             Array(
                 CertForCA,
                 UseForDigitalSignature,
@@ -207,7 +228,9 @@ object FabricCryptoMaterial {
         location: String,
         state: String,
         country: String,
-        signCert: CertAndKey
+        signCert: CertAndKey,
+        notBefore: Date,
+        notAfter: Date
     ): CertAndKey = {
         CryptoUtil.createSignedCert(
             OrgMeta(
@@ -217,9 +240,8 @@ object FabricCryptoMaterial {
                 state = Option(state),
                 country = Option(country),
             ),
-            //TODO: should be from configuration
-            Date.from(LocalDate.of(2000, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
-            Date.from(LocalDate.of(2035, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
+            notBefore: Date,
+            notAfter: Date,
             Array(
                 CertNotForCA,
                 UseForDigitalSignature
@@ -229,12 +251,14 @@ object FabricCryptoMaterial {
     }
 
     def generateUserCert(
-        userName: String, 
+        userName: String,
         organization: String,
         location: String,
         state: String,
         country: String,
-        signCert: CertAndKey
+        signCert: CertAndKey,
+        notBefore: Date,
+        notAfter: Date
     ): CertAndKey = {
         CryptoUtil.createSignedCert(
             OrgMeta(
@@ -244,9 +268,8 @@ object FabricCryptoMaterial {
                 state = Option(state),
                 country = Option(country),
             ),
-            //TODO: should be from configuration
-            Date.from(LocalDate.of(2000, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
-            Date.from(LocalDate.of(2035, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
+            notBefore,
+            notAfter,
             Array(
                 CertNotForCA,
                 UseForDigitalSignature
@@ -262,7 +285,9 @@ object FabricCryptoMaterial {
         location: String,
         state: String,
         country: String,
-        signCert: CertAndKey
+        signCert: CertAndKey,
+        notBefore: Date,
+        notAfter: Date
     ): CertAndKey = {
         CryptoUtil.createSignedCert(
             OrgMeta(
@@ -272,9 +297,8 @@ object FabricCryptoMaterial {
                 state = Option(state),
                 country = Option(country)
             ),
-            //TODO: should be from configuration
-            Date.from(LocalDate.of(2000, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
-            Date.from(LocalDate.of(2035, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
+            notBefore,
+            notAfter,
             Array(
                 CertNotForCA,
                 UseForDigitalSignature
@@ -289,7 +313,9 @@ object FabricCryptoMaterial {
         location: String,
         state: String,
         country: String,
-        signCert: CertAndKey
+        signCert: CertAndKey,
+        notBefore: Date,
+        notAfter: Date
     ): CertAndKey = {
         CryptoUtil.createSignedCert(
             OrgMeta(
@@ -298,9 +324,8 @@ object FabricCryptoMaterial {
                 state = Option(state),
                 country = Option(country)
             ),
-            //TODO: should be from configuration
-            Date.from(LocalDate.of(2000, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
-            Date.from(LocalDate.of(2035, 1, 1).atStartOfDay(ZoneOffset.UTC).toInstant),
+            notBefore,
+            notAfter,
             Array(
                 CertNotForCA,
                 UseForDigitalSignature,
