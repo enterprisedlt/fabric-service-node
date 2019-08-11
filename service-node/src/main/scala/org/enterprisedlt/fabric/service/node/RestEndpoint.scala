@@ -126,6 +126,20 @@ class RestEndpoint(
                         response.getWriter.println(result)
                         response.setStatus(HttpServletResponse.SC_OK)
 
+                    case "/service/list-confirmations" =>
+                        logger.info(s"Querying confirmations for ${config.organization.name}...")
+                        val result =
+                            networkManager
+                              .toRight("Network is not initialized yet")
+                              .flatMap { network =>
+                                  network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContractConfimations")
+                                    .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
+                              }
+                              .merge
+                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                        response.getWriter.println(result)
+                        response.setStatus(HttpServletResponse.SC_OK)
+
                     case "/service/list-contracts" =>
                         logger.info(s"Querying contracts for ${config.organization.name}...")
                         val result =
