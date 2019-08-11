@@ -299,7 +299,6 @@ class FabricNetworkManager(
     //=========================================================================
 
     def joinToNetwork(joinRequest: JoinRequest): Unit = {
-        logger.info(s"Adding application org...$OrganizationDefinition")
         val organizationDefinition = OrganizationDefinition(
             mspId = joinRequest.organization.mspId,
             policies = PoliciesDefinition(
@@ -312,6 +311,7 @@ class FabricNetworkManager(
             adminCerts = joinRequest.organizationCertificates.adminCerts.map(Util.base64Decode).toSeq
         )
         val applicationOrg = FabricBlock.newApplicationOrg(organizationDefinition)
+        logger.info(s"Adding application org...$applicationOrg")
         applyChannelUpdate(
             systemChannel, admin,
             FabricChannel.AddApplicationOrg(organizationDefinition.mspId, applicationOrg)
