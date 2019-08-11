@@ -1,0 +1,12 @@
+{
+  "name": "example",
+  "chainCodeName": "example",
+  "chainCodeVersion": "1.0",
+  "participants": [
+    "org1",
+    "org2"
+  ],
+  "initArguments": [],
+  "endorsers": [],
+  "collections": []
+}

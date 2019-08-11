@@ -7,7 +7,7 @@ import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.apache.http.entity.ContentType
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
-import org.enterprisedlt.fabric.service.model.Message
+import org.enterprisedlt.fabric.service.model.{Contract, Message}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
@@ -126,6 +126,20 @@ class RestEndpoint(
                         response.getWriter.println(result)
                         response.setStatus(HttpServletResponse.SC_OK)
 
+                    case "/service/list-contracts" =>
+                        logger.info(s"Querying contracts for ${config.organization.name}...")
+                        val result =
+                            networkManager
+                              .toRight("Network is not initialized yet")
+                              .flatMap { network =>
+                                  network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContracts")
+                                    .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
+                              }
+                              .merge
+                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                        response.getWriter.println(result)
+                        response.setStatus(HttpServletResponse.SC_OK)
+
 
                     // unknown GET path
                     case path =>
@@ -173,7 +187,7 @@ class RestEndpoint(
                           .toRight("Network is not initialized yet")
                           .flatMap { network =>
                               logger.info(s"[ $organizationFullName ] - Preparing ${contractRequest.name} chain code ...")
-                              val path = s"/opt/profile/chain-code/${contractRequest.chainCodeName}-${contractRequest.chainCodeVersion}.tgz"
+                              val path = s"/opt/profile/chaincode/${contractRequest.chainCodeName}-${contractRequest.chainCodeVersion}.tgz"
                               val chainCodePkg = new BufferedInputStream(new FileInputStream(path))
 
                               logger.info(s"[ $organizationFullName ] - Installing ${contractRequest.chainCodeName}:${contractRequest.chainCodeVersion} chain code ...")
@@ -186,12 +200,39 @@ class RestEndpoint(
                                   contractRequest.chainCodeVersion,
                                   arguments = contractRequest.initArguments
                               )
+                              network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "createContract", Util.codec.toJson(contractRequest))
+                          } match {
+                            case Right(answer) =>
+                                answer.get()
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                response.getWriter.println(answer)
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(err) =>
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                response.getWriter.println(err)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
+
+                    case "/admin/contract-join" =>
+                        logger.info("Requesting to joining network ...")
+                        val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
+                        val joinReq = Util.codec.fromJson(request.getReader, classOf[ContractJoinRequest])
+
+                        networkManager
+                          .toRight("Network is not initialized yet")
+                          .flatMap { network =>
+                              logger.info(s"[ $organizationFullName ] - Preparing ${joinReq.chainCodeName} chain code ...")
+                              val path = s"/opt/profile/chaincode/${joinReq.chainCodeName}-${joinReq.chainCodeVersion}.tgz"
+                              val chainCodePkg = new BufferedInputStream(new FileInputStream(path))
+                              logger.info(s"[ $organizationFullName ] - Installing ${joinReq.chainCodeName}:${joinReq.chainCodeVersion} chain code ...")
+                              network.installChainCode(ServiceChannelName, joinReq.chainCodeName, joinReq.chainCodeVersion, chainCodePkg)
                           } match {
                             case Right(_) =>
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
                                 response.setStatus(HttpServletResponse.SC_OK)
-
-                            case Left(error) =>
-                                logger.error(error)
+                            case Left(err) =>
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                response.getWriter.println(err)
                                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                         }
 

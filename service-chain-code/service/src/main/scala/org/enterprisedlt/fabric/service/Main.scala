@@ -1,7 +1,8 @@
 package org.enterprisedlt.fabric.service
 
-import org.enterprisedlt.fabric.contract.ContractBase
-import org.enterprisedlt.fabric.service.operations.{ContractInitialize, MessagingOperations, OrganizationOperations, ServiceOperations, ServiceVersionOperations}
+import org.enterprisedlt.fabric.contract.{ContractBase, ContractContext}
+import org.enterprisedlt.fabric.service.model.Organization
+import org.enterprisedlt.fabric.service.operations.{ContractInitialize, ContractOperations, MessagingOperations, OrganizationOperations, ServiceOperations, ServiceVersionOperations}
 import org.slf4j.{Logger, LoggerFactory}
 
 /**
@@ -14,6 +15,7 @@ object Main extends ContractBase
   with OrganizationOperations
   with ServiceOperations
   with MessagingOperations
+  with ContractOperations
   //
 {
 
@@ -28,10 +30,15 @@ object Main extends ContractBase
     LoggerFactory
       .getLogger(this.getClass.getPackage.getName)
       .asInstanceOf[ch.qos.logback.classic.Logger]
-      .setLevel(ch.qos.logback.classic.Level.INFO)
+      .setLevel(ch.qos.logback.classic.Level.DEBUG)
     LoggerFactory
       .getLogger(classOf[ContractBase].getPackage.getName)
       .asInstanceOf[ch.qos.logback.classic.Logger]
-      .setLevel(ch.qos.logback.classic.Level.INFO)
+      .setLevel(ch.qos.logback.classic.Level.TRACE)
+
+    def getOwnOrganization(context: ContractContext): Either[String, Organization] = {
+        val mspId = context.clientIdentity.mspId
+        context.store.get[Organization](mspId).toRight(s"There isn't such org")
+    }
 
 }

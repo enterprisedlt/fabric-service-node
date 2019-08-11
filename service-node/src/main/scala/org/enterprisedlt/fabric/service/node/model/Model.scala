@@ -73,9 +73,15 @@ case class CreateContractRequest(
     name: String,
     chainCodeName: String,
     chainCodeVersion: String,
+    participants: Array[String],
     initArguments: Array[String],
     endorsers: Array[String],
     collections: Array[String]
+)
+
+case class ContractJoinRequest(
+    chainCodeName: String,
+    chainCodeVersion: String
 )
 
 case class CallContractRequest(
