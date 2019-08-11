@@ -8,9 +8,7 @@ import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, Or
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
-import org.enterprisedlt.fabric.service.node.model.{Invite, JoinRequest, JoinResponse}
-import org.enterprisedlt.fabric.service.node.proto._
-import org.hyperledger.fabric.protos.common.MspPrincipal.MSPRole
+import org.enterprisedlt.fabric.service.node.model.{Invite, JoinRequest, JoinResponse, OrganizationCertificates}
 import org.slf4j.LoggerFactory
 
 /**
@@ -26,7 +24,6 @@ object Join {
         externalAddress: Option[ExternalAddress], hostsManager: HostsManager
     ): FabricNetworkManager = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
-        val orgMspId = config.organization.name
         val cryptoPath = "/opt/profile/crypto"
         val firstOrderingNode = config.network.orderingNodes.head
         logger.info(s"[ $organizationFullName ] - Generating certificates ...")
@@ -34,17 +31,6 @@ object Join {
         logger.info(s"[ $organizationFullName ] - Creating JoinRequest ...")
         //
         val joinRequest = JoinRequest(
-            organizationDefinition = OrganizationDefinition(
-                mspId = orgMspId,
-                caCerts = Seq(Util.readAsByteString(s"$cryptoPath/ca/ca.crt")),
-                tlsCACerts = Seq(Util.readAsByteString(s"$cryptoPath/tlsca/tlsca.crt")),
-                adminCerts = Seq(Util.readAsByteString(s"$cryptoPath/users/admin/admin.crt")),
-                policies = PoliciesDefinition(
-                    admins = SignedByOneOf(MemberClassifier(orgMspId, MSPRole.MSPRoleType.ADMIN)),
-                    writers = SignedByOneOf(MemberClassifier(orgMspId, MSPRole.MSPRoleType.MEMBER)),
-                    readers = SignedByOneOf(MemberClassifier(orgMspId, MSPRole.MSPRoleType.MEMBER))
-                )
-            ),
             organization = Organization(
                 mspId = config.organization.name,
                 name = config.organization.name,
@@ -56,13 +42,16 @@ object Join {
                 }
                   .getOrElse(Array.empty)
             ),
-            orderingNode =
-              OrderingNodeDefinition(
-                  host = s"$firstOrderingNode.$organizationFullName",
-                  port = firstOrderingNode.port,
-                  clientTlsCert = Util.readAsByteString(s"$cryptoPath/orderers/$firstOrderingNode.$organizationFullName/tls/server.crt"),
-                  serverTlsCert = Util.readAsByteString(s"$cryptoPath/orderers/$firstOrderingNode.$organizationFullName/tls/server.crt")
-              )
+            organizationCertificates = OrganizationCertificates(
+                caCerts = Array(Util.readAsByteString(s"$cryptoPath/ca/ca.crt")).map(Util.base64Encode),
+                tlsCACerts = Array(Util.readAsByteString(s"$cryptoPath/tlsca/tlsca.crt")).map(Util.base64Encode),
+                adminCerts = Array(Util.readAsByteString(s"$cryptoPath/users/admin/admin.crt")).map(Util.base64Encode),
+                clientTlsCert = Util.base64Encode(Util.readAsByteString(s"$cryptoPath/orderers/${firstOrderingNode.name}.$organizationFullName/tls/server.crt")),
+                serverTlsCert = Util.base64Encode(Util.readAsByteString(s"$cryptoPath/orderers/${firstOrderingNode.name}.$organizationFullName/tls/server.crt"))
+            ),
+            //
+            host = s"${firstOrderingNode.name}.$organizationFullName",
+            port = firstOrderingNode.port
         )
 
         //

@@ -1,7 +1,6 @@
 package org.enterprisedlt.fabric.service.node.model
 
 import org.enterprisedlt.fabric.service.model.Organization
-import org.enterprisedlt.fabric.service.node.proto.{OrderingNodeDefinition, OrganizationDefinition}
 
 case class CreateChannelRequest(
     name: String
@@ -45,9 +44,12 @@ case class Invite(
 )
 
 case class JoinRequest(
-    organizationDefinition: OrganizationDefinition,
     organization: Organization,
-    orderingNode: OrderingNodeDefinition
+    //
+    organizationCertificates: OrganizationCertificates,
+    //
+    host: String,
+    port: Int
 )
 
 case class JoinResponse(
@@ -86,4 +88,12 @@ case class CallContractRequest(
     functionName: String,
     arguments: Array[String],
     awaitTransaction: Boolean
+)
+
+case class OrganizationCertificates(
+    caCerts: Array[String],
+    tlsCACerts: Array[String],
+    adminCerts: Array[String],
+    clientTlsCert: String,
+    serverTlsCert: String
 )
