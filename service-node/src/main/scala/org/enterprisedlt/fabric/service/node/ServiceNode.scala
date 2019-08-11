@@ -5,13 +5,16 @@ import java.io.FileReader
 import org.eclipse.jetty.http.HttpVersion
 import org.eclipse.jetty.security.{ConstraintMapping, ConstraintSecurityHandler}
 import org.eclipse.jetty.server._
-import org.eclipse.jetty.server.handler.{ContextHandler, ContextHandlerCollection, ResourceHandler}
+import org.eclipse.jetty.server.handler.{ContextHandler, ContextHandlerCollection, HandlerList, ResourceHandler}
 import org.eclipse.jetty.util.security.Constraint
 import org.eclipse.jetty.util.ssl.SslContextFactory
+import org.eclipse.jetty.websocket.server.WebSocketHandler
+import org.eclipse.jetty.websocket.servlet.{ServletUpgradeRequest, ServletUpgradeResponse, WebSocketCreator, WebSocketServletFactory}
 import org.enterprisedlt.fabric.service.node.auth.{FabricAuthenticator, Role}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
+import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.slf4j.LoggerFactory
 
 /**
@@ -91,7 +94,8 @@ object ServiceNode extends App {
                 newConstraint("admin", "/admin/*", Role.Admin),
                 newConstraint("join", "/join-network", Role.Admin, Role.JoinToken),
                 newConstraint("service", "/service/*", Role.Admin, Role.User),
-                newConstraint("webapp", "/webapp/*", Role.Admin, Role.User)
+                newConstraint("webapp", "/webapp/*", Role.Admin, Role.User),
+                newConstraint("socket", "/socket/*", Role.Admin, Role.User),
             )
         )
         security.setAuthenticator(new FabricAuthenticator(cryptography))
@@ -110,8 +114,16 @@ object ServiceNode extends App {
         webApp.setWelcomeFiles(Array("index.html"))
         webAppContext.setHandler(webApp)
 
-        security.setHandler(new ContextHandlerCollection(webAppContext, endpointContext))
+        //TODO: make websocket server optional, based on configuration
+        val webSocketContext = new ContextHandler("/socket")
+        val wsHandler = new WebSocketHandler() {
+            def configure(factory: WebSocketServletFactory): Unit = {
+                factory.setCreator(ServiceWebSocketManager)
+            }
+        }
+        webSocketContext.setHandler(wsHandler)
 
+        security.setHandler(new ContextHandlerCollection(webAppContext, webSocketContext, endpointContext))
         server.setHandler(security)
         server
     }

@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit
 import org.enterprisedlt.fabric.service.model.{Organization, ServiceVersion}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
+import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.hyperledger.fabric.protos.peer.Chaincode.ChaincodeDeploymentSpec
 import org.hyperledger.fabric.sdk.{BlockEvent, BlockListener}
 import org.slf4j.LoggerFactory
@@ -55,6 +56,7 @@ class NetworkMonitor(
                 }
             }
         }
+        ServiceWebSocketManager.broadcastText(s"new block ${blockEvent.getBlockNumber}")
     }
 
     def onServiceUpgrade(updaterMspId: String, organization: Organization, version: ServiceVersion): Unit = {
