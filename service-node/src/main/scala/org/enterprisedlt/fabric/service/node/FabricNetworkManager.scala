@@ -298,35 +298,23 @@ class FabricNetworkManager(
 
     def joinToNetwork(joinRequest: JoinRequest): Unit = {
         logger.info(s"Adding application org...$OrganizationDefinition")
-        val applicationOrg = FabricBlock.newApplicationOrg(joinRequest.organizationDefinition)
-          .getGroupsMap.get("Application")
-          .getGroupsMap.entrySet().iterator().next()
+        val organizationDefinition = joinRequest.organizationDefinition
+        val applicationOrg = FabricBlock.newApplicationOrg(organizationDefinition)
         applyChannelUpdate(
             systemChannel, admin,
-            FabricChannel.AddApplicationOrg(applicationOrg.getKey, applicationOrg.getValue)
+            FabricChannel.AddApplicationOrg(organizationDefinition.mspId, applicationOrg)
         )
         logger.info("Adding ordering org...")
         val orderingOrganizationGroup = FabricBlock.newOrderingOrganizationGroup(joinRequest.organizationDefinition)
-        val orderingOrg = orderingOrganizationGroup
-          .getGroupsMap.get("Orderer")
-          .getGroupsMap.entrySet().iterator().next()
         applyChannelUpdate(
             systemChannel, admin,
-            FabricChannel.AddOrderingOrg(orderingOrg.getKey, orderingOrg.getValue)
+            FabricChannel.AddOrderingOrg(organizationDefinition.mspId, orderingOrganizationGroup)
         )
         logger.info("Adding peers org...")
-        val consortiumDefinition =
-            ConsortiumDefinition(
-                name = DefaultConsortiumName,
-                organizations = Seq(joinRequest.organizationDefinition)
-            )
-        val consortiumOrganization = FabricBlock.newConsortiumGroup(consortiumDefinition)
-          .getGroupsMap.get("Consortiums")
-          .getGroupsMap.get("SampleConsortium")
-          .getGroupsMap.entrySet().iterator().next()
+        // it's valid to use osn group here coz structure is equivalent
         applyChannelUpdate(
             systemChannel, admin,
-            FabricChannel.AddConsortiumOrg(consortiumOrganization.getKey, consortiumOrganization.getValue)
+            FabricChannel.AddConsortiumOrg(organizationDefinition.mspId, orderingOrganizationGroup)
         )
         logger.info("Adding OSN 1...")
         val consenter = Consenter.newBuilder()
