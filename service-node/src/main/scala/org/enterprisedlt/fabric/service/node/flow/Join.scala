@@ -213,20 +213,20 @@ object Join {
         }
     }
 
-//    private def fetchCurrentCollection(
-//        config: ServiceConfig,
-//        network: FabricNetworkManager,
-//        currentOrgs: Array[Organization]
-//    ): Either[String, Iterable[PrivateCollectionConfiguration]] =
-//        if (currentOrgs.length == 1) {
-//            Right(Seq.empty)
-//        } else {
-//            network
-//              .fetchCollectionsConfig(
-//                  config.network.peerNodes.head.name,
-//                  ServiceChannelName, ServiceChainCodeName
-//              )
-//        }
+    //    private def fetchCurrentCollection(
+    //        config: ServiceConfig,
+    //        network: FabricNetworkManager,
+    //        currentOrgs: Array[Organization]
+    //    ): Either[String, Iterable[PrivateCollectionConfiguration]] =
+    //        if (currentOrgs.length == 1) {
+    //            Right(Seq.empty)
+    //        } else {
+    //            network
+    //              .fetchCollectionsConfig(
+    //                  config.network.peerNodes.head.name,
+    //                  ServiceChannelName, ServiceChainCodeName
+    //              )
+    //        }
 
 
     //=========================================================================
@@ -249,11 +249,12 @@ object Join {
               (
                 List.empty[String], // initially we have no organization
                 List.empty[PrivateCollectionConfiguration]) // initially we have no collections
-          ) { case ((currentOrganizationsList, collectionsList), newOrganiztion) =>
-              (
-                currentOrganizationsList :+ newOrganiztion,
-                collectionsList ++ mkCollectionsToAdd(currentOrganizationsList, newOrganiztion)
-              )
+          ) {
+              case ((currentOrganizationsList, collectionsList), newOrganiztion) =>
+                  (
+                    currentOrganizationsList :+ newOrganiztion,
+                    collectionsList ++ mkCollectionsToAdd(currentOrganizationsList, newOrganiztion)
+                  )
           }._2
 
 
