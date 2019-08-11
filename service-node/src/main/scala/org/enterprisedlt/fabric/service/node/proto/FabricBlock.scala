@@ -531,6 +531,7 @@ object FabricBlock {
           .build()
     }
 
+    // Смотреть сюда!
     def newApplicationOrg(organization: OrganizationDefinition): ConfigGroup = {
         val applicationOrgGroup = ConfigGroup.newBuilder()
 

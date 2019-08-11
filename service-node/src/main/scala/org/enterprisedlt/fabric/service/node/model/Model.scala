@@ -1,6 +1,7 @@
 package org.enterprisedlt.fabric.service.node.model
 
 import org.enterprisedlt.fabric.service.model.Organization
+import org.enterprisedlt.fabric.service.node.proto.{OrderingNodeDefinition, OrganizationDefinition}
 
 case class CreateChannelRequest(
     name: String
@@ -44,8 +45,9 @@ case class Invite(
 )
 
 case class JoinRequest(
-    genesisConfig: String,
-    organization: Organization
+    organizationDefinition: OrganizationDefinition,
+    organization: Organization,
+    orderingNode: OrderingNodeDefinition
 )
 
 case class JoinResponse(

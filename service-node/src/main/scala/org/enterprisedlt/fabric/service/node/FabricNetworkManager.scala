@@ -7,10 +7,13 @@ import java.util.concurrent.{CompletableFuture, TimeUnit}
 
 import com.google.protobuf.ByteString
 import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, PeerConfig, ServiceConfig}
-import org.enterprisedlt.fabric.service.node.proto.FabricChannel
+import org.enterprisedlt.fabric.service.node.flow.Constant.DefaultConsortiumName
+import org.enterprisedlt.fabric.service.node.model.JoinRequest
+import org.enterprisedlt.fabric.service.node.proto.{ConsortiumDefinition, FabricBlock, FabricChannel, OrganizationDefinition}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
 import org.hyperledger.fabric.protos.common.Configtx
-import org.hyperledger.fabric.protos.common.Configtx.ConfigUpdate
+import org.hyperledger.fabric.protos.common.Configtx.{ConfigGroup, ConfigUpdate}
+import org.hyperledger.fabric.protos.ext.orderer.etcdraft.Configuration.Consenter
 import org.hyperledger.fabric.sdk.helper.Config
 import org.hyperledger.fabric.sdk.security.CryptoSuite
 import org.hyperledger.fabric.sdk.{BlockEvent, ChannelConfiguration, Peer, _}
@@ -292,17 +295,19 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def joinToNetwork(newOrgConfig: Configtx.Config): Unit = {
-        logger.info("Adding application org...")
-        val appOrg = newOrgConfig.getChannelGroup
+
+    def joinToNetwork(joinRequest: JoinRequest): Unit = {
+        logger.info(s"Adding application org...$OrganizationDefinition")
+        val applicationOrg = FabricBlock.newApplicationOrg(joinRequest.organizationDefinition)
           .getGroupsMap.get("Application")
           .getGroupsMap.entrySet().iterator().next()
         applyChannelUpdate(
             systemChannel, admin,
-            FabricChannel.AddApplicationOrg(appOrg.getKey, appOrg.getValue)
+            FabricChannel.AddApplicationOrg(applicationOrg.getKey, applicationOrg.getValue)
         )
         logger.info("Adding ordering org...")
-        val orderingOrg = newOrgConfig.getChannelGroup
+        val orderingOrganizationGroup = FabricBlock.newOrderingOrganizationGroup(joinRequest.organizationDefinition)
+        val orderingOrg = orderingOrganizationGroup
           .getGroupsMap.get("Orderer")
           .getGroupsMap.entrySet().iterator().next()
         applyChannelUpdate(
@@ -310,48 +315,68 @@ class FabricNetworkManager(
             FabricChannel.AddOrderingOrg(orderingOrg.getKey, orderingOrg.getValue)
         )
         logger.info("Adding peers org...")
-        val consortiumOrg = newOrgConfig.getChannelGroup
+        val consortiumDefinition =
+            ConsortiumDefinition(
+                name = DefaultConsortiumName,
+                organizations = Seq(joinRequest.organizationDefinition)
+            )
+        val consortiumOrganization = FabricBlock.newConsortiumGroup(consortiumDefinition)
           .getGroupsMap.get("Consortiums")
           .getGroupsMap.get("SampleConsortium")
           .getGroupsMap.entrySet().iterator().next()
         applyChannelUpdate(
             systemChannel, admin,
-            FabricChannel.AddConsortiumOrg(consortiumOrg.getKey, consortiumOrg.getValue)
+            FabricChannel.AddConsortiumOrg(consortiumOrganization.getKey, consortiumOrganization.getValue)
         )
         logger.info("Adding OSN 1...")
-        val metadata = Util.extractConsensusMetadata(newOrgConfig)
+        val consenter = Consenter.newBuilder()
+          .setHost(joinRequest.orderingNode.host)
+          .setPort(joinRequest.orderingNode.port)
+          .setClientTlsCert(joinRequest.orderingNode.clientTlsCert)
+          .setServerTlsCert(joinRequest.orderingNode.serverTlsCert)
+          .build()
         applyChannelUpdate(
             systemChannel, admin,
-            FabricChannel.AddConsenter(metadata.getConsenters(0))
+            FabricChannel.AddConsenter(consenter)
         )
     }
 
     //=========================================================================
-    def joinToChannel(channelName: String, newOrgConfig: Configtx.Config): Either[String, Unit] = {
+    def joinToChannel(channelName: String, joinRequest: JoinRequest): Either[String, Unit] = {
         getChannel(channelName)
           .map { channel =>
               logger.info("Adding application org...")
-              val consortiumOrg = newOrgConfig.getChannelGroup
+              val consortiumDefinition =
+                  ConsortiumDefinition(
+                      name = DefaultConsortiumName,
+                      organizations = Seq(joinRequest.organizationDefinition)
+                  )
+              val consortiumOrganization = FabricBlock.newConsortiumGroup(consortiumDefinition)
                 .getGroupsMap.get("Consortiums")
                 .getGroupsMap.get("SampleConsortium")
                 .getGroupsMap.entrySet().iterator().next()
               applyChannelUpdate(
                   channel, admin,
-                  FabricChannel.AddApplicationOrg(consortiumOrg.getKey, consortiumOrg.getValue),
+                  FabricChannel.AddConsortiumOrg(consortiumOrganization.getKey, consortiumOrganization.getValue)
               )
               logger.info("Adding ordering org...")
-              val orderingOrg = newOrgConfig.getChannelGroup
+              val orderingOrganizationGroup = FabricBlock.newOrderingOrganizationGroup(joinRequest.organizationDefinition)
+              val orderingOrg = orderingOrganizationGroup
                 .getGroupsMap.get("Orderer")
                 .getGroupsMap.entrySet().iterator().next()
               applyChannelUpdate(
                   channel, admin,
                   FabricChannel.AddOrderingOrg(orderingOrg.getKey, orderingOrg.getValue)
               )
-              logger.info("Adding OSN 1...")
-              val metadata = Util.extractConsensusMetadata(newOrgConfig)
+              val consenter = Consenter.newBuilder()
+                .setHost(joinRequest.orderingNode.host)
+                .setPort(joinRequest.orderingNode.port)
+                .setClientTlsCert(joinRequest.orderingNode.clientTlsCert)
+                .setServerTlsCert(joinRequest.orderingNode.serverTlsCert)
+                .build()
               applyChannelUpdate(
                   channel, admin,
-                  FabricChannel.AddConsenter(metadata.getConsenters(0))
+                  FabricChannel.AddConsenter(consenter)
               )
           }
     }

@@ -9,8 +9,8 @@ import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model.{Invite, JoinRequest, JoinResponse}
-import org.enterprisedlt.fabric.service.node.proto.FabricBlock
-import org.hyperledger.fabric.protos.common.Configtx
+import org.enterprisedlt.fabric.service.node.proto._
+import org.hyperledger.fabric.protos.common.MspPrincipal.MSPRole
 import org.slf4j.LoggerFactory
 
 /**
@@ -26,16 +26,26 @@ object Join {
         externalAddress: Option[ExternalAddress], hostsManager: HostsManager
     ): FabricNetworkManager = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
+        val orgMspId = config.organization.name
+        val cryptoPath = "/opt/profile/crypto"
+        val firstOrderingNode = config.network.orderingNodes.head
         logger.info(s"[ $organizationFullName ] - Generating certificates ...")
-
         //
         logger.info(s"[ $organizationFullName ] - Creating JoinRequest ...")
-        val genesisDefinition = Genesis.newDefinition("/opt/profile", config)
-        val genesis = FabricBlock.create(genesisDefinition, config)
-        val genesisConfig = Util.extractConfig(genesis)
+        //
         val joinRequest = JoinRequest(
-            genesisConfig = Base64.getEncoder.encodeToString(genesisConfig.toByteArray),
-            Organization(
+            organizationDefinition = OrganizationDefinition(
+                mspId = orgMspId,
+                caCerts = Seq(Util.readAsByteString(s"$cryptoPath/ca/ca.crt")),
+                tlsCACerts = Seq(Util.readAsByteString(s"$cryptoPath/tlsca/tlsca.crt")),
+                adminCerts = Seq(Util.readAsByteString(s"$cryptoPath/users/admin/admin.crt")),
+                policies = PoliciesDefinition(
+                    admins = SignedByOneOf(MemberClassifier(orgMspId, MSPRole.MSPRoleType.ADMIN)),
+                    writers = SignedByOneOf(MemberClassifier(orgMspId, MSPRole.MSPRoleType.MEMBER)),
+                    readers = SignedByOneOf(MemberClassifier(orgMspId, MSPRole.MSPRoleType.MEMBER))
+                )
+            ),
+            organization = Organization(
                 mspId = config.organization.name,
                 name = config.organization.name,
                 memberNumber = 0,
@@ -45,7 +55,14 @@ object Join {
                       KnownHostRecord(address.host, s"service.$organizationFullName")
                 }
                   .getOrElse(Array.empty)
-            )
+            ),
+            orderingNode =
+              OrderingNodeDefinition(
+                  host = s"$firstOrderingNode.$organizationFullName",
+                  port = config.network.orderingNodes.head.port,
+                  clientTlsCert = Util.readAsByteString(s"$cryptoPath/orderers/$firstOrderingNode.$organizationFullName/tls/server.crt"),
+                  serverTlsCert = Util.readAsByteString(s"$cryptoPath/orderers/$firstOrderingNode.$organizationFullName/tls/server.crt")
+              )
         )
 
         //
@@ -135,14 +152,13 @@ object Join {
         joinRequest: JoinRequest, hostsManager: HostsManager
     ): Either[String, JoinResponse] = {
         logger.info(s"Joining ${joinRequest.organization.name} to network ...")
-        val newOrgConfig = Configtx.Config.parseFrom(Base64.getDecoder.decode(joinRequest.genesisConfig))
         logger.info(s"Joining ${joinRequest.organization.name} to consortium ...")
-        network.joinToNetwork(newOrgConfig)
+        network.joinToNetwork(joinRequest)
         logger.info("Joining to channel 'service' ...")
 
         for {
             // join new org to service channel
-            _ <- network.joinToChannel(ServiceChannelName, newOrgConfig)
+            _ <- network.joinToChannel(ServiceChannelName, joinRequest)
 
             // fetch current network version
             chainCodeVersion <- network
