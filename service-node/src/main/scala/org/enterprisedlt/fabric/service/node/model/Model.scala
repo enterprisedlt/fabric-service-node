@@ -80,8 +80,8 @@ case class CreateContractRequest(
 )
 
 case class ContractJoinRequest(
-    chainCodeName: String,
-    chainCodeVersion: String
+    name: String,
+    founder: String
 )
 
 case class CallContractRequest(

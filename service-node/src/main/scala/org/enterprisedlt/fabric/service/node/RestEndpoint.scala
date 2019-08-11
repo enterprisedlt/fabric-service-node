@@ -15,8 +15,8 @@ import org.enterprisedlt.fabric.service.node.model._
 import org.slf4j.LoggerFactory
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 class RestEndpoint(
     bindPort: Int,
     externalAddress: Option[ExternalAddress],
@@ -200,7 +200,12 @@ class RestEndpoint(
                                   contractRequest.chainCodeVersion,
                                   arguments = contractRequest.initArguments
                               )
-                              network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "createContract", Util.codec.toJson(contractRequest))
+                              network.invokeChainCode(
+                                  ServiceChannelName,
+                                  ServiceChainCodeName,
+                                  "createContract",
+                                  Util.codec.toJson(contractRequest)
+                              )
                           } match {
                             case Right(answer) =>
                                 answer.get()
@@ -214,21 +219,37 @@ class RestEndpoint(
                         }
 
                     case "/admin/contract-join" =>
-                        logger.info("Requesting to joining network ...")
+                        logger.info("Joining deployed contract ...")
                         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
                         val joinReq = Util.codec.fromJson(request.getReader, classOf[ContractJoinRequest])
-
+                        logger.info(s"joinReq is $joinReq")
                         networkManager
                           .toRight("Network is not initialized yet")
                           .flatMap { network =>
-                              logger.info(s"[ $organizationFullName ] - Preparing ${joinReq.chainCodeName} chain code ...")
-                              val path = s"/opt/profile/chaincode/${joinReq.chainCodeName}-${joinReq.chainCodeVersion}.tgz"
-                              val chainCodePkg = new BufferedInputStream(new FileInputStream(path))
-                              logger.info(s"[ $organizationFullName ] - Installing ${joinReq.chainCodeName}:${joinReq.chainCodeVersion} chain code ...")
-                              network.installChainCode(ServiceChannelName, joinReq.chainCodeName, joinReq.chainCodeVersion, chainCodePkg)
+                              network.queryChainCode(
+                                  ServiceChannelName,
+                                  ServiceChainCodeName,
+                                  "getContract",
+                                  joinReq.name,
+                                  joinReq.founder)
+                                .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
+                              match {
+                                  case Right(value) =>
+                                      val result = Util.codec.fromJson(value, classOf[Contract])
+                                      val path = s"/opt/profile/chaincode/${result.chainCodeName}-${result.chainCodeVersion}.tgz"
+                                      val chainCodePkg = new BufferedInputStream(new FileInputStream(path))
+                                      logger.info(s"[ $organizationFullName ] - Installing ${result.chainCodeName}:${result.chainCodeVersion} chaincode ...")
+                                      network.installChainCode(ServiceChannelName, result.chainCodeName, result.chainCodeVersion, chainCodePkg)
+                                      match {
+                                          case Right(_) =>
+                                              network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
+                                              network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "sendContractConfimation", joinReq.name, joinReq.founder)
+                                      }
+                              }
                           } match {
-                            case Right(_) =>
+                            case Right(answer) =>
                                 response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                response.getWriter.println(answer)
                                 response.setStatus(HttpServletResponse.SC_OK)
                             case Left(err) =>
                                 response.setContentType(ContentType.TEXT_PLAIN.getMimeType)

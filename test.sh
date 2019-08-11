@@ -55,11 +55,11 @@ fabric-service-messages-list.sh ./test/org3
 
 #Creating contract by ORG1
 
-#fabric-service-contract-create.sh ./test/org1 ./test/org1/contract_invite.json
+fabric-service-contract-create.sh ./test/org1 ./test/org1/contract_invite.json
 
 #Checking messages avaliability by mupltyple parties
-#fabric-service-contracts-list.sh ./test/org1
-#fabric-service-contracts-list.sh ./test/org2
+fabric-service-contracts-list.sh ./test/org1
+fabric-service-contracts-list.sh ./test/org2
 
 #Joining to contract by ORG2
-#fabric-service-contract-join.sh ./test/org2 "example" "1.0"
+fabric-service-contract-join.sh ./test/org2 "example" "org1"

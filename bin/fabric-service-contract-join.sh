@@ -18,7 +18,7 @@ curl -k --silent --show-error \
 -H "Content-Type: application/json" \
 --request POST \
 https://${SERVICE_URL}/admin/contract-join \
--d   "{\"chainCodeName\":\"$2\",\"chainCodeVersion\":\"$3\"}"
+-d   "{\"name\":\"$2\",\"founder\":\"$3\"}"
 
 echo
 

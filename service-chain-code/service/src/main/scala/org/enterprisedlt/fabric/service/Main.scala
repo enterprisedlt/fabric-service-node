@@ -30,11 +30,11 @@ object Main extends ContractBase
     LoggerFactory
       .getLogger(this.getClass.getPackage.getName)
       .asInstanceOf[ch.qos.logback.classic.Logger]
-      .setLevel(ch.qos.logback.classic.Level.DEBUG)
+      .setLevel(ch.qos.logback.classic.Level.INFO)
     LoggerFactory
       .getLogger(classOf[ContractBase].getPackage.getName)
       .asInstanceOf[ch.qos.logback.classic.Logger]
-      .setLevel(ch.qos.logback.classic.Level.TRACE)
+      .setLevel(ch.qos.logback.classic.Level.INFO)
 
     def getOwnOrganization(context: ContractContext): Either[String, Organization] = {
         val mspId = context.clientIdentity.mspId
