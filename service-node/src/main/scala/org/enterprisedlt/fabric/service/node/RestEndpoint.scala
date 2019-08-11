@@ -132,7 +132,7 @@ class RestEndpoint(
                             networkManager
                               .toRight("Network is not initialized yet")
                               .flatMap { network =>
-                                  network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContractConfimations")
+                                  network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContractConfirmations")
                                     .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
                               }
                               .merge

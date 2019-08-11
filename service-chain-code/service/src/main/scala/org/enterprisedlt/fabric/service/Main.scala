@@ -36,6 +36,7 @@ object Main extends ContractBase
       .asInstanceOf[ch.qos.logback.classic.Logger]
       .setLevel(ch.qos.logback.classic.Level.INFO)
 
+//    ================================================================================
     def getOwnOrganization(context: ContractContext): Either[String, Organization] = {
         val mspId = context.clientIdentity.mspId
         context.store.get[Organization](mspId).toRight(s"There isn't such org")

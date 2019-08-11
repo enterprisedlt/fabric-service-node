@@ -86,7 +86,7 @@ trait ContractOperations {
           }
 
     @ContractOperation
-    def sendContractConfimation(context: ContractContext, name: String, founder: String): ContractResponse =
+    def sendContractConfirmation(context: ContractContext, name: String, founder: String): ContractResponse =
         getOwnOrganization(context)
           .flatMap { org =>
               for {
@@ -104,7 +104,7 @@ trait ContractOperations {
           }
 
     @ContractOperation
-    def listContractConfimations(context: ContractContext): ContractResponse =
+    def listContractConfirmations(context: ContractContext): ContractResponse =
         Success(
             CollectionsHelper
               .collectionsFromOrganizations(
