@@ -15,15 +15,15 @@ import org.enterprisedlt.fabric.service.node.model._
 import org.slf4j.LoggerFactory
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 class RestEndpoint(
-    bindPort: Int,
-    externalAddress: Option[ExternalAddress],
-    config: ServiceConfig,
-    cryptoManager: CryptoManager,
-    processManager: FabricProcessManager,
-    hostsManager: HostsManager
+  bindPort: Int,
+  externalAddress: Option[ExternalAddress],
+  config: ServiceConfig,
+  cryptoManager: CryptoManager,
+  processManager: FabricProcessManager,
+  hostsManager: HostsManager
 ) extends AbstractHandler {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -196,41 +196,35 @@ class RestEndpoint(
                         logger.info("Creating contract ...")
                         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
                         val contractRequest = Util.codec.fromJson(request.getReader, classOf[CreateContractRequest])
-                        //
                         networkManager
                           .toRight("Network is not initialized yet")
                           .flatMap { network =>
                               logger.info(s"[ $organizationFullName ] - Preparing ${contractRequest.name} chain code ...")
                               val path = s"/opt/profile/chaincode/${contractRequest.chainCodeName}-${contractRequest.chainCodeVersion}.tgz"
                               val chainCodePkg = new BufferedInputStream(new FileInputStream(path))
-
-                              logger.info(s"[ $organizationFullName ] - Installing ${contractRequest.chainCodeName}:${contractRequest.chainCodeVersion} chain code ...")
-                              network.installChainCode(ServiceChannelName, contractRequest.chainCodeName, contractRequest.chainCodeVersion, chainCodePkg)
-
-                              //
-                              logger.info(s"[ $organizationFullName ] - Instantiating ${contractRequest.chainCodeName}:${contractRequest.chainCodeVersion} chain code ...")
-                              network.instantiateChainCode(
-                                  ServiceChannelName, contractRequest.name,
-                                  contractRequest.chainCodeVersion,
-                                  arguments = contractRequest.initArguments
-                              )
-                              network.invokeChainCode(
-                                  ServiceChannelName,
-                                  ServiceChainCodeName,
-                                  "createContract",
-                                  Util.codec.toJson(contractRequest)
-                              )
-                          } match {
-                            case Right(answer) =>
-                                answer.get()
-                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
-                                response.getWriter.println(answer)
-                                response.setStatus(HttpServletResponse.SC_OK)
-                            case Left(err) =>
-                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
-                                response.getWriter.println(err)
-                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                        }
+                              for {
+                                  _ <- {
+                                      logger.info(s"[ $organizationFullName ] - Installing ${contractRequest.chainCodeName}:${contractRequest.chainCodeVersion} chain code ...")
+                                      network.installChainCode(ServiceChannelName, contractRequest.chainCodeName, contractRequest.chainCodeVersion, chainCodePkg)
+                                  }
+                                  _ <- {
+                                      logger.info(s"[ $organizationFullName ] - Instantiating ${contractRequest.chainCodeName}:${contractRequest.chainCodeVersion} chain code ...")
+                                      network.instantiateChainCode(ServiceChannelName, contractRequest.name, contractRequest.chainCodeVersion, arguments = contractRequest.initArguments)
+                                  }
+                                  answer <- {
+                                      logger.info(s"[ $organizationFullName ] - Sending contract invite to participants ...")
+                                      network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "createContract", Util.codec.toJson(contractRequest))
+                                  }
+                              } yield {
+                                  answer.get()
+                                  response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                  response.getWriter.println(answer)
+                                  response.setStatus(HttpServletResponse.SC_OK)
+                              }
+                              //                            response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                              ////                                response.getWriter.println(err)
+                              //                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                          }
 
                     case "/admin/contract-join" =>
                         logger.info("Joining deployed contract ...")
@@ -240,36 +234,28 @@ class RestEndpoint(
                         networkManager
                           .toRight("Network is not initialized yet")
                           .flatMap { network =>
-                              network.queryChainCode(
-                                  ServiceChannelName,
-                                  ServiceChainCodeName,
-                                  "getContract",
-                                  joinReq.name,
-                                  joinReq.founder)
-                                .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
-                              match {
-                                  case Right(value) =>
-                                      val result = Util.codec.fromJson(value, classOf[Contract])
+                              for {
+                                  queryResult <- {
+                                      network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getContract", joinReq.name, joinReq.founder)
+                                        .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"Nothing"))
+                                  }
+                                  _ <- {
+                                      val result = Util.codec.fromJson(queryResult, classOf[Contract])
                                       val path = s"/opt/profile/chaincode/${result.chainCodeName}-${result.chainCodeVersion}.tgz"
                                       val chainCodePkg = new BufferedInputStream(new FileInputStream(path))
                                       logger.info(s"[ $organizationFullName ] - Installing ${result.chainCodeName}:${result.chainCodeVersion} chaincode ...")
                                       network.installChainCode(ServiceChannelName, result.chainCodeName, result.chainCodeVersion, chainCodePkg)
-                                      match {
-                                          case Right(_) =>
-                                              network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
-                                              network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "sendContractConfimation", joinReq.name, joinReq.founder)
-                                      }
+                                  }
+                                  _ <- network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
+                                  invokeResult <- network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "sendContractConfimation", joinReq.name, joinReq.founder)
+                              } yield {
+                                  invokeResult.get()
+                                  response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                  response.getWriter.println(invokeResult)
+                                  response.setStatus(HttpServletResponse.SC_OK)
                               }
-                          } match {
-                            case Right(answer) =>
-                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
-                                response.getWriter.println(answer)
-                                response.setStatus(HttpServletResponse.SC_OK)
-                            case Left(err) =>
-                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
-                                response.getWriter.println(err)
-                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                        }
+                          }
+
 
                     case "/service/send-message" =>
                         val message = Util.codec.fromJson(request.getReader, classOf[SendMessageRequest])
@@ -290,6 +276,7 @@ class RestEndpoint(
                                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                         }
 
+
                     case "/service/get-message" =>
                         val messageRequest = Util.codec.fromJson(request.getReader, classOf[GetMessageRequest])
                         logger.info("Obtaining message ...")
@@ -304,7 +291,8 @@ class RestEndpoint(
                         response.getWriter.println(result)
                         response.setStatus(HttpServletResponse.SC_OK)
 
-                    case "/service/del-message" =>
+                    case "/service/del-message"
+                    =>
                         val delMessageRequest = Util.codec.fromJson(request.getReader, classOf[DeleteMessageRequest])
                         logger.info("Requesting for deleting message ...")
                         val result =
@@ -317,7 +305,8 @@ class RestEndpoint(
                         response.getWriter.println(result)
                         response.setStatus(HttpServletResponse.SC_OK)
 
-                    case "/service/call-contract" =>
+                    case "/service/call-contract"
+                    =>
                         logger.info("Processing request to contract ...")
                         val contractRequest = Util.codec.fromJson(request.getReader, classOf[CallContractRequest])
                         val result =
@@ -379,10 +368,14 @@ class RestEndpoint(
     }
 
 
-    private val networkManagerLock = new ReentrantLock()
-    private var networkManager_ : Option[FabricNetworkManager] = None
+    private val networkManagerLock =
+        new ReentrantLock()
+    private var networkManager_ : Option[FabricNetworkManager] =
+        None
 
-    private def networkManager: Option[FabricNetworkManager] = {
+    private def networkManager: Option[FabricNetworkManager]
+
+    = {
         networkManagerLock.lock()
         try {
             networkManager_
@@ -391,7 +384,9 @@ class RestEndpoint(
         }
     }
 
-    private def initNetworkManager(value: FabricNetworkManager): Unit = {
+    private def initNetworkManager(value: FabricNetworkManager): Unit
+
+    = {
         networkManagerLock.lock()
         try {
             networkManager_ = Option(value)
