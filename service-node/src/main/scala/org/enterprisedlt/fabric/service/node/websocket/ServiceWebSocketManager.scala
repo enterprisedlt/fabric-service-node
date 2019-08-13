@@ -14,7 +14,11 @@ import scala.collection.JavaConverters._
 object ServiceWebSocketManager extends WebSocketCreator {
     private val wsClients = Collections.newSetFromMap[WSSessionHolder](new ConcurrentHashMap()).asScala
 
-    override def createWebSocket(req: ServletUpgradeRequest, resp: ServletUpgradeResponse): AnyRef = new WSSessionHolder
+    override def createWebSocket(req: ServletUpgradeRequest, resp: ServletUpgradeResponse): AnyRef = {
+        val socket = new WSSessionHolder
+        wsClients.add(socket)
+        socket
+    }
 
     def broadcastText(message: String): Unit = wsClients.foreach(_.sendText(message))
 
