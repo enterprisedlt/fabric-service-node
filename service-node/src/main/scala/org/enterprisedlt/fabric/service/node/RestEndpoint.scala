@@ -201,8 +201,8 @@ class RestEndpoint(
                           .flatMap { network =>
                               logger.info(s"[ $organizationFullName ] - Preparing ${contractRequest.name} chain code ...")
                               val path = s"/opt/profile/chaincode/${contractRequest.chainCodeName}-${contractRequest.chainCodeVersion}.tgz"
-                              val chainCodePkg = new BufferedInputStream(new FileInputStream(path))
                               for {
+                                  chainCodePkg <- Option(new BufferedInputStream(new FileInputStream(path))).toRight(s"There is some problem with chaincode package")
                                   _ <- {
                                       logger.info(s"[ $organizationFullName ] - Installing ${contractRequest.chainCodeName}:${contractRequest.chainCodeVersion} chain code ...")
                                       network.installChainCode(ServiceChannelName, contractRequest.chainCodeName, contractRequest.chainCodeVersion, chainCodePkg)
@@ -211,19 +211,19 @@ class RestEndpoint(
                                       logger.info(s"[ $organizationFullName ] - Instantiating ${contractRequest.chainCodeName}:${contractRequest.chainCodeVersion} chain code ...")
                                       network.instantiateChainCode(ServiceChannelName, contractRequest.name, contractRequest.chainCodeVersion, arguments = contractRequest.initArguments)
                                   }
-                                  answer <- {
-                                      logger.info(s"[ $organizationFullName ] - Sending contract invite to participants ...")
-                                      network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "createContract", Util.codec.toJson(contractRequest))
-                                  }
                               } yield {
-                                  answer.get()
-                                  response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
-                                  response.getWriter.println(answer)
-                                  response.setStatus(HttpServletResponse.SC_OK)
+                                  network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "createContract", Util.codec.toJson(contractRequest))
+                              } match {
+                                  case Right(answer) =>
+                                      answer.get()
+                                      response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                      response.getWriter.println(answer)
+                                      response.setStatus(HttpServletResponse.SC_OK)
+                                  case Left(err) =>
+                                      response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                      response.getWriter.println(err)
+                                      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                               }
-                              //                            response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
-                              ////                                response.getWriter.println(err)
-                              //                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                           }
 
                     case "/admin/contract-join" =>
@@ -247,12 +247,17 @@ class RestEndpoint(
                                       network.installChainCode(ServiceChannelName, result.chainCodeName, result.chainCodeVersion, chainCodePkg)
                                   }
                                   _ <- network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
-                                  invokeResult <- network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "sendContractConfimation", joinReq.name, joinReq.founder)
                               } yield {
-                                  invokeResult.get()
-                                  response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
-                                  response.getWriter.println(invokeResult)
-                                  response.setStatus(HttpServletResponse.SC_OK)
+                                  network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "sendContractConfimation", joinReq.name, joinReq.founder)
+                              } match {
+                                  case Right(invokeResult) =>
+                                      response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                      response.getWriter.println(invokeResult)
+                                      response.setStatus(HttpServletResponse.SC_OK)
+                                  case Left(err) =>
+                                      response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                      response.getWriter.println(err)
+                                      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                               }
                           }
 
