@@ -40,7 +40,6 @@ trait ContractOperations {
           }
 
 
-
     @ContractOperation
     def listContracts(context: ContractContext): ContractResponse =
         Success(
@@ -63,12 +62,11 @@ trait ContractOperations {
               for {
                   contractFounderOrg <- context.store.get[Organization](founder).toRight(s"Contract founder organization $founder isn't registered")
                   contractNameValue <- Option(name).filter(_.nonEmpty).toRight("Contract name must be non empty")
-              } yield
-                  context
-                    .privateStore(
-                        CollectionsHelper.collectionNameFor(org, contractFounderOrg))
+                  r <- context.privateStore(
+                      CollectionsHelper.collectionNameFor(org, contractFounderOrg))
                     .get[Contract](contractNameValue)
                     .toRight(s"No contract with name $contractNameValue from ${contractFounderOrg.name} org")
+              } yield r
           }
 
     @ContractOperation

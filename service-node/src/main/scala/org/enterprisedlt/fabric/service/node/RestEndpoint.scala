@@ -248,9 +248,10 @@ class RestEndpoint(
                                   }
                                   _ <- network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
                               } yield {
-                                  network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "sendContractConfimation", joinReq.name, joinReq.founder)
+                                  network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "sendContractConfirmation", joinReq.name, joinReq.founder)
                               } match {
                                   case Right(invokeResult) =>
+                                      invokeResult.get()
                                       response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
                                       response.getWriter.println(invokeResult)
                                       response.setStatus(HttpServletResponse.SC_OK)
