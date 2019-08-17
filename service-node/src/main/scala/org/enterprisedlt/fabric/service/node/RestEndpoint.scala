@@ -239,8 +239,8 @@ class RestEndpoint(
                                   }
                               } yield {
                                   logger.info(s"Invoking 'createContract' method...")
-                                  val contract = CreateContract(createContractRequest.name,
-                                      chainCodeName,
+                                  val contract = CreateContract(createContractRequest.contractType,
+                                      createContractRequest.name,
                                       createContractRequest.version,
                                       createContractRequest.parties.map(_.mspId)
                                   )
@@ -269,11 +269,14 @@ class RestEndpoint(
                               for {
                                   queryResult <- {
                                       network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getContract", joinReq.name, joinReq.founder)
-                                        .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"Nothing"))
+                                        .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getContract method in system chain-code"))
                                   }
-                                  contractDetails <- Option(Util.codec.fromJson(queryResult, classOf[Contract])).toRight(s"")
+                                  contractDetails <- {
+                                      logger.debug(s"queryResult is ${queryResult}")
+                                      Option(Util.codec.fromJson(queryResult, classOf[Contract])).filter(_ != null).toRight(s"Can't parse response from getContract")
+                                  }
                                   file <- {
-                                    val path = s"/opt/profile/chaincode/${contractDetails.chainCodeName}-${contractDetails.chainCodeVersion}.tgz"
+                                    val path = s"/opt/profile/chain-code/${contractDetails.chainCodeName}-${contractDetails.chainCodeVersion}.tgz"
                                     Option(new File(path)).filter(_.exists())
                                     }.toRight(s"File  doesn't exist ")
                                   _ <- {
