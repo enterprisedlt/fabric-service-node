@@ -5,8 +5,6 @@ import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 import java.security.cert.X509Certificate
 import java.time._
-import java.time.temporal.{ChronoUnit, Temporal}
-import java.util.regex.{Matcher, Pattern}
 import java.util.{Base64, Date}
 
 import com.google.gson.{Gson, GsonBuilder}
@@ -40,38 +38,6 @@ import scala.collection.JavaConverters._
   */
 object Util {
     private val logger = LoggerFactory.getLogger(this.getClass)
-
-    //    //=========================================================================
-    //    //TODO: this is adopted "copy paste" from SDK tests, quite ugly inefficient code, need to rewrite.
-    //    def generateTarGzInputStream(folderPath: File): InputStream = {
-    //        val sourceDirectory = folderPath
-    //        val bos = new ByteArrayOutputStream(500000)
-    //        val sourcePath = sourceDirectory.getAbsolutePath
-    //        val archiveOutputStream = new TarArchiveOutputStream(new GzipCompressorOutputStream(new BufferedOutputStream(bos)))
-    //        archiveOutputStream.setLongFileMode(TarArchiveOutputStream.LONGFILE_GNU)
-    //        try {
-    //            val childrenFiles = org.apache.commons.io.FileUtils.listFiles(sourceDirectory, null, true)
-    //            import scala.collection.JavaConverters._
-    //            for (childFile <- childrenFiles.asScala) {
-    //                val childPath = childFile.getAbsolutePath
-    //                var relativePath = childPath.substring(sourcePath.length + 1, childPath.length)
-    //                relativePath = Utils.combinePaths("src", relativePath)
-    //                relativePath = FilenameUtils.separatorsToUnix(relativePath)
-    //                val archiveEntry = new TarArchiveEntry(childFile, relativePath)
-    //                val fileInputStream = new FileInputStream(childFile)
-    //                try {
-    //                    archiveOutputStream.putArchiveEntry(archiveEntry)
-    //                    IOUtils.copy(fileInputStream, archiveOutputStream)
-    //                } finally {
-    //                    fileInputStream.close()
-    //                    archiveOutputStream.closeArchiveEntry()
-    //                }
-    //            }
-    //        } finally {
-    //            archiveOutputStream.close()
-    //        }
-    //        new ByteArrayInputStream(bos.toByteArray)
-    //    }
 
     //=========================================================================
     def policyAnyOf(members: Iterable[String]): ChaincodeEndorsementPolicy = {
@@ -199,6 +165,10 @@ object Util {
     def readAsByteString(path: String): ByteString =
         ByteString.readFrom(new FileInputStream(path))
 
+    def base64Encode(bs: ByteString): String = Base64.getEncoder.encodeToString(bs.toByteArray)
+
+    def base64Decode(b64: String): ByteString = ByteString.copyFrom(Base64.getDecoder.decode(b64))
+
     //=========================================================================
     def codec: Gson = (new GsonBuilder).create()
 
@@ -291,11 +261,8 @@ object Util {
                   NoopHostnameVerifier.INSTANCE // TODO
               )
           ).build()
-//
 
-    def dateNow(): LocalDate = LocalDate.now()
-
-    def datePlus(dateNow: LocalDate, p: Period): Date = Date.from(dateNow.plus(p).atStartOfDay(ZoneOffset.UTC).toInstant)
+    def futureDate(shift: Period): Date = Date.from(LocalDate.now().plus(shift).atStartOfDay(ZoneOffset.UTC).toInstant)
 
     def parsePeriod(periodString: String): Period = Period.parse(periodString)
 }
@@ -307,3 +274,5 @@ case class PrivateCollectionConfiguration(
     minPeersToSpread: Int = 0, // not require to disseminate before commit
     maxPeersToSpread: Int = 0 // can be disseminated before commit
 )
+
+

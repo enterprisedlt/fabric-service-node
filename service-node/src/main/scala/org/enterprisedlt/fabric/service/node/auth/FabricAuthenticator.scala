@@ -30,7 +30,7 @@ class FabricAuthenticator(cryptography: CryptoManager) extends Authenticator {
                   val subject = new Subject()
                   subject.getPrincipals.add(principal)
                   val (fabricUser, roles) = resolve(user)
-                  FabricAuthenticator.setFabricUserAttribute(request, fabricUser)
+                  FabricAuthenticator.setFabricUser(request, fabricUser)
                   val identity = new FabricUserIdentity(subject, principal, roles)
                   new UserAuthentication(FabricAuthenticator.FabricAuthenticatorMethodName, identity)
               }
@@ -64,11 +64,11 @@ object FabricAuthenticator {
     val FabricAuthenticatorMethodName = "FABRIC-AUTH"
     val FabricUserRequestParameter = "org.enterprisedlt.fabric.service.node.auth.FabricUser"
 
-    def setFabricUserAttribute(request: ServletRequest, user: User): Unit = {
+    def setFabricUser(request: ServletRequest, user: User): Unit = {
         request.setAttribute(FabricUserRequestParameter, user)
     }
 
-    def getFabricUserAttribute(request: ServletRequest): Option[User] =
+    def getFabricUser(request: ServletRequest): Option[User] =
         request.getAttribute(FabricUserRequestParameter) match {
             case null => None
             case x: User => Option(x)

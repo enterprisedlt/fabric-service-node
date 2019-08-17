@@ -5,7 +5,6 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 import java.security.cert.X509Certificate
 import java.security.{KeyStore, PrivateKey}
-import java.time.{LocalDate, ZoneOffset}
 import java.util.{Collections, Date}
 
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
@@ -103,10 +102,9 @@ class FileBasedCryptoManager(
     }
 
     //=========================================================================
-    override def createFabricUser(name: String, certificateDuration: String): Unit = {
-        val dateNow = Util.dateNow()
-        val notBefore = Date.from(dateNow.atStartOfDay(ZoneOffset.UTC).toInstant)
-        val notAfter = Util.datePlus(dateNow, Util.parsePeriod(certificateDuration))
+    override def createFabricUser(name: String): Unit = {
+        val notBefore = new Date
+        val notAfter = Util.futureDate(Util.parsePeriod(config.certificateDuration))
         val orgConfig = config.organization
         val caCert = loadCertAndKey(s"$rootDir/ca/ca")
         val theCert = FabricCryptoMaterial.generateUserCert(
@@ -131,10 +129,9 @@ class FileBasedCryptoManager(
     }
 
     //=========================================================================
-    override def createServiceUserKeyStore(name: String, password: String, certificateDuration: String): KeyStore = {
-        val dateNow = Util.dateNow()
-        val notBefore = Date.from(dateNow.atStartOfDay(ZoneOffset.UTC).toInstant)
-        val notAfter = Util.datePlus(dateNow, Util.parsePeriod(certificateDuration))
+    override def createServiceUserKeyStore(name: String, password: String): KeyStore = {
+        val notBefore = new Date
+        val notAfter = Util.futureDate(Util.parsePeriod(config.certificateDuration))
         val path = s"$rootDir/service"
         val orgConfig = config.organization
         val serviceCACert = loadCertAndKey(s"$path/ca/server")

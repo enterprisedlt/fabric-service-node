@@ -7,27 +7,30 @@ import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.apache.http.entity.ContentType
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
+import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
 import org.enterprisedlt.fabric.service.model.{Contract, Message}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
+import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
 
 /**
   * @author Alexey Polubelov
   */
 class RestEndpoint(
-  bindPort: Int,
-  externalAddress: Option[ExternalAddress],
-  config: ServiceConfig,
-  cryptoManager: CryptoManager,
-  processManager: FabricProcessManager,
-  hostsManager: HostsManager
+    bindPort: Int,
+    externalAddress: Option[ExternalAddress],
+    config: ServiceConfig,
+    cryptoManager: CryptoManager,
+    processManager: FabricProcessManager,
+    hostsManager: HostsManager
 ) extends AbstractHandler {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
     override def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {
+        implicit val user: Option[User] = FabricAuthenticator.getFabricUser(request)
         request.getMethod match {
             case "GET" =>
                 request.getPathInfo match {
@@ -86,7 +89,7 @@ class RestEndpoint(
                           .getOrElse(s"service.${config.organization.name}.${config.organization.domain}:$bindPort")
                         //TODO: password should be taken from request
                         val password = "join me"
-                        val key = cryptoManager.createServiceUserKeyStore(s"join-${System.currentTimeMillis()}", password, config.certificateDuration)
+                        val key = cryptoManager.createServiceUserKeyStore(s"join-${System.currentTimeMillis()}", password)
                         val invite = Invite(
                             address,
                             Util.keyStoreToBase64(key, password)
@@ -98,7 +101,7 @@ class RestEndpoint(
                     case "/admin/create-user" =>
                         val userName = request.getParameter("name")
                         logger.info(s"Creating new user $userName ...")
-                        cryptoManager.createFabricUser(userName, config.certificateDuration)
+                        cryptoManager.createFabricUser(userName)
                         response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
                         response.getWriter.println("OK")
                         response.setStatus(HttpServletResponse.SC_OK)
@@ -297,8 +300,7 @@ class RestEndpoint(
                         response.getWriter.println(result)
                         response.setStatus(HttpServletResponse.SC_OK)
 
-                    case "/service/del-message"
-                    =>
+                    case "/service/del-message" =>
                         val delMessageRequest = Util.codec.fromJson(request.getReader, classOf[DeleteMessageRequest])
                         logger.info("Requesting for deleting message ...")
                         val result =
@@ -311,8 +313,7 @@ class RestEndpoint(
                         response.getWriter.println(result)
                         response.setStatus(HttpServletResponse.SC_OK)
 
-                    case "/service/call-contract"
-                    =>
+                    case "/service/call-contract" =>
                         logger.info("Processing request to contract ...")
                         val contractRequest = Util.codec.fromJson(request.getReader, classOf[CallContractRequest])
                         val result =
@@ -374,14 +375,10 @@ class RestEndpoint(
     }
 
 
-    private val networkManagerLock =
-        new ReentrantLock()
-    private var networkManager_ : Option[FabricNetworkManager] =
-        None
+    private val networkManagerLock = new ReentrantLock()
+    private var networkManager_ : Option[FabricNetworkManager] = None
 
-    private def networkManager: Option[FabricNetworkManager]
-
-    = {
+    private def networkManager: Option[FabricNetworkManager] = {
         networkManagerLock.lock()
         try {
             networkManager_
@@ -390,9 +387,7 @@ class RestEndpoint(
         }
     }
 
-    private def initNetworkManager(value: FabricNetworkManager): Unit
-
-    = {
+    private def initNetworkManager(value: FabricNetworkManager): Unit = {
         networkManagerLock.lock()
         try {
             networkManager_ = Option(value)
