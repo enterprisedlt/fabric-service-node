@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node
 
-import java.io.{BufferedInputStream, FileInputStream}
+import java.io.{BufferedInputStream, File, FileInputStream, FileReader}
 import java.util.concurrent.locks.ReentrantLock
 
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
@@ -198,7 +198,8 @@ class RestEndpoint(
                     case "/admin/create-contract" =>
                         logger.info("Creating contract ...")
                         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
-                        val contractRequest = Util.codec.fromJson(request.getReader, classOf[CreateContractRequest])
+                        val createContractRequest = Util.codec.fromJson(request.getReader, classOf[CreateContractRequest])
+                        logger.info(s"createContractRequest =  $createContractRequest")
                         networkManager
                           .toRight("Network is not initialized yet")
                           .flatMap { network =>
