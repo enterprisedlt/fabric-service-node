@@ -17,8 +17,8 @@ import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 class RestEndpoint(
     bindPort: Int,
     externalAddress: Option[ExternalAddress],
@@ -202,20 +202,48 @@ class RestEndpoint(
                         networkManager
                           .toRight("Network is not initialized yet")
                           .flatMap { network =>
-                              logger.info(s"[ $organizationFullName ] - Preparing ${contractRequest.name} chain code ...")
-                              val path = s"/opt/profile/chaincode/${contractRequest.chainCodeName}-${contractRequest.chainCodeVersion}.tgz"
+                              logger.info(s"[ $organizationFullName ] - Preparing ${createContractRequest.name} chain code ...")
+                              val filesBaseName = s"${createContractRequest.contractType}-${createContractRequest.version}"
+                              val chainCodeName = s"${createContractRequest.name}-${createContractRequest.version}"
+                              val deploymentDescriptor = Util.codec.fromJson(new FileReader(s"/opt/profile/chain-code/$filesBaseName.json"), classOf[ContractDeploymentDescriptor])
+                              val path = s"/opt/profile/chain-code/$filesBaseName.tgz"
                               for {
-                                  chainCodePkg <- Option(new BufferedInputStream(new FileInputStream(path))).toRight(s"There is some problem with chaincode package")
+                                  file <- Option(new File(path)).filter(_.exists()).toRight(s"File $filesBaseName.tgz doesn't exist")
+                                  chainCodePkg <- Option(new BufferedInputStream(new FileInputStream(file))).toRight(s"Can't prepare cc pkg stream")
                                   _ <- {
-                                      logger.info(s"[ $organizationFullName ] - Installing ${contractRequest.chainCodeName}:${contractRequest.chainCodeVersion} chain code ...")
-                                      network.installChainCode(ServiceChannelName, contractRequest.chainCodeName, contractRequest.chainCodeVersion, chainCodePkg)
+                                      logger.info(s"[ $organizationFullName ] - Installing $chainCodeName chain code ...")
+                                      network.installChainCode(ServiceChannelName, createContractRequest.name, createContractRequest.version, chainCodePkg)
                                   }
                                   _ <- {
-                                      logger.info(s"[ $organizationFullName ] - Instantiating ${contractRequest.chainCodeName}:${contractRequest.chainCodeVersion} chain code ...")
-                                      network.instantiateChainCode(ServiceChannelName, contractRequest.name, contractRequest.chainCodeVersion, arguments = contractRequest.initArguments)
+                                      logger.info(s"[ $organizationFullName ] - Instantiating $chainCodeName chain code ...")
+                                      val endorsementPolicy = Util.policyAnyOf(
+                                          deploymentDescriptor.endorsement
+                                            .map(r => createContractRequest.parties.find(_.role == r).map(_.mspId).get)
+                                      )
+                                      val collections = deploymentDescriptor.collections.map { cd =>
+                                          PrivateCollectionConfiguration(
+                                              name = cd.name,
+                                              memberIds = cd.members.map(m =>
+                                                  createContractRequest.parties.find(_.role == m).map(_.mspId).get
+                                              )
+                                          )
+                                      }
+                                      network.instantiateChainCode(
+                                          ServiceChannelName, createContractRequest.name,
+                                          createContractRequest.version,
+                                          endorsementPolicy = Option(endorsementPolicy),
+                                          collectionConfig = Option(Util.createCollectionsConfig(collections)),
+                                          arguments = createContractRequest.initArgs
+                                      )
                                   }
                               } yield {
-                                  network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "createContract", Util.codec.toJson(contractRequest))
+                                  logger.info(s"Invoking 'createContract' method...")
+                                  val contract = CreateContract(createContractRequest.name,
+                                      chainCodeName,
+                                      createContractRequest.version,
+                                      createContractRequest.parties.map(_.mspId)
+                                  )
+                                  network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "createContract", Util.codec.toJson(contract))
                               } match {
                                   case Right(answer) =>
                                       answer.get()
@@ -242,12 +270,15 @@ class RestEndpoint(
                                       network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getContract", joinReq.name, joinReq.founder)
                                         .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"Nothing"))
                                   }
+                                  contractDetails <- Option(Util.codec.fromJson(queryResult, classOf[Contract])).toRight(s"")
+                                  file <- {
+                                    val path = s"/opt/profile/chaincode/${contractDetails.chainCodeName}-${contractDetails.chainCodeVersion}.tgz"
+                                    Option(new File(path)).filter(_.exists())
+                                    }.toRight(s"File  doesn't exist ")
                                   _ <- {
-                                      val result = Util.codec.fromJson(queryResult, classOf[Contract])
-                                      val path = s"/opt/profile/chaincode/${result.chainCodeName}-${result.chainCodeVersion}.tgz"
-                                      val chainCodePkg = new BufferedInputStream(new FileInputStream(path))
-                                      logger.info(s"[ $organizationFullName ] - Installing ${result.chainCodeName}:${result.chainCodeVersion} chaincode ...")
-                                      network.installChainCode(ServiceChannelName, result.chainCodeName, result.chainCodeVersion, chainCodePkg)
+                                      val chainCodePkg = new BufferedInputStream(new FileInputStream(file))
+                                      logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
+                                      network.installChainCode(ServiceChannelName, contractDetails.chainCodeName, contractDetails.chainCodeVersion, chainCodePkg)
                                   }
                                   _ <- network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
                               } yield {
@@ -370,6 +401,7 @@ class RestEndpoint(
                 logger.error(s"Unsupported method: $m")
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
         }
+
         logger.info("==================================================")
         baseRequest.setHandled(true)
     }

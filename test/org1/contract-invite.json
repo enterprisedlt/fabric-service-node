@@ -1,0 +1,21 @@
+{
+  "name": "example",
+  "version": "1.0",
+  "contractType": "example",
+  "parties": [
+    {
+      "mspId": "org1",
+      "role": "org1"
+    },
+    {
+      "mspId": "org2",
+      "role": "org2"
+    }
+  ],
+  "initArgs": [
+    "org1",
+    1,
+    "org2",
+    1
+  ]
+}

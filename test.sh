@@ -55,7 +55,7 @@ fabric-service-messages-list.sh ./test/org3
 
 #Creating contract by ORG1
 
-fabric-service-contract-create.sh ./test/org1 ./test/org1/contract_invite.json
+fabric-service-contract-create.sh ./test/org1 ./test/org1/contract-invite.json
 
 #Checking messages avaliability by mupltyple parties
 fabric-service-contracts-list.sh ./test/org1
