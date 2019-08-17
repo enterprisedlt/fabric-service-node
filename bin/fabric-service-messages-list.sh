@@ -12,17 +12,14 @@ fi
  echo "Fetching messages ..."
 
 SERVICE_URL="localhost:${SERVICE_BIND_PORT}"
-curl -k -G --silent --show-error \
+curl -k -G --silent --show-error -w %{http_code} \
 --key ${PROFILE_PATH}/crypto/users/admin/admin.key \
 --cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
 --request GET \
 https://${SERVICE_URL}/service/list-messages
 
-echo
 
 if [[ "$?" -ne 0 ]]; then
   echo "Failed to list messages."
   exit 1
 fi
-
- echo "======================================================================"

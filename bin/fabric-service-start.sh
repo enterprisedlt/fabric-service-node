@@ -26,5 +26,3 @@ echo "Service ID: ${serviceID}"
 
 # await service node to start up
 grep -m 1 "ServiceNode\$ - Started" <(docker logs -f ${serviceID} 2>&1)
-
-echo "======================================================================"
