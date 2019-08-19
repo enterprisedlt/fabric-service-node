@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node
 
-import java.io.{BufferedInputStream, FileInputStream}
+import java.io.{BufferedInputStream, File, FileInputStream, FileReader}
 import java.util.concurrent.locks.ReentrantLock
 
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
@@ -8,6 +8,7 @@ import org.apache.http.entity.ContentType
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
 import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
+import org.enterprisedlt.fabric.service.model.{Contract, Message}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
@@ -16,8 +17,8 @@ import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 class RestEndpoint(
     bindPort: Int,
     externalAddress: Option[ExternalAddress],
@@ -128,6 +129,34 @@ class RestEndpoint(
                         response.getWriter.println(result)
                         response.setStatus(HttpServletResponse.SC_OK)
 
+                    case "/service/list-confirmations" =>
+                        logger.info(s"Querying confirmations for ${config.organization.name}...")
+                        val result =
+                            networkManager
+                              .toRight("Network is not initialized yet")
+                              .flatMap { network =>
+                                  network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContractConfirmations")
+                                    .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
+                              }
+                              .merge
+                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                        response.getWriter.println(result)
+                        response.setStatus(HttpServletResponse.SC_OK)
+
+                    case "/service/list-contracts" =>
+                        logger.info(s"Querying contracts for ${config.organization.name}...")
+                        val result =
+                            networkManager
+                              .toRight("Network is not initialized yet")
+                              .flatMap { network =>
+                                  network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContracts")
+                                    .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
+                              }
+                              .merge
+                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                        response.getWriter.println(result)
+                        response.setStatus(HttpServletResponse.SC_OK)
+
 
                     // unknown GET path
                     case path =>
@@ -169,33 +198,108 @@ class RestEndpoint(
                     case "/admin/create-contract" =>
                         logger.info("Creating contract ...")
                         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
-                        val contractRequest = Util.codec.fromJson(request.getReader, classOf[CreateContractRequest])
-                        //
+                        val createContractRequest = Util.codec.fromJson(request.getReader, classOf[CreateContractRequest])
+                        logger.info(s"createContractRequest =  $createContractRequest")
                         networkManager
                           .toRight("Network is not initialized yet")
                           .flatMap { network =>
-                              logger.info(s"[ $organizationFullName ] - Preparing ${contractRequest.name} chain code ...")
-                              val path = s"/opt/profile/chain-code/${contractRequest.chainCodeName}-${contractRequest.chainCodeVersion}.tgz"
-                              val chainCodePkg = new BufferedInputStream(new FileInputStream(path))
+                              logger.info(s"[ $organizationFullName ] - Preparing ${createContractRequest.name} chain code ...")
+                              val filesBaseName = s"${createContractRequest.contractType}-${createContractRequest.version}"
+                              val chainCodeName = s"${createContractRequest.name}-${createContractRequest.version}"
+                              val deploymentDescriptor = Util.codec.fromJson(new FileReader(s"/opt/profile/chain-code/$filesBaseName.json"), classOf[ContractDeploymentDescriptor])
+                              val path = s"/opt/profile/chain-code/$filesBaseName.tgz"
+                              for {
+                                  file <- Option(new File(path)).filter(_.exists()).toRight(s"File $filesBaseName.tgz doesn't exist")
+                                  chainCodePkg <- Option(new BufferedInputStream(new FileInputStream(file))).toRight(s"Can't prepare cc pkg stream")
+                                  _ <- {
+                                      logger.info(s"[ $organizationFullName ] - Installing $chainCodeName chain code ...")
+                                      network.installChainCode(ServiceChannelName, createContractRequest.name, createContractRequest.version, chainCodePkg)
+                                  }
+                                  _ <- {
+                                      logger.info(s"[ $organizationFullName ] - Instantiating $chainCodeName chain code ...")
+                                      val endorsementPolicy = Util.policyAnyOf(
+                                          deploymentDescriptor.endorsement
+                                            .map(r => createContractRequest.parties.find(_.role == r).map(_.mspId).get)
+                                      )
+                                      val collections = deploymentDescriptor.collections.map { cd =>
+                                          PrivateCollectionConfiguration(
+                                              name = cd.name,
+                                              memberIds = cd.members.map(m =>
+                                                  createContractRequest.parties.find(_.role == m).map(_.mspId).get
+                                              )
+                                          )
+                                      }
+                                      network.instantiateChainCode(
+                                          ServiceChannelName, createContractRequest.name,
+                                          createContractRequest.version,
+                                          endorsementPolicy = Option(endorsementPolicy),
+                                          collectionConfig = Option(Util.createCollectionsConfig(collections)),
+                                          arguments = createContractRequest.initArgs
+                                      )
+                                  }
+                              } yield {
+                                  logger.info(s"Invoking 'createContract' method...")
+                                  val contract = CreateContract(createContractRequest.contractType,
+                                      createContractRequest.name,
+                                      createContractRequest.version,
+                                      createContractRequest.parties.map(_.mspId)
+                                  )
+                                  network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "createContract", Util.codec.toJson(contract))
+                              } match {
+                                  case Right(answer) =>
+                                      answer.get()
+                                      response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                      response.getWriter.println(answer)
+                                      response.setStatus(HttpServletResponse.SC_OK)
+                                  case Left(err) =>
+                                      response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                      response.getWriter.println(err)
+                                      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                              }
+                          }
 
-                              logger.info(s"[ $organizationFullName ] - Installing ${contractRequest.chainCodeName}:${contractRequest.chainCodeVersion} chain code ...")
-                              network.installChainCode(ServiceChannelName, contractRequest.chainCodeName, contractRequest.chainCodeVersion, chainCodePkg)
+                    case "/admin/contract-join" =>
+                        logger.info("Joining deployed contract ...")
+                        val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
+                        val joinReq = Util.codec.fromJson(request.getReader, classOf[ContractJoinRequest])
+                        logger.info(s"joinReq is $joinReq")
+                        networkManager
+                          .toRight("Network is not initialized yet")
+                          .flatMap { network =>
+                              for {
+                                  queryResult <- {
+                                      network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getContract", joinReq.name, joinReq.founder)
+                                        .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getContract method in system chain-code"))
+                                  }
+                                  contractDetails <- {
+                                      logger.debug(s"queryResult is ${queryResult}")
+                                      Option(Util.codec.fromJson(queryResult, classOf[Contract])).filter(_ != null).toRight(s"Can't parse response from getContract")
+                                  }
+                                  file <- {
+                                    val path = s"/opt/profile/chain-code/${contractDetails.chainCodeName}-${contractDetails.chainCodeVersion}.tgz"
+                                    Option(new File(path)).filter(_.exists())
+                                    }.toRight(s"File  doesn't exist ")
+                                  _ <- {
+                                      val chainCodePkg = new BufferedInputStream(new FileInputStream(file))
+                                      logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
+                                      network.installChainCode(ServiceChannelName, contractDetails.chainCodeName, contractDetails.chainCodeVersion, chainCodePkg)
+                                  }
+                                  _ <- network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
+                              } yield {
+                                  network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "sendContractConfirmation", joinReq.name, joinReq.founder)
+                              } match {
+                                  case Right(invokeResult) =>
+                                      invokeResult.get()
+                                      response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                      response.getWriter.println(invokeResult)
+                                      response.setStatus(HttpServletResponse.SC_OK)
+                                  case Left(err) =>
+                                      response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                      response.getWriter.println(err)
+                                      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                              }
+                          }
 
-                              //
-                              logger.info(s"[ $organizationFullName ] - Instantiating ${contractRequest.chainCodeName}:${contractRequest.chainCodeVersion} chain code ...")
-                              network.instantiateChainCode(
-                                  ServiceChannelName, contractRequest.name,
-                                  contractRequest.chainCodeVersion,
-                                  arguments = contractRequest.initArguments
-                              )
-                          } match {
-                            case Right(_) =>
-                                response.setStatus(HttpServletResponse.SC_OK)
-
-                            case Left(error) =>
-                                logger.error(error)
-                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                        }
 
                     case "/service/send-message" =>
                         val message = Util.codec.fromJson(request.getReader, classOf[SendMessageRequest])
@@ -215,6 +319,7 @@ class RestEndpoint(
                                 response.getWriter.println(err)
                                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                         }
+
 
                     case "/service/get-message" =>
                         val messageRequest = Util.codec.fromJson(request.getReader, classOf[GetMessageRequest])
@@ -300,6 +405,7 @@ class RestEndpoint(
                 logger.error(s"Unsupported method: $m")
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
         }
+
         logger.info("==================================================")
         baseRequest.setHandled(true)
     }

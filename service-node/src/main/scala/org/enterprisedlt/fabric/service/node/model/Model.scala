@@ -74,13 +74,43 @@ case class DeleteMessageRequest(
     sender: String
 )
 
-case class CreateContractRequest(
+case class ContractDeploymentDescriptor(
+    name: String,
+    roles: Array[String],
+    initMethod: String,
+    warmUpMethod: String,
+    endorsement: Array[String],
+    collections: Array[ContractCollectionDescriptor]
+)
+
+case class ContractCollectionDescriptor(
+    name: String,
+    members: Array[String]
+)
+
+case class CreateContract(
     name: String,
     chainCodeName: String,
     chainCodeVersion: String,
-    initArguments: Array[String],
-    endorsers: Array[String],
-    collections: Array[String]
+    participants: Array[String]
+)
+
+case class CreateContractRequest(
+    name: String,
+    version: String,
+    contractType: String,
+    parties: Array[ContractParticipant],
+    initArgs: Array[String]
+)
+
+case class ContractParticipant(
+    mspId: String,
+    role: String
+)
+
+case class ContractJoinRequest(
+    name: String,
+    founder: String
 )
 
 case class CallContractRequest(
