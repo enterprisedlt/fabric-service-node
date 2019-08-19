@@ -7,14 +7,16 @@ import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.apache.http.entity.ContentType
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
+import org.enterprisedlt.fabric.service.model.Contract
 import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
-import org.enterprisedlt.fabric.service.model.{Contract, Message}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
 import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
+
+import scala.util.Try
 
 /**
  * @author Alexey Polubelov
@@ -237,26 +239,27 @@ class RestEndpoint(
                                           arguments = createContractRequest.initArgs
                                       )
                                   }
-                              } yield {
-                                  logger.info(s"Invoking 'createContract' method...")
-                                  val contract = CreateContract(createContractRequest.contractType,
-                                      createContractRequest.name,
-                                      createContractRequest.version,
-                                      createContractRequest.parties.map(_.mspId)
-                                  )
-                                  network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "createContract", Util.codec.toJson(contract))
-                              } match {
-                                  case Right(answer) =>
-                                      answer.get()
-                                      response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
-                                      response.getWriter.println(answer)
-                                      response.setStatus(HttpServletResponse.SC_OK)
-                                  case Left(err) =>
-                                      response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
-                                      response.getWriter.println(err)
-                                      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                              }
-                          }
+                                  response <- {
+                                      logger.info(s"Invoking 'createContract' method...")
+                                      val contract = CreateContract(createContractRequest.contractType,
+                                          createContractRequest.name,
+                                          createContractRequest.version,
+                                          createContractRequest.parties.map(_.mspId)
+                                      )
+                                      network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "createContract", Util.codec.toJson(contract))
+                                  }
+                                  result <- Try(response.get()).toEither.left.map(_.getMessage)
+                              } yield result
+                          } match {
+                            case Right(answer) =>
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                response.getWriter.println(answer)
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(err) =>
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                response.getWriter.println(err)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
 
                     case "/admin/contract-join" =>
                         logger.info("Joining deployed contract ...")
@@ -272,13 +275,13 @@ class RestEndpoint(
                                         .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getContract method in system chain-code"))
                                   }
                                   contractDetails <- {
-                                      logger.debug(s"queryResult is ${queryResult}")
+                                      logger.debug(s"queryResult is $queryResult")
                                       Option(Util.codec.fromJson(queryResult, classOf[Contract])).filter(_ != null).toRight(s"Can't parse response from getContract")
                                   }
                                   file <- {
-                                    val path = s"/opt/profile/chain-code/${contractDetails.chainCodeName}-${contractDetails.chainCodeVersion}.tgz"
-                                    Option(new File(path)).filter(_.exists())
-                                    }.toRight(s"File  doesn't exist ")
+                                      val path = s"/opt/profile/chain-code/${contractDetails.chainCodeName}-${contractDetails.chainCodeVersion}.tgz"
+                                      Option(new File(path)).filter(_.exists())
+                                  }.toRight(s"File  doesn't exist ")
                                   _ <- {
                                       val chainCodePkg = new BufferedInputStream(new FileInputStream(file))
                                       logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
