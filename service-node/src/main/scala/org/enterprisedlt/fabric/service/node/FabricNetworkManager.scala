@@ -261,7 +261,7 @@ class FabricNetworkManager(
 
     //=========================================================================
     def invokeChainCode(channelName: String, chainCodeName: String, functionName: String, arguments: String*)
-      (implicit timeout: OperationTimeout = OperationTimeout(35, TimeUnit.SECONDS), user: Option[User] = None)
+      (implicit timeout: OperationTimeout = OperationTimeout(35, TimeUnit.SECONDS), user: Option[User] = None, transient: Option[java.util.Map[String, Array[Byte]]] = None)
     : Either[String, CompletableFuture[TransactionEvent]] = {
         getChannel(channelName)
           .flatMap { channel =>
@@ -271,6 +271,7 @@ class FabricNetworkManager(
               request.setArgs(arguments: _*)
               request.setProposalWaitTime(timeout.milliseconds)
               user.foreach(request.setUserContext)
+              transient.foreach(request.setTransientMap)
               logger.debug(s"Sending transaction proposal: $functionName${arguments.mkString("(", ",", ")")}")
               val invokePropResp = channel.sendTransactionProposal(request).asScala
               val byStatus = invokePropResp.groupBy { response => response.getStatus }

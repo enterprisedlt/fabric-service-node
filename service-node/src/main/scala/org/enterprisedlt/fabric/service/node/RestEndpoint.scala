@@ -1,6 +1,8 @@
 package org.enterprisedlt.fabric.service.node
 
 import java.io.{BufferedInputStream, File, FileInputStream, FileReader}
+import java.nio.charset.StandardCharsets
+import java.util
 import java.util.concurrent.locks.ReentrantLock
 
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
@@ -280,8 +282,8 @@ class RestEndpoint(
                                   }
                                   file <- {
                                       val path = s"/opt/profile/chain-code/${contractDetails.chainCodeName}-${contractDetails.chainCodeVersion}.tgz"
-                                      Option(new File(path)).filter(_.exists())
-                                  }.toRight(s"File  doesn't exist ")
+                                      Option(new File(path)).filter(_.exists()).toRight(s"File  doesn't exist ")
+                                  }
                                   _ <- {
                                       val chainCodePkg = new BufferedInputStream(new FileInputStream(file))
                                       logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
@@ -370,6 +372,11 @@ class RestEndpoint(
                                             .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
 
                                       case "invoke" =>
+                                          import scala.collection.JavaConverters._
+                                          implicit val transient: Option[util.Map[String, Array[Byte]]] =
+                                              Option(contractRequest.transient)
+                                                .map(_.asScala.mapValues(_.getBytes(StandardCharsets.UTF_8)).asJava)
+
                                           network
                                             .invokeChainCode(
                                                 ServiceChannelName,

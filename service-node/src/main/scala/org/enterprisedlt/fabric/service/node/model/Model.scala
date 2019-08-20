@@ -1,5 +1,7 @@
 package org.enterprisedlt.fabric.service.node.model
 
+import java.util.{Map => JavaMap}
+
 import org.enterprisedlt.fabric.service.model.Organization
 
 case class CreateChannelRequest(
@@ -118,6 +120,7 @@ case class CallContractRequest(
     contractName: String,
     functionName: String,
     arguments: Array[String],
+    transient: JavaMap[String, String],
     awaitTransaction: Boolean
 )
 
