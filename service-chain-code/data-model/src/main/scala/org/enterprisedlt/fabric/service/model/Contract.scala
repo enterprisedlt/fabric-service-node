@@ -8,8 +8,3 @@ case class Contract(
   participants: Array[String],
   timestamp: Long
 )
-
-case class ContractConfirmation(
-  name: String,
-  participant: String
-)

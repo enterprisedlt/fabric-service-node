@@ -21,15 +21,15 @@ import org.slf4j.LoggerFactory
 import scala.util.Try
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 class RestEndpoint(
-    bindPort: Int,
-    externalAddress: Option[ExternalAddress],
-    config: ServiceConfig,
-    cryptoManager: CryptoManager,
-    processManager: FabricProcessManager,
-    hostsManager: HostsManager
+  bindPort: Int,
+  externalAddress: Option[ExternalAddress],
+  config: ServiceConfig,
+  cryptoManager: CryptoManager,
+  processManager: FabricProcessManager,
+  hostsManager: HostsManager
 ) extends AbstractHandler {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -289,9 +289,8 @@ class RestEndpoint(
                                       logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
                                       network.installChainCode(ServiceChannelName, contractDetails.chainCodeName, contractDetails.chainCodeVersion, chainCodePkg)
                                   }
-                                  _ <- network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
                               } yield {
-                                  network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "sendContractConfirmation", joinReq.name, joinReq.founder)
+                                  network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
                               } match {
                                   case Right(invokeResult) =>
                                       invokeResult.get()

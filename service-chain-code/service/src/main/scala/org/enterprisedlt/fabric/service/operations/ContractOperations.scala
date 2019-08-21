@@ -4,7 +4,7 @@ import org.enterprisedlt.fabric.contract.ContractResponseConversions._
 import org.enterprisedlt.fabric.contract.annotation.ContractOperation
 import org.enterprisedlt.fabric.contract.{ContractContext, ContractResponse, Success}
 import org.enterprisedlt.fabric.service.Main
-import org.enterprisedlt.fabric.service.model.{CollectionsHelper, Contract, ContractConfirmation, Organization}
+import org.enterprisedlt.fabric.service.model.{CollectionsHelper, Contract, Organization}
 
 
 /**
@@ -82,37 +82,4 @@ trait ContractOperations {
                         CollectionsHelper.collectionNameFor(org, contractFounderOrg))
                     .del[Contract](contractNameValue)
           }
-
-    @ContractOperation
-    def sendContractConfirmation(context: ContractContext, name: String, founder: String): ContractResponse =
-        getOwnOrganization(context)
-          .flatMap { org =>
-              for {
-                  _ <- Option(name).filter(_.nonEmpty).toRight("Contract name must be non empty")
-                  _ <- Option(founder).filter(_.nonEmpty).toRight("Contract founder org must be non empty")
-              } yield {
-                  context.store.get[Organization](founder)
-                    .map { founderOrg =>
-                        logger.debug(s"putting in to coll ${CollectionsHelper.collectionNameFor(org, founderOrg)} ${name}")
-                        context.privateStore(
-                            CollectionsHelper.collectionNameFor(org, founderOrg))
-                          .put(name, ContractConfirmation(name, org.name))
-                    }
-              }
-          }
-
-    @ContractOperation
-    def listContractConfirmations(context: ContractContext): ContractResponse =
-        Success(
-            CollectionsHelper
-              .collectionsFromOrganizations(
-                  context.store
-                    .list[Organization]
-                    .map(_.value.mspId))
-              .filter(e => e.endsWith(s"-${context.clientIdentity.mspId}") || e.startsWith(s"${context.clientIdentity.mspId}-"))
-              .map(context.privateStore)
-              .flatMap { store =>
-                  store.list[ContractConfirmation].map(_.value)
-              }.toArray
-        )
 }
