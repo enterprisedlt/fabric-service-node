@@ -6,7 +6,5 @@ package org.enterprisedlt.fabric.service.node.configuration
 case class ServiceConfig(
     organization: OrganizationConfig,
     network: NetworkConfig,
-    certificateDuration: String,
-    block: BlockConfig,
-    raft: RaftConfig
+    certificateDuration: String
 )

@@ -1,7 +1,7 @@
 package org.enterprisedlt.fabric.service.node.flow
 
 import org.enterprisedlt.fabric.service.node.Util
-import org.enterprisedlt.fabric.service.node.configuration.{BlockConfig, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{BlockConfig, BootstrapOptions, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, SystemChannelName}
 import org.enterprisedlt.fabric.service.node.proto._
 import org.hyperledger.fabric.protos.common.MspPrincipal.MSPRole
@@ -11,7 +11,7 @@ import org.hyperledger.fabric.protos.common.MspPrincipal.MSPRole
   */
 object Genesis {
 
-    def newDefinition(profilePath: String, config: ServiceConfig): ChannelDefinition = {
+    def newDefinition(profilePath: String, config: ServiceConfig, bootstrapOptions: BootstrapOptions): ChannelDefinition = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
         val certificatesPath = s"$profilePath/crypto"
 
@@ -28,7 +28,7 @@ object Genesis {
                     readers = SignedByOneOf(MemberClassifier(orgMspId, MSPRole.MSPRoleType.MEMBER))
                 )
             )
-        val blockConfig = Option(config.block).getOrElse(
+        val blockConfig = Option(bootstrapOptions.block).getOrElse(
             BlockConfig(
                 maxMessageCount = 150,
                 absoluteMaxBytes = 99 * 1024 * 1024,

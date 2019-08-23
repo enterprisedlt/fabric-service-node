@@ -16,7 +16,7 @@ fabric-service-pack-chaincode.sh ./service-chain-code service-chain-code.tgz
 
 # start ORG1
 ./fabric-service-start-dev.sh ./test/org1
-fabric-service-bootstrap.sh ./test/org1
+fabric-service-bootstrap.sh ./test/org1 ./test/org1/bootstrap.json
 
 
 #fabric-service-create-user.sh ./test/org1 abc
