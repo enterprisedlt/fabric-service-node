@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit
 
 import com.google.protobuf.{ByteString, Timestamp}
 import org.bouncycastle.util.encoders.Hex
-import org.enterprisedlt.fabric.service.node.configuration.{RaftConfig, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, RaftConfig, ServiceConfig}
 import org.hyperledger.fabric.protos.common.Common._
 import org.hyperledger.fabric.protos.common.Configtx._
 import org.hyperledger.fabric.protos.common.Configuration._
@@ -26,7 +26,7 @@ import scala.collection.JavaConverters._
   */
 object FabricBlock {
 
-    def create(channelDefinition: ChannelDefinition, config: ServiceConfig): Block = {
+    def create(channelDefinition: ChannelDefinition, bootstrapOptions: BootstrapOptions): Block = {
         val payloadSignatureHeader = newSignatureHeader(ByteString.copyFrom(newNonce()))
         val payloadChannelHeader = newChannelHeader(
             HeaderType.CONFIG,
@@ -43,7 +43,7 @@ object FabricBlock {
                         payloadSignatureHeader
                     ),
                     newConfigEnvelop(
-                        newConfig(createChannelConfig(channelDefinition, config))
+                        newConfig(createChannelConfig(channelDefinition, bootstrapOptions))
                     )
                 )
             )
@@ -152,7 +152,7 @@ object FabricBlock {
           .build
     }
 
-    def createChannelConfig(channelDefinition: ChannelDefinition, config: ServiceConfig): ConfigGroup = {
+    def createChannelConfig(channelDefinition: ChannelDefinition, bootstrapOptions: BootstrapOptions): ConfigGroup = {
         val channelGroup = ConfigGroup.newBuilder()
         putPolicies(channelGroup, channelDefinition.policies)
         channelGroup.putValues(
@@ -186,7 +186,7 @@ object FabricBlock {
               .build()
         )
         channelDefinition.ordering.foreach { ordering =>
-            channelGroup.putGroups(ConfigKey.OrdererGroupKey, newOrderingServiceGroup(ordering, config))
+            channelGroup.putGroups(ConfigKey.OrdererGroupKey, newOrderingServiceGroup(ordering, bootstrapOptions))
         }
         channelDefinition.consortiumDetails match {
             case ConsortiumName(name) =>
@@ -395,7 +395,7 @@ object FabricBlock {
         }
     }
 
-    def newOrderingServiceGroup(ordering: OrderingServiceDefinition, config: ServiceConfig): ConfigGroup = {
+    def newOrderingServiceGroup(ordering: OrderingServiceDefinition, bootstrapOptions: BootstrapOptions): ConfigGroup = {
         val orderingGroup = ConfigGroup.newBuilder()
         putPolicies(orderingGroup, ordering.policies)
 
@@ -444,7 +444,7 @@ object FabricBlock {
         )
 
         putCapabilities(orderingGroup, ordering.capabilities)
-        val blockConfig = Option(config.raft).getOrElse(
+        val blockConfig = Option(bootstrapOptions.raft).getOrElse(
             RaftConfig(
                 tickInterval = "500ms",
                 electionTick = 10,

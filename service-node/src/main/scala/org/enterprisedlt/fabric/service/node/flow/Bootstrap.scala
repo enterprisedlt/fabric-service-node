@@ -4,7 +4,7 @@ import java.io.{BufferedInputStream, FileInputStream}
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, ServiceVersion}
 import org.enterprisedlt.fabric.service.node._
-import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
+import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.proto._
 import org.slf4j.LoggerFactory
@@ -17,6 +17,7 @@ object Bootstrap {
 
     def bootstrapOrganization(
         config: ServiceConfig,
+        bootstrapOptions: BootstrapOptions,
         cryptography: CryptoManager,
         processManager: FabricProcessManager,
         hostsManager: HostsManager,
@@ -27,8 +28,8 @@ object Bootstrap {
 
         //
         logger.info(s"[ $organizationFullName ] - Creating genesis ...")
-        val genesisDefinition = Genesis.newDefinition("/opt/profile", config)
-        val genesis = FabricBlock.create(genesisDefinition, config)
+        val genesisDefinition = Genesis.newDefinition("/opt/profile", config, bootstrapOptions)
+        val genesis = FabricBlock.create(genesisDefinition, bootstrapOptions)
         Util.storeToFile("/opt/profile/artifacts/genesis.block", genesis)
 
         //

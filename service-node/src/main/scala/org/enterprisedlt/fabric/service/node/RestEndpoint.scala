@@ -11,7 +11,7 @@ import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
 import org.enterprisedlt.fabric.service.model.Contract
 import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
-import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
+import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
@@ -70,19 +70,7 @@ class RestEndpoint(
                         response.getWriter.println(result)
                         response.setStatus(HttpServletResponse.SC_OK)
 
-                    case "/admin/bootstrap" =>
-                        logger.info(s"Bootstrapping organization ${config.organization.name}...")
-                        val start = System.currentTimeMillis()
-                        try {
-                            initNetworkManager(Bootstrap.bootstrapOrganization(config, cryptoManager, processManager, hostsManager, externalAddress))
-                            val end = System.currentTimeMillis() - start
-                            logger.info(s"Bootstrap done ($end ms)")
-                            response.setStatus(HttpServletResponse.SC_OK)
-                        } catch {
-                            case ex: Exception =>
-                                logger.error("Bootstrap failed:", ex)
-                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                        }
+
 
                     case "/admin/create-invite" =>
                         logger.info(s"Creating invite ${config.organization.name}...")
@@ -168,7 +156,23 @@ class RestEndpoint(
                         response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
                 }
             case "POST" =>
+
                 request.getPathInfo match {
+                    case "/admin/bootstrap" =>
+                        logger.info(s"Bootstrapping organization ${config.organization.name}...")
+                        val start = System.currentTimeMillis()
+                        try {
+                            val bootstrapOptions = Util.codec.fromJson(request.getReader, classOf[BootstrapOptions])
+                            initNetworkManager(Bootstrap.bootstrapOrganization(config, bootstrapOptions, cryptoManager, processManager, hostsManager, externalAddress))
+                            val end = System.currentTimeMillis() - start
+                            logger.info(s"Bootstrap done ($end ms)")
+                            response.setStatus(HttpServletResponse.SC_OK)
+                        } catch {
+                            case ex: Exception =>
+                                logger.error("Bootstrap failed:", ex)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
+
                     case "/join-network" =>
                         networkManager
                           .toRight("Network is not initialized yet")
