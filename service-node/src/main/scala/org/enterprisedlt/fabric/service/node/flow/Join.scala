@@ -9,6 +9,9 @@ import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model._
+import org.enterprisedlt.fabric.service.node.proto.FabricChannel
+import org.hyperledger.fabric.protos.ext.orderer.etcdraft.Configuration.Consenter
+import org.hyperledger.fabric.sdk.Channel
 import org.slf4j.LoggerFactory
 
 /**
@@ -85,19 +88,18 @@ object Join {
             processManager.startPeerNode(peerConfig.name)
         }
 
-        //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
         val admin = cryptoManager.loadDefaultAdmin
-        val network = new FabricNetworkManager(config, admin)
+        val network = new FabricNetworkManager(config.organization, admin)
 
         //
         logger.info(s"[ $organizationFullName ] - Connecting to channel ...")
-        network.defineChannel(ServiceChannelName)
+        network.defineChannel(config.network.orderingNodes.head, ServiceChannelName)
 
         //
         logger.info(s"[ $organizationFullName ] - Adding peers to channel ...")
         config.network.peerNodes.foreach { peerConfig =>
-            network.addPeerToChannel(ServiceChannelName, peerConfig.name)
+            network.addPeerToChannel(config.network.peerNodes, ServiceChannelName, peerConfig.name)
             // get latest channel block number and await for peer to commit it
             network.fetchLatestChannelBlock(ServiceChannelName) match {
                 case Right(block) =>
@@ -112,7 +114,7 @@ object Join {
         //
         logger.info(s"[ $organizationFullName ] - Updating anchors for channel ...")
         config.network.peerNodes.foreach { peerConfig =>
-            network.addAnchorsToChannel(ServiceChannelName, peerConfig.name)
+            network.addAnchorsToChannel(config.network.peerNodes, ServiceChannelName, peerConfig.name)
         }
 
         //
@@ -142,9 +144,10 @@ object Join {
         processManager: FabricProcessManager, network: FabricNetworkManager,
         joinRequest: JoinRequest, hostsManager: HostsManager
     ): Either[String, JoinResponse] = {
+        val systemChannel = network.connectToSystemChannel(config.network.orderingNodes)
         logger.info(s"Joining ${joinRequest.organization.name} to network ...")
         logger.info(s"Joining ${joinRequest.organization.name} to consortium ...")
-        network.joinToNetwork(joinRequest)
+        network.joinToNetwork(joinRequest, systemChannel)
         logger.info("Joining to channel 'service' ...")
 
         for {
@@ -206,7 +209,7 @@ object Join {
 
             // create result
             logger.info(s"Preparing JoinResponse ...")
-            val latestBlock = network.fetchLatestSystemBlock
+            val latestBlock = network.fetchLatestSystemBlock(systemChannel)
             JoinResponse(
                 genesis = Base64.getEncoder.encodeToString(latestBlock.toByteArray),
                 version = nextVersion,

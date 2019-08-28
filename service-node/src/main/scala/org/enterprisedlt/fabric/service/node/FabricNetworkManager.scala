@@ -6,7 +6,7 @@ import java.util.Properties
 import java.util.concurrent.{CompletableFuture, TimeUnit}
 
 import com.google.protobuf.ByteString
-import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, PeerConfig, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, OrganizationConfig, PeerConfig}
 import org.enterprisedlt.fabric.service.node.model.JoinRequest
 import org.enterprisedlt.fabric.service.node.proto._
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
@@ -25,7 +25,7 @@ import scala.collection.JavaConverters._
   * @author Alexey Polubelov
   */
 class FabricNetworkManager(
-    config: ServiceConfig,
+    organization: OrganizationConfig,
     admin: User
 ) {
     type TransactionEvent = BlockEvent#TransactionEvent
@@ -37,33 +37,26 @@ class FabricNetworkManager(
     // time out for OSN response (default 10 Second):
     System.setProperty(Config.ORDERER_WAIT_TIME, TimeUnit.MINUTES.toMillis(1).toString)
     // ---------------------------------------------------------------------------------------------------------------
-
     private val logger = LoggerFactory.getLogger(this.getClass)
-    private val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
-
+    private val organizationFullName = s"${organization.name}.${organization.domain}"
     private val fabricClient = getHFClient(admin)
-
-    private val osnByName = config.network.orderingNodes.map { cfg => (cfg.name, mkOSN(cfg)) }.toMap
-    private val peerByName = config.network.peerNodes.map { cfg => (cfg.name, mkPeer(cfg)) }.toMap
-
-    private lazy val systemChannel = connectToSystemChannel
-
     //
     //
     //
 
     //=========================================================================
-    def createChannel(channelName: String, channelTx: Envelope): Unit = {
-        val osn = osnByName.head._2 // for now, just use first
+    def createChannel(firstOsn: OSNConfig, channelName: String, channelTx: Envelope): Unit = {
+        val osn = mkOSN(firstOsn) // for now, just use first
         val chCfg = new ChannelConfiguration(channelTx.toByteArray)
         val sign = fabricClient.getChannelConfigurationSignature(chCfg, admin)
         fabricClient.newChannel(channelName, osn, chCfg, sign)
     }
 
     //=========================================================================
-    def defineChannel(channelName: String): Unit = {
+    def defineChannel(firstOsn: OSNConfig, channelName: String): Unit = {
+        val osn = mkOSN(firstOsn)
         val channel = fabricClient.newChannel(channelName)
-        channel.addOrderer(osnByName.head._2) // for now, add only first
+        channel.addOrderer(osn) // for now, add only first
     }
 
     //=========================================================================
@@ -72,12 +65,13 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def fetchLatestSystemBlock: Block = {
+    def fetchLatestSystemBlock(systemChannel: Channel): Block = {
         fetchConfigBlock(systemChannel)
     }
 
     //=========================================================================
-    def addPeerToChannel(channelName: String, peerName: String): Either[String, Peer] = {
+    def addPeerToChannel(peerNodes: Array[PeerConfig], channelName: String, peerName: String): Either[String, Peer] = {
+        val peerByName = peerNodes.map { cfg => (cfg.name, mkPeer(cfg)) }.toMap
         Option(fabricClient.getChannel(channelName))
           .toRight(s"Unknown channel $channelName")
           .flatMap { channel =>
@@ -92,14 +86,14 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def addAnchorsToChannel(channelName: String, peerName: String): Either[String, Unit] = {
+    def addAnchorsToChannel(peerNodes: Array[PeerConfig], channelName: String, peerName: String): Either[String, Unit] = {
         getChannel(channelName)
           .flatMap { channel =>
-              config.network.peerNodes
+              peerNodes
                 .find(_.name == peerName)
                 .toRight(s"Unknown peer $peerName")
                 .map { peerConfig =>
-                    applyChannelUpdate(channel, admin, FabricChannel.AddAnchorPeer(config.organization.name, s"${peerConfig.name}.$organizationFullName", peerConfig.port))
+                    applyChannelUpdate(channel, admin, FabricChannel.AddAnchorPeer(organization.name, s"${peerConfig.name}.$organizationFullName", peerConfig.port))
                 }
           }
     }
@@ -299,7 +293,7 @@ class FabricNetworkManager(
 
     //=========================================================================
 
-    def joinToNetwork(joinRequest: JoinRequest): Unit = {
+    def joinToNetwork(joinRequest: JoinRequest, systemChannel: Channel): Unit = {
         val organizationDefinition = OrganizationDefinition(
             mspId = joinRequest.organization.mspId,
             policies = PoliciesDefinition(
@@ -398,7 +392,7 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    private def getChannel(channelName: String): Either[String, Channel] =
+    def getChannel(channelName: String): Either[String, Channel] =
         Option(fabricClient.getChannel(channelName))
           .toRight(s"Unknown channel $channelName")
           .map(_.initialize())
@@ -428,16 +422,16 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    private def connectToSystemChannel: Channel = {
+    def connectToSystemChannel(orderingNodes: Array[OSNConfig]): Channel = {
         val channel = fabricClient.newChannel("system-channel")
-        config.network.orderingNodes /*.headOption*/ .foreach { cfg =>
+        orderingNodes /*.headOption*/ .foreach { cfg =>
             channel.addOrderer(mkOSN(cfg))
         }
         channel.initialize()
     }
 
     //=========================================================================
-    private def applyChannelUpdate(channel: Channel, user: User, update: Configtx.Config => ConfigUpdate.Builder): Unit = {
+    def applyChannelUpdate(channel: Channel, user: User, update: Configtx.Config => ConfigUpdate.Builder): Unit = {
         logger.info(s"[${channel.getName}] - Fetching configuration...")
         val channelConfig = fetchConfigBlock(channel)
         val currentConfig = Util.extractConfig(channelConfig)
@@ -466,7 +460,8 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def fetchCollectionsConfig(peerName: String, channelName: String, chainCodeName: String): Either[String, Iterable[PrivateCollectionConfiguration]] = {
+    def fetchCollectionsConfig(peerNodes: Array[PeerConfig], peerName: String, channelName: String, chainCodeName: String): Either[String, Iterable[PrivateCollectionConfiguration]] = {
+        val peerByName = peerNodes.map { cfg => (cfg.name, mkPeer(cfg)) }.toMap
         getChannel(channelName)
           .flatMap { channel =>
               peerByName
