@@ -60,7 +60,10 @@ class FabricNetworkManager(
         val channel = fabricClient.newChannel(channelName)
         channel.addOrderer(osn) // for now, add only first
     }
+    //=========================================================================
+    def registerOsnInSystemChannel(osn: OSNConfig): Channel = systemChannel.addOrderer(mkOSN(osn))
 
+    def registerOsnInChannel(channel: Channel, osn: OSNConfig): Channel = channel.addOrderer(mkOSN(osn))
     //=========================================================================
     def fetchLatestChannelBlock(channelName: String): Either[String, Block] = {
         getChannel(channelName).map(fetchConfigBlock)
