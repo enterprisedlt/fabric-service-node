@@ -50,22 +50,22 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
         val admin = cryptography.loadDefaultAdmin
-        val network = new FabricNetworkManager(config.organization, admin)
+        val network = new FabricNetworkManager(config.organization, config.network.orderingNodes.head, admin)
 
         //
         logger.info(s"[ $organizationFullName ] - Creating channel ...")
-        network.createChannel(config.network.orderingNodes.head,ServiceChannelName, FabricChannel.CreateChannel(ServiceChannelName, DefaultConsortiumName, config.organization.name))
+        network.createChannel(ServiceChannelName, FabricChannel.CreateChannel(ServiceChannelName, DefaultConsortiumName, config.organization.name))
 
         //
         logger.info(s"[ $organizationFullName ] - Adding peers to channel ...")
         config.network.peerNodes.foreach { peerConfig =>
-            network.addPeerToChannel(config.network.peerNodes,ServiceChannelName, peerConfig.name)
+            network.addPeerToChannel(config.network.peerNodes, ServiceChannelName, peerConfig.name)
         }
 
         //
         logger.info(s"[ $organizationFullName ] - Updating anchors for channel ...")
         config.network.peerNodes.foreach { peerConfig =>
-            network.addAnchorsToChannel(config.network.peerNodes,ServiceChannelName, peerConfig.name)
+            network.addAnchorsToChannel(config.network.peerNodes, ServiceChannelName, peerConfig.name)
         }
 
         //

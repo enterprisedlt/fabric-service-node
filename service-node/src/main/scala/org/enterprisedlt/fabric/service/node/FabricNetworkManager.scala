@@ -26,6 +26,7 @@ import scala.collection.JavaConverters._
   */
 class FabricNetworkManager(
     organization: OrganizationConfig,
+    bootstrapOsn: OSNConfig,
     admin: User
 ) {
     type TransactionEvent = BlockEvent#TransactionEvent
@@ -40,21 +41,22 @@ class FabricNetworkManager(
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val organizationFullName = s"${organization.name}.${organization.domain}"
     private val fabricClient = getHFClient(admin)
+    lazy val systemChannel: Channel = connectToSystemChannel(bootstrapOsn)
     //
     //
     //
 
     //=========================================================================
-    def createChannel(firstOsn: OSNConfig, channelName: String, channelTx: Envelope): Unit = {
-        val osn = mkOSN(firstOsn) // for now, just use first
+    def createChannel(channelName: String, channelTx: Envelope): Unit = {
+        val osn = mkOSN(bootstrapOsn) // for now, just use first
         val chCfg = new ChannelConfiguration(channelTx.toByteArray)
         val sign = fabricClient.getChannelConfigurationSignature(chCfg, admin)
         fabricClient.newChannel(channelName, osn, chCfg, sign)
     }
 
     //=========================================================================
-    def defineChannel(firstOsn: OSNConfig, channelName: String): Unit = {
-        val osn = mkOSN(firstOsn)
+    def defineChannel(channelName: String): Unit = {
+        val osn = mkOSN(bootstrapOsn)
         val channel = fabricClient.newChannel(channelName)
         channel.addOrderer(osn) // for now, add only first
     }
@@ -65,7 +67,7 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def fetchLatestSystemBlock(systemChannel: Channel): Block = {
+    def fetchLatestSystemBlock: Block = {
         fetchConfigBlock(systemChannel)
     }
 
@@ -293,7 +295,7 @@ class FabricNetworkManager(
 
     //=========================================================================
 
-    def joinToNetwork(joinRequest: JoinRequest, systemChannel: Channel): Unit = {
+    def joinToNetwork(joinRequest: JoinRequest): Unit = {
         val organizationDefinition = OrganizationDefinition(
             mspId = joinRequest.organization.mspId,
             policies = PoliciesDefinition(
@@ -422,11 +424,9 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def connectToSystemChannel(orderingNodes: Array[OSNConfig]): Channel = {
+    def connectToSystemChannel(bootstrapOsn: OSNConfig): Channel = {
         val channel = fabricClient.newChannel("system-channel")
-        orderingNodes /*.headOption*/ .foreach { cfg =>
-            channel.addOrderer(mkOSN(cfg))
-        }
+        channel.addOrderer(mkOSN(bootstrapOsn))
         channel.initialize()
     }
 
