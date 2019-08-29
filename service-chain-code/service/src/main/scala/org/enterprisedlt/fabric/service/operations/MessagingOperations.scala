@@ -38,15 +38,10 @@ trait MessagingOperations {
                   context.store
                     .list[Organization]
                     .map(_.value.mspId))
-              .filter(e => e.endsWith(s"-${
-                  context.clientIdentity.mspId
-              } ") || e.startsWith(s"${
-                  context.clientIdentity.mspId
-              }-"))
+              .filter(e => e.endsWith(s"-${context.clientIdentity.mspId}") || e.startsWith(s"${context.clientIdentity.mspId}-"))
               .map(context.privateStore)
-              .flatMap {
-                  store =>
-                      store.list[Message]
+              .flatMap { store =>
+                  store.list[Message]
               }.toArray
         )
     }
