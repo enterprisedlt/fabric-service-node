@@ -74,6 +74,9 @@ object Join {
         logger.info(s"[ $organizationFullName ] - Starting ordering nodes ...")
         config.network.orderingNodes.headOption.foreach { osnConfig =>
             processManager.startOrderingNode(osnConfig.name)
+            processManager.osnAwaitJoinedToRaft(osnConfig.name)
+            processManager.osnAwaitJoinedToChannel(osnConfig.name, SystemChannelName)
+            processManager.osnAwaitJoinedToChannel(osnConfig.name, ServiceChannelName)
         }
 
         //
@@ -87,8 +90,35 @@ object Join {
         val network = new FabricNetworkManager(config.organization, config.network.orderingNodes.head, admin)
         network.defineChannel(ServiceChannelName)
         logger.info(s"[ $organizationFullName ] - Connecting to channel ...")
-        network.defineChannel(config.network.orderingNodes.head, ServiceChannelName)
+        config.network.orderingNodes.tail.foreach { osnConfig =>
+            //
+            val consenter = Consenter.newBuilder()
+              .setHost(s"${osnConfig.name}.$organizationFullName")
+              .setPort(osnConfig.port)
+              .setClientTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
+              .setServerTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
+              .build()
+            network.applyChannelUpdate(
+                network.systemChannel, admin,
+                FabricChannel.AddConsenter(consenter)
+            )
+            network.registerOsnInSystemChannel(osnConfig)
+            //
+            network.getChannel(ServiceChannelName)
+              .map { channel =>
+                  network.applyChannelUpdate(
+                      channel, admin,
+                      FabricChannel.AddConsenter(consenter)
+                  )
+                  network.registerOsnInChannel(channel, osnConfig)
+              }
+            //
+            processManager.startOrderingNode(osnConfig.name)
 
+            processManager.osnAwaitJoinedToRaft(osnConfig.name)
+            processManager.osnAwaitJoinedToChannel(osnConfig.name, SystemChannelName)
+            processManager.osnAwaitJoinedToChannel(osnConfig.name, ServiceChannelName)
+        }
         //
         logger.info(s"[ $organizationFullName ] - Adding peers to channel ...")
         config.network.peerNodes.foreach { peerConfig =>
