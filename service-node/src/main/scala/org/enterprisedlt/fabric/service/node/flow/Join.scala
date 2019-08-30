@@ -9,8 +9,6 @@ import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.proto.FabricChannel
-import org.hyperledger.fabric.protos.ext.orderer.etcdraft.Configuration.Consenter
 import org.slf4j.LoggerFactory
 
 /**
@@ -80,19 +78,14 @@ object Join {
         }
 
         //
-        logger.info(s"[ $organizationFullName ] - Starting peer nodes ...")
-        config.network.peerNodes.foreach { peerConfig =>
-            processManager.startPeerNode(peerConfig.name)
-        }
-
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
         val admin = cryptoManager.loadDefaultAdmin
         val network = new FabricNetworkManager(config.organization, config.network.orderingNodes.head, admin)
         network.defineChannel(ServiceChannelName)
         logger.info(s"[ $organizationFullName ] - Connecting to channel ...")
         config.network.orderingNodes.tail.foreach { osnConfig =>
-            //
-            network.addOsnToChannel(osnConfig,cryptoPath)
+            logger.info(s"[ ${osnConfig.name}.$organizationFullName ] - Adding ordering service to channel ...")
+            network.addOsnToChannel(osnConfig, cryptoPath)
             //
             processManager.startOrderingNode(osnConfig.name)
             processManager.osnAwaitJoinedToRaft(osnConfig.name)
@@ -100,6 +93,10 @@ object Join {
             processManager.osnAwaitJoinedToChannel(osnConfig.name, ServiceChannelName)
         }
         //
+        logger.info(s"[ $organizationFullName ] - Starting peer nodes ...")
+        config.network.peerNodes.foreach { peerConfig =>
+            processManager.startPeerNode(peerConfig.name)
+        }
         logger.info(s"[ $organizationFullName ] - Adding peers to channel ...")
         config.network.peerNodes.foreach { peerConfig =>
             network.addPeerToChannel(config.network.peerNodes, ServiceChannelName, peerConfig.name)
