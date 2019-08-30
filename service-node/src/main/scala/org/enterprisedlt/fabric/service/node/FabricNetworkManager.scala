@@ -7,6 +7,7 @@ import java.util.concurrent.{CompletableFuture, TimeUnit}
 
 import com.google.protobuf.ByteString
 import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, OrganizationConfig, PeerConfig}
+import org.enterprisedlt.fabric.service.node.flow.Constant.ServiceChannelName
 import org.enterprisedlt.fabric.service.node.model.JoinRequest
 import org.enterprisedlt.fabric.service.node.proto._
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
@@ -60,10 +61,6 @@ class FabricNetworkManager(
         val channel = fabricClient.newChannel(channelName)
         channel.addOrderer(osn) // for now, add only first
     }
-    //=========================================================================
-    def registerOsnInSystemChannel(osn: OSNConfig): Channel = systemChannel.addOrderer(mkOSN(osn))
-
-    def registerOsnInChannel(channel: Channel, osn: OSNConfig): Channel = channel.addOrderer(mkOSN(osn))
     //=========================================================================
     def fetchLatestChannelBlock(channelName: String): Either[String, Block] = {
         getChannel(channelName).map(fetchConfigBlock)
@@ -380,7 +377,33 @@ class FabricNetworkManager(
               )
           }
     }
+    //=========================================================================
+    def addOsnToChannel(osnConfig: OSNConfig, cryptoPath: String): Either[String, Channel] = {
+        val consenter = Consenter.newBuilder()
+          .setHost(s"${osnConfig.name}.$organizationFullName")
+          .setPort(osnConfig.port)
+          .setClientTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
+          .setServerTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
+          .build()
+        applyChannelUpdate(
+            systemChannel, admin,
+            FabricChannel.AddConsenter(consenter)
+        )
+        registerOsnInSystemChannel(osnConfig)
+        //
+        getChannel(ServiceChannelName)
+          .map { channel =>
+              applyChannelUpdate(
+                  channel, admin,
+                  FabricChannel.AddConsenter(consenter)
+              )
+              registerOsnInChannel(channel, osnConfig)
+          }
+    }
+    //=========================================================================
+    def registerOsnInSystemChannel(osn: OSNConfig): Channel = systemChannel.addOrderer(mkOSN(osn))
 
+    def registerOsnInChannel(channel: Channel, osn: OSNConfig): Channel = channel.addOrderer(mkOSN(osn))
     //=========================================================================
     // Private utility functions
     //=========================================================================

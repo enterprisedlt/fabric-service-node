@@ -92,29 +92,9 @@ object Join {
         logger.info(s"[ $organizationFullName ] - Connecting to channel ...")
         config.network.orderingNodes.tail.foreach { osnConfig =>
             //
-            val consenter = Consenter.newBuilder()
-              .setHost(s"${osnConfig.name}.$organizationFullName")
-              .setPort(osnConfig.port)
-              .setClientTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
-              .setServerTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
-              .build()
-            network.applyChannelUpdate(
-                network.systemChannel, admin,
-                FabricChannel.AddConsenter(consenter)
-            )
-            network.registerOsnInSystemChannel(osnConfig)
-            //
-            network.getChannel(ServiceChannelName)
-              .map { channel =>
-                  network.applyChannelUpdate(
-                      channel, admin,
-                      FabricChannel.AddConsenter(consenter)
-                  )
-                  network.registerOsnInChannel(channel, osnConfig)
-              }
+            network.addOsnToChannel(osnConfig,cryptoPath)
             //
             processManager.startOrderingNode(osnConfig.name)
-
             processManager.osnAwaitJoinedToRaft(osnConfig.name)
             processManager.osnAwaitJoinedToChannel(osnConfig.name, SystemChannelName)
             processManager.osnAwaitJoinedToChannel(osnConfig.name, ServiceChannelName)
