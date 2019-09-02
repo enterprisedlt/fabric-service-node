@@ -42,11 +42,12 @@ class FabricNetworkManager(
     // ---------------------------------------------------------------------------------------------------------------
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val organizationFullName = s"${organization.name}.${organization.domain}"
+    private val fabricClient = getHFClient(admin)
+
     private val peerByName = mutable.Map.empty[String, Peer]
     private val osnByName = mutable.Map(bootstrapOsn.name -> mkOSN(bootstrapOsn))
-    private val fabricClient = getHFClient(admin)
     // ---------------------------------------------------------------------------------------------------------------
-    lazy val systemChannel: Channel = connectToSystemChannel(bootstrapOsn)
+    private lazy val systemChannel: Channel = connectToSystemChannel(bootstrapOsn)
 
     //
     //

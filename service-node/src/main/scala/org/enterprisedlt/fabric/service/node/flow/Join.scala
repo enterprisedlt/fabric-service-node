@@ -12,8 +12,8 @@ import org.enterprisedlt.fabric.service.node.model._
 import org.slf4j.LoggerFactory
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object Join {
 
     private val logger = LoggerFactory.getLogger(this.getClass)
@@ -101,12 +101,17 @@ object Join {
         logger.info(s"[ $organizationFullName ] - Adding peers to channel ...")
         config.network.peerNodes.foreach { peerConfig =>
             network.definePeer(peerConfig)
-            network.addPeerToChannel(peerConfig.name, ServiceChannelName)
-            // get latest channel block number and await for peer to commit it
-            network.fetchLatestChannelBlock(ServiceChannelName) match {
-                case Right(block) =>
-                    val lastBlockNum = block.getHeader.getNumber
-                    processManager.peerAwaitForBlock(peerConfig.name, lastBlockNum)
+            network.addPeerToChannel(ServiceChannelName, peerConfig.name)
+              .flatMap { _ =>
+                  // get latest channel block number and await for peer to commit it
+                  network.fetchLatestChannelBlock(ServiceChannelName)
+              }
+              .map { block =>
+                  val lastBlockNum = block.getHeader.getNumber
+                  processManager.peerAwaitForBlock(peerConfig.name, lastBlockNum)
+              }
+            match {
+                case Right(_) => // NoOp
                 case Left(error) =>
                     logger.error(error)
                     throw new Exception(error)
