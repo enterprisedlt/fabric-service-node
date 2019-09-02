@@ -59,7 +59,8 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Adding peers to channel ...")
         config.network.peerNodes.foreach { peerConfig =>
-            network.addPeerToChannel(config.network.peerNodes, ServiceChannelName, peerConfig.name)
+            network.definePeer(peerConfig)
+            network.addPeerToChannel(ServiceChannelName, peerConfig.name)
         }
 
         //

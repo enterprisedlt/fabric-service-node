@@ -85,7 +85,8 @@ object Join {
         logger.info(s"[ $organizationFullName ] - Connecting to channel ...")
         config.network.orderingNodes.tail.foreach { osnConfig =>
             logger.info(s"[ ${osnConfig.name}.$organizationFullName ] - Adding ordering service to channel ...")
-            network.addOsnToChannel(osnConfig, cryptoPath)
+            network.defineOsn(osnConfig)
+            network.addOsnToChannels(osnConfig, cryptoPath)
             //
             processManager.startOrderingNode(osnConfig.name)
             processManager.osnAwaitJoinedToRaft(osnConfig.name)
@@ -99,7 +100,8 @@ object Join {
         }
         logger.info(s"[ $organizationFullName ] - Adding peers to channel ...")
         config.network.peerNodes.foreach { peerConfig =>
-            network.addPeerToChannel(config.network.peerNodes, ServiceChannelName, peerConfig.name)
+            network.definePeer(peerConfig)
+            network.addPeerToChannel(peerConfig.name, ServiceChannelName)
             // get latest channel block number and await for peer to commit it
             network.fetchLatestChannelBlock(ServiceChannelName) match {
                 case Right(block) =>

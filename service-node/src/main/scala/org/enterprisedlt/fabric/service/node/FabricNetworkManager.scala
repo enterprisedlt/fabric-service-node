@@ -21,6 +21,7 @@ import org.hyperledger.fabric.sdk.{BlockEvent, ChannelConfiguration, Peer, _}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 
 /**
   * @author Alexey Polubelov
@@ -41,12 +42,15 @@ class FabricNetworkManager(
     // ---------------------------------------------------------------------------------------------------------------
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val organizationFullName = s"${organization.name}.${organization.domain}"
+    private val peerByName = mutable.Map.empty[String, Peer]
+    private val osnByName = mutable.Map(bootstrapOsn.name -> mkOSN(bootstrapOsn))
     private val fabricClient = getHFClient(admin)
+    // ---------------------------------------------------------------------------------------------------------------
     lazy val systemChannel: Channel = connectToSystemChannel(bootstrapOsn)
-    //
-    //
-    //
 
+    //
+    //
+    //
     //=========================================================================
     def createChannel(channelName: String, channelTx: Envelope): Unit = {
         val osn = mkOSN(bootstrapOsn) // for now, just use first
@@ -61,6 +65,7 @@ class FabricNetworkManager(
         val channel = fabricClient.newChannel(channelName)
         channel.addOrderer(osn) // for now, add only first
     }
+
     //=========================================================================
     def fetchLatestChannelBlock(channelName: String): Either[String, Block] = {
         getChannel(channelName).map(fetchConfigBlock)
@@ -71,9 +76,12 @@ class FabricNetworkManager(
         fetchConfigBlock(systemChannel)
     }
 
+    def definePeer(peerNode: PeerConfig): Unit = {
+        peerByName += (peerNode.name -> mkPeer(peerNode))
+    }
+
     //=========================================================================
-    def addPeerToChannel(peerNodes: Array[PeerConfig], channelName: String, peerName: String): Either[String, Peer] = {
-        val peerByName = peerNodes.map { cfg => (cfg.name, mkPeer(cfg)) }.toMap
+    def addPeerToChannel(channelName: String, peerName: String): Either[String, Peer] = {
         Option(fabricClient.getChannel(channelName))
           .toRight(s"Unknown channel $channelName")
           .flatMap { channel =>
@@ -377,8 +385,14 @@ class FabricNetworkManager(
               )
           }
     }
+
+
+    def defineOsn(osnConfig: OSNConfig): Unit = {
+        osnByName += (osnConfig.name -> mkOSN(osnConfig))
+    }
+
     //=========================================================================
-    def addOsnToChannel(osnConfig: OSNConfig, cryptoPath: String): Either[String, Channel] = {
+    def addOsnToChannels(osnConfig: OSNConfig, cryptoPath: String): Either[String, Channel] = {
         val consenter = Consenter.newBuilder()
           .setHost(s"${osnConfig.name}.$organizationFullName")
           .setPort(osnConfig.port)
@@ -389,7 +403,7 @@ class FabricNetworkManager(
             systemChannel, admin,
             FabricChannel.AddConsenter(consenter)
         )
-        registerOsnInSystemChannel(osnConfig)
+        addOsnToSystemChannel(osnConfig)
         //
         getChannel(ServiceChannelName)
           .map { channel =>
@@ -397,13 +411,15 @@ class FabricNetworkManager(
                   channel, admin,
                   FabricChannel.AddConsenter(consenter)
               )
-              registerOsnInChannel(channel, osnConfig)
+              addOsnToChannel(channel, osnConfig)
           }
     }
-    //=========================================================================
-    def registerOsnInSystemChannel(osn: OSNConfig): Channel = systemChannel.addOrderer(mkOSN(osn))
 
-    def registerOsnInChannel(channel: Channel, osn: OSNConfig): Channel = channel.addOrderer(mkOSN(osn))
+    //=========================================================================
+    def addOsnToSystemChannel(osn: OSNConfig): Channel = systemChannel.addOrderer(mkOSN(osn))
+
+    def addOsnToChannel(channel: Channel, osn: OSNConfig): Channel = channel.addOrderer(mkOSN(osn))
+
     //=========================================================================
     // Private utility functions
     //=========================================================================
