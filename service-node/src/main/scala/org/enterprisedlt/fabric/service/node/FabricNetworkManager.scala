@@ -489,14 +489,14 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def fetchCollectionsConfig(peerNodes: Array[PeerConfig], peerName: String, channelName: String, chainCodeName: String): Either[String, Iterable[PrivateCollectionConfiguration]] = {
-        val peerByName = peerNodes.map { cfg => (cfg.name, mkPeer(cfg)) }.toMap
+    def fetchCollectionsConfig(peerName: String, channelName: String, chainCodeName: String): Either[String, Iterable[PrivateCollectionConfiguration]] = {
         getChannel(channelName)
           .flatMap { channel =>
               peerByName
                 .get(peerName)
                 .toRight(s"Unknown peer $peerName")
-                .map { peer =>
+                .map { peerConfig =>
+                    val peer = mkPeer(peerConfig)
                     val collectionConfigPackage = channel.queryCollectionsConfig(chainCodeName, peer, admin)
                     Util.parseCollectionPackage(collectionConfigPackage)
                 }
