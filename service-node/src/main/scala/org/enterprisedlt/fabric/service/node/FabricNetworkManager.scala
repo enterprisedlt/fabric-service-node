@@ -20,7 +20,8 @@ import org.hyperledger.fabric.sdk.{BlockEvent, ChannelConfiguration, Peer, _}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable
+import scala.collection.concurrent.TrieMap
+
 
 /**
   * @author Alexey Polubelov
@@ -43,8 +44,8 @@ class FabricNetworkManager(
     private val organizationFullName = s"${organization.name}.${organization.domain}"
     private val fabricClient = getHFClient(admin)
 
-    private val peerByName = mutable.Map.empty[String, Peer]
-    private val osnByName = mutable.Map(bootstrapOsn.name -> mkOSN(bootstrapOsn))
+    private val peerByName = TrieMap.empty[String, Peer]
+    private val osnByName = TrieMap(bootstrapOsn.name -> mkOSN(bootstrapOsn))
     // ---------------------------------------------------------------------------------------------------------------
     private lazy val systemChannel: Channel = connectToSystemChannel(bootstrapOsn)
     //
