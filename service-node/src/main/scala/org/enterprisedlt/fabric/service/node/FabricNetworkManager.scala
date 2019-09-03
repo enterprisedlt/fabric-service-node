@@ -434,7 +434,7 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def getChannel(channelName: String): Either[String, Channel] =
+    private def getChannel(channelName: String): Either[String, Channel] =
         Option(fabricClient.getChannel(channelName))
           .toRight(s"Unknown channel $channelName")
           .map(_.initialize())

@@ -88,8 +88,8 @@ object Join {
             network.addOsnToChannel(osnConfig.name, cryptoPath)
             network.addOsnToChannel(osnConfig.name, cryptoPath, Some(ServiceChannelName))
             //
-            processManager.startOrderingNode(osnConfig.name)
             network.defineOsn(osnConfig)
+            processManager.startOrderingNode(osnConfig.name)
             processManager.osnAwaitJoinedToRaft(osnConfig.name)
             processManager.osnAwaitJoinedToChannel(osnConfig.name, SystemChannelName)
             processManager.osnAwaitJoinedToChannel(osnConfig.name, ServiceChannelName)
