@@ -103,7 +103,6 @@ class FabricNetworkManager(
           .flatMap { channel =>
               peerByName.get(peerName)
                 .toRight(s"Unknown peer $peerName")
-                .map(_._2)
                 .map { peer =>
                     applyChannelUpdate(channel, admin, FabricChannel.AddAnchorPeer(organization.name, s"${peer.name}.$organizationFullName", peer.port))
                 }
