@@ -44,7 +44,7 @@ class FabricNetworkManager(
     private val organizationFullName = s"${organization.name}.${organization.domain}"
     private val fabricClient = getHFClient(admin)
 
-    private val peerByName = TrieMap.empty[String, Peer]
+    private val peerByName = TrieMap.empty[String, (Peer, PeerConfig)]
     private val osnByName = TrieMap(bootstrapOsn.name -> mkOSN(bootstrapOsn))
     // ---------------------------------------------------------------------------------------------------------------
     private lazy val systemChannel: Channel = connectToSystemChannel(bootstrapOsn)
@@ -77,7 +77,7 @@ class FabricNetworkManager(
     }
 
     def definePeer(peerNode: PeerConfig): Unit = {
-        peerByName += (peerNode.name -> mkPeer(peerNode))
+        peerByName += (peerNode.name -> (mkPeer(peerNode),peerNode))
     }
 
     //=========================================================================
@@ -89,24 +89,23 @@ class FabricNetworkManager(
                 .get(peerName)
                 .toRight(s"Unknown peer $peerName")
                 .map { peer =>
-                    channel.joinPeer(peer)
-                    peer
+                    channel.joinPeer(peer._1)
+                    peer._1
                 }
           }
     }
 
     //=========================================================================
-    def addAnchorsToChannel(peerNodes: Array[PeerConfig], channelName: String, peerName: String): Either[String, Unit] = {
-        getChannel(channelName)
-          .flatMap { channel =>
-              peerNodes
-                .find(_.name == peerName)
-                .toRight(s"Unknown peer $peerName")
-                .map { peerConfig =>
-                    applyChannelUpdate(channel, admin, FabricChannel.AddAnchorPeer(organization.name, s"${peerConfig.name}.$organizationFullName", peerConfig.port))
-                }
-          }
-    }
+    def addAnchorsToChannel(channelName: String, peerName: String): Either[String, Unit] = getChannel(channelName)
+      .flatMap { channel =>
+          peerByName
+            .find(_._1 == peerName)
+            .toRight(s"Unknown peer $peerName")
+            .map { peer =>
+                val peerPort = peer._2._2.port
+                applyChannelUpdate(channel, admin, FabricChannel.AddAnchorPeer(organization.name, s"${peer._1}.$organizationFullName", peerPort))
+            }
+      }
 
     //=========================================================================
     def installChainCode(channelName: String, chainCodeName: String, version: String, chainCodeTarGzStream: InputStream): Either[String, util.Collection[ProposalResponse]] = {

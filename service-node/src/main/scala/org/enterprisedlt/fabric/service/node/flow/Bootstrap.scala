@@ -69,7 +69,7 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Updating anchors for channel ...")
         config.network.peerNodes.foreach { peerConfig =>
-            network.addAnchorsToChannel(config.network.peerNodes, ServiceChannelName, peerConfig.name)
+            network.addAnchorsToChannel(ServiceChannelName, peerConfig.name)
         }
 
         //
