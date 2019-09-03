@@ -422,7 +422,7 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def getChannel(channelName: String): Either[String, Channel] =
+    private def getChannel(channelName: String): Either[String, Channel] =
         Option(fabricClient.getChannel(channelName))
           .toRight(s"Unknown channel $channelName")
           .map(_.initialize())
@@ -452,7 +452,7 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def connectToSystemChannel: Channel = {
+    private def connectToSystemChannel: Channel = {
         val bootstrapOsnName = mkOSN(osnByName.head._2)
         val channel = fabricClient.newChannel("system-channel")
         channel.addOrderer(bootstrapOsnName)
@@ -460,7 +460,7 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def applyChannelUpdate(channel: Channel, user: User, update: Configtx.Config => ConfigUpdate.Builder): Unit = {
+    private def applyChannelUpdate(channel: Channel, user: User, update: Configtx.Config => ConfigUpdate.Builder): Unit = {
         logger.info(s"[${channel.getName}] - Fetching configuration...")
         val channelConfig = fetchConfigBlock(channel)
         val currentConfig = Util.extractConfig(channelConfig)
