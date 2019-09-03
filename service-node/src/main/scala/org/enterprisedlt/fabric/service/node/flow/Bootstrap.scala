@@ -51,7 +51,7 @@ object Bootstrap {
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
         val admin = cryptography.loadDefaultAdmin
         val network = new FabricNetworkManager(config.organization, config.network.orderingNodes.head, admin)
-        config.network.orderingNodes.foreach { osnConfig =>
+        config.network.orderingNodes.tail.foreach { osnConfig =>
             network.defineOsn(osnConfig)
         }
 
