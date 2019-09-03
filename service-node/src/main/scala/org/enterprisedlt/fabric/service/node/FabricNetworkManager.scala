@@ -7,7 +7,6 @@ import java.util.concurrent.{CompletableFuture, TimeUnit}
 
 import com.google.protobuf.ByteString
 import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, OrganizationConfig, PeerConfig}
-import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChannelName, SystemChannelName}
 import org.enterprisedlt.fabric.service.node.model.JoinRequest
 import org.enterprisedlt.fabric.service.node.proto._
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
@@ -48,23 +47,22 @@ class FabricNetworkManager(
     private val osnByName = mutable.Map(bootstrapOsn.name -> mkOSN(bootstrapOsn))
     // ---------------------------------------------------------------------------------------------------------------
     private lazy val systemChannel: Channel = connectToSystemChannel(bootstrapOsn)
-
     //
     //
     //
     //=========================================================================
     def createChannel(channelName: String, channelTx: Envelope): Unit = {
-        val osn = mkOSN(bootstrapOsn) // for now, just use first
+        val bootstrapOsnName = osnByName.head._2
         val chCfg = new ChannelConfiguration(channelTx.toByteArray)
         val sign = fabricClient.getChannelConfigurationSignature(chCfg, admin)
-        fabricClient.newChannel(channelName, osn, chCfg, sign)
+        fabricClient.newChannel(channelName, bootstrapOsnName, chCfg, sign)
     }
 
     //=========================================================================
     def defineChannel(channelName: String): Unit = {
-        val osn = mkOSN(bootstrapOsn)
+        val bootstrapOsnName = osnByName.head._2
         val channel = fabricClient.newChannel(channelName)
-        channel.addOrderer(osn) // for now, add only first
+        channel.addOrderer(bootstrapOsnName)
     }
 
     //=========================================================================
@@ -454,8 +452,9 @@ class FabricNetworkManager(
 
     //=========================================================================
     def connectToSystemChannel(bootstrapOsn: OSNConfig): Channel = {
+        val bootstrapOsnName = osnByName.head._2
         val channel = fabricClient.newChannel("system-channel")
-        channel.addOrderer(mkOSN(bootstrapOsn))
+        channel.addOrderer(bootstrapOsnName)
         channel.initialize()
     }
 
