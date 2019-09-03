@@ -12,6 +12,14 @@
       {
         "name": "osn1",
         "port": 4001
+      },
+      {
+        "name": "osn2",
+        "port": 4002
+      },
+      {
+        "name": "osn3",
+        "port": 4003
       }
     ],
     "peerNodes": [

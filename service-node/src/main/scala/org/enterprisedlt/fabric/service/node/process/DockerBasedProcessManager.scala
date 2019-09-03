@@ -25,7 +25,7 @@ class DockerBasedProcessManager(
     dockerSocket: String,
     selfContainerName: String,
     config: ServiceConfig,
-    LogWindow: Int = 500
+    LogWindow: Int = 1500
 ) extends FabricProcessManager {
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val organizationFullName = s"${config.organization.name}.${config.organization.domain}"

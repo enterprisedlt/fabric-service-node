@@ -12,8 +12,8 @@ import org.enterprisedlt.fabric.service.node.model._
 import org.slf4j.LoggerFactory
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object Join {
 
     private val logger = LoggerFactory.getLogger(this.getClass)
@@ -72,37 +72,47 @@ object Join {
         logger.info(s"[ $organizationFullName ] - Starting ordering nodes ...")
         config.network.orderingNodes.headOption.foreach { osnConfig =>
             processManager.startOrderingNode(osnConfig.name)
-        }
-        config.network.orderingNodes.headOption.foreach { osnConfig =>
             processManager.osnAwaitJoinedToRaft(osnConfig.name)
             processManager.osnAwaitJoinedToChannel(osnConfig.name, SystemChannelName)
             processManager.osnAwaitJoinedToChannel(osnConfig.name, ServiceChannelName)
         }
 
         //
+        logger.info(s"[ $organizationFullName ] - Initializing network ...")
+        val admin = cryptoManager.loadDefaultAdmin
+        val network = new FabricNetworkManager(config.organization, config.network.orderingNodes.head, admin)
+        network.defineChannel(ServiceChannelName)
+        logger.info(s"[ $organizationFullName ] - Connecting to channel ...")
+        config.network.orderingNodes.tail.foreach { osnConfig =>
+            logger.info(s"[ ${osnConfig.name}.$organizationFullName ] - Adding ordering service to channel ...")
+            network.defineOsn(osnConfig)
+            network.addOsnToChannel(osnConfig.name, cryptoPath)
+            network.addOsnToChannel(osnConfig.name, cryptoPath, Some(ServiceChannelName))
+            //
+            processManager.startOrderingNode(osnConfig.name)
+            processManager.osnAwaitJoinedToRaft(osnConfig.name)
+            processManager.osnAwaitJoinedToChannel(osnConfig.name, SystemChannelName)
+            processManager.osnAwaitJoinedToChannel(osnConfig.name, ServiceChannelName)
+        }
+        //
         logger.info(s"[ $organizationFullName ] - Starting peer nodes ...")
         config.network.peerNodes.foreach { peerConfig =>
             processManager.startPeerNode(peerConfig.name)
+            network.definePeer(peerConfig)
         }
-
-        //
-        logger.info(s"[ $organizationFullName ] - Initializing network ...")
-        val admin = cryptoManager.loadDefaultAdmin
-        val network = new FabricNetworkManager(config, admin)
-
-        //
-        logger.info(s"[ $organizationFullName ] - Connecting to channel ...")
-        network.defineChannel(ServiceChannelName)
-
-        //
         logger.info(s"[ $organizationFullName ] - Adding peers to channel ...")
         config.network.peerNodes.foreach { peerConfig =>
             network.addPeerToChannel(ServiceChannelName, peerConfig.name)
-            // get latest channel block number and await for peer to commit it
-            network.fetchLatestChannelBlock(ServiceChannelName) match {
-                case Right(block) =>
-                    val lastBlockNum = block.getHeader.getNumber
-                    processManager.peerAwaitForBlock(peerConfig.name, lastBlockNum)
+              .flatMap { _ =>
+                  // get latest channel block number and await for peer to commit it
+                  network.fetchLatestChannelBlock(ServiceChannelName)
+              }
+              .map { block =>
+                  val lastBlockNum = block.getHeader.getNumber
+                  processManager.peerAwaitForBlock(peerConfig.name, lastBlockNum)
+              }
+            match {
+                case Right(_) => // NoOp
                 case Left(error) =>
                     logger.error(error)
                     throw new Exception(error)
@@ -142,6 +152,7 @@ object Join {
         processManager: FabricProcessManager, network: FabricNetworkManager,
         joinRequest: JoinRequest, hostsManager: HostsManager
     ): Either[String, JoinResponse] = {
+
         logger.info(s"Joining ${joinRequest.organization.name} to network ...")
         logger.info(s"Joining ${joinRequest.organization.name} to consortium ...")
         network.joinToNetwork(joinRequest)

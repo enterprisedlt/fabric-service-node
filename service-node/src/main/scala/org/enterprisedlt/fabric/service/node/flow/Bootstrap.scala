@@ -43,14 +43,18 @@ object Bootstrap {
 
         //
         logger.info(s"[ $organizationFullName ] - Starting peer nodes ...")
+        val admin = cryptography.loadDefaultAdmin
+        val network = new FabricNetworkManager(config.organization, config.network.orderingNodes.head, admin)
         config.network.peerNodes.foreach { peerConfig =>
             processManager.startPeerNode(peerConfig.name)
+            network.definePeer(peerConfig)
         }
 
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
-        val admin = cryptography.loadDefaultAdmin
-        val network = new FabricNetworkManager(config, admin)
+        config.network.orderingNodes.tail.foreach { osnConfig =>
+            network.defineOsn(osnConfig)
+        }
 
         //
         logger.info(s"[ $organizationFullName ] - Creating channel ...")
