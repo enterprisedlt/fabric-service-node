@@ -96,16 +96,16 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def addAnchorsToChannel(channelName: String, peerName: String): Either[String, Unit] = getChannel(channelName)
-      .flatMap { channel =>
-          peerByName
-            .find(_._1 == peerName)
-            .toRight(s"Unknown peer $peerName")
-            .map { peer =>
-                val peerPort = peer._2._2.port
-                applyChannelUpdate(channel, admin, FabricChannel.AddAnchorPeer(organization.name, s"${peer._1}.$organizationFullName", peerPort))
-            }
-      }
+    def addAnchorsToChannel(channelName: String, peerName: String): Either[String, Unit] =
+        getChannel(channelName)
+          .flatMap { channel =>
+              peerByName.get(peerName)
+                .toRight(s"Unknown peer $peerName")
+                .map(_._2)
+                .map { peer =>
+                    applyChannelUpdate(channel, admin, FabricChannel.AddAnchorPeer(organization.name, s"${peer.name}.$organizationFullName", peer.port))
+                }
+          }
 
     //=========================================================================
     def installChainCode(channelName: String, chainCodeName: String, version: String, chainCodeTarGzStream: InputStream): Either[String, util.Collection[ProposalResponse]] = {
