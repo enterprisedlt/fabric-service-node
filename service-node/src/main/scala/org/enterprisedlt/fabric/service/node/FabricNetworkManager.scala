@@ -47,7 +47,8 @@ class FabricNetworkManager(
     private val peerByName = TrieMap.empty[String, (Peer, PeerConfig)]
     private val osnByName = TrieMap(bootstrapOsn.name -> mkOSN(bootstrapOsn))
     // ---------------------------------------------------------------------------------------------------------------
-    private lazy val systemChannel: Channel = connectToSystemChannel(bootstrapOsn)
+    private lazy val systemChannel: Channel = connectToSystemChannel
+
     //
     //
     //
@@ -451,7 +452,7 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def connectToSystemChannel(bootstrapOsn: OSNConfig): Channel = {
+    def connectToSystemChannel: Channel = {
         val bootstrapOsnName = osnByName.head._2
         val channel = fabricClient.newChannel("system-channel")
         channel.addOrderer(bootstrapOsnName)
