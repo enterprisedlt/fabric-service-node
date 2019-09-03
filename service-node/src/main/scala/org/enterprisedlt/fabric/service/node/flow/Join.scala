@@ -86,10 +86,7 @@ object Join {
         config.network.orderingNodes.tail.foreach { osnConfig =>
             logger.info(s"[ ${osnConfig.name}.$organizationFullName ] - Adding ordering service to channel ...")
             network.addOsnToChannel(osnConfig.name, cryptoPath)
-            network.getChannel(ServiceChannelName)
-              .map { channel =>
-                  network.addOsnToChannel(osnConfig.name, cryptoPath, channel)
-              }
+            network.addOsnToChannel(osnConfig.name, cryptoPath, Some(ServiceChannelName))
             //
             processManager.startOrderingNode(osnConfig.name)
             network.defineOsn(osnConfig)

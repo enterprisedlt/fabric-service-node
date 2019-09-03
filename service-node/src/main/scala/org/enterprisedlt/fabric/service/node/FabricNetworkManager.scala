@@ -392,7 +392,7 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def addOsnToChannel(osnName: String, cryptoPath: String, channel: Channel = systemChannel): Unit = {
+    def addOsnToChannel(osnName: String, cryptoPath: String, channelName: Option[String] = None): Unit = {
         osnByName.get(osnName)
           .toRight(s"Unknown osn $osnName")
           .map { osnConfig =>
@@ -402,11 +402,19 @@ class FabricNetworkManager(
                 .setClientTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
                 .setServerTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
                 .build()
+              val channel: Channel =
+                  channelName
+                    .flatMap { name =>
+                        Option(fabricClient.getChannel(name))
+                          .map(_.initialize())
+                    }
+                    .getOrElse(systemChannel)
               applyChannelUpdate(
                   channel, admin,
                   FabricChannel.AddConsenter(consenter)
               )
-              channel.addOrderer(mkOSN(osnConfig))
+              val osn = mkOSN(osnConfig)
+              channel.addOrderer(osn)
           }
     }
 
