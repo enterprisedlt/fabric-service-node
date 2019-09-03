@@ -89,9 +89,10 @@ class FabricNetworkManager(
               peerByName
                 .get(peerName)
                 .toRight(s"Unknown peer $peerName")
+                .map(_._1)
                 .map { peer =>
-                    channel.joinPeer(peer._1)
-                    peer._1
+                    channel.joinPeer(peer)
+                    peer
                 }
           }
     }
