@@ -392,18 +392,22 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def addOsnToChannel(osnConfig: OSNConfig, cryptoPath: String, channel: Channel = systemChannel): Unit = {
-        val consenter = Consenter.newBuilder()
-          .setHost(s"${osnConfig.name}.$organizationFullName")
-          .setPort(osnConfig.port)
-          .setClientTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
-          .setServerTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
-          .build()
-        applyChannelUpdate(
-            channel, admin,
-            FabricChannel.AddConsenter(consenter)
-        )
-        channel.addOrderer(mkOSN(osnConfig))
+    def addOsnToChannel(osnName: String, cryptoPath: String, channel: Channel = systemChannel): Unit = {
+        osnByName.get(osnName)
+          .toRight(s"Unknown osn $osnName")
+          .map { osnConfig =>
+              val consenter = Consenter.newBuilder()
+                .setHost(s"${osnConfig.name}.$organizationFullName")
+                .setPort(osnConfig.port)
+                .setClientTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
+                .setServerTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
+                .build()
+              applyChannelUpdate(
+                  channel, admin,
+                  FabricChannel.AddConsenter(consenter)
+              )
+              channel.addOrderer(mkOSN(osnConfig))
+          }
     }
 
     //=========================================================================
@@ -422,7 +426,7 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    private def getChannel(channelName: String): Either[String, Channel] =
+    def getChannel(channelName: String): Either[String, Channel] =
         Option(fabricClient.getChannel(channelName))
           .toRight(s"Unknown channel $channelName")
           .map(_.initialize())
