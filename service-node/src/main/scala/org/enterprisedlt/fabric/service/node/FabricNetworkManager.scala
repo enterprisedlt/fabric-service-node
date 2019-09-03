@@ -44,8 +44,8 @@ class FabricNetworkManager(
     private val organizationFullName = s"${organization.name}.${organization.domain}"
     private val fabricClient = getHFClient(admin)
 
-    private val peerByName = TrieMap.empty[String, (Peer, PeerConfig)]
-    private val osnByName = TrieMap(bootstrapOsn.name -> mkOSN(bootstrapOsn))
+    private val peerByName = TrieMap.empty[String, PeerConfig]
+    private val osnByName = TrieMap(bootstrapOsn.name -> bootstrapOsn)
     // ---------------------------------------------------------------------------------------------------------------
     private lazy val systemChannel: Channel = connectToSystemChannel
 
@@ -54,7 +54,7 @@ class FabricNetworkManager(
     //
     //=========================================================================
     def createChannel(channelName: String, channelTx: Envelope): Unit = {
-        val bootstrapOsnName = osnByName.head._2
+        val bootstrapOsnName = mkOSN(osnByName.head._2)
         val chCfg = new ChannelConfiguration(channelTx.toByteArray)
         val sign = fabricClient.getChannelConfigurationSignature(chCfg, admin)
         fabricClient.newChannel(channelName, bootstrapOsnName, chCfg, sign)
@@ -62,7 +62,7 @@ class FabricNetworkManager(
 
     //=========================================================================
     def defineChannel(channelName: String): Unit = {
-        val bootstrapOsnName = osnByName.head._2
+        val bootstrapOsnName = mkOSN(osnByName.head._2)
         val channel = fabricClient.newChannel(channelName)
         channel.addOrderer(bootstrapOsnName)
     }
@@ -78,7 +78,7 @@ class FabricNetworkManager(
     }
 
     def definePeer(peerNode: PeerConfig): Unit = {
-        peerByName += (peerNode.name -> (mkPeer(peerNode),peerNode))
+        peerByName += (peerNode.name -> peerNode)
     }
 
     //=========================================================================
@@ -89,8 +89,8 @@ class FabricNetworkManager(
               peerByName
                 .get(peerName)
                 .toRight(s"Unknown peer $peerName")
-                .map(_._1)
-                .map { peer =>
+                .map { peerConfig =>
+                    val peer = mkPeer(peerConfig)
                     channel.joinPeer(peer)
                     peer
                 }
@@ -389,7 +389,7 @@ class FabricNetworkManager(
 
 
     def defineOsn(osnConfig: OSNConfig): Unit = {
-        osnByName += (osnConfig.name -> mkOSN(osnConfig))
+        osnByName += (osnConfig.name -> osnConfig)
     }
 
     //=========================================================================
@@ -454,7 +454,7 @@ class FabricNetworkManager(
 
     //=========================================================================
     def connectToSystemChannel: Channel = {
-        val bootstrapOsnName = osnByName.head._2
+        val bootstrapOsnName = mkOSN(osnByName.head._2)
         val channel = fabricClient.newChannel("system-channel")
         channel.addOrderer(bootstrapOsnName)
         channel.initialize()
