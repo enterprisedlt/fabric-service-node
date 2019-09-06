@@ -8,6 +8,7 @@ import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, Se
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.proto._
 import org.enterprisedlt.fabric.service.node.util.Util
+import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
 
 /**
@@ -19,10 +20,10 @@ object Bootstrap {
     def bootstrapOrganization(
         config: ServiceConfig,
         bootstrapOptions: BootstrapOptions,
-        cryptography: CryptoManager,
         processManager: FabricProcessManager,
         hostsManager: HostsManager,
-        externalAddress: Option[ExternalAddress]
+        externalAddress: Option[ExternalAddress],
+        user: User
     ): FabricNetworkManager = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
         logger.info(s"[ $organizationFullName ] - Generating certificates ...")
@@ -44,8 +45,7 @@ object Bootstrap {
 
         //
         logger.info(s"[ $organizationFullName ] - Starting peer nodes ...")
-        val admin = cryptography.loadDefaultAdmin
-        val network = new FabricNetworkManager(config.organization, config.network.orderingNodes.head, admin)
+        val network = new FabricNetworkManager(config.organization, config.network.orderingNodes.head, user)
         config.network.peerNodes.foreach { peerConfig =>
             processManager.startPeerNode(peerConfig.name)
             network.definePeer(peerConfig)

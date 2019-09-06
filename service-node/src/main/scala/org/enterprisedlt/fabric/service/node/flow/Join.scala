@@ -10,6 +10,7 @@ import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.util.{PrivateCollectionConfiguration, Util}
+import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
 
 /**
@@ -20,9 +21,9 @@ object Join {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
     def join(
-        config: ServiceConfig, cryptoManager: CryptoManager,
+        config: ServiceConfig,
         processManager: FabricProcessManager, invite: Invite,
-        externalAddress: Option[ExternalAddress], hostsManager: HostsManager
+        externalAddress: Option[ExternalAddress], hostsManager: HostsManager, user: User
     ): FabricNetworkManager = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
         val cryptoPath = "/opt/profile/crypto"
@@ -80,8 +81,8 @@ object Join {
 
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
-        val admin = cryptoManager.loadDefaultAdmin
-        val network = new FabricNetworkManager(config.organization, config.network.orderingNodes.head, admin)
+
+        val network = new FabricNetworkManager(config.organization, config.network.orderingNodes.head, user)
         network.defineChannel(ServiceChannelName)
         logger.info(s"[ $organizationFullName ] - Connecting to channel ...")
         config.network.orderingNodes.tail.foreach { osnConfig =>
@@ -149,7 +150,7 @@ object Join {
     }
 
     def joinOrgToNetwork(
-        config: ServiceConfig, cryptoManager: CryptoManager,
+        config: ServiceConfig,
         processManager: FabricProcessManager, network: FabricNetworkManager,
         joinRequest: JoinRequest, hostsManager: HostsManager
     ): Either[String, JoinResponse] = {

@@ -43,16 +43,6 @@ class FileBasedCryptoManager(
     )
     logger.info(s"Generated crypto for $orgFullName.")
 
-
-    //=========================================================================
-    override def loadDefaultAdmin: UserAccount =
-        loadUser(
-            "admin",
-            config.organization.name,
-            s"$rootDir/users/admin",
-            AccountType.Fabric
-        )
-
     //=========================================================================
     override def findUser(user: X509Certificate): Either[String, UserAccount] = {
         Util.certificateRDN(user, BCStyle.CN)

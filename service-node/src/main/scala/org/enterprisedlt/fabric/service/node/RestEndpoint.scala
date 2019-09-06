@@ -24,12 +24,12 @@ import scala.util.Try
   * @author Alexey Polubelov
   */
 class RestEndpoint(
-  bindPort: Int,
-  externalAddress: Option[ExternalAddress],
-  config: ServiceConfig,
-  cryptoManager: CryptoManager,
-  processManager: FabricProcessManager,
-  hostsManager: HostsManager
+    bindPort: Int,
+    externalAddress: Option[ExternalAddress],
+    config: ServiceConfig,
+    cryptoManager: CryptoManager,
+    processManager: FabricProcessManager,
+    hostsManager: HostsManager
 ) extends AbstractHandler {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -69,7 +69,6 @@ class RestEndpoint(
                         response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                         response.getWriter.println(result)
                         response.setStatus(HttpServletResponse.SC_OK)
-
 
 
                     case "/admin/create-invite" =>
@@ -163,7 +162,7 @@ class RestEndpoint(
                         val start = System.currentTimeMillis()
                         try {
                             val bootstrapOptions = Util.codec.fromJson(request.getReader, classOf[BootstrapOptions])
-                            initNetworkManager(Bootstrap.bootstrapOrganization(config, bootstrapOptions, cryptoManager, processManager, hostsManager, externalAddress))
+                            initNetworkManager(Bootstrap.bootstrapOrganization(config, bootstrapOptions, processManager, hostsManager, externalAddress, user.getOrElse(throw new Exception("Need to provide user!")))) // TODO to fix
                             val end = System.currentTimeMillis() - start
                             logger.info(s"Bootstrap done ($end ms)")
                             response.setStatus(HttpServletResponse.SC_OK)
@@ -179,7 +178,7 @@ class RestEndpoint(
                           .flatMap { network =>
                               val joinRequest = Util.codec.fromJson(request.getReader, classOf[JoinRequest])
                               Join.joinOrgToNetwork(
-                                  config, cryptoManager, processManager,
+                                  config, processManager,
                                   network, joinRequest, hostsManager
                               )
                           } match {
@@ -198,8 +197,8 @@ class RestEndpoint(
                         logger.info("Requesting to joining network ...")
                         val start = System.currentTimeMillis()
                         val invite = Util.codec.fromJson(request.getReader, classOf[Invite])
-                        initNetworkManager(Join.join(config, cryptoManager, processManager, invite, externalAddress, hostsManager))
-                        val end = System.currentTimeMillis() - start
+                        initNetworkManager(Join.join(config, processManager, invite, externalAddress, hostsManager, user.getOrElse(throw new Exception("Need to provide user!")))) // TODO to fix
+                    val end = System.currentTimeMillis() - start
                         logger.info(s"Joined ($end ms)")
                         response.setStatus(HttpServletResponse.SC_OK)
 
