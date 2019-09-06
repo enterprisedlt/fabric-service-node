@@ -1,11 +1,10 @@
-package org.enterprisedlt.fabric.service.node.identity
+package org.enterprisedlt.fabric.service.node.util
 
 import java.io.FileWriter
 import java.util.Date
 
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter
 import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
-import org.enterprisedlt.fabric.service.node.util._
 
 /**
   * @author Alexey Polubelov

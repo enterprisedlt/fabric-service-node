@@ -1,8 +1,6 @@
 package org.enterprisedlt.fabric.service.node.identity
 
-import java.io.{File, FileReader}
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Paths}
+import java.io.FileReader
 import java.security.cert.X509Certificate
 import java.security.{KeyStore, PrivateKey}
 import java.util.Date
@@ -14,8 +12,7 @@ import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
 import org.enterprisedlt.fabric.service.node.CryptoManager
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
-import org.enterprisedlt.fabric.service.node.identity.FabricCryptoMaterial.writeToPemFile
-import org.enterprisedlt.fabric.service.node.util.{CertAndKey, Util}
+import org.enterprisedlt.fabric.service.node.util.{CertAndKey, FabricComponent, FabricCryptoMaterial, Util}
 import org.slf4j.LoggerFactory
 
 /**
@@ -80,8 +77,8 @@ class FileBasedCryptoManager(
         )
         val userDir = s"$rootDir/users/$name"
         Util.mkDirs(userDir)
-        writeToPemFile(s"$userDir/$name.crt", theCert.certificate)
-        writeToPemFile(s"$userDir/$name.key", theCert.key)
+        FabricCryptoMaterial.writeToPemFile(s"$userDir/$name.crt", theCert.certificate)
+        FabricCryptoMaterial.writeToPemFile(s"$userDir/$name.key", theCert.key)
     }
 
     //=========================================================================

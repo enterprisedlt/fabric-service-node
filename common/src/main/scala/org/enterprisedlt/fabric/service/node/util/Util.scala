@@ -38,7 +38,6 @@ import org.hyperledger.fabric.protos.orderer.etcdraft.Configuration.ConfigMetada
 import org.hyperledger.fabric.sdk.identity.X509Enrollment
 import org.hyperledger.fabric.sdk.{ChaincodeCollectionConfiguration, ChaincodeEndorsementPolicy}
 import org.slf4j.{Logger, LoggerFactory}
-
 import scala.collection.JavaConverters._
 
 /**
@@ -344,7 +343,7 @@ object Util {
         val path = s"$rootDir/service"
         val orgConfig = config.organization
         val serviceCACert = loadCertAndKey(s"$path/ca/server")
-        val theCert = generateUserCert(
+        val theCert = FabricCryptoMaterial.generateUserCert(
             userName = name,
             organization = s"service.$orgFullName",
             location = orgConfig.location,
@@ -432,6 +431,7 @@ object Util {
         keystore.setKeyEntry("key", key, password.toCharArray, Array(cert))
         keystore
     }
+
 }
 
 case class PrivateCollectionConfiguration(
