@@ -37,6 +37,7 @@ import org.hyperledger.fabric.protos.orderer.Configuration.ConsensusType
 import org.hyperledger.fabric.protos.orderer.etcdraft.Configuration.ConfigMetadata
 import org.hyperledger.fabric.sdk.identity.X509Enrollment
 import org.hyperledger.fabric.sdk.{ChaincodeCollectionConfiguration, ChaincodeEndorsementPolicy}
+import org.enterprisedlt.fabric.service.node.util.FabricCryptoMaterial._
 import org.slf4j.{Logger, LoggerFactory}
 import scala.collection.JavaConverters._
 
@@ -385,39 +386,6 @@ object Util {
     }
 
 
-    def generateUserCert(
-        userName: String,
-        organization: String,
-        location: String,
-        state: String,
-        country: String,
-        signCert: CertAndKey,
-        notBefore: Date,
-        notAfter: Date
-    ): CertAndKey = {
-        CryptoUtil.createSignedCert(
-            OrgMeta(
-                name = s"$userName@$organization",
-                organizationUnit = Option("client"),
-                location = Option(location),
-                state = Option(state),
-                country = Option(country),
-            ),
-            notBefore,
-            notAfter,
-            Array(
-                CertNotForCA,
-                UseForDigitalSignature
-            ),
-            signCert
-        )
-    }
-
-    def writeToPemFile(fileName: String, o: AnyRef): Unit = {
-        val writer = new JcaPEMWriter(new FileWriter(fileName))
-        writer.writeObject(o)
-        writer.close()
-    }
 
     //=========================================================================
     private def createP12KeyStoreWith(cert: CertAndKey, password: String): KeyStore =

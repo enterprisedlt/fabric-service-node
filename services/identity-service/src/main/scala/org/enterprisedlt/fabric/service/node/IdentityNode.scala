@@ -2,8 +2,8 @@ package org.enterprisedlt.fabric.service.node
 
 import java.io.FileReader
 
-import org.enterprisedlt.fabric.service.node.common.JsonRestEndpoint
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
+import org.enterprisedlt.fabric.service.node.rest.JsonRestEndpoint
 import org.enterprisedlt.fabric.service.node.util.Util
 import org.slf4j.LoggerFactory
 
