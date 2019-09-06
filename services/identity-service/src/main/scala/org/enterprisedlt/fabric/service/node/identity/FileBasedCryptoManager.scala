@@ -1,4 +1,4 @@
-package org.enterprisedlt.fabric.service.node.cryptography
+package org.enterprisedlt.fabric.service.node.identity
 
 import java.io.{File, FileReader}
 import java.nio.charset.StandardCharsets
@@ -14,8 +14,7 @@ import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
-import org.enterprisedlt.fabric.service.node.cryptography.FabricCryptoMaterial.writeToPemFile
-import org.enterprisedlt.fabric.service.node.{CryptoManager, Util}
+import org.enterprisedlt.fabric.service.node.util.Util
 import org.hyperledger.fabric.sdk.identity.X509Enrollment
 import org.slf4j.LoggerFactory
 

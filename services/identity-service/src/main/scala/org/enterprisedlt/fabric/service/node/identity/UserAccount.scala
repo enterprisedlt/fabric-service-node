@@ -1,4 +1,4 @@
-package org.enterprisedlt.fabric.service.node.cryptography
+package org.enterprisedlt.fabric.service.node.identity
 
 import org.hyperledger.fabric.sdk.{Enrollment, User}
 
