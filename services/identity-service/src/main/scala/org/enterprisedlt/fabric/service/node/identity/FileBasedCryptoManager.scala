@@ -16,7 +16,7 @@ import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
 import org.enterprisedlt.fabric.service.node.CryptoManager
 import org.enterprisedlt.fabric.service.node.identity.FabricCryptoMaterial.writeToPemFile
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
-import org.enterprisedlt.fabric.service.node.util.Util
+import org.enterprisedlt.fabric.service.node.util.{AccountType, UserAccount, Util}
 import org.hyperledger.fabric.sdk.identity.X509Enrollment
 import org.slf4j.LoggerFactory
 
@@ -43,8 +43,9 @@ class FileBasedCryptoManager(
     )
     logger.info(s"Generated crypto for $orgFullName.")
 
+
     //=========================================================================
-    override def findUser(user: X509Certificate): Either[String, UserAccount] = {
+    def findUser(user: X509Certificate): Either[String, UserAccount] = {
         Util.certificateRDN(user, BCStyle.CN)
           .toRight("No CN in certificate")
           .flatMap { cn =>
@@ -72,7 +73,7 @@ class FileBasedCryptoManager(
     }
 
     //=========================================================================
-    override def createServiceTLSKeyStore(password: String): KeyStore = {
+    def createServiceTLSKeyStore(password: String): KeyStore = {
         val keystore = KeyStore.getInstance("JKS")
         keystore.load(null)
         //
@@ -84,7 +85,7 @@ class FileBasedCryptoManager(
     }
 
     //=========================================================================
-    override def createServiceTrustStore(password: String): KeyStore = {
+    def createServiceTrustStore(password: String): KeyStore = {
         val keystore = KeyStore.getInstance("JKS")
         keystore.load(null)
         keystore.setCertificateEntry("ca", loadCertificateFromFile(s"$rootDir/ca/ca.crt")) // accept Fabric users
@@ -120,7 +121,7 @@ class FileBasedCryptoManager(
     }
 
     //=========================================================================
-    override def createServiceUserKeyStore(name: String, password: String): KeyStore = {
+    def createServiceUserKeyStore(name: String, password: String): KeyStore = {
         val notBefore = new Date
         val notAfter = Util.futureDate(Util.parsePeriod(config.certificateDuration))
         val path = s"$rootDir/service"

@@ -79,7 +79,7 @@ class RestEndpoint(
                           .getOrElse(s"service.${config.organization.name}.${config.organization.domain}:$bindPort")
                         //TODO: password should be taken from request
                         val password = "join me"
-                        val key = cryptoManager.createServiceUserKeyStore(s"join-${System.currentTimeMillis()}", password)
+                        val key = createServiceUserKeyStore(s"join-${System.currentTimeMillis()}", password)
                         val invite = Invite(
                             address,
                             Util.keyStoreToBase64(key, password)

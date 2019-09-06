@@ -35,9 +35,8 @@ object ServiceNode extends App {
 
     logger.info("Starting...")
     private val config = loadConfig("/opt/profile/service.json")
-    private val cryptography = new FileBasedCryptoManager(config, "/opt/profile/crypto")
     private val restEndpoint = new RestEndpoint(
-        ServiceBindPort, ServiceExternalAddress, config, cryptography,
+        ServiceBindPort, ServiceExternalAddress, config,
         processManager = new DockerBasedProcessManager(
             ProfilePath, DockerSocket,
             InitialName, config
@@ -48,7 +47,7 @@ object ServiceNode extends App {
         )
     )
     //TODO: make web app optional, based on configuration
-    private val server = createServer(ServiceBindPort, cryptography, restEndpoint, "/opt/profile/webapp")
+    private val server = createServer(ServiceBindPort, restEndpoint, "/opt/profile/webapp")
 
     setupShutdownHook()
     server.start()
@@ -82,10 +81,10 @@ object ServiceNode extends App {
         })
     }
 
-    private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: Handler, webAppResource: String): Server = {
+    private def createServer(bindPort: Int, endpoint: Handler, webAppResource: String): Server = {
         val server = new Server()
 
-        val connector = createTLSConnector(bindPort, server, cryptography)
+        val connector = createTLSConnector(bindPort, server)
         server.setConnectors(Array(connector))
 
         val security = new ConstraintSecurityHandler
@@ -98,7 +97,7 @@ object ServiceNode extends App {
                 newConstraint("socket", "/socket/*", Role.Admin, Role.User),
             )
         )
-        security.setAuthenticator(new FabricAuthenticator(cryptography))
+        security.setAuthenticator(new FabricAuthenticator)
 
         //
         val endpointContext = new ContextHandler("/")
@@ -128,7 +127,7 @@ object ServiceNode extends App {
         server
     }
 
-    private def createTLSConnector(bindPort: Int, server: Server, cryptography: CryptoManager): ServerConnector = {
+    private def createTLSConnector(bindPort: Int, server: Server): ServerConnector = {
         val httpConfiguration = new HttpConfiguration()
         httpConfiguration.setSecureScheme("https")
         httpConfiguration.setSecurePort(bindPort)
@@ -136,12 +135,8 @@ object ServiceNode extends App {
         //
         val sslContextFactory = new SslContextFactory.Server()
         val password = "password" // this will live only in our process memory so could be anything
-        val keyStore = cryptography.createServiceTLSKeyStore(password)
-        sslContextFactory.setKeyStore(keyStore)
         sslContextFactory.setKeyStorePassword(password)
 
-        val trustStore = cryptography.createServiceTrustStore(password)
-        sslContextFactory.setTrustStore(trustStore)
         sslContextFactory.setTrustStorePassword(password)
         sslContextFactory.setNeedClientAuth(true)
         //

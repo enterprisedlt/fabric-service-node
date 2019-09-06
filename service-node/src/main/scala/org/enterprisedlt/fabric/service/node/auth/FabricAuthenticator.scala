@@ -10,7 +10,7 @@ import org.hyperledger.fabric.sdk.User
 /**
   * @author Alexey Polubelov
   */
-class FabricAuthenticator(cryptography: CryptoManager) extends Authenticator {
+class FabricAuthenticator extends Authenticator {
 
     override def setConfiguration(configuration: Authenticator.AuthConfiguration): Unit = {}
 
@@ -24,7 +24,7 @@ class FabricAuthenticator(cryptography: CryptoManager) extends Authenticator {
         Util.getUserCertificate(request)
           .toRight("User certificate is missing")
           .flatMap { certificate =>
-              cryptography.findUser(certificate).map { user =>
+              findUser(certificate).map { user =>
                   val principal = certificate.getSubjectX500Principal
                   val subject = new Subject()
                   subject.getPrincipals.add(principal)
