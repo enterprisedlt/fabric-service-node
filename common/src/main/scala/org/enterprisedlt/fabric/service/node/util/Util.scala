@@ -1,4 +1,4 @@
-package org.enterprisedlt.fabric.service.node
+package org.enterprisedlt.fabric.service.node.util
 
 import java.io._
 import java.nio.charset.StandardCharsets
@@ -26,8 +26,6 @@ import org.hyperledger.fabric.protos.common.Configtx
 import org.hyperledger.fabric.protos.common.Configtx.{ConfigEnvelope, ConfigGroup}
 import org.hyperledger.fabric.protos.common.MspPrincipal.{MSPPrincipal, MSPRole}
 import org.hyperledger.fabric.protos.common.Policies.{SignaturePolicy, SignaturePolicyEnvelope}
-import org.hyperledger.fabric.protos.ext.orderer.Configuration.ConsensusType
-import org.hyperledger.fabric.protos.ext.orderer.etcdraft.Configuration.ConfigMetadata
 import org.hyperledger.fabric.protos.orderer.Configuration.ConsensusType
 import org.hyperledger.fabric.protos.orderer.etcdraft.Configuration.ConfigMetadata
 import org.hyperledger.fabric.sdk.{ChaincodeCollectionConfiguration, ChaincodeEndorsementPolicy}
