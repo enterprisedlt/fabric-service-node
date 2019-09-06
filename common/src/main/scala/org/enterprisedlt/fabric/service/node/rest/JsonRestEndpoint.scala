@@ -1,5 +1,4 @@
-package org.enterprisedlt.fabric.service.node.common
-
+package org.enterprisedlt.fabric.service.node.rest
 
 import java.lang.reflect.Method
 
@@ -8,7 +7,6 @@ import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.apache.http.entity.ContentType
 import org.eclipse.jetty.server.handler.AbstractHandler
 import org.eclipse.jetty.server.{Request, Server}
-import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
 import org.slf4j.LoggerFactory
 
 /**
@@ -64,7 +62,7 @@ class JsonRestEndpoint(
 
     private def createHandler(o: AnyRef, m: Method, parametersFunction: ExtractParametersFunction): (HttpServletRequest, HttpServletResponse) => Unit = {
         val eClazz = classOf[Either[String, Any]]
-        if(m.getParameters.length > 1){
+        if (m.getParameters.length > 1) {
             throw new Exception("At most 1 parameter supported for POST methods")
         }
         m.getReturnType match {
@@ -75,8 +73,10 @@ class JsonRestEndpoint(
                         val params: Seq[AnyRef] = parametersFunction(m, request, codec)
                         m.invoke(o, params: _*) match {
                             case Right(value) =>
-                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                                response.getWriter.print(codec.toJson(value))
+                                if (response.getContentType == null) { // if content type already set do NOT overwrite
+                                    response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                }
+                                Option(value).filterNot(_.isInstanceOf[Unit]).foreach(v => response.getWriter.print(codec.toJson(v)))
                                 response.setStatus(HttpServletResponse.SC_OK)
 
                             case Left(errorMsg) =>
@@ -103,7 +103,7 @@ class JsonRestEndpoint(
     }
 
     private def mkPostParams(m: Method, request: HttpServletRequest, codec: Gson): Seq[AnyRef] = {
-        m.getParameters.headOption.map {p =>
+        m.getParameters.headOption.map { p =>
             codec.fromJson(request.getReader, p.getType).asInstanceOf[AnyRef]
         }.toSeq
     }
@@ -118,6 +118,7 @@ class JsonRestEndpoint(
     private object EndpointHandler extends AbstractHandler {
 
         override def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {
+            RestEndpointContext.set(RestEndpointContext(request, response))
             request.getMethod match {
                 case "GET" =>
                     processRequest(GetBindings, request, response)
@@ -130,6 +131,7 @@ class JsonRestEndpoint(
                     response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
 
             }
+            RestEndpointContext.clean()
             baseRequest.setHandled(true)
         }
 
@@ -145,6 +147,5 @@ class JsonRestEndpoint(
             }
         }
     }
-
 
 }
