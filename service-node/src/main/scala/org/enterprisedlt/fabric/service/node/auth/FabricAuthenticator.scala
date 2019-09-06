@@ -4,13 +4,15 @@ import javax.security.auth.Subject
 import javax.servlet.{ServletRequest, ServletResponse}
 import org.eclipse.jetty.security.{Authenticator, ServerAuthException, UserAuthentication}
 import org.eclipse.jetty.server.Authentication
+import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
+import org.enterprisedlt.fabric.service.node.util.Util.findUser
 import org.enterprisedlt.fabric.service.node.util.{AccountType, UserAccount, Util}
 import org.hyperledger.fabric.sdk.User
 
 /**
   * @author Alexey Polubelov
   */
-class FabricAuthenticator extends Authenticator {
+class FabricAuthenticator(organization: OrganizationConfig, rootPath: String) extends Authenticator {
 
     override def setConfiguration(configuration: Authenticator.AuthConfiguration): Unit = {}
 
@@ -24,7 +26,7 @@ class FabricAuthenticator extends Authenticator {
         Util.getUserCertificate(request)
           .toRight("User certificate is missing")
           .flatMap { certificate =>
-              findUser(certificate).map { user =>
+              findUser(organization, certificate, rootPath).map { user =>
                   val principal = certificate.getSubjectX500Principal
                   val subject = new Subject()
                   subject.getPrincipals.add(principal)

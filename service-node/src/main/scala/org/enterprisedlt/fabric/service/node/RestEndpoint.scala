@@ -14,6 +14,7 @@ import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, Se
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
+import org.enterprisedlt.fabric.service.node.util.Util._
 import org.enterprisedlt.fabric.service.node.util.{PrivateCollectionConfiguration, Util}
 import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
@@ -31,6 +32,7 @@ class RestEndpoint(
     hostsManager: HostsManager
 ) extends AbstractHandler {
     private val logger = LoggerFactory.getLogger(this.getClass)
+    val cryptoPath = "/opt/profile/crypto"
 
     override def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {
         implicit val user: Option[User] = FabricAuthenticator.getFabricUser(request)
@@ -79,7 +81,7 @@ class RestEndpoint(
                           .getOrElse(s"service.${config.organization.name}.${config.organization.domain}:$bindPort")
                         //TODO: password should be taken from request
                         val password = "join me"
-                        val key = createServiceUserKeyStore(s"join-${System.currentTimeMillis()}", password)
+                        val key = createServiceUserKeyStore(config, s"join-${System.currentTimeMillis()}", password, cryptoPath)
                         val invite = Invite(
                             address,
                             Util.keyStoreToBase64(key, password)
@@ -87,7 +89,6 @@ class RestEndpoint(
                         out.println(Util.codec.toJson(invite))
                         out.flush()
                         response.setStatus(HttpServletResponse.SC_OK)
-
 
 
                     case "/service/list-messages" =>

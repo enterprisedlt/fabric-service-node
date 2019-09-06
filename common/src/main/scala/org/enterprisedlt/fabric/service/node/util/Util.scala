@@ -2,10 +2,11 @@ package org.enterprisedlt.fabric.service.node.util
 
 import java.io._
 import java.nio.charset.StandardCharsets
-import java.security.KeyStore
+import java.nio.file.{Files, Paths}
 import java.security.cert.X509Certificate
+import java.security.{KeyStore, PrivateKey}
 import java.time._
-import java.util.{Base64, Date}
+import java.util.{Base64, Collections, Date}
 
 import com.google.gson.{Gson, GsonBuilder}
 import com.google.protobuf.{ByteString, MessageLite}
@@ -18,8 +19,14 @@ import org.apache.http.impl.client.{CloseableHttpClient, HttpClients}
 import org.apache.http.ssl.SSLContexts
 import org.apache.http.util.EntityUtils
 import org.bouncycastle.asn1.ASN1ObjectIdentifier
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x500.style.{BCStyle, IETFUtils}
+import org.bouncycastle.cert.X509CertificateHolder
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
+import org.bouncycastle.openssl.jcajce.{JcaPEMKeyConverter, JcaPEMWriter}
+import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
+import org.enterprisedlt.fabric.service.node.configuration.{OrganizationConfig, ServiceConfig}
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope, Payload}
 import org.hyperledger.fabric.protos.common.Configtx
@@ -28,6 +35,7 @@ import org.hyperledger.fabric.protos.common.MspPrincipal.{MSPPrincipal, MSPRole}
 import org.hyperledger.fabric.protos.common.Policies.{SignaturePolicy, SignaturePolicyEnvelope}
 import org.hyperledger.fabric.protos.orderer.Configuration.ConsensusType
 import org.hyperledger.fabric.protos.orderer.etcdraft.Configuration.ConfigMetadata
+import org.hyperledger.fabric.sdk.identity.X509Enrollment
 import org.hyperledger.fabric.sdk.{ChaincodeCollectionConfiguration, ChaincodeEndorsementPolicy}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -265,6 +273,165 @@ object Util {
     def futureDate(shift: Period): Date = Date.from(LocalDate.now().plus(shift).atStartOfDay(ZoneOffset.UTC).toInstant)
 
     def parsePeriod(periodString: String): Period = Period.parse(periodString)
+
+    //=========================================================================
+    def findUser(organizationConfig: OrganizationConfig, user: X509Certificate, rootDir: String): Either[String, UserAccount] = {
+        val orgFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
+        Util.certificateRDN(user, BCStyle.CN)
+          .toRight("No CN in certificate")
+          .flatMap { cn =>
+              cn.split("@") match {
+                  case Array(name, organization) if organization == orgFullName =>
+                      findUser(organizationConfig, s"$rootDir/users", name, AccountType.Fabric)
+
+                  case Array(name, organization) if organization == s"service.$orgFullName" =>
+                      findUser(organizationConfig, s"$rootDir/service/users", name, AccountType.Service)
+
+                  case _ => Left(s"Invalid CN: $cn")
+              }
+          }
+    }
+
+    //=========================================================================
+    def findUser(organizationConfig: OrganizationConfig, usersBaseDir: String, userName: String, aType: AccountType): Either[String, UserAccount] = {
+        val userBaseDir = s"$usersBaseDir/$userName"
+        val f = new File(userBaseDir)
+        if (f.exists() && f.isDirectory) {
+            Right(loadUser(userName, organizationConfig.name, userBaseDir, aType))
+        } else {
+            Left(s"Unknown user $userName")
+        }
+    }
+
+    private def loadUser(userName: String, mspId: String, mspPath: String, aType: AccountType): UserAccount = {
+        val signedCert = readPEMFile(s"$mspPath/$userName.crt")
+        val privateKey = loadPrivateKeyFromFile(s"$mspPath/$userName.key")
+        val enrollment = new X509Enrollment(privateKey, signedCert)
+        UserAccount(userName, Collections.emptySet(), "", "", enrollment, mspId, aType)
+    }
+
+    //=========================================================================
+    private def loadPrivateKeyFromFile(fileName: String): PrivateKey = {
+        val pemReader = new FileReader(fileName)
+        val pemParser = new PEMParser(pemReader)
+        try {
+            pemParser.readObject() match {
+                case pemKeyPair: PEMKeyPair => new JcaPEMKeyConverter().getKeyPair(pemKeyPair).getPrivate
+                case keyInfo: PrivateKeyInfo => new JcaPEMKeyConverter().getPrivateKey(keyInfo)
+                case null => throw new Exception(s"Unable to read PEM object")
+                case other => throw new Exception(s"Unsupported PEM object ${other.getClass.getCanonicalName}")
+            }
+        } finally {
+            pemParser.close()
+            pemReader.close()
+        }
+    }
+
+    //=========================================================================
+    private def readPEMFile(fileName: String): String = {
+        val file = new File(fileName)
+        val r = Files.readAllBytes(Paths.get(file.toURI))
+        new String(r, StandardCharsets.UTF_8)
+    }
+
+    //=========================================================================
+
+    //=========================================================================
+    def createServiceUserKeyStore(config: ServiceConfig, name: String, password: String, rootDir: String): KeyStore = {
+        val orgFullName = s"${config.organization.name}.${config.organization.domain}"
+        val notBefore = new Date
+        val notAfter = Util.futureDate(Util.parsePeriod(config.certificateDuration))
+        val path = s"$rootDir/service"
+        val orgConfig = config.organization
+        val serviceCACert = loadCertAndKey(s"$path/ca/server")
+        val theCert = generateUserCert(
+            userName = name,
+            organization = s"service.$orgFullName",
+            location = orgConfig.location,
+            state = orgConfig.state,
+            country = orgConfig.country,
+            signCert = serviceCACert,
+            notBefore = notBefore,
+            notAfter = notAfter
+        )
+        val userDir = s"$path/users/$name"
+        Util.mkDirs(userDir)
+        writeToPemFile(s"$userDir/$name.crt", theCert.certificate)
+        writeToPemFile(s"$userDir/$name.key", theCert.key)
+        createP12KeyStoreWith(theCert, password)
+    }
+
+    //=========================================================================
+    private def loadCertAndKey(path: String): CertAndKey = {
+        CertAndKey(
+            certificate = loadCertificateFromFile(s"$path.crt"),
+            key = loadPrivateKeyFromFile(s"$path.key")
+        )
+    }
+
+    //=========================================================================
+    private def loadCertificateFromFile(fileName: String): X509Certificate = {
+        val pemReader = new FileReader(fileName)
+        val pemParser = new PEMParser(pemReader)
+        try {
+            pemParser.readObject() match {
+                case holder: X509CertificateHolder => new JcaX509CertificateConverter().getCertificate(holder)
+                case null => throw new Exception(s"Unable to read PEM object")
+                case other => throw new Exception(s"Unsupported PEM object ${other.getClass.getCanonicalName}")
+            }
+        } finally {
+            pemParser.close()
+            pemReader.close()
+        }
+    }
+
+
+    def generateUserCert(
+        userName: String,
+        organization: String,
+        location: String,
+        state: String,
+        country: String,
+        signCert: CertAndKey,
+        notBefore: Date,
+        notAfter: Date
+    ): CertAndKey = {
+        CryptoUtil.createSignedCert(
+            OrgMeta(
+                name = s"$userName@$organization",
+                organizationUnit = Option("client"),
+                location = Option(location),
+                state = Option(state),
+                country = Option(country),
+            ),
+            notBefore,
+            notAfter,
+            Array(
+                CertNotForCA,
+                UseForDigitalSignature
+            ),
+            signCert
+        )
+    }
+
+    def writeToPemFile(fileName: String, o: AnyRef): Unit = {
+        val writer = new JcaPEMWriter(new FileWriter(fileName))
+        writer.writeObject(o)
+        writer.close()
+    }
+
+    //=========================================================================
+    private def createP12KeyStoreWith(cert: CertAndKey, password: String): KeyStore =
+        createP12KeyStoreWith(cert.certificate, cert.key, password)
+
+
+    //=========================================================================
+    private def createP12KeyStoreWith(cert: X509Certificate, key: PrivateKey, password: String): KeyStore = {
+        val keystore = KeyStore.getInstance("pkcs12")
+        keystore.load(null)
+        keystore.setKeyEntry("key", key, password.toCharArray, Array(cert))
+        keystore
+    }
 }
 
 case class PrivateCollectionConfiguration(
@@ -274,5 +441,4 @@ case class PrivateCollectionConfiguration(
     minPeersToSpread: Int = 0, // not require to disseminate before commit
     maxPeersToSpread: Int = 0 // can be disseminated before commit
 )
-
 

@@ -32,7 +32,7 @@ object ServiceNode extends App {
 
     Util.setupLogging(LogLevel)
     private val logger = LoggerFactory.getLogger(this.getClass)
-
+    private val cryptoPath = "/opt/profile/crypto"
     logger.info("Starting...")
     private val config = loadConfig("/opt/profile/service.json")
     private val restEndpoint = new RestEndpoint(
@@ -97,7 +97,7 @@ object ServiceNode extends App {
                 newConstraint("socket", "/socket/*", Role.Admin, Role.User),
             )
         )
-        security.setAuthenticator(new FabricAuthenticator)
+        security.setAuthenticator(new FabricAuthenticator(config.organization, cryptoPath))
 
         //
         val endpointContext = new ContextHandler("/")

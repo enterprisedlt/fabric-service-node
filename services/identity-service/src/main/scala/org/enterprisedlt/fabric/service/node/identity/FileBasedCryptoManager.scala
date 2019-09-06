@@ -5,19 +5,17 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 import java.security.cert.X509Certificate
 import java.security.{KeyStore, PrivateKey}
-import java.util.{Collections, Date}
+import java.util.Date
 
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
-import org.bouncycastle.asn1.x500.style.BCStyle
 import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
 import org.enterprisedlt.fabric.service.node.CryptoManager
-import org.enterprisedlt.fabric.service.node.identity.FabricCryptoMaterial.writeToPemFile
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
-import org.enterprisedlt.fabric.service.node.util.{AccountType, UserAccount, Util}
-import org.hyperledger.fabric.sdk.identity.X509Enrollment
+import org.enterprisedlt.fabric.service.node.identity.FabricCryptoMaterial.writeToPemFile
+import org.enterprisedlt.fabric.service.node.util.{CertAndKey, Util}
 import org.slf4j.LoggerFactory
 
 /**
@@ -42,35 +40,6 @@ class FileBasedCryptoManager(
         config.certificateDuration
     )
     logger.info(s"Generated crypto for $orgFullName.")
-
-
-    //=========================================================================
-    def findUser(user: X509Certificate): Either[String, UserAccount] = {
-        Util.certificateRDN(user, BCStyle.CN)
-          .toRight("No CN in certificate")
-          .flatMap { cn =>
-              cn.split("@") match {
-                  case Array(name, organization) if organization == orgFullName =>
-                      findUser(s"$rootDir/users", name, AccountType.Fabric)
-
-                  case Array(name, organization) if organization == s"service.$orgFullName" =>
-                      findUser(s"$rootDir/service/users", name, AccountType.Service)
-
-                  case _ => Left(s"Invalid CN: $cn")
-              }
-          }
-    }
-
-    //=========================================================================
-    private def findUser(usersBaseDir: String, userName: String, aType: AccountType): Either[String, UserAccount] = {
-        val userBaseDir = s"$usersBaseDir/$userName"
-        val f = new File(userBaseDir)
-        if (f.exists() && f.isDirectory) {
-            Right(loadUser(userName, config.organization.name, userBaseDir, aType))
-        } else {
-            Left(s"Unknown user $userName")
-        }
-    }
 
     //=========================================================================
     def createServiceTLSKeyStore(password: String): KeyStore = {
@@ -121,38 +90,6 @@ class FileBasedCryptoManager(
     }
 
     //=========================================================================
-    def createServiceUserKeyStore(name: String, password: String): KeyStore = {
-        val notBefore = new Date
-        val notAfter = Util.futureDate(Util.parsePeriod(config.certificateDuration))
-        val path = s"$rootDir/service"
-        val orgConfig = config.organization
-        val serviceCACert = loadCertAndKey(s"$path/ca/server")
-        val theCert = FabricCryptoMaterial.generateUserCert(
-            userName = name,
-            organization = s"service.$orgFullName",
-            location = orgConfig.location,
-            state = orgConfig.state,
-            country = orgConfig.country,
-            signCert = serviceCACert,
-            notBefore = notBefore,
-            notAfter = notAfter
-        )
-        val userDir = s"$path/users/$name"
-        Util.mkDirs(userDir)
-        writeToPemFile(s"$userDir/$name.crt", theCert.certificate)
-        writeToPemFile(s"$userDir/$name.key", theCert.key)
-        createP12KeyStoreWith(theCert, password)
-    }
-
-    //=========================================================================
-    private def loadUser(userName: String, mspId: String, mspPath: String, aType: AccountType): UserAccount = {
-        val signedCert = readPEMFile(s"$mspPath/$userName.crt")
-        val privateKey = loadPrivateKeyFromFile(s"$mspPath/$userName.key")
-        val enrollment = new X509Enrollment(privateKey, signedCert)
-        UserAccount(userName, Collections.emptySet(), "", "", enrollment, mspId, aType)
-    }
-
-    //=========================================================================
     private def loadPrivateKeyFromFile(fileName: String): PrivateKey = {
         val pemReader = new FileReader(fileName)
         val pemParser = new PEMParser(pemReader)
@@ -167,13 +104,6 @@ class FileBasedCryptoManager(
             pemParser.close()
             pemReader.close()
         }
-    }
-
-    //=========================================================================
-    private def readPEMFile(fileName: String): String = {
-        val file = new File(fileName)
-        val r = Files.readAllBytes(Paths.get(file.toURI))
-        new String(r, StandardCharsets.UTF_8)
     }
 
     //=========================================================================
@@ -208,11 +138,6 @@ class FileBasedCryptoManager(
             password
         )
     }
-
-    //=========================================================================
-    private def createP12KeyStoreWith(cert: CertAndKey, password: String): KeyStore =
-        createP12KeyStoreWith(cert.certificate, cert.key, password)
-
 
     //=========================================================================
     private def createP12KeyStoreWith(cert: X509Certificate, key: PrivateKey, password: String): KeyStore = {

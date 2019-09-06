@@ -1,4 +1,4 @@
-package org.enterprisedlt.fabric.service.node.identity
+package org.enterprisedlt.fabric.service.node.util
 
 import java.math.BigInteger
 import java.security._

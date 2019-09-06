@@ -4,7 +4,6 @@ import java.io.FileReader
 
 import org.enterprisedlt.fabric.service.node.common.JsonRestEndpoint
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
-import org.enterprisedlt.fabric.service.node.identity.FileBasedCryptoManager
 import org.enterprisedlt.fabric.service.node.util.Util
 import org.slf4j.LoggerFactory
 
@@ -17,18 +16,13 @@ object IdentityNode extends App {
     private val Environment = System.getenv()
     private val LogLevel = Option(Environment.get("LOG_LEVEL")).filter(_.trim.nonEmpty).getOrElse("INFO")
     private val ServiceBindPort = Option(Environment.get("SERVICE_BIND_PORT")).map(_.toInt).getOrElse(throw new Exception("Mandatory environment variable missing SERVICE_BIND_PORT!"))
-    private val ServiceExternalAddress = Option(Environment.get("SERVICE_EXTERNAL_ADDRESS")).filter(_.trim.nonEmpty).map(parseExternalAddress(_, ServiceBindPort))
-    private val ProfilePath = Option(Environment.get("PROFILE_PATH")).getOrElse(throw new Exception("Mandatory environment variable missing PROFILE_PATH!"))
-    private val DockerSocket = Option(Environment.get("DOCKER_SOCKET")).getOrElse(throw new Exception("Mandatory environment variable missing DOCKER_SOCKET!"))
-    private val InitialName = Option(Environment.get("INITIAL_NAME")).getOrElse(throw new Exception("Mandatory environment variable missing INITIAL_NAME!"))
 
     Util.setupLogging(LogLevel)
     private val logger = LoggerFactory.getLogger(this.getClass)
 
     logger.info("Starting...")
     private val config = loadConfig("/opt/profile/service.json")
-    private val cryptography = new FileBasedCryptoManager(config, "/opt/profile/crypto")
-    private val restEndpoint = new JsonRestEndpoint(ServiceBindPort,new IdentityRestEndpoint)
+    private val restEndpoint = new JsonRestEndpoint(ServiceBindPort, new IdentityRestEndpoint)
 
 
     setupShutdownHook()
