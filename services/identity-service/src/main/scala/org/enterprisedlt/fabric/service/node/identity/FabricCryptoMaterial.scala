@@ -4,8 +4,8 @@ import java.io.FileWriter
 import java.util.Date
 
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter
-import org.enterprisedlt.fabric.service.node.Util
 import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
+import org.enterprisedlt.fabric.service.node.util.Util
 
 /**
   * @author Alexey Polubelov

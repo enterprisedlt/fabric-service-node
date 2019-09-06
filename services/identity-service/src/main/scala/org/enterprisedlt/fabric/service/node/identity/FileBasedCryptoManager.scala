@@ -13,6 +13,8 @@ import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
+import org.enterprisedlt.fabric.service.node.CryptoManager
+import org.enterprisedlt.fabric.service.node.identity.FabricCryptoMaterial.writeToPemFile
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.util.Util
 import org.hyperledger.fabric.sdk.identity.X509Enrollment
