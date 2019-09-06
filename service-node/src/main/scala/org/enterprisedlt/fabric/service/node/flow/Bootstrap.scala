@@ -7,6 +7,7 @@ import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.proto._
+import org.enterprisedlt.fabric.service.node.util.Util
 import org.slf4j.LoggerFactory
 
 /**

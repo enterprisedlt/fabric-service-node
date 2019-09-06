@@ -12,15 +12,16 @@ import org.hyperledger.fabric.sdk.User
 trait CryptoManager {
     def loadDefaultAdmin: User
 
-    def findUser(user: X509Certificate): Either[String, UserAccount]
 
-    def createServiceTLSKeyStore(password: String): KeyStore
 
     def createServiceTrustStore(password: String): KeyStore
 
-    def createFabricUser(name: String): Unit
-
-    def getFabricUserKeyStore(name: String, password: String): KeyStore
-
     def createServiceUserKeyStore(name: String, password: String): KeyStore
+
+    def createServiceTLSKeyStore(password: String): KeyStore // on launch
+    // Common
+    def findUser(user: X509Certificate): Either[String, UserAccount]
+    // REST
+    def getFabricUserKeyStore(name: String, password: String): KeyStore
+    def createFabricUser(name: String): Unit
 }

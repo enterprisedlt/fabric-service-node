@@ -1,7 +1,6 @@
 package org.enterprisedlt.fabric.service.node
 
 import java.io.InputStream
-import java.util
 import java.util.Properties
 import java.util.concurrent.{CompletableFuture, TimeUnit}
 
@@ -9,6 +8,7 @@ import com.google.protobuf.ByteString
 import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, OrganizationConfig, PeerConfig}
 import org.enterprisedlt.fabric.service.node.model.JoinRequest
 import org.enterprisedlt.fabric.service.node.proto._
+import org.enterprisedlt.fabric.service.node.util.{PrivateCollectionConfiguration, Util}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
 import org.hyperledger.fabric.protos.common.Configtx
 import org.hyperledger.fabric.protos.common.Configtx.ConfigUpdate
@@ -109,7 +109,7 @@ class FabricNetworkManager(
           }
 
     //=========================================================================
-    def installChainCode(channelName: String, chainCodeName: String, version: String, chainCodeTarGzStream: InputStream): Either[String, util.Collection[ProposalResponse]] = {
+    def installChainCode(channelName: String, chainCodeName: String, version: String, chainCodeTarGzStream: InputStream): Either[String, java.util.Collection[ProposalResponse]] = {
         getChannel(channelName)
           .map { channel =>
               val installProposal = fabricClient.newInstallProposalRequest()

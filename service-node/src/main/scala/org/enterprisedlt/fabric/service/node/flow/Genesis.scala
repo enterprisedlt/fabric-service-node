@@ -1,9 +1,9 @@
 package org.enterprisedlt.fabric.service.node.flow
 
-import org.enterprisedlt.fabric.service.node.Util
 import org.enterprisedlt.fabric.service.node.configuration.{BlockConfig, BootstrapOptions, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, SystemChannelName}
 import org.enterprisedlt.fabric.service.node.proto._
+import org.enterprisedlt.fabric.service.node.util.Util
 import org.hyperledger.fabric.protos.common.MspPrincipal.MSPRole
 
 /**

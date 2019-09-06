@@ -2,7 +2,6 @@ package org.enterprisedlt.fabric.service.node
 
 import java.io.{BufferedInputStream, File, FileInputStream, FileReader}
 import java.nio.charset.StandardCharsets
-import java.util
 import java.util.concurrent.locks.ReentrantLock
 
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
@@ -15,6 +14,7 @@ import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, Se
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
+import org.enterprisedlt.fabric.service.node.util.{PrivateCollectionConfiguration, Util}
 import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
 
@@ -376,7 +376,7 @@ class RestEndpoint(
 
                                       case "invoke" =>
                                           import scala.collection.JavaConverters._
-                                          implicit val transient: Option[util.Map[String, Array[Byte]]] =
+                                          implicit val transient: Option[java.util.Map[String, Array[Byte]]] =
                                               Option(contractRequest.transient)
                                                 .map(_.asScala.mapValues(_.getBytes(StandardCharsets.UTF_8)).asJava)
 

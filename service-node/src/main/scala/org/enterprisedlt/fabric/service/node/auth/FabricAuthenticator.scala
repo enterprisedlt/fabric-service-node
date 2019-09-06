@@ -4,8 +4,7 @@ import javax.security.auth.Subject
 import javax.servlet.{ServletRequest, ServletResponse}
 import org.eclipse.jetty.security.{Authenticator, ServerAuthException, UserAuthentication}
 import org.eclipse.jetty.server.Authentication
-import org.enterprisedlt.fabric.service.node.cryptography.{AccountType, UserAccount}
-import org.enterprisedlt.fabric.service.node.{CryptoManager, Util}
+import org.enterprisedlt.fabric.service.node.util.Util
 import org.hyperledger.fabric.sdk.User
 
 /**
