@@ -1,4 +1,5 @@
-package org.enterprisedlt.fabric.service.node.rest
+package org.enterprisedlt.fabric.service.node.common
+
 
 import java.lang.reflect.Method
 
@@ -7,12 +8,13 @@ import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.apache.http.entity.ContentType
 import org.eclipse.jetty.server.handler.AbstractHandler
 import org.eclipse.jetty.server.{Request, Server}
+import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
 import org.slf4j.LoggerFactory
 
 /**
   * @author Alexey Polubelov
   */
-class RestEndpoint(
+class JsonRestEndpoint(
     port: Int,
     endpoints: AnyRef*
 ) {
@@ -25,7 +27,7 @@ class RestEndpoint(
         server
     }
 
-    private val bindings = endpoints.flatMap { spec =>
+    private val GetBindings = endpoints.flatMap { spec =>
         spec
           .getClass
           .getDeclaredMethods
@@ -33,7 +35,20 @@ class RestEndpoint(
           .map { m =>
               (
                 m.getAnnotation(classOf[Get]).value(),
-                createHandler(spec, m)
+                createHandler(spec, m, mkGetParams)
+              )
+          }
+    }.toMap
+
+    private val PostBindings = endpoints.flatMap { spec =>
+        spec
+          .getClass
+          .getDeclaredMethods
+          .filter(_.isAnnotationPresent(classOf[Post]))
+          .map { m =>
+              (
+                m.getAnnotation(classOf[Post]).value(),
+                createHandler(spec, m, mkPostParams)
               )
           }
     }.toMap
@@ -44,17 +59,20 @@ class RestEndpoint(
 
     private def getCodec: Gson = new GsonBuilder().setPrettyPrinting().create()
 
-    private def createHandler(o: AnyRef, m: Method): (HttpServletRequest, HttpServletResponse) => Unit = {
+    type HandleFunction = (HttpServletRequest, HttpServletResponse) => Unit
+    type ExtractParametersFunction = (Method, HttpServletRequest, Gson) => Seq[AnyRef]
+
+    private def createHandler(o: AnyRef, m: Method, parametersFunction: ExtractParametersFunction): (HttpServletRequest, HttpServletResponse) => Unit = {
         val eClazz = classOf[Either[String, Any]]
+        if(m.getParameters.length > 1){
+            throw new Exception("At most 1 parameter supported for POST methods")
+        }
         m.getReturnType match {
             case x if x.isAssignableFrom(eClazz) =>
                 (request, response) =>
                     try {
                         val codec = getCodec
-                        val params = m.getParameters.map { p =>
-                            val v = Option(request.getParameter(p.getName)).getOrElse(throw new Exception("mandatory parameter absent"))
-                            codec.fromJson(v, p.getType).asInstanceOf[AnyRef]
-                        }
+                        val params: Seq[AnyRef] = parametersFunction(m, request, codec)
                         m.invoke(o, params: _*) match {
                             case Right(value) =>
                                 response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
@@ -84,19 +102,49 @@ class RestEndpoint(
         }
     }
 
+    private def mkPostParams(m: Method, request: HttpServletRequest, codec: Gson): Seq[AnyRef] = {
+        m.getParameters.headOption.map {p =>
+            codec.fromJson(request.getReader, p.getType).asInstanceOf[AnyRef]
+        }.toSeq
+    }
+
+    private def mkGetParams(m: Method, request: HttpServletRequest, codec: Gson): Seq[AnyRef] = {
+        m.getParameters.map { p =>
+            val v = Option(request.getParameter(p.getName)).getOrElse(throw new Exception("mandatory parameter absent"))
+            codec.fromJson(v, p.getType).asInstanceOf[AnyRef]
+        }
+    }
+
     private object EndpointHandler extends AbstractHandler {
 
         override def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {
-            val handler = bindings.get(request.getPathInfo)
-            if (handler.isDefined) {
-                response.setStatus(HttpServletResponse.SC_OK)
-                handler.foreach(_ (request, response))
-                response.getWriter.flush()
-            } else {
-                response.setStatus(HttpServletResponse.SC_NOT_FOUND)
+            request.getMethod match {
+                case "GET" =>
+                    processRequest(GetBindings, request, response)
+
+                case "POST" =>
+                    processRequest(PostBindings, request, response)
+
+                case methodName =>
+                    response.getWriter.println(s"Unsupported method type $methodName")
+                    response.setStatus(HttpServletResponse.SC_BAD_REQUEST)
+
             }
             baseRequest.setHandled(true)
         }
+
+        private def processRequest(
+            bindings: Map[String, HandleFunction],
+            request: HttpServletRequest, response: HttpServletResponse
+        ): Unit = {
+            bindings.get(request.getPathInfo) match {
+                case Some(f) =>
+                    f(request, response)
+                case None =>
+                    response.setStatus(HttpServletResponse.SC_NOT_FOUND)
+            }
+        }
     }
+
 
 }
