@@ -4,7 +4,7 @@ import javax.security.auth.Subject
 import javax.servlet.{ServletRequest, ServletResponse}
 import org.eclipse.jetty.security.{Authenticator, ServerAuthException, UserAuthentication}
 import org.eclipse.jetty.server.Authentication
-import org.enterprisedlt.fabric.service.node.util.Util
+import org.enterprisedlt.fabric.service.node.util.{AccountType, UserAccount, Util}
 import org.hyperledger.fabric.sdk.User
 
 /**
@@ -53,7 +53,7 @@ class FabricAuthenticator(cryptography: CryptoManager) extends Authenticator {
                 }
 
             case AccountType.Service =>
-                (cryptography.loadDefaultAdmin, Array(Role.JoinToken))
+                (user, Array(Role.JoinToken))
         }
     }
 
