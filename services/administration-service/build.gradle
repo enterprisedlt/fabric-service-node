@@ -42,7 +42,7 @@ repositories {
 }
 
 shadowJar {
-    baseName = 'service-node'
+    baseName = 'administration-node'
     version = null
     classifier = null
 
