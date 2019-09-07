@@ -3,6 +3,7 @@ package org.enterprisedlt.fabric.service.node
 import java.io.FileReader
 
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
+import org.enterprisedlt.fabric.service.node.identity.FileBasedCryptoManager
 import org.enterprisedlt.fabric.service.node.rest.JsonRestEndpoint
 import org.enterprisedlt.fabric.service.node.util.Util
 import org.slf4j.LoggerFactory
@@ -21,9 +22,11 @@ object IdentityNode extends App {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
     logger.info("Starting...")
-    private val config = loadConfig("/opt/profile/service.json")
-    private val restEndpoint = new JsonRestEndpoint(ServiceBindPort, new IdentityRestEndpoint)
 
+    private val cryptoPath = "/opt/profile/crypto"
+    private val config = loadConfig("/opt/profile/service.json")
+    private val cryptoManager = new FileBasedCryptoManager(config,cryptoPath)
+    private val restEndpoint = new JsonRestEndpoint(ServiceBindPort, new IdentityRestEndpoint(cryptoManager))
 
     setupShutdownHook()
     restEndpoint.start()

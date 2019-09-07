@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory
 /**
   * @author Alexey Polubelov
   */
-class IdentityRestEndpoint {
+class IdentityRestEndpoint(cryptoManager: CryptoManager) {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
 
