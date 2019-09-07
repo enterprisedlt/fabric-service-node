@@ -11,13 +11,13 @@ fi
 
 echo "Obtaining user key ..."
 
-SERVICE_URL="localhost:${SERVICE_BIND_PORT}"
+SERVICE_URL="localhost:${IDENTITY_SERVICE_BIND_PORT}"
 curl -k -G --silent --show-error \
 --key ${PROFILE_PATH}/crypto/users/admin/admin.key \
 --cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
 --request GET \
 --output "$4" \
-https://${SERVICE_URL}/services/identity/get-user-key \
+http://${SERVICE_URL}/services/identity/get-user-key \
 -d name=$2 \
 -d password=$3
 
