@@ -23,7 +23,7 @@ class IdentityRestEndpoint(cryptoManager: CryptoManager) {
         }.toRight("Not context!")
     }
 
-    @Post("/services/identity/create-user")
+    @Get("/services/identity/create-user")
     def createUser(userName: String): Either[String, String] = {
         logger.info(s"Creating new user $userName ...")
         cryptoManager.createFabricUser(userName)
