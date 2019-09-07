@@ -16,7 +16,7 @@ object IdentityNode extends App {
 
     private val Environment = System.getenv()
     private val LogLevel = Option(Environment.get("LOG_LEVEL")).filter(_.trim.nonEmpty).getOrElse("INFO")
-    private val ServiceBindPort = Option(Environment.get("SERVICE_BIND_PORT")).map(_.toInt).getOrElse(throw new Exception("Mandatory environment variable missing SERVICE_BIND_PORT!"))
+    private val IdentityServiceBindPort = Option(Environment.get("IDENTITY_SERVICE_BIND_PORT")).map(_.toInt).getOrElse(throw new Exception("Mandatory environment variable missing IDENTITY_SERVICE_BIND_PORT!"))
 
     Util.setupLogging(LogLevel)
     private val logger = LoggerFactory.getLogger(this.getClass)
@@ -26,7 +26,7 @@ object IdentityNode extends App {
     private val cryptoPath = "/opt/profile/crypto"
     private val config = loadConfig("/opt/profile/service.json")
     private val cryptoManager = new FileBasedCryptoManager(config,cryptoPath)
-    private val restEndpoint = new JsonRestEndpoint(ServiceBindPort, new IdentityRestEndpoint(cryptoManager))
+    private val restEndpoint = new JsonRestEndpoint(IdentityServiceBindPort, new IdentityRestEndpoint(cryptoManager))
 
     setupShutdownHook()
     restEndpoint.start()

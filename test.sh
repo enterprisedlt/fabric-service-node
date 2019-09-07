@@ -9,6 +9,7 @@
 gradle clean
 gradle service-node:shadowJar
 gradle service-chain-code:shadowJar
+gradle services:identity-service:shadowJar
 
 # pack chain-code to deploy-able tarball
 fabric-service-pack-chaincode.sh ./service-chain-code service-chain-code.tgz

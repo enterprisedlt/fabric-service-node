@@ -8,6 +8,20 @@ fi
 
 . ${PROFILE_PATH}/settings
 
+echo "Starting Fabric Identity Node ..."
+INITIAL_NAME="fabric.identity.service.node.${IDENTITY_SERVICE_BIND_PORT}"
+serviceID=`docker run -d \
+ -e "IDENTITY_SERVICE_BIND_PORT=${IDENTITY_SERVICE_BIND_PORT}" \
+ -e "DOCKER_SOCKET=unix:///host/var/run/docker.sock" \
+ -p ${IDENTITY_SERVICE_BIND_PORT}:${IDENTITY_SERVICE_BIND_PORT} \
+ --volume=${PROFILE_PATH}/hosts:/etc/hosts \
+ --volume=${PROFILE_PATH}:/opt/profile \
+ --volume=${SERVICE_NODE_HOME}/services/identity-service/build/libs/identity-service.jar:/opt/service/identity-service.jar \
+ --volume=/var/run/:/host/var/run/ \
+ --name $INITIAL_NAME \
+openjdk:8-jre java -jar /opt/service/identity-service.jar`
+echo "Identity Service ID: ${serviceID}"
+
 echo "Starting Fabric Service Node ..."
 INITIAL_NAME="fabric.service.node.${SERVICE_BIND_PORT}"
 serviceID=`docker run -d \
