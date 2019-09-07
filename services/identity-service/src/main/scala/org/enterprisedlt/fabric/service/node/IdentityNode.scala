@@ -43,14 +43,6 @@ object IdentityNode extends App {
         })
     }
 
-    private def parseExternalAddress(address: String, defaultPort: Int): ExternalAddress = {
-        address.split(":") match {
-            case Array(host, port) => ExternalAddress(host, port.toInt)
-            case Array(host) => ExternalAddress(host, defaultPort)
-            case _ => throw new IllegalArgumentException(s"Invalid format of external address: '$address', expected: 'HOST[:PROT]'")
-        }
-    }
-
     private def loadConfig(configFile: String): ServiceConfig =
         Util.codec.fromJson(new FileReader(configFile), classOf[ServiceConfig])
 
