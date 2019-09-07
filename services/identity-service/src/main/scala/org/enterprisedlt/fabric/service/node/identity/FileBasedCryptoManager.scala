@@ -10,8 +10,8 @@ import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
-import org.enterprisedlt.fabric.service.node.CryptoManager
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
+import org.enterprisedlt.fabric.service.node.services.CryptoManager
 import org.enterprisedlt.fabric.service.node.util.{CertAndKey, FabricComponent, FabricCryptoMaterial, Util}
 import org.slf4j.LoggerFactory
 

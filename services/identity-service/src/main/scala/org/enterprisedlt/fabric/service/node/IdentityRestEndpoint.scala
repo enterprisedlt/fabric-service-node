@@ -3,6 +3,7 @@ package org.enterprisedlt.fabric.service.node
 import javax.servlet.http.HttpServletResponse
 import org.apache.http.entity.ContentType
 import org.enterprisedlt.fabric.service.node.rest.{Get, Post, RestEndpointContext}
+import org.enterprisedlt.fabric.service.node.services.CryptoManager
 import org.slf4j.LoggerFactory
 
 /**
