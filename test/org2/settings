@@ -1,3 +1,3 @@
 #!/bin/sh
 export SERVICE_BIND_PORT=8001
-
+export IDENTITY_SERVICE_BIND_PORT=7001
