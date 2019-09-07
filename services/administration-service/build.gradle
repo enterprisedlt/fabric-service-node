@@ -47,6 +47,6 @@ shadowJar {
     classifier = null
 
     manifest {
-        attributes 'Main-Class': 'org.enterprisedlt.fabric.service.node.IdentityNode'
+        attributes 'Main-Class': 'org.enterprisedlt.fabric.service.node.AdministrationNode'
     }
 }
