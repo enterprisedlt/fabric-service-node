@@ -24,21 +24,22 @@ import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x500.style.{BCStyle, IETFUtils}
 import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
-import org.bouncycastle.openssl.jcajce.{JcaPEMKeyConverter, JcaPEMWriter}
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
 import org.enterprisedlt.fabric.service.node.configuration.{OrganizationConfig, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.util.FabricCryptoMaterial._
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope, Payload}
 import org.hyperledger.fabric.protos.common.Configtx
 import org.hyperledger.fabric.protos.common.Configtx.{ConfigEnvelope, ConfigGroup}
 import org.hyperledger.fabric.protos.common.MspPrincipal.{MSPPrincipal, MSPRole}
 import org.hyperledger.fabric.protos.common.Policies.{SignaturePolicy, SignaturePolicyEnvelope}
-import org.hyperledger.fabric.protos.orderer.Configuration.ConsensusType
-import org.hyperledger.fabric.protos.orderer.etcdraft.Configuration.ConfigMetadata
+import org.hyperledger.fabric.protos.ext.orderer.Configuration.ConsensusType
+import org.hyperledger.fabric.protos.ext.orderer.etcdraft.Configuration._
 import org.hyperledger.fabric.sdk.identity.X509Enrollment
 import org.hyperledger.fabric.sdk.{ChaincodeCollectionConfiguration, ChaincodeEndorsementPolicy}
-import org.enterprisedlt.fabric.service.node.util.FabricCryptoMaterial._
 import org.slf4j.{Logger, LoggerFactory}
+
 import scala.collection.JavaConverters._
 
 /**
@@ -109,7 +110,7 @@ object Util {
     //=========================================================================
     def extractConsensusMetadata(config: Configtx.Config): ConfigMetadata = {
         val orderer: ConfigGroup.Builder = config.getChannelGroup.getGroupsMap.get("Orderer").toBuilder
-        val consensusType = ConsensusType.parseFrom(orderer.getValuesMap.get("ConsensusType").getValue)
+        val consensusType: ConsensusType = ConsensusType.parseFrom(orderer.getValuesMap.get("ConsensusType").getValue)
         ConfigMetadata.parseFrom(consensusType.getMetadata)
     }
 
@@ -384,7 +385,6 @@ object Util {
             pemReader.close()
         }
     }
-
 
 
     //=========================================================================
