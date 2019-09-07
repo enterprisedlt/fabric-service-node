@@ -22,14 +22,27 @@ serviceID=`docker run -d \
 openjdk:8-jre java -jar /opt/service/identity-service.jar`
 echo "Identity Service ID: ${serviceID}"
 
-echo "Starting Fabric Service Node ..."
-INITIAL_NAME="fabric.service.node.${SERVICE_BIND_PORT}"
+echo "Starting Fabric Process Management Node ..."
+INITIAL_NAME="fabric.process-management.service.node.${PROCESS_MANAGEMENT_BIND_PORT}"
 serviceID=`docker run -d \
  -e "INITIAL_NAME=${INITIAL_NAME}" \
  -e "PROFILE_PATH=${PROFILE_PATH}" \
+ -e "PROCESS_MANAGEMENT_BIND_PORT=${PROCESS_MANAGEMENT_BIND_PORT}" \
+ -e "DOCKER_SOCKET=unix:///host/var/run/docker.sock" \
+ -p ${PROCESS_MANAGEMENT_BIND_PORT}:${PROCESS_MANAGEMENT_BIND_PORT} \
+ --volume=${PROFILE_PATH}/hosts:/etc/hosts \
+ --volume=${PROFILE_PATH}:/opt/profile \
+ --volume=${SERVICE_NODE_HOME}/services/identity-service/build/libs/identity-service.jar:/opt/service/process-management-service.jar \
+ --volume=/var/run/:/host/var/run/ \
+ --name $INITIAL_NAME \
+openjdk:8-jre java -jar /opt/service/process-management-service.jar`
+echo "Process Management Service ID: ${serviceID}"
+
+echo "Starting Fabric Service Node ..."
+INITIAL_NAME="fabric.service.node.${SERVICE_BIND_PORT}"
+serviceID=`docker run -d \
  -e "SERVICE_BIND_PORT=${SERVICE_BIND_PORT}" \
  -e "SERVICE_EXTERNAL_ADDRESS=${SERVICE_EXTERNAL_ADDRESS}" \
- -e "DOCKER_SOCKET=unix:///host/var/run/docker.sock" \
  -p ${SERVICE_BIND_PORT}:${SERVICE_BIND_PORT} \
  --volume=${PROFILE_PATH}/hosts:/etc/hosts \
  --volume=${PROFILE_PATH}:/opt/profile \

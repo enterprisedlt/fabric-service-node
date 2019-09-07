@@ -42,7 +42,7 @@ repositories {
 }
 
 shadowJar {
-    baseName = 'process-management-node'
+    baseName = 'process-management-service'
     version = null
     classifier = null
 
