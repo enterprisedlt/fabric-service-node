@@ -11,8 +11,8 @@ import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.model.Ports.Binding
 import com.github.dockerjava.api.model._
 import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientBuilder}
-import org.enterprisedlt.fabric.service.node.FabricProcessManager
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
+import org.enterprisedlt.fabric.service.node.services.FabricProcessManager
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._

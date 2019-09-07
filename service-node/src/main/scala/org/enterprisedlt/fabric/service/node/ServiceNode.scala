@@ -12,7 +12,6 @@ import org.eclipse.jetty.websocket.server.WebSocketHandler
 import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory
 import org.enterprisedlt.fabric.service.node.auth.{FabricAuthenticator, Role}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
-import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
 import org.enterprisedlt.fabric.service.node.util.Util
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.slf4j.LoggerFactory
@@ -37,10 +36,7 @@ object ServiceNode extends App {
     private val config = loadConfig("/opt/profile/service.json")
     private val restEndpoint = new RestEndpoint(
         ServiceBindPort, ServiceExternalAddress, config,
-        processManager = new DockerBasedProcessManager(
-            ProfilePath, DockerSocket,
-            InitialName, config
-        ),
+        processManager = ???, // TODO to add
         hostsManager = new HostsManager(
             "/opt/profile/hosts",
             config
