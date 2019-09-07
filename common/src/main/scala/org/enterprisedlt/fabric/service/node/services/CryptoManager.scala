@@ -7,7 +7,7 @@ import java.security.KeyStore
   */
 trait CryptoManager {
 
-    def getFabricUserKeyStore(name: String, password: String): KeyStore // /admin/get-user-key
+    def getFabricUserKeyStore(name: String, password: String): KeyStore
 
-    def createFabricUser(name: String): Unit // /admin/create-user
+    def createFabricUser(name: String): Unit
 }

@@ -7,16 +7,14 @@ import org.enterprisedlt.fabric.service.node.services.CryptoManager
 import org.slf4j.LoggerFactory
 
 /**
-  * @author Alexey Polubelov
+  * @author Maxim Fedin
   */
 class IdentityRestEndpoint(cryptoManager: CryptoManager) {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
     @Get("/services/identity/get-user-key")
-    def getUserKey(): Either[String, Unit] = {
+    def getUserKey(userName: String, password: String): Either[String, Unit] = {
         RestEndpointContext.get.map { context =>
-            val userName = context.request.getParameter("name")
-            val password = context.request.getParameter("password")
             logger.info(s"Obtaining user key for $userName ...")
             val key = cryptoManager.getFabricUserKeyStore(userName, password)
             context.response.setContentType(ContentType.APPLICATION_OCTET_STREAM.getMimeType)
@@ -26,15 +24,10 @@ class IdentityRestEndpoint(cryptoManager: CryptoManager) {
     }
 
     @Post("/services/identity/create-user")
-    def createUser(): Either[String, Unit] = {
-        RestEndpointContext.get.map { context =>
-            val userName = context.request.getParameter("name")
-            logger.info(s"Creating new user $userName ...")
-            cryptoManager.createFabricUser(userName)
-            context.response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
-            context.response.getWriter.println("OK")
-            context.response.setStatus(HttpServletResponse.SC_OK)
-        }
-    }.toRight("Not context!")
-
+    def createUser(userName: String): Either[String, String] = {
+        logger.info(s"Creating new user $userName ...")
+        cryptoManager.createFabricUser(userName)
+        logger.info(s"User $userName is created.")
+        Right("OK")
+    }
 }
