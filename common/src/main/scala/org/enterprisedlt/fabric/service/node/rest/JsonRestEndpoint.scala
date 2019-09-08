@@ -62,9 +62,6 @@ class JsonRestEndpoint(
 
     private def createHandler(o: AnyRef, m: Method, parametersFunction: ExtractParametersFunction): (HttpServletRequest, HttpServletResponse) => Unit = {
         val eClazz = classOf[Either[String, Any]]
-        if (m.getParameters.length > 1) {
-            throw new Exception("At most 1 parameter supported for POST methods")
-        }
         m.getReturnType match {
             case x if x.isAssignableFrom(eClazz) =>
                 (request, response) =>
