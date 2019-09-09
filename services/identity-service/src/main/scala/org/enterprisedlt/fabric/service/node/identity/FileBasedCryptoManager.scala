@@ -39,25 +39,8 @@ class FileBasedCryptoManager(
     logger.info(s"Generated crypto for $orgFullName.")
 
     //=========================================================================
-    def createServiceTLSKeyStore(password: String): KeyStore = {
-        val keystore = KeyStore.getInstance("JKS")
-        keystore.load(null)
-        //
-        val path = s"$rootDir/service/tls"
-        val key = loadPrivateKeyFromFile(s"$path/server.key")
-        val cert = loadCertificateFromFile(s"$path/server.crt")
-        keystore.setKeyEntry("key", key, password.toCharArray, Array(cert))
-        keystore
-    }
-
+    // Interface methods
     //=========================================================================
-    def createServiceTrustStore(password: String): KeyStore = {
-        val keystore = KeyStore.getInstance("JKS")
-        keystore.load(null)
-        keystore.setCertificateEntry("ca", loadCertificateFromFile(s"$rootDir/ca/ca.crt")) // accept Fabric users
-        keystore.setCertificateEntry("service-ca", loadCertificateFromFile(s"$rootDir/service/ca/server.crt")) // accept Service users
-        keystore
-    }
 
     //=========================================================================
     override def createFabricUser(name: String): Unit = {
@@ -87,6 +70,33 @@ class FileBasedCryptoManager(
     }
 
     //=========================================================================
+
+    def createServiceTLSKeyStore(password: String): KeyStore = {
+        val keystore = KeyStore.getInstance("JKS")
+        keystore.load(null)
+        //
+        val path = s"$rootDir/service/tls"
+        val key = loadPrivateKeyFromFile(s"$path/server.key")
+        val cert = loadCertificateFromFile(s"$path/server.crt")
+        keystore.setKeyEntry("key", key, password.toCharArray, Array(cert))
+        keystore
+    }
+
+    //=========================================================================
+    def createServiceTrustStore(password: String): KeyStore = {
+        val keystore = KeyStore.getInstance("JKS")
+        keystore.load(null)
+        keystore.setCertificateEntry("ca", loadCertificateFromFile(s"$rootDir/ca/ca.crt")) // accept Fabric users
+        keystore.setCertificateEntry("service-ca", loadCertificateFromFile(s"$rootDir/service/ca/server.crt")) // accept Service users
+        keystore
+    }
+
+    //=========================================================================
+    // Private utility functions
+    //=========================================================================
+
+    //=========================================================================
+
     private def loadPrivateKeyFromFile(fileName: String): PrivateKey = {
         val pemReader = new FileReader(fileName)
         val pemParser = new PEMParser(pemReader)

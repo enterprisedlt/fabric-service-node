@@ -4,6 +4,7 @@ package org.enterprisedlt.fabric.service.node.services
   * @author Alexey Polubelov
   */
 trait FabricProcessManager {
+
     def startOrderingNode(name: String): Either[String, String]
 
     def osnAwaitJoinedToRaft(name: String): Unit

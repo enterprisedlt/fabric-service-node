@@ -55,8 +55,10 @@ class DockerBasedProcessManager(
       .withContainerId(targetName)
       .withNetworkId(config.network.name)
       .exec()
-    // =================================================================================================================
 
+    //=========================================================================
+    // Interface methods
+    //=========================================================================
 
     //=========================================================================
     override def startOrderingNode(name: String): Either[String, String] = {
@@ -183,34 +185,6 @@ class DockerBasedProcessManager(
           }
     }
 
-    //=============================================================================
-    private def startCouchDB(name: String, port: Int): String = {
-        val couchDBFullName = s"$name.$organizationFullName"
-        logger.info(s"Starting $couchDBFullName ...")
-        if (checkContainerExistence(couchDBFullName)) {
-            stopAndRemoveContainer(couchDBFullName)
-        }
-        val configHost = new HostConfig()
-          .withPortBindings(
-              new PortBinding(new Binding("0.0.0.0", port.toString), new ExposedPort(5984, InternetProtocol.TCP))
-          )
-          .withNetworkMode(config.network.name)
-
-        val couchDBContainerId: String = docker.createContainerCmd("hyperledger/fabric-couchdb")
-          .withName(couchDBFullName)
-          .withEnv(
-              "COUCHDB_USER=",
-              "COUCHDB_PASSWORD="
-          )
-          .withExposedPorts(new ExposedPort(5984, InternetProtocol.TCP))
-          .withHostConfig(configHost)
-          .withLabels(DefaultLabels)
-          .exec().getId
-        docker.startContainerCmd(couchDBContainerId).exec
-        logger.info(s"CouchDB $couchDBFullName started, ID $couchDBContainerId")
-        couchDBContainerId
-    }
-
     override def osnAwaitJoinedToRaft(name: String): Unit = {
         val osnFullName = s"$name.$organizationFullName"
         logger.info(s"Awaiting for $osnFullName to join RAFT cluster ...")
@@ -283,11 +257,43 @@ class DockerBasedProcessManager(
         }
     }
 
-    def terminateChainCode(peerName: String, chainCodeName: String, chainCodeVersion: String): Unit = {
+    override def terminateChainCode(peerName: String, chainCodeName: String, chainCodeVersion: String): Unit = {
         val containerName = s"dev-$peerName.$organizationFullName-$chainCodeName-$chainCodeVersion"
         stopAndRemoveContainer(containerName)
     }
 
+
+    //=========================================================================
+    // Private utility functions
+    //=========================================================================
+
+    //=========================================================================
+    private def startCouchDB(name: String, port: Int): String = {
+        val couchDBFullName = s"$name.$organizationFullName"
+        logger.info(s"Starting $couchDBFullName ...")
+        if (checkContainerExistence(couchDBFullName)) {
+            stopAndRemoveContainer(couchDBFullName)
+        }
+        val configHost = new HostConfig()
+          .withPortBindings(
+              new PortBinding(new Binding("0.0.0.0", port.toString), new ExposedPort(5984, InternetProtocol.TCP))
+          )
+          .withNetworkMode(config.network.name)
+
+        val couchDBContainerId: String = docker.createContainerCmd("hyperledger/fabric-couchdb")
+          .withName(couchDBFullName)
+          .withEnv(
+              "COUCHDB_USER=",
+              "COUCHDB_PASSWORD="
+          )
+          .withExposedPorts(new ExposedPort(5984, InternetProtocol.TCP))
+          .withHostConfig(configHost)
+          .withLabels(DefaultLabels)
+          .exec().getId
+        docker.startContainerCmd(couchDBContainerId).exec
+        logger.info(s"CouchDB $couchDBFullName started, ID $couchDBContainerId")
+        couchDBContainerId
+    }
 
     // =================================================================================================================
     private def checkContainerExistence(name: String): Boolean = {
