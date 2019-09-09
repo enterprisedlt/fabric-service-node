@@ -32,7 +32,7 @@ serviceID=`docker run -d \
  -p ${PROCESS_MANAGEMENT_BIND_PORT}:${PROCESS_MANAGEMENT_BIND_PORT} \
  --volume=${PROFILE_PATH}/hosts:/etc/hosts \
  --volume=${PROFILE_PATH}:/opt/profile \
- --volume=${SERVICE_NODE_HOME}/services/identity-service/build/libs/identity-service.jar:/opt/service/process-management-service.jar \
+ --volume=${SERVICE_NODE_HOME}/services/process-management-service/build/libs/process-management-service.jar:/opt/service/process-management-service.jar \
  --volume=/var/run/:/host/var/run/ \
  --name $INITIAL_NAME \
 openjdk:8-jre java -jar /opt/service/process-management-service.jar`
