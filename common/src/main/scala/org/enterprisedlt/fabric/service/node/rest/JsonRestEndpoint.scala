@@ -10,8 +10,8 @@ import org.eclipse.jetty.server.{Request, Server}
 import org.slf4j.LoggerFactory
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 class JsonRestEndpoint(
     port: Int,
     endpoints: AnyRef*
@@ -26,9 +26,7 @@ class JsonRestEndpoint(
     }
 
     private val GetBindings = endpoints.flatMap { spec =>
-        spec
-          .getClass
-          .getDeclaredMethods
+        scanMethods(spec.getClass)
           .filter(_.isAnnotationPresent(classOf[Get]))
           .map { m =>
               (
@@ -39,9 +37,7 @@ class JsonRestEndpoint(
     }.toMap
 
     private val PostBindings = endpoints.flatMap { spec =>
-        spec
-          .getClass
-          .getDeclaredMethods
+        scanMethods(spec.getClass)
           .filter(_.isAnnotationPresent(classOf[Post]))
           .map { m =>
               (
@@ -57,6 +53,12 @@ class JsonRestEndpoint(
 
     private def getCodec: Gson = new GsonBuilder().setPrettyPrinting().create()
 
+    private def scanMethods(c: Class[_]): Array[Method] = {
+        c.getMethods ++
+          c.getInterfaces.flatMap(scanMethods) ++
+          Option(c.getSuperclass).map(scanMethods).getOrElse(Array.empty)
+    }
+
     type HandleFunction = (HttpServletRequest, HttpServletResponse) => Unit
     type ExtractParametersFunction = (Method, HttpServletRequest, Gson) => Seq[AnyRef]
 
@@ -64,7 +66,7 @@ class JsonRestEndpoint(
         val eClazz = classOf[Either[String, Any]]
         m.getReturnType match {
             case x if x.isAssignableFrom(eClazz) =>
-                (request, response) =>
+                val f: (HttpServletRequest, HttpServletResponse) => Unit = { (request, response) =>
                     try {
                         val codec = getCodec
                         val params: Seq[AnyRef] = parametersFunction(m, request, codec)
@@ -93,7 +95,9 @@ class JsonRestEndpoint(
                             response.getWriter.println(ex.getMessage)
                             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                     }
-
+                }
+                logger.info(s"Added endpoint for ${m.getName}")
+                f
             case other =>
                 throw new Exception(s"Unsupported return type ${other.getCanonicalName} the only supported return type is Either[String, Any+]")
         }
