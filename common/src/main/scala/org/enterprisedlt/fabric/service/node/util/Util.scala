@@ -256,6 +256,15 @@ object Util {
     }
 
     //=========================================================================
+    def loadDefaultAdmin(organizationName: String, rootDir: String): UserAccount =
+        loadUser(
+            "admin",
+            organizationName,
+            s"$rootDir/users/admin",
+            AccountType.Fabric
+        )
+
+    //=========================================================================
     private def httpsClient(keyStore: KeyStore, password: String): CloseableHttpClient =
         HttpClients.custom()
           .setSSLSocketFactory(
