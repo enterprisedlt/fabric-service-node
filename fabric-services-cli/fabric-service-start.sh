@@ -51,7 +51,19 @@ serviceID=`docker run -d \
  enterprisedlt/fabric-service-node`
 echo "Service ID: ${serviceID}"
 
+
 # await service node to start up
 grep -m 1 "ServiceNode\$ - Started" <(docker logs -f ${serviceID} 2>&1)
 
+echo "Starting Balancer Node ..."
+INITIAL_NAME="balancer.node.${BALANCER_BIND_PORT}"
+nginxID=$(docker run -d \
+  -p ${BALANCER_BIND_PORT}:${BALANCER_BIND_PORT} \
+  --volume=${PROFILE_PATH}/hosts:/etc/hosts \
+  --volume=${PROFILE_PATH}:/opt/profile \
+  --volume=${PROFILE_PATH}/nginx/:/opt/profile \
+  --volume=/var/run/:/host/var/run/ \
+  --name $INITIAL_NAME \
+  nginx bash -c "envsubst '$$ORG $$DOMAIN' < /templates/nginx.conf > /etc/nginx/conf.d/default.conf && cp /certs/* /etc/nginx/conf.d/ && nginx -g 'daemon off;'")
+echo "Balancer ID: ${nginxID}"
 echo "======================================================================"

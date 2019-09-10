@@ -39,9 +39,9 @@ class DockerBasedProcessManager(
 
     // =================================================================================================================
     logger.info(s"Initializing ${this.getClass.getSimpleName} ...")
-    val targetName = s"service.$organizationFullName"
-    logger.info(s"Renaming '$selfContainerName' -> '$targetName' ...")
-    docker.renameContainerCmd(selfContainerName).withName(targetName).exec()
+    val targetName = selfContainerName//s"service.$organizationFullName"
+//    logger.info(s"Renaming '$selfContainerName' -> '$targetName' ...")
+//    docker.renameContainerCmd(selfContainerName).withName(targetName).exec()
     logger.info(s"Checking network ...")
     if (docker.listNetworksCmd().withNameFilter(config.network.name).exec().isEmpty) {
         logger.info(s"Network ${config.network.name} does not exist, creating ...")
