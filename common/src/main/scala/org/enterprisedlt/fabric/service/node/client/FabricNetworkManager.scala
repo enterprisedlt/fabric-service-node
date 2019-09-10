@@ -1,4 +1,4 @@
-package org.enterprisedlt.fabric.service.node
+package org.enterprisedlt.fabric.service.node.client
 
 import java.io.InputStream
 import java.util.Properties

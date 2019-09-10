@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, OrganizationsOrdering, ServiceVersion}
 import org.enterprisedlt.fabric.service.node._
+import org.enterprisedlt.fabric.service.node.client.{FabricNetworkManager, OperationTimeout}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model._
