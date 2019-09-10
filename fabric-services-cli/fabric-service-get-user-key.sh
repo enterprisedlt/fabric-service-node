@@ -17,7 +17,7 @@ curl -k -G --silent --show-error \
 --cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
 --request GET \
 --output "$4" \
-http://${SERVICE_URL}/services/identity/get-user-key \
+http://${SERVICE_URL}/get-user-key \
 -d name=$2 \
 -d password=$3
 

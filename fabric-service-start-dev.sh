@@ -28,6 +28,9 @@ serviceID=`docker run -d \
 openjdk:8-jre java -jar /opt/service/process-management-service.jar`
 echo "Process Management Service ID: ${serviceID}"
 
+# await process management to start up
+grep -m 1 "ProcessManagementNode\$ - Started" <(docker logs -f ${serviceID} 2>&1)
+
 echo "Starting Fabric Identity Node ..."
 #INITIAL_NAME="fabric.identity.service.node.${IDENTITY_SERVICE_BIND_PORT}"
 serviceID=`docker run -d \
@@ -43,6 +46,8 @@ serviceID=`docker run -d \
 openjdk:8-jre java -jar /opt/service/identity-service.jar`
 echo "Identity Service ID: ${serviceID}"
 
+# await identity node to start up
+grep -m 1 "IdentityNode\$ - Started" <(docker logs -f ${serviceID} 2>&1)
 
 #echo "Starting Fabric Service Node ..."
 ##INITIAL_NAME="fabric.service.node.${SERVICE_BIND_PORT}"
@@ -62,18 +67,22 @@ echo "Identity Service ID: ${serviceID}"
 ## await service node to start up
 #grep -m 1 "ServiceNode\$ - Started" <(docker logs -f ${serviceID} 2>&1)
 
+if [[ ! -e ${PROFILE_PATH}/config/default.conf ]]; then
+  mkdir -p ${PROFILE_PATH}/config/
+  fabric-service-balancer-generate.sh ./test/org1
+fi
+
 echo "Starting Balancer Node ..."
 #INITIAL_NAME="balancer.node.${BALANCER_BIND_PORT}"
 nginxID=$(docker run -d \
   -p ${SERVICE_BIND_PORT}:${SERVICE_BIND_PORT} \
   --volume=${PROFILE_PATH}/hosts/:/etc/hosts \
-  --volume=${PROFILE_PATH}/balancer/:/etc/nginx/conf.d/ \
+  --volume=${PROFILE_PATH}/config/default.conf:/etc/nginx/conf.d/default.conf \
   --volume=${PROFILE_PATH}/crypto/service/tls/:/etc/nginx/keys/ \
   --name $SERVICE_HOST \
   --network=$DOCKER_NETWORK \
   nginx bash -c "nginx -g 'daemon off;'")
 echo "Balancer ID: ${nginxID}"
-
 
 
 echo "======================================================================"

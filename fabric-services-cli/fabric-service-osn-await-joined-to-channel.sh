@@ -16,7 +16,7 @@ curl -k -G --silent --show-error \
 --key ${PROFILE_PATH}/crypto/users/admin/admin.key \
 --cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
 --request GET \
-http://${SERVICE_URL}/services/process-management/osn-await-joined-to-channel \
+http://${SERVICE_URL}/osn-await-joined-to-channel \
 -d name=$2
 
 if [[ "$?" -ne 0 ]]; then

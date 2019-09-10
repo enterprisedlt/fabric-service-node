@@ -7,10 +7,10 @@ import org.enterprisedlt.fabric.service.node.rest.{Get, ResponseContentType}
   */
 trait CryptoManager {
 
-    @Get("/services/identity/get-user-key")
+    @Get("/get-user-key")
     @ResponseContentType("application/octet-stream")
     def getFabricUserKeyStore(name: String, password: String): Either[String, Array[Byte]]
 
-    @Get("/services/identity/create-user")
+    @Get("/create-user")
     def createFabricUser(name: String): Either[String, Unit]
 }

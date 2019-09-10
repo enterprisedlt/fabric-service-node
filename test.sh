@@ -17,7 +17,6 @@ fabric-service-pack-chaincode.sh ./service-chain-code service-chain-code.tgz
 
 
 # start ORG1
-fabric-service-balancer-generate.sh ./test/org1
 ./fabric-service-start-dev.sh ./test/org1
 #fabric-service-bootstrap.sh ./test/org1 ./test/org1/bootstrap.json
 #

@@ -8,7 +8,7 @@ fi
 
 . ${PROFILE_PATH}/settings
 
-cat > ${PROFILE_PATH}/balancer/default.conf << EOL
+cat > ${PROFILE_PATH}/config/default.conf << EOL
 server {
     root /usr/share/nginx/html;
 
