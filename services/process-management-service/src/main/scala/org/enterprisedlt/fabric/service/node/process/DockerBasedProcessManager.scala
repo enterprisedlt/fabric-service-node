@@ -185,7 +185,7 @@ class DockerBasedProcessManager(
           }
     }
 
-    override def osnAwaitJoinedToRaft(name: String): Unit = {
+    override def osnAwaitJoinedToRaft(name: String): Either[String, Unit] = {
         val osnFullName = s"$name.$organizationFullName"
         logger.info(s"Awaiting for $osnFullName to join RAFT cluster ...")
         val findResult = docker.logContainerCmd(osnFullName)
@@ -202,9 +202,10 @@ class DockerBasedProcessManager(
                 logger.error(msg)
                 throw new Exception(msg)
         }
+        Right(())
     }
 
-    override def osnAwaitJoinedToChannel(name: String, channelName: String): Unit = {
+    override def osnAwaitJoinedToChannel(name: String, channelName: String): Either[String, Unit] = {
         val osnFullName = s"$name.$organizationFullName"
         (for {
             findResult <- docker.logContainerCmd(osnFullName)
@@ -236,9 +237,10 @@ class DockerBasedProcessManager(
             logger.error(msg)
             throw new Exception(msg)
         }
+        Right(())
     }
 
-    override def peerAwaitForBlock(name: String, blockNumber: Long): Unit = {
+    override def peerAwaitForBlock(name: String, blockNumber: Long): Either[String, Unit] = {
         val peerFullName = s"$name.$organizationFullName"
         logger.info(s"Awaiting for block $blockNumber on peer $peerFullName ...")
         val findResult = docker.logContainerCmd(peerFullName)
@@ -255,11 +257,13 @@ class DockerBasedProcessManager(
                 logger.error(msg)
                 throw new Exception(msg)
         }
+        Right(())
     }
 
-    override def terminateChainCode(peerName: String, chainCodeName: String, chainCodeVersion: String): Unit = {
+    override def terminateChainCode(peerName: String, chainCodeName: String, chainCodeVersion: String): Either[String, Unit] = {
         val containerName = s"dev-$peerName.$organizationFullName-$chainCodeName-$chainCodeVersion"
         stopAndRemoveContainer(containerName)
+        Right(())
     }
 
 
