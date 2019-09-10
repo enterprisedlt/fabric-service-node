@@ -6,14 +6,13 @@ import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.apache.http.entity.ContentType
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
-import org.enterprisedlt.fabric.service.node.codec.Codec
 import org.slf4j.LoggerFactory
 
 /**
   * @author Alexey Polubelov
   */
 class JsonRestEndpoint(
-    createCodec: () => Codec,
+    createCodec: () => ServerCodec,
     endpoints: AnyRef*
 ) extends AbstractHandler {
     private val logger = LoggerFactory.getLogger(getClass)
@@ -47,7 +46,7 @@ class JsonRestEndpoint(
     }
 
     type HandleFunction = (HttpServletRequest, HttpServletResponse) => Unit
-    type ExtractParametersFunction = (Method, HttpServletRequest, Codec) => Seq[AnyRef]
+    type ExtractParametersFunction = (Method, HttpServletRequest, ServerCodec) => Seq[AnyRef]
 
     private def createHandler(o: AnyRef, m: Method, parametersFunction: ExtractParametersFunction): (HttpServletRequest, HttpServletResponse) => Unit = {
         logger.info(s"Creating handler for: ${m.getName}")
@@ -62,7 +61,7 @@ class JsonRestEndpoint(
                             case Right(value) =>
                                 Option(value)
                                   .filterNot(_.isInstanceOf[Unit])
-                                  .foreach(v => codec.writeResult(v, response.getWriter))
+                                  .foreach(v => codec.writeResult(v, response.getOutputStream))
 
                                 response.setContentType(
                                     Option(m.getAnnotation(classOf[ResponseContentType]))
@@ -74,7 +73,7 @@ class JsonRestEndpoint(
                             case Left(errorMsg) =>
                                 response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
                                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                                codec.writeResult(errorMsg, response.getWriter)
+                                codec.writeResult(errorMsg, response.getOutputStream)
                         }
                     } catch {
                         case ex: Throwable =>
@@ -91,13 +90,13 @@ class JsonRestEndpoint(
         }
     }
 
-    private def mkPostParams(m: Method, request: HttpServletRequest, codec: Codec): Seq[AnyRef] = {
+    private def mkPostParams(m: Method, request: HttpServletRequest, codec: ServerCodec): Seq[AnyRef] = {
         m.getParameters.headOption.map { p =>
             codec.readParameter(request.getReader, p.getType).asInstanceOf[AnyRef]
         }.toSeq
     }
 
-    private def mkGetParams(m: Method, request: HttpServletRequest, codec: Codec): Seq[AnyRef] = {
+    private def mkGetParams(m: Method, request: HttpServletRequest, codec: ServerCodec): Seq[AnyRef] = {
         m.getParameters.map { p =>
             val v = Option(request.getParameter(p.getName)).getOrElse(throw new Exception("mandatory parameter absent"))
             codec.readParameter(v, p.getType).asInstanceOf[AnyRef]

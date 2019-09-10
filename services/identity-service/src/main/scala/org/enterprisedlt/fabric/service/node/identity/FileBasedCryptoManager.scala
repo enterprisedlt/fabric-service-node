@@ -11,9 +11,10 @@ import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
-import org.enterprisedlt.fabric.service.node.services.CryptoManager
 import org.enterprisedlt.fabric.service.node.util.{CertAndKey, FabricComponent, FabricCryptoMaterial, Util}
 import org.slf4j.LoggerFactory
+
+import scala.util.Try
 
 /**
   * @author Alexey Polubelov
@@ -21,7 +22,7 @@ import org.slf4j.LoggerFactory
 class FileBasedCryptoManager(
     config: ServiceConfig,
     rootDir: String
-) extends CryptoManager {
+) {
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val orgFullName = s"${config.organization.name}.${config.organization.domain}"
 
@@ -43,7 +44,7 @@ class FileBasedCryptoManager(
     //=========================================================================
 
     //=========================================================================
-    override def createFabricUser(name: String): Unit = {
+    def createFabricUser(name: String): Either[String, Unit] = {
         val notBefore = new Date
         val notAfter = Util.futureDate(Util.parsePeriod(config.certificateDuration))
         val orgConfig = config.organization
@@ -62,11 +63,12 @@ class FileBasedCryptoManager(
         Util.mkDirs(userDir)
         FabricCryptoMaterial.writeToPemFile(s"$userDir/$name.crt", theCert.certificate)
         FabricCryptoMaterial.writeToPemFile(s"$userDir/$name.key", theCert.key)
+        Right(())
     }
 
     //=========================================================================
-    override def getFabricUserKeyStore(name: String, password: String): KeyStore = {
-        createP12KeyStoreFromPems(s"$rootDir/users/$name/$name", password)
+    def getFabricUserKeyStore(name: String, password: String): Either[String, KeyStore] = {
+        Try(createP12KeyStoreFromPems(s"$rootDir/users/$name/$name", password)).toEither.left.map(_.getMessage)
     }
 
     //=========================================================================

@@ -1,13 +1,16 @@
 package org.enterprisedlt.fabric.service.node.services
 
-import java.security.KeyStore
+import org.enterprisedlt.fabric.service.node.rest.{Get, ResponseContentType}
 
 /**
   * @author Alexey Polubelov
   */
 trait CryptoManager {
 
-    def getFabricUserKeyStore(name: String, password: String): KeyStore
+    @Get("/services/identity/get-user-key")
+    @ResponseContentType("application/octet-stream")
+    def getFabricUserKeyStore(name: String, password: String): Either[String, Array[Byte]]
 
-    def createFabricUser(name: String): Unit
+    @Get("/services/identity/create-user")
+    def createFabricUser(name: String): Either[String, Unit]
 }
