@@ -26,6 +26,7 @@ import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
+import org.enterprisedlt.fabric.service.node.codec.JsonCodec
 import org.enterprisedlt.fabric.service.node.configuration.{OrganizationConfig, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.util.FabricCryptoMaterial._
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
@@ -409,6 +410,7 @@ object Util {
         keystore
     }
 
+    def createCodec: () => JsonCodec = () => new JsonCodec
 }
 
 case class PrivateCollectionConfiguration(

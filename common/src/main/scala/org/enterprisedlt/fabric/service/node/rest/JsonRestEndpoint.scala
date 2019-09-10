@@ -1,12 +1,12 @@
 package org.enterprisedlt.fabric.service.node.rest
 
-import java.io.{Reader, Writer}
 import java.lang.reflect.Method
 
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.apache.http.entity.ContentType
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
+import org.enterprisedlt.fabric.service.node.codec.Codec
 import org.slf4j.LoggerFactory
 
 /**
@@ -136,10 +136,4 @@ class JsonRestEndpoint(
 
 }
 
-trait Codec {
-    def writeResult(x: Any, stream: Writer)
 
-    def readParameter[T](p: String, pType: Class[T]): T
-
-    def readParameter[T](p: Reader, pType: Class[T]): T
-}
