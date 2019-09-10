@@ -1,10 +1,11 @@
 package org.enterprisedlt.fabric.service.node
 
-import java.io.{BufferedInputStream, File, FileInputStream}
+import java.io.{BufferedInputStream, FileInputStream}
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 
 import org.enterprisedlt.fabric.service.model.{Organization, ServiceVersion}
+import org.enterprisedlt.fabric.service.node.client.{FabricNetworkManager, OperationTimeout}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.services.FabricProcessManager

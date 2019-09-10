@@ -1,10 +1,11 @@
 package org.enterprisedlt.fabric.service.node.services
 
 import java.io.InputStream
-import java.util.concurrent.TimeUnit
 
 import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, PeerConfig}
-import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
+import org.enterprisedlt.fabric.service.node.model.JoinRequest
+import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
+import org.hyperledger.fabric.protos.common.Common.Envelope
 import org.hyperledger.fabric.sdk._
 
 /**
@@ -12,50 +13,56 @@ import org.hyperledger.fabric.sdk._
   */
 trait AdministrationManager {
 
-
+    @Post("/services/administration/define-peer")
     def definePeer(peerNode: PeerConfig): Either[String, Unit]
 
-    def addPeerToChannel(channelName: String, peerName: String): Either[String, Peer]
+    @Get("/services/administration/add-peer-to-channel")
+    def addPeerToChannel(channelName: String, peerName: String): Either[String, Array[Byte]]
 
+    @Get("/services/administration/add-anchors-to-channel")
     def addAnchorsToChannel(channelName: String, peerName: String): Either[String, Unit]
 
+    @Get("/services/administration/define-channel")
     def defineChannel(channelName: String): Either[String, Unit]
 
+    @Post("/services/administration/create-channel")
     def createChannel(channelName: String, channelTx: Envelope): Either[String, Unit]
 
+    @Post("/services/administration/define-osn")
     def defineOsn(osnConfig: OSNConfig): Either[String, Unit]
 
-    def addOsnToChannel(osnName: String, cryptoPath: String, channelName: Option[String] = None): Either[String, Unit]
+    @Post("/services/administration/add-osn-to-channel")
+    def addOsnToChannel(osnName: String, cryptoPath: String, channelName: String): Either[String, Unit]
 
-    def fetchLatestChannelBlock(channelName: String): Either[String, Block]
+    @Post("/services/administration/fetch-latest-channel-block")
+    def fetchLatestChannelBlock(channelName: String): Either[String, Array[Byte]]
 
-    def fetchLatestSystemBlock: Either[String, Block]
+    @Post("/services/administration/fetch-latest-system-block")
+    def fetchLatestSystemBlock: Either[String, Array[Byte]]
 
-    def installChainCode(channelName: String, chainCodeName: String, version: String, chainCodeTarGzStream: InputStream): Either[String, java.util.Collection[ProposalResponse]]
+    @Post("/services/administration/install-chaincode")
+    def installChainCode(channelName: String, chainCodeName: String, version: String, chainCodeTarGzStream: InputStream): Either[String, Array[Byte]]
 
+    @Post("/services/administration/instantiate-chaincode")
     def instantiateChainCode(
         channelName: String, chainCodeName: String, version: String,
         endorsementPolicy: Option[ChaincodeEndorsementPolicy] = None,
         collectionConfig: Option[ChaincodeCollectionConfiguration] = None,
         arguments: Array[String] = Array.empty
-    ): Either[String, BlockEvent#TransactionEvent]
+    ): Either[String, Array[Byte]]
 
+    @Post("/services/administration/upgrade-chaincode")
     def upgradeChainCode(
         channelName: String, ccName: String, version: String,
         endorsementPolicy: Option[ChaincodeEndorsementPolicy] = None,
         collectionConfig: Option[ChaincodeCollectionConfiguration] = None,
         arguments: Array[String] = Array.empty
-    )(implicit timeout: OperationTimeout = OperationTimeout(5, TimeUnit.MINUTES)): Either[String, Unit]
+    ): Either[String, Unit]
 
-    // def joinToNetwork(joinRequest: JoinRequest): Unit TODO
+    @Post("/services/administration/join-to-network")
+    def joinToNetwork(joinRequest: JoinRequest): Either[String, Unit]
 
-    // def joinToChannel(channelName: String, joinRequest: JoinRequest): Either[String, Unit] TODO
+    @Post("/services/administration/join-to-channel")
+    def joinToChannel(channelName: String, joinRequest: JoinRequest): Either[String, Unit]
 
-}
-
-case class OperationTimeout(
-    value: Long,
-    timeUnit: TimeUnit = TimeUnit.MILLISECONDS
-) {
-    def milliseconds: Long = timeUnit.toMillis(value)
 }
