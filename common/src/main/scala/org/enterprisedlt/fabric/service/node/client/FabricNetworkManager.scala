@@ -69,14 +69,13 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def fetchLatestChannelBlock(channelName: String): Either[String, Block] = {
+    def fetchLatestChannelBlock(channelName: String): Either[String, Block] =
         getChannel(channelName).map(fetchConfigBlock)
-    }
 
     //=========================================================================
-    def fetchLatestSystemBlock: Block = {
-        fetchConfigBlock(systemChannel)
-    }
+    def fetchLatestSystemBlock: Either[String, Block] =
+        Right(fetchConfigBlock(systemChannel))
+
 
     def definePeer(peerNode: PeerConfig): Either[String, Unit] = {
         peerByName += (peerNode.name -> peerNode)
@@ -423,6 +422,21 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
+    def fetchCollectionsConfig(peerName: String, channelName: String, chainCodeName: String): Either[String, Iterable[PrivateCollectionConfiguration]] = {
+        getChannel(channelName)
+          .flatMap { channel =>
+              peerByName
+                .get(peerName)
+                .toRight(s"Unknown peer $peerName")
+                .map { peerConfig =>
+                    val peer = mkPeer(peerConfig)
+                    val collectionConfigPackage = channel.queryCollectionsConfig(chainCodeName, peer, admin)
+                    Util.parseCollectionPackage(collectionConfigPackage)
+                }
+          }
+    }
+
+    //=========================================================================
     // Private utility functions
     //=========================================================================
 
@@ -504,20 +518,7 @@ class FabricNetworkManager(
         channel.updateChannelConfiguration(update, sign)
     }
 
-    //=========================================================================
-    def fetchCollectionsConfig(peerName: String, channelName: String, chainCodeName: String): Either[String, Iterable[PrivateCollectionConfiguration]] = {
-        getChannel(channelName)
-          .flatMap { channel =>
-              peerByName
-                .get(peerName)
-                .toRight(s"Unknown peer $peerName")
-                .map { peerConfig =>
-                    val peer = mkPeer(peerConfig)
-                    val collectionConfigPackage = channel.queryCollectionsConfig(chainCodeName, peer, admin)
-                    Util.parseCollectionPackage(collectionConfigPackage)
-                }
-          }
-    }
+
 }
 
 case class OperationTimeout(

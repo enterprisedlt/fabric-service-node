@@ -24,25 +24,23 @@ class AdministrationRestEndpoint(fabricNetworkManager: FabricNetworkManager) ext
 
     override def addPeerToChannel(request: AddPeerToChannelRequest): Either[String, Unit] = {
         logger.info(s"Adding peer to channel ...")
-
         fabricNetworkManager.addPeerToChannel(request.channelName, request.peer)
         Right(())
     }
 
     override def addAnchorsToChannel(request: AddAnchorToChannelRequest): Either[String, Unit] = {
+        logger.info(s"Adding anchors to channel...")
         fabricNetworkManager.addAnchorsToChannel(request.channelName, request.peerName)
     }
 
     override def defineChannel(channelName: String): Either[String, Unit] = {
         logger.info(s"Defining channel...")
-
         fabricNetworkManager.defineChannel(channelName)
         Right(())
     }
 
     override def createChannel(channel: CreateChannelRequest): Either[String, Unit] = {
-
-        logger.info(s"Instantiating chaincode ...")
+        logger.info(s"Creating channel ...")
         val envelope = FabricChannel.CreateChannel(channel.channelName, channel.consortiumName, channel.orgName)
         fabricNetworkManager.createChannel(channel.channelName, envelope)
     }
@@ -51,29 +49,23 @@ class AdministrationRestEndpoint(fabricNetworkManager: FabricNetworkManager) ext
         fabricNetworkManager.defineOsn(osnConfig)
 
     override def addOsnToChannel(request: AddOsnToChannelRequest): Either[String, Unit] = {
-        logger.info(s"Instantiating chaincode ...")
-
-        fabricNetworkManager.addOsnToChannel(request.channelName, request.cryptoPath, Some(request.osnName))
+        logger.info(s"Adding osn to channel ...")
+        fabricNetworkManager.addOsnToChannel(request.channelName, request.cryptoPath, Option(request.osnName))
         Right(())
     }
 
-    override def fetchLatestChannelBlock(channelName: String): Either[String, Unit] = {
-        logger.info(s"Instantiating chaincode ...")
-
-        fabricNetworkManager.fetchLatestChannelBlock(channelName)
-        Right(())
+    override def fetchLatestChannelBlock(channelName: String): Either[String, Array[Byte]] = {
+        logger.info(s"Fetching latest channel block ...")
+        fabricNetworkManager.fetchLatestChannelBlock(channelName).map(_.toByteArray)
     }
 
-    override def fetchLatestSystemBlock: Either[String, Unit] = {
-        logger.info(s"Instantiating chaincode ...")
-
-        fabricNetworkManager.fetchLatestSystemBlock
-        Right(())
+    override def fetchLatestSystemBlock: Either[String, Array[Byte]] = {
+        logger.info(s"Fetching latest system block ...")
+        fabricNetworkManager.fetchLatestSystemBlock.map(_.toByteArray)
     }
 
     override def installChainCode(request: InstallChainCodeRequest): Either[String, Unit] = {
-        logger.info(s"Instantiating chaincode ...")
-
+        logger.info(s"Installing chaincode ...")
         val chainCodePkg = new BufferedInputStream(new FileInputStream(ServiceChainCodePath))
         fabricNetworkManager.installChainCode(request.channelName,
             request.chainCodeName, request.chainCodeVersion, chainCodePkg)
@@ -96,7 +88,7 @@ class AdministrationRestEndpoint(fabricNetworkManager: FabricNetworkManager) ext
         Right(())
     }
 
-    override def joinToNetwork(request: JoinRequest): Either[String, Unit] ={
+    override def joinToNetwork(request: JoinRequest): Either[String, Unit] = {
         logger.info(s"Joining to network ...")
         fabricNetworkManager.joinToNetwork(request)
     }
@@ -113,5 +105,4 @@ class AdministrationRestEndpoint(fabricNetworkManager: FabricNetworkManager) ext
         Util.storeToFile("/opt/profile/artifacts/genesis.block", genesis)
         Right(())
     }
-
 }

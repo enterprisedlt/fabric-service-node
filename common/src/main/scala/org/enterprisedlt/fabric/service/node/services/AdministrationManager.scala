@@ -31,10 +31,10 @@ trait AdministrationManager {
     def addOsnToChannel(request: AddOsnToChannelRequest): Either[String, Unit]
 
     @Get("/fetch-latest-channel-block")
-    def fetchLatestChannelBlock(channelName: String): Either[String, Unit]
+    def fetchLatestChannelBlock(channelName: String): Either[String, Array[Byte]]
 
-    @Post("/fetch-latest-system-block")
-    def fetchLatestSystemBlock: Either[String, Unit]
+    @Get("/fetch-latest-system-block")
+    def fetchLatestSystemBlock: Either[String, Array[Byte]]
 
     @Post("/install-chaincode")
     def installChainCode(request: InstallChainCodeRequest): Either[String, Unit]
@@ -48,7 +48,7 @@ trait AdministrationManager {
     @Post("/join-to-network")
     def joinToNetwork(request: JoinRequest): Either[String, Unit]
 
-    @Get("/join-to-channel")
+    @Post("/join-to-channel")
     def joinToChannel(request: JoinToChannelRequest): Either[String, Unit]
 
     @Post("/create-genesis-block")
