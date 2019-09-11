@@ -16,8 +16,8 @@ import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 object Join {
 
     private val logger = LoggerFactory.getLogger(this.getClass)
@@ -189,7 +189,7 @@ object Join {
             val existingMspIds = currentOrganizations.map(_.mspId)
             val orgCodes = existingMspIds :+ joinRequest.organization.mspId
             val policyForCCUpgrade = Util.policyAnyOf(orgCodes)
-            val nextCollections = calculateCollectionsConfiguration(orgCodes)
+            val nextCollections = Util.calculateCollectionsConfiguration(orgCodes)
             logger.info(s"Next collections: ${nextCollections.map(_.name).mkString("[", ",", "]")}")
             logger.info(s"Upgrading version of service to $nextVersion ...")
             network.upgradeChainCode(ServiceChannelName, ServiceChainCodeName, nextVersion,
@@ -247,32 +247,7 @@ object Join {
 
 
     //=========================================================================
-    private def mkCollectionsToAdd(
-        currentOrgCodes: Iterable[String],
-        joiningOrgCode: String
-    ): Iterable[PrivateCollectionConfiguration] =
-        currentOrgCodes.map(existingOrgCode =>
-            PrivateCollectionConfiguration(
-                s"$joiningOrgCode-$existingOrgCode",
-                Array(joiningOrgCode, existingOrgCode)
-            )
-        )
 
-    private def calculateCollectionsConfiguration(
-        organizations: Array[String]
-    ): Iterable[PrivateCollectionConfiguration] =
-        organizations
-          .foldLeft(
-              (
-                List.empty[String], // initially we have no organization
-                List.empty[PrivateCollectionConfiguration]) // initially we have no collections
-          ) {
-              case ((currentOrganizationsList, collectionsList), newOrganiztion) =>
-                  (
-                    currentOrganizationsList :+ newOrganiztion,
-                    collectionsList ++ mkCollectionsToAdd(currentOrganizationsList, newOrganiztion)
-                  )
-          }._2
 
 
 }

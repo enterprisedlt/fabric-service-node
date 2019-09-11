@@ -26,10 +26,10 @@ object AdministrationNode extends App {
     private val cryptoPath = "/opt/profile/crypto"
     private val config = loadConfig("/opt/profile/service.json")
     private val user = Util.loadDefaultAdmin(config.organization.name, cryptoPath)
-    private val fabricNetworkManager = new FabricNetworkManager(config.organization, config.network.orderingNodes.head, user)
+    private val fabricNetworkManager = new FabricNetworkManager(config.organization, user)
     //
     private val server = new Server(AdministrationServiceBindPort)
-    server.setHandler(new JsonRestEndpoint(Util.createCodec, new AdministrationRestEndpoint(fabricNetworkManager)))
+    server.setHandler(new JsonRestEndpoint(Util.createCodec, new AdministrationRestEndpoint(fabricNetworkManager, config, cryptoPath)))
     //
     setupShutdownHook()
     server.start()

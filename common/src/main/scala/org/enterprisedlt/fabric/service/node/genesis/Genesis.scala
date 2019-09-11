@@ -11,10 +11,8 @@ import org.hyperledger.fabric.protos.common.MspPrincipal.MSPRole
   */
 object Genesis {
 
-    def newDefinition(profilePath: String, config: ServiceConfig, bootstrapOptions: BootstrapOptions): ChannelDefinition = {
+    def newDefinition(certificatesPath: String, config: ServiceConfig, bootstrapOptions: BootstrapOptions): ChannelDefinition = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
-        val certificatesPath = s"$profilePath/crypto"
-
         val orgMspId = config.organization.name
         val organizationDefinition =
             OrganizationDefinition(

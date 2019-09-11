@@ -3,24 +3,30 @@ package org.enterprisedlt.fabric.service.node
 import java.io.{BufferedInputStream, FileInputStream}
 
 import org.enterprisedlt.fabric.service.node.client.FabricNetworkManager
-import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, PeerConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, OSNConfig, PeerConfig, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.constant.Constant._
 import org.enterprisedlt.fabric.service.node.genesis.Genesis
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.proto.{FabricBlock, FabricChannel}
 import org.enterprisedlt.fabric.service.node.services.AdministrationManager
-import org.enterprisedlt.fabric.service.node.util.Util
+import org.enterprisedlt.fabric.service.node.util.{PrivateCollectionConfiguration, Util}
 import org.slf4j.LoggerFactory
 
 
 /**
   * @author Maxim Fedin
   */
-class AdministrationRestEndpoint(fabricNetworkManager: FabricNetworkManager) extends AdministrationManager {
+class AdministrationRestEndpoint(
+    fabricNetworkManager: FabricNetworkManager,
+    config: ServiceConfig,
+    cryptoPath: String)
+  extends AdministrationManager {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
-    override def definePeer(peerNode: PeerConfig): Either[String, Unit] =
+    override def definePeer(peerNode: PeerConfig): Either[String, Unit] = {
+        logger.info(peerNode.toString)
         fabricNetworkManager.definePeer(peerNode)
+    }
 
     override def addPeerToChannel(request: AddPeerToChannelRequest): Either[String, Unit] = {
         logger.info(s"Adding peer to channel ...")
@@ -48,11 +54,6 @@ class AdministrationRestEndpoint(fabricNetworkManager: FabricNetworkManager) ext
     override def defineOsn(osnConfig: OSNConfig): Either[String, Unit] =
         fabricNetworkManager.defineOsn(osnConfig)
 
-    override def addOsnToChannel(request: AddOsnToChannelRequest): Either[String, Unit] = {
-        logger.info(s"Adding osn to channel ...")
-        fabricNetworkManager.addOsnToChannel(request.channelName, request.cryptoPath, Option(request.osnName))
-        Right(())
-    }
 
     override def fetchLatestChannelBlock(channelName: String): Either[String, Array[Byte]] = {
         logger.info(s"Fetching latest channel block ...")
@@ -74,34 +75,62 @@ class AdministrationRestEndpoint(fabricNetworkManager: FabricNetworkManager) ext
 
     override def instantiateChainCode(request: InstantiateChainCodeRequest): Either[String, Unit] = {
         logger.info(s"Instantiating chaincode ...")
+        val endorsementPolicy = Option(request.endorsement).map(Util.policyAnyOf(_))
+        val collections = Option(request.collections).map(
+            _.map { cd =>
+                PrivateCollectionConfiguration(
+                    name = cd.name,
+                    memberIds = cd.members)
+            }
+        ).map(Util.createCollectionsConfig(_))
         fabricNetworkManager.instantiateChainCode(request.channelName,
-            request.chainCodeName, request.version, request.endorsementPolicy,
-            request.collectionConfig, request.arguments)
+            request.chainCodeName, request.version, endorsementPolicy,
+            collections, Option(request.arguments).getOrElse(Array.empty))
         Right(())
     }
 
     override def upgradeChainCode(request: InstantiateChainCodeRequest): Either[String, Unit] = {
         logger.info(s"Upgrading chaincode ...")
+        val endorsementPolicy = Option(request.endorsement).map(Util.policyAnyOf(_))
+        val collections = Option(request.collections).map(
+            _.map { cd =>
+                PrivateCollectionConfiguration(
+                    name = cd.name,
+                    memberIds = cd.members)
+            }
+        ).map(Util.createCollectionsConfig(_))
         fabricNetworkManager.upgradeChainCode(request.channelName,
-            request.chainCodeName, request.version, request.endorsementPolicy,
-            request.collectionConfig, request.arguments)
+            request.chainCodeName, request.version, endorsementPolicy,
+            collections, request.arguments)
         Right(())
     }
 
-    override def joinToNetwork(request: JoinRequest): Either[String, Unit] = {
-        logger.info(s"Joining to network ...")
-        fabricNetworkManager.joinToNetwork(request)
+    override def addOrgToConsortium(request: AddOrgToConsortiumRequest): Either[String, Unit] = {
+        logger.info(s"Adding org to consortium ...")
+        fabricNetworkManager.addOrgToChannel(request.organization, request.organizationCertificates)
     }
 
-    override def joinToChannel(request: JoinToChannelRequest): Either[String, Unit] = {
-        logger.info(s"Joining to channel ...")
-        fabricNetworkManager.joinToChannel(request.channelName, request.joinRequest)
+    override def addOsnToConsortium(osnName: String): Either[String, Unit] = {
+        logger.info(s"Adding osn to consortium ...")
+        fabricNetworkManager.addOsnToChannel(osnName, cryptoPath)
+        Right(())
     }
 
-    override def createGenesisBlock(request: CreateBlockRequest): Either[String, Unit] = {
+    override def addOrgToChannel(request: AddOrgToChannelRequest): Either[String, Unit] = {
+        logger.info(s"Adding org to channel ...")
+        fabricNetworkManager.addOrgToChannel(request.organization, request.organizationCertificates, Option(request.channelName))
+    }
+
+    override def addOsnToChannel(request: AddOsnToChannelRequest): Either[String, Unit] = {
+        logger.info(s"Adding osn to channel ...")
+        fabricNetworkManager.addOsnToChannel(request.osnName, cryptoPath, Option(request.channelName))
+        Right(())
+    }
+
+    override def createGenesisBlock(bootstrapOptions: BootstrapOptions): Either[String, Unit] = {
         logger.info(s"Creating genesis ...")
-        val genesisDefinition = Genesis.newDefinition(request.profilePath, request.config, request.bootstrapOptions)
-        val genesis = FabricBlock.create(genesisDefinition, request.bootstrapOptions)
+        val genesisDefinition = Genesis.newDefinition(cryptoPath, config, bootstrapOptions)
+        val genesis = FabricBlock.create(genesisDefinition, bootstrapOptions)
         Util.storeToFile("/opt/profile/artifacts/genesis.block", genesis)
         Right(())
     }

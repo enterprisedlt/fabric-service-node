@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node.services
 
-import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, PeerConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, OSNConfig, PeerConfig}
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
 
@@ -27,9 +27,6 @@ trait AdministrationManager {
     @Post("/define-osn")
     def defineOsn(osnConfig: OSNConfig): Either[String, Unit]
 
-    @Post("/add-osn-to-channel")
-    def addOsnToChannel(request: AddOsnToChannelRequest): Either[String, Unit]
-
     @Get("/fetch-latest-channel-block")
     def fetchLatestChannelBlock(channelName: String): Either[String, Array[Byte]]
 
@@ -45,13 +42,19 @@ trait AdministrationManager {
     @Post("/upgrade-chaincode")
     def upgradeChainCode(request: InstantiateChainCodeRequest): Either[String, Unit]
 
-    @Post("/join-to-network")
-    def joinToNetwork(request: JoinRequest): Either[String, Unit]
+    @Post("/add-org-to-consortium")
+    def addOrgToConsortium(request: AddOrgToConsortiumRequest): Either[String, Unit] // TODO
 
-    @Post("/join-to-channel")
-    def joinToChannel(request: JoinToChannelRequest): Either[String, Unit]
+    @Post("/add-osn-to-consortium")
+    def addOsnToConsortium(osnName: String): Either[String, Unit] // TODO
+
+    @Post("/add-org-to-channel")
+    def addOrgToChannel(request: AddOrgToChannelRequest): Either[String, Unit] // TODO
+
+    @Post("/add-osn-to-channel")
+    def addOsnToChannel(request: AddOsnToChannelRequest): Either[String, Unit]
 
     @Post("/create-genesis-block")
-    def createGenesisBlock(request: CreateBlockRequest): Either[String, Unit]
+    def createGenesisBlock(bootstrapOptions: BootstrapOptions): Either[String, Unit]
 
 }

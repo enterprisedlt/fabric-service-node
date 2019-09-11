@@ -1,0 +1,30 @@
+{
+  "channelName": "service",
+  "chainCodeName": "service",
+  "version": "2.0.0",
+  "endorsement": [
+    "org1",
+    "org2"
+  ],
+  "collections": [
+    {
+      "name": "org1",
+      "members": [
+        "org1"
+      ]
+    },
+    {
+      "name": "org2",
+      "members": [
+        "org2"
+      ]
+    },
+    {
+      "name": "shared",
+      "members": [
+        "org1",
+        "org2"
+      ]
+    }
+  ]
+}

@@ -3,8 +3,6 @@ package org.enterprisedlt.fabric.service.node.model
 import java.util.{Map => JavaMap}
 
 import org.enterprisedlt.fabric.service.model.Organization
-import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, ServiceConfig}
-import org.hyperledger.fabric.sdk.{ChaincodeCollectionConfiguration, ChaincodeEndorsementPolicy}
 
 case class CreateChannelRequest(
     channelName: String,
@@ -18,9 +16,8 @@ case class AddPeerToChannelRequest(
 )
 
 case class AddOsnToChannelRequest(
-    osnName: String,
-    cryptoPath: String,
-    channelName: String
+    channelName: String,
+    osnName: String
 )
 
 case class AddAnchorToChannelRequest(
@@ -38,8 +35,8 @@ case class InstantiateChainCodeRequest(
     channelName: String,
     chainCodeName: String,
     version: String,
-    endorsementPolicy: Option[ChaincodeEndorsementPolicy] = None,
-    collectionConfig: Option[ChaincodeCollectionConfiguration] = None,
+    endorsement: Array[String],
+    collections: Array[ContractCollectionDescriptor],
     arguments: Array[String] = Array.empty
 )
 
@@ -51,31 +48,21 @@ case class QueryChainCodeRequest(
 )
 
 
-case class JoinRequest(
+case class AddOrgToConsortiumRequest(
     organization: Organization,
-    //
-    organizationCertificates: OrganizationCertificates,
-    //
-    osnCertificates: OsnCertificates,
-    osnHost: String,
-    osnPort: Int
+    organizationCertificates: OrganizationCertificates
 )
 
-case class JoinToChannelRequest(
-    joinRequest: JoinRequest,
-    channelName: String
+case class AddOrgToChannelRequest(
+    channelName: String,
+    organization: Organization,
+    organizationCertificates: OrganizationCertificates
 )
 
 case class JoinResponse(
     genesis: String,
     version: String,
     knownOrganizations: Array[Organization]
-)
-
-case class CreateBlockRequest(
-    profilePath: String,
-    config: ServiceConfig,
-    bootstrapOptions: BootstrapOptions
 )
 
 case class SendMessageRequest(

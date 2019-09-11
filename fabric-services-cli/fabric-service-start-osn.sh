@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Usage example:
+# fabric-service-start-osn.sh ./test/org1/ osn1
+
 if [[ "$(uname)" = "Darwin" ]]; then
     PROFILE_PATH=$(greadlink -f "$1")
 else

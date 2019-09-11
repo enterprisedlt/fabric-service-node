@@ -7,7 +7,7 @@
 
 # build fresh chain-code and server
 gradle clean
-gradle service-node:shadowJar
+# gradle service-node:shadowJar
 gradle service-chain-code:shadowJar
 gradle services:identity-service:shadowJar
 gradle services:process-management-service:shadowJar
