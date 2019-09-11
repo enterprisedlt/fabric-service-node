@@ -12,8 +12,8 @@ import org.enterprisedlt.fabric.service.model.Contract
 import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
 import org.enterprisedlt.fabric.service.node.client.FabricNetworkManager
 import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, ServiceConfig}
-import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
-import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
+import org.enterprisedlt.fabric.service.node.constant.Constant.{ServiceChainCodeName, ServiceChannelName}
+import org.enterprisedlt.fabric.service.node.flow.Join
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.services.FabricProcessManager
 import org.enterprisedlt.fabric.service.node.util.Util._
@@ -149,7 +149,7 @@ class RestEndpoint(
                         val start = System.currentTimeMillis()
                         try {
                             val bootstrapOptions = Util.codec.fromJson(request.getReader, classOf[BootstrapOptions])
-                            initNetworkManager(Bootstrap.bootstrapOrganization(config, bootstrapOptions, processManager, hostsManager, externalAddress, user.getOrElse(throw new Exception("Need to provide user!")))) // TODO to fix
+                            // initNetworkManager(Bootstrap.bootstrapOrganization(config, bootstrapOptions, processManager, hostsManager, externalAddress, user.getOrElse(throw new Exception("Need to provide user!")))) // TODO to fix
                             val end = System.currentTimeMillis() - start
                             logger.info(s"Bootstrap done ($end ms)")
                             response.setStatus(HttpServletResponse.SC_OK)

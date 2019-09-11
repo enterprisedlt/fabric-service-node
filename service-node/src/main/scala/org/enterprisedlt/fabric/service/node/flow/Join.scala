@@ -8,7 +8,7 @@ import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, Or
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.client.{FabricNetworkManager, OperationTimeout}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
-import org.enterprisedlt.fabric.service.node.flow.Constant._
+import org.enterprisedlt.fabric.service.node.constant.Constant._
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.services.FabricProcessManager
 import org.enterprisedlt.fabric.service.node.util.{PrivateCollectionConfiguration, Util}

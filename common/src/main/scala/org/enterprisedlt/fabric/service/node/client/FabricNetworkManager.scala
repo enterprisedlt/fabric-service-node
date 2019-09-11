@@ -53,11 +53,12 @@ class FabricNetworkManager(
     //
     //
     //=========================================================================
-    def createChannel(channelName: String, channelTx: Envelope): Unit = {
+    def createChannel(channelName: String, channelTx: Envelope): Either[String, Unit] = {
         val bootstrapOsnName = mkOSN(osnByName.head._2)
         val chCfg = new ChannelConfiguration(channelTx.toByteArray)
         val sign = fabricClient.getChannelConfigurationSignature(chCfg, admin)
         fabricClient.newChannel(channelName, bootstrapOsnName, chCfg, sign)
+        Right(())
     }
 
     //=========================================================================
@@ -77,8 +78,9 @@ class FabricNetworkManager(
         fetchConfigBlock(systemChannel)
     }
 
-    def definePeer(peerNode: PeerConfig): Unit = {
+    def definePeer(peerNode: PeerConfig): Either[String, Unit] = {
         peerByName += (peerNode.name -> peerNode)
+        Right(())
     }
 
     //=========================================================================
@@ -192,7 +194,7 @@ class FabricNetworkManager(
         collectionConfig: Option[ChaincodeCollectionConfiguration] = None,
         arguments: Array[String] = Array.empty
     )(implicit timeout: OperationTimeout = OperationTimeout(5, TimeUnit.MINUTES))
-    : Unit = {
+    : Either[String, BlockEvent#TransactionEvent] = {
         getChannel(channelName)
           .flatMap { channel =>
               val upgradeProposalRequest = fabricClient.newUpgradeProposalRequest
@@ -303,7 +305,7 @@ class FabricNetworkManager(
 
     //=========================================================================
 
-    def joinToNetwork(joinRequest: JoinRequest): Unit = {
+    def joinToNetwork(joinRequest: JoinRequest): Either[String, Unit] = {
         val organizationDefinition = OrganizationDefinition(
             mspId = joinRequest.organization.mspId,
             policies = PoliciesDefinition(
@@ -344,6 +346,7 @@ class FabricNetworkManager(
             systemChannel, admin,
             FabricChannel.AddConsenter(consenter)
         )
+        Right(())
     }
 
     //=========================================================================
@@ -387,8 +390,9 @@ class FabricNetworkManager(
     }
 
 
-    def defineOsn(osnConfig: OSNConfig): Unit = {
+    def defineOsn(osnConfig: OSNConfig): Either[String, Unit] = {
         osnByName += (osnConfig.name -> osnConfig)
+        Right(())
     }
 
     //=========================================================================

@@ -1,4 +1,4 @@
-package org.enterprisedlt.fabric.service.node.flow
+package org.enterprisedlt.fabric.service.node.constant
 
 /**
   * @author Alexey Polubelov
