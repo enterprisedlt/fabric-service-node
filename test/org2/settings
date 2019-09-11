@@ -1,4 +1,17 @@
 #!/bin/sh
+export ORG=org2
+export DOMAIN=example.com
+export DOCKER_NETWORK=test_net
+
 export SERVICE_BIND_PORT=8001
+#
+export IDENTITY_SERVICE_HOST=identity.service.${ORG}.${DOMAIN}
 export IDENTITY_SERVICE_BIND_PORT=7001
+#
+export PROCESS_MANAGEMENT_HOST=process.management.service.${ORG}.${DOMAIN}
 export PROCESS_MANAGEMENT_BIND_PORT=7101
+#
+export ADMINISTRATION_SERVICE_HOST=administration.service.${ORG}.${DOMAIN}
+export ADMINISTRATION_SERVICE_BIND_PORT=7201
+#
+export SERVICE_HOST=service.${ORG}.${DOMAIN}

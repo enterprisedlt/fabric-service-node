@@ -3,16 +3,24 @@ package org.enterprisedlt.fabric.service.node.model
 import java.util.{Map => JavaMap}
 
 import org.enterprisedlt.fabric.service.model.Organization
+import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, ServiceConfig}
+import org.hyperledger.fabric.sdk.{ChaincodeCollectionConfiguration, ChaincodeEndorsementPolicy}
 
 case class CreateChannelRequest(
-    name: String
-    //    orderer: String,
-    //    fileName: String
+    channelName: String,
+    consortiumName: String,
+    orgName: String
 )
 
-case class AddPeerRequest(
+case class AddPeerToChannelRequest(
     channelName: String,
     peer: String
+)
+
+case class AddOsnToChannelRequest(
+    osnName: String,
+    cryptoPath: String,
+    channelName: String
 )
 
 case class AddAnchorToChannelRequest(
@@ -30,7 +38,9 @@ case class InstantiateChainCodeRequest(
     channelName: String,
     chainCodeName: String,
     version: String,
-    arguments: Array[String]
+    endorsementPolicy: Option[ChaincodeEndorsementPolicy] = None,
+    collectionConfig: Option[ChaincodeCollectionConfiguration] = None,
+    arguments: Array[String] = Array.empty
 )
 
 case class QueryChainCodeRequest(
@@ -40,10 +50,6 @@ case class QueryChainCodeRequest(
     arguments: Array[String]
 )
 
-case class Invite(
-    address: String,
-    key: String
-)
 
 case class JoinRequest(
     organization: Organization,
@@ -55,10 +61,21 @@ case class JoinRequest(
     osnPort: Int
 )
 
+case class JoinToChannelRequest(
+    joinRequest: JoinRequest,
+    channelName: String
+)
+
 case class JoinResponse(
     genesis: String,
     version: String,
     knownOrganizations: Array[Organization]
+)
+
+case class CreateBlockRequest(
+    profilePath: String,
+    config: ServiceConfig,
+    bootstrapOptions: BootstrapOptions
 )
 
 case class SendMessageRequest(
@@ -135,4 +152,9 @@ case class OrganizationCertificates(
 case class OsnCertificates(
     clientTlsCert: String,
     serverTlsCert: String
+)
+
+case class Invite(
+    address: String,
+    key: String
 )

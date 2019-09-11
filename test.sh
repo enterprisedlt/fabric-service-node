@@ -11,6 +11,7 @@ gradle service-node:shadowJar
 gradle service-chain-code:shadowJar
 gradle services:identity-service:shadowJar
 gradle services:process-management-service:shadowJar
+gradle services:administration-service:shadowJar
 
 # pack chain-code to deploy-able tarball
 fabric-service-pack-chaincode.sh ./service-chain-code service-chain-code.tgz
