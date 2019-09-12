@@ -68,8 +68,9 @@ class AdministrationRestEndpoint(
     }
 
     override def installChainCode(request: InstallChainCodeRequest): Either[String, Unit] = {
-        logger.info(s"Installing chaincode ...")
+        logger.info(s"Preparing service chain code ...")
         val chainCodePkg = new BufferedInputStream(new FileInputStream(ServiceChainCodePath))
+        logger.info(s"Installing chaincode ...")
         fabricNetworkManager.installChainCode(request.channelName,
             request.chainCodeName, request.chainCodeVersion, chainCodePkg)
         Right(())

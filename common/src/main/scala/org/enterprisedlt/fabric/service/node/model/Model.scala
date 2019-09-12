@@ -35,8 +35,8 @@ case class InstantiateChainCodeRequest(
     channelName: String,
     chainCodeName: String,
     version: String,
-    endorsement: Array[String],
-    collections: Array[ContractCollectionDescriptor],
+    endorsement: Array[String] = Array.empty,
+    collections: Array[ContractCollectionDescriptor] = Array.empty,
     arguments: Array[String] = Array.empty
 )
 

@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Usage example:
+# fabric-service-bootstrap.sh ./test/org1/ ./test/org1/bootstrap.json
+
 if [[ "$(uname)" = "Darwin" ]]; then
     PROFILE_PATH=$(greadlink -f "$1")
 else
@@ -10,14 +13,14 @@ fi
 
 echo "Bootstrapping organization ..."
 
-SERVICE_URL="localhost:${SERVICE_BIND_PORT}"
+SERVICE_URL="localhost:${MAINTENANCE_SERVICE_BIND_PORT}"
 
 curl -k --silent --show-error \
 --key ${PROFILE_PATH}/crypto/users/admin/admin.key \
 --cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
 --request POST \
 --data-binary "@$2" \
-https://${SERVICE_URL}/admin/bootstrap
+http://${SERVICE_URL}/bootstrap
 
 if [[ "$?" -ne 0 ]]; then
   echo "Failed to bootstrap!"

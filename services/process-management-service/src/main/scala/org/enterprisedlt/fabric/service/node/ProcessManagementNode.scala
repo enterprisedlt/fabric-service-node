@@ -52,8 +52,3 @@ object ProcessManagementNode extends App {
         Util.codec.fromJson(new FileReader(configFile), classOf[ServiceConfig])
 
 }
-
-case class ExternalAddress(
-    host: String,
-    port: Int
-)

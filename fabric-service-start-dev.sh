@@ -69,7 +69,11 @@ grep -m 1 "AdministrationNode\$ - Started" <(docker logs -f ${serviceID} 2>&1)
 
 echo "Starting Fabric Maintenance Node ..."
 serviceID=`docker run -d \
+ -e "IDENTITY_SERVICE_BIND_PORT=${IDENTITY_SERVICE_BIND_PORT}" \
  -e "MAINTENANCE_SERVICE_BIND_PORT=${MAINTENANCE_SERVICE_BIND_PORT}" \
+ -e "PROCESS_MANAGEMENT_BIND_PORT=${PROCESS_MANAGEMENT_BIND_PORT}" \
+ -e "ADMINISTRATION_SERVICE_BIND_PORT=${ADMINISTRATION_SERVICE_BIND_PORT}" \
+ -e "SERVICE_EXTERNAL_ADDRESS=${SERVICE_EXTERNAL_ADDRESS}"\
  -e "DOCKER_SOCKET=unix:///host/var/run/docker.sock" \
  -p ${MAINTENANCE_SERVICE_BIND_PORT}:${MAINTENANCE_SERVICE_BIND_PORT} \
  --volume=${PROFILE_PATH}/hosts:/etc/hosts \

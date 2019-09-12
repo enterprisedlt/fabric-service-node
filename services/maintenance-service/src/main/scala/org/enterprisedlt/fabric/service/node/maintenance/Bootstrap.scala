@@ -1,15 +1,11 @@
-package org.enterprisedlt.fabric.service.node.flow
-
-import java.io.{BufferedInputStream, FileInputStream}
+package org.enterprisedlt.fabric.service.node.maintenance
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, ServiceVersion}
-import org.enterprisedlt.fabric.service.node._
-import org.enterprisedlt.fabric.service.node.client.FabricNetworkManager
+import org.enterprisedlt.fabric.service.node.ExternalAddress
 import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, ServiceConfig}
-import org.enterprisedlt.fabric.service.node.constant.Constant._
-import org.enterprisedlt.fabric.service.node.genesis.Genesis
-import org.enterprisedlt.fabric.service.node.proto._
-import org.enterprisedlt.fabric.service.node.services.ProcessManagementManager
+import org.enterprisedlt.fabric.service.node.constant.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
+import org.enterprisedlt.fabric.service.node.model._
+import org.enterprisedlt.fabric.service.node.services.{AdministrationManager, ProcessManagementManager}
 import org.enterprisedlt.fabric.service.node.util.Util
 import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
@@ -22,66 +18,66 @@ object Bootstrap {
 
     def bootstrapOrganization(
         config: ServiceConfig,
-        bootstrapOptions: BootstrapOptions,
-        processManager: ProcessManagementManager,
-        hostsManager: HostsManager,
+        user: User,
         externalAddress: Option[ExternalAddress],
-        user: User
-    ): FabricNetworkManager = {
+        administrationClient: AdministrationManager,
+        processManagementManager: ProcessManagementManager
+    )(
+        bootstrapOptions: BootstrapOptions,
+    ): Either[String, Unit] = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
         logger.info(s"[ $organizationFullName ] - Generating certificates ...")
 
         //
         logger.info(s"[ $organizationFullName ] - Creating genesis ...")
-        val genesisDefinition = Genesis.newDefinition("/opt/profile", config, bootstrapOptions)
-        val genesis = FabricBlock.create(genesisDefinition, bootstrapOptions)
-        Util.storeToFile("/opt/profile/artifacts/genesis.block", genesis)
+        administrationClient.createGenesisBlock(bootstrapOptions)
 
         //
         logger.info(s"[ $organizationFullName ] - Starting ordering nodes ...")
         config.network.orderingNodes.foreach { osnConfig =>
-            processManager.startOrderingNode(osnConfig.name)
+            processManagementManager.startOrderingNode(osnConfig.name)
         }
         config.network.orderingNodes.foreach { osnConfig =>
-            processManager.osnAwaitJoinedToRaft(osnConfig.name)
+            processManagementManager.osnAwaitJoinedToRaft(osnConfig.name)
         }
 
         //
         logger.info(s"[ $organizationFullName ] - Starting peer nodes ...")
-        val network = new FabricNetworkManager(config.organization, config.network.orderingNodes.head, user)
         config.network.peerNodes.foreach { peerConfig =>
-            processManager.startPeerNode(peerConfig.name)
-            network.definePeer(peerConfig)
+            processManagementManager.startPeerNode(peerConfig.name)
+            administrationClient.definePeer(peerConfig)
         }
 
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
-        config.network.orderingNodes.tail.foreach { osnConfig =>
-            network.defineOsn(osnConfig)
+        config.network.orderingNodes.foreach { osnConfig =>
+            administrationClient.defineOsn(osnConfig)
         }
 
         //
         logger.info(s"[ $organizationFullName ] - Creating channel ...")
-        network.createChannel(ServiceChannelName, FabricChannel.CreateChannel(ServiceChannelName, DefaultConsortiumName, config.organization.name))
+        val createChannelRequest = CreateChannelRequest(ServiceChannelName, DefaultConsortiumName, config.organization.name)
+        administrationClient.createChannel(createChannelRequest)
 
         //
         logger.info(s"[ $organizationFullName ] - Adding peers to channel ...")
         config.network.peerNodes.foreach { peerConfig =>
-            network.addPeerToChannel(ServiceChannelName, peerConfig.name)
+            val addPeerToChannelRequest = AddPeerToChannelRequest(ServiceChannelName, peerConfig.name)
+            administrationClient.addPeerToChannel(addPeerToChannelRequest)
         }
 
         //
         logger.info(s"[ $organizationFullName ] - Updating anchors for channel ...")
         config.network.peerNodes.foreach { peerConfig =>
-            network.addAnchorsToChannel(ServiceChannelName, peerConfig.name)
+            val addAnchorToChannelRequest = AddAnchorToChannelRequest(ServiceChannelName, peerConfig.name)
+            administrationClient.addAnchorsToChannel(addAnchorToChannelRequest)
         }
 
         //
         logger.info(s"[ $organizationFullName ] - Preparing service chain code ...")
-        val chainCodePkg = new BufferedInputStream(new FileInputStream(ServiceChainCodePath))
-
         logger.info(s"[ $organizationFullName ] - Installing service chain code ...")
-        network.installChainCode(ServiceChannelName, ServiceChainCodeName, "1.0.0", chainCodePkg)
+        val installChainCodeRequest = InstallChainCodeRequest(ServiceChannelName, ServiceChainCodeName, "1.0.0")
+        administrationClient.installChainCode(installChainCodeRequest)
 
         //
         logger.info(s"[ $organizationFullName ] - Instantiating service chain code ...")
@@ -103,19 +99,18 @@ object Bootstrap {
                 networkVersion = "0"
             )
 
-        network.instantiateChainCode(
-            ServiceChannelName, ServiceChainCodeName,
-            "1.0.0", // {chainCodeVersion}.{networkVersion}
-            arguments = Array(
-                Util.codec.toJson(organization),
-                Util.codec.toJson(serviceVersion)
-            )
-        )
+        val instantiateChainCodeRequest = InstantiateChainCodeRequest(ServiceChannelName, ServiceChainCodeName, "1.0.0", arguments = Array(
+            Util.codec.toJson(organization),
+            Util.codec.toJson(serviceVersion)
+        ))
 
-        network.setupBlockListener(ServiceChannelName, new NetworkMonitor(config, network, processManager, hostsManager, serviceVersion))
+        administrationClient.instantiateChainCode(instantiateChainCodeRequest)
+
+        //        network.setupBlockListener(ServiceChannelName, new NetworkMonitor(config, network, processManager, hostsManager, serviceVersion)) TODO
 
         //
         logger.info(s"[ $organizationFullName ] - Bootstrap done.")
-        network
+        //        network
+        Right(())
     }
 }

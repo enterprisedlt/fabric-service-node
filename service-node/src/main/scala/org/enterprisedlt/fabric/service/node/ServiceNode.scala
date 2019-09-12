@@ -59,7 +59,7 @@ object ServiceNode extends App {
         address.split(":") match {
             case Array(host, port) => ExternalAddress(host, port.toInt)
             case Array(host) => ExternalAddress(host, defaultPort)
-            case _ => throw new IllegalArgumentException(s"Invalid format of external address: '$address', expected: 'HOST[:PROT]'")
+            case _ => throw new IllegalArgumentException(s"Invalid format of external address: '$address', expected: 'HOST[:PORT]'")
         }
     }
 

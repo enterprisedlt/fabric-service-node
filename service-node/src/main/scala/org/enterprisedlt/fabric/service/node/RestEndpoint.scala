@@ -13,7 +13,6 @@ import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
 import org.enterprisedlt.fabric.service.node.client.FabricNetworkManager
 import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.constant.Constant.{ServiceChainCodeName, ServiceChannelName}
-import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.services.ProcessManagementManager
 import org.enterprisedlt.fabric.service.node.util.Util._

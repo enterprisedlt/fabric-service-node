@@ -52,7 +52,3 @@ object IdentityNode extends App {
 
 }
 
-case class ExternalAddress(
-    host: String,
-    port: Int
-)
