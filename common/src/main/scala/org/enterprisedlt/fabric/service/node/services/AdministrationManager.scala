@@ -45,8 +45,8 @@ trait AdministrationManager {
     @Post("/add-org-to-consortium")
     def addOrgToConsortium(request: AddOrgToConsortiumRequest): Either[String, Unit] // TODO
 
-    @Post("/add-osn-to-consortium")
-    def addOsnToConsortium(osnName: String): Either[String, Unit] // TODO
+    @Get("/add-osn-to-consortium")
+    def addOsnToConsortium(osnName: String): Either[String, Unit]
 
     @Post("/add-org-to-channel")
     def addOrgToChannel(request: AddOrgToChannelRequest): Either[String, Unit] // TODO
