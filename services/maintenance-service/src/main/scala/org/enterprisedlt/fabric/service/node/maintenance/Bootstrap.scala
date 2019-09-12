@@ -110,7 +110,6 @@ object Bootstrap {
 
         //
         logger.info(s"[ $organizationFullName ] - Bootstrap done.")
-        //        network
         Right(())
     }
 }

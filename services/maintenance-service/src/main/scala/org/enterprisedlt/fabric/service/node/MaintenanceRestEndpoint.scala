@@ -2,7 +2,9 @@ package org.enterprisedlt.fabric.service.node
 
 import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.maintenance.Bootstrap
+import org.enterprisedlt.fabric.service.node.model.Invite
 import org.enterprisedlt.fabric.service.node.services.{AdministrationManager, MaintenanceManager, ProcessManagementManager}
+import org.enterprisedlt.fabric.service.node.util.Util
 import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
 
@@ -15,6 +17,8 @@ class MaintenanceRestEndpoint(
     administrationClient: AdministrationManager,
     config: ServiceConfig,
     user: User,
+    cryptoPath: String,
+    maintenanceServiceBindPort: Int,
     externalAddress: Option[ExternalAddress]
 )
   extends MaintenanceManager {

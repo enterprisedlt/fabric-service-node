@@ -18,7 +18,9 @@ object MaintenanceNode extends App {
     private val LogLevel = Option(Environment.get("LOG_LEVEL")).filter(_.trim.nonEmpty).getOrElse("INFO")
     private val MaintenanceServiceBindPort = Option(Environment.get("MAINTENANCE_SERVICE_BIND_PORT")).map(_.toInt).getOrElse(throw new Exception("Mandatory environment variable missing MAINTENANCE_SERVICE_BIND_PORT!"))
     private val ProcessManagementBindPort = Option(Environment.get("PROCESS_MANAGEMENT_BIND_PORT")).map(_.toInt).getOrElse(throw new Exception("Mandatory environment variable missing PROCESS_MANAGEMENT_BIND_PORT!"))
+    private val ProcessManagementServiceHost = Option(Environment.get("PROCESS_MANAGEMENT_HOST")).getOrElse(throw new Exception("Mandatory environment variable missing PROCESS_MANAGEMENT_HOST!"))
     private val AdministrationServiceBindPort = Option(Environment.get("ADMINISTRATION_SERVICE_BIND_PORT")).map(_.toInt).getOrElse(throw new Exception("Mandatory environment variable missing ADMINISTRATION_SERVICE_BIND_PORT!"))
+    private val AdministrationServiceHost = Option(Environment.get("ADMINISTRATION_SERVICE_HOST")).getOrElse(throw new Exception("Mandatory environment variable missing ADMINISTRATION_SERVICE_HOST!"))
     private val ServiceExternalAddress = Option(Environment.get("SERVICE_EXTERNAL_ADDRESS")).filter(_.trim.nonEmpty).map(parseExternalAddress(_, MaintenanceServiceBindPort))
     //
     Util.setupLogging(LogLevel)
@@ -30,11 +32,11 @@ object MaintenanceNode extends App {
     private val config = loadConfig("/opt/profile/service.json")
     private val user = Util.loadDefaultAdmin(config.organization.name, cryptoPath)
     //
-    private val processManagementClient = JsonRestClient.create[ProcessManagementManager](s"http://localhost:$ProcessManagementBindPort")
-    private val administrationClient = JsonRestClient.create[AdministrationManager](s"http://localhost:$AdministrationServiceBindPort")
+    private val processManagementClient = JsonRestClient.create[ProcessManagementManager](s"http://$ProcessManagementServiceHost:$ProcessManagementBindPort")
+    private val administrationClient = JsonRestClient.create[AdministrationManager](s"http://$AdministrationServiceHost:$AdministrationServiceBindPort")
     //
     private val server = new Server(MaintenanceServiceBindPort)
-    server.setHandler(new JsonRestEndpoint(Util.createCodec, new MaintenanceRestEndpoint(processManagementClient, administrationClient, config, user, ServiceExternalAddress)))
+    server.setHandler(new JsonRestEndpoint(Util.createCodec, new MaintenanceRestEndpoint(processManagementClient, administrationClient, config, user, cryptoPath, MaintenanceServiceBindPort, ServiceExternalAddress)))
     //
     setupShutdownHook()
     server.start()
