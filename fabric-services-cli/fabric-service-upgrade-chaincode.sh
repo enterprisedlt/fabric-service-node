@@ -25,7 +25,7 @@ http://${SERVICE_URL}/upgrade-chaincode
 
 
 if [[ "$?" -ne 0 ]]; then
-  echo "Failed to install chaincode."
+  echo "Failed to upgrade chaincode."
   exit 1
 fi
 

@@ -64,8 +64,25 @@ serviceID=`docker run -d \
 openjdk:8-jre java -jar /opt/service/administration-service.jar`
 echo "Administration Service ID: ${serviceID}"
 
-# await identity node to start up
+# await maintenance node to start up
 grep -m 1 "AdministrationNode\$ - Started" <(docker logs -f ${serviceID} 2>&1)
+
+echo "Starting Fabric Maintenance Node ..."
+serviceID=`docker run -d \
+ -e "MAINTENANCE_SERVICE_BIND_PORT=${MAINTENANCE_SERVICE_BIND_PORT}" \
+ -e "DOCKER_SOCKET=unix:///host/var/run/docker.sock" \
+ -p ${MAINTENANCE_SERVICE_BIND_PORT}:${MAINTENANCE_SERVICE_BIND_PORT} \
+ --volume=${PROFILE_PATH}/hosts:/etc/hosts \
+ --volume=${PROFILE_PATH}:/opt/profile \
+ --volume=${SERVICE_NODE_HOME}/services/maintenance-service/build/libs/maintenance-service.jar:/opt/service/maintenance-service.jar \
+ --volume=/var/run/:/host/var/run/ \
+ --name $MAINTENANCE_SERVICE_HOST \
+ --network=$DOCKER_NETWORK \
+openjdk:8-jre java -jar /opt/service/maintenance-service.jar`
+echo "Maintenance Service ID: ${serviceID}"
+
+# await maintenance node to start up
+grep -m 1 "MaintenanceNode\$ - Started" <(docker logs -f ${serviceID} 2>&1)
 
 if [[ ! -e ${PROFILE_PATH}/config/default.conf ]]; then
   mkdir -p ${PROFILE_PATH}/config/

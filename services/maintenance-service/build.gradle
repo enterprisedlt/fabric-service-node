@@ -42,7 +42,7 @@ repositories {
 }
 
 shadowJar {
-    baseName = 'maintenance-node'
+    baseName = 'maintenance-service'
     version = null
     classifier = null
 
