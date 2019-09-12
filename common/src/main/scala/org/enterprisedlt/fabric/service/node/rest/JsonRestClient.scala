@@ -42,7 +42,7 @@ object JsonRestClient {
                         val path = method.getAnnotation(classOf[Get]).value()
                         val params = method.getParameters.map(_.getName).zip(args.map(getCodec.toJson).map(URLEncoder.encode(_, StandardCharsets.UTF_8.name())))
                         val targetUrl = s"$url$path${params.map(v => s"${v._1}=${v._2}").mkString("?", "&", "")}"
-                        logger.info(s"Target URL is $targetUrl")
+                        logger.debug(s"Target URL is $targetUrl")
                         val request = new HttpGet(targetUrl)
                         val response = client.execute(request)
                         try {
@@ -70,8 +70,7 @@ object JsonRestClient {
                         val targetUrl = s"$url$path"
                         val request = new HttpPost(targetUrl)
                         val body = getCodec.toJson(args(0)).getBytes(StandardCharsets.UTF_8)
-                        logger.info(s"Executing POST to $url")
-                        logger.info(s"Body:\n$body\n")
+                        logger.debug(s"Executing POST to $targetUrl")
                         val entity = new ByteArrayEntity(body, ContentType.APPLICATION_JSON)
                         request.setEntity(entity)
                         val response = client.execute(request)
