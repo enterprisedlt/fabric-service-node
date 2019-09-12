@@ -3,14 +3,14 @@ package org.enterprisedlt.fabric.service.node
 import java.io.ByteArrayOutputStream
 
 import org.enterprisedlt.fabric.service.node.identity.FileBasedCryptoManager
-import org.enterprisedlt.fabric.service.node.services.CryptoManager
+import org.enterprisedlt.fabric.service.node.services.IdentityManager
 import org.slf4j.LoggerFactory
 
 /**
   * @author Maxim Fedin
   */
 class IdentityRestEndpoint(
-    cryptoManager: FileBasedCryptoManager) extends CryptoManager {
+    cryptoManager: FileBasedCryptoManager) extends IdentityManager {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
 

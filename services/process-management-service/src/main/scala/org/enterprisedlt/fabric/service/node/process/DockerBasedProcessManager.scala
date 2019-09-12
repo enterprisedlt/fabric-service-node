@@ -12,7 +12,7 @@ import com.github.dockerjava.api.model.Ports.Binding
 import com.github.dockerjava.api.model._
 import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientBuilder}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
-import org.enterprisedlt.fabric.service.node.services.FabricProcessManager
+import org.enterprisedlt.fabric.service.node.services.ProcessManagementManager
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
@@ -26,7 +26,7 @@ class DockerBasedProcessManager(
     selfContainerName: String,
     config: ServiceConfig,
     LogWindow: Int = 1500
-) extends FabricProcessManager {
+) extends ProcessManagementManager {
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
     private val dockerConfig = DefaultDockerClientConfig.createDefaultConfigBuilder.withDockerHost(dockerSocket).build

@@ -5,7 +5,7 @@ import org.enterprisedlt.fabric.service.node.rest.Get
 /**
   * @author Alexey Polubelov
   */
-trait FabricProcessManager {
+trait ProcessManagementManager {
 
     @Get("/start-ordering-node")
     def startOrderingNode(name: String): Either[String, String]

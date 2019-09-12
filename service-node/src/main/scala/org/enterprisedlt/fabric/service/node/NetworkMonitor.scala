@@ -8,7 +8,7 @@ import org.enterprisedlt.fabric.service.model.{Organization, ServiceVersion}
 import org.enterprisedlt.fabric.service.node.client.{FabricNetworkManager, OperationTimeout}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.constant.Constant._
-import org.enterprisedlt.fabric.service.node.services.FabricProcessManager
+import org.enterprisedlt.fabric.service.node.services.ProcessManagementManager
 import org.enterprisedlt.fabric.service.node.util.Util
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.hyperledger.fabric.protos.peer.Chaincode.ChaincodeDeploymentSpec
@@ -24,7 +24,7 @@ import scala.collection.JavaConverters._
 class NetworkMonitor(
     config: ServiceConfig,
     network: FabricNetworkManager,
-    processManager: FabricProcessManager,
+    processManager: ProcessManagementManager,
     hostsManager: HostsManager,
     initialVersion: ServiceVersion
 ) extends BlockListener {

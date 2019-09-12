@@ -5,7 +5,7 @@ import org.enterprisedlt.fabric.service.node.rest.{Get, ResponseContentType}
 /**
   * @author Alexey Polubelov
   */
-trait CryptoManager {
+trait IdentityManager {
 
     @Get("/get-user-key")
     @ResponseContentType("application/octet-stream")

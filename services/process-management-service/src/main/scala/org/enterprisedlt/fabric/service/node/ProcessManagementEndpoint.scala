@@ -1,7 +1,7 @@
 package org.enterprisedlt.fabric.service.node
 
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
-import org.enterprisedlt.fabric.service.node.services.FabricProcessManager
+import org.enterprisedlt.fabric.service.node.services.ProcessManagementManager
 import org.slf4j.LoggerFactory
 
 
@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
   */
 class ProcessManagementEndpoint(
     processManager: DockerBasedProcessManager
-) extends FabricProcessManager {
+) extends ProcessManagementManager {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
     override def startOrderingNode(name: String): Either[String, String] = {

@@ -9,7 +9,7 @@ import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, Se
 import org.enterprisedlt.fabric.service.node.constant.Constant._
 import org.enterprisedlt.fabric.service.node.genesis.Genesis
 import org.enterprisedlt.fabric.service.node.proto._
-import org.enterprisedlt.fabric.service.node.services.FabricProcessManager
+import org.enterprisedlt.fabric.service.node.services.ProcessManagementManager
 import org.enterprisedlt.fabric.service.node.util.Util
 import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
@@ -23,7 +23,7 @@ object Bootstrap {
     def bootstrapOrganization(
         config: ServiceConfig,
         bootstrapOptions: BootstrapOptions,
-        processManager: FabricProcessManager,
+        processManager: ProcessManagementManager,
         hostsManager: HostsManager,
         externalAddress: Option[ExternalAddress],
         user: User

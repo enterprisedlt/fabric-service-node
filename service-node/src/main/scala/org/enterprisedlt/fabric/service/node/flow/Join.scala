@@ -10,7 +10,7 @@ import org.enterprisedlt.fabric.service.node.client.{FabricNetworkManager, Opera
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.constant.Constant._
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.services.FabricProcessManager
+import org.enterprisedlt.fabric.service.node.services.ProcessManagementManager
 import org.enterprisedlt.fabric.service.node.util.{PrivateCollectionConfiguration, Util}
 import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
@@ -24,7 +24,7 @@ object Join {
 
     def join(
         config: ServiceConfig,
-        processManager: FabricProcessManager, invite: Invite,
+        processManager: ProcessManagementManager, invite: Invite,
         externalAddress: Option[ExternalAddress], hostsManager: HostsManager, user: User
     ): FabricNetworkManager = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
@@ -153,7 +153,7 @@ object Join {
 
     def joinOrgToNetwork(
         config: ServiceConfig,
-        processManager: FabricProcessManager, network: FabricNetworkManager,
+        processManager: ProcessManagementManager, network: FabricNetworkManager,
         joinRequest: JoinRequest, hostsManager: HostsManager
     ): Either[String, JoinResponse] = {
 
