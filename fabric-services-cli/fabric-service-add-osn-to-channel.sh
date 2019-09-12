@@ -12,7 +12,7 @@ fi
 
 . ${PROFILE_PATH}/settings
 
-REQUEST="{\"channelName\":\"$3\",\"osnName\":\"$2\"}"
+REQUEST="{\"osnName\":\"$2\",\"channelName\":\"$3\"}"
 
 echo "Adding osn to channel ..."
 

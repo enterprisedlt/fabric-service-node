@@ -1,4 +1,6 @@
 #!/bin/bash
+# Usage example:
+# fabric-service-create-create-user.sh ./test/org1/ user1
 
 if [[ "$(uname)" = "Darwin" ]]; then
     PROFILE_PATH=$(greadlink -f "$1")

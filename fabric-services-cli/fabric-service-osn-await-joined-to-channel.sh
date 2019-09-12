@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Usage example:
+# fabric-service-osn-await-joined-to-channel.sh ./test/org1/ osn1 service
+
 if [[ "$(uname)" = "Darwin" ]]; then
     PROFILE_PATH=$(greadlink -f "$1")
 else
@@ -17,7 +20,8 @@ curl -k -G --silent --show-error \
 --cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
 --request GET \
 http://${SERVICE_URL}/osn-await-joined-to-channel \
--d name=$2
+-d name=$2 \
+-d channelName=$3
 
 if [[ "$?" -ne 0 ]]; then
   echo "Failed to await osn joined to channel."

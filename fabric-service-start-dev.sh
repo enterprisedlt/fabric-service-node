@@ -57,6 +57,7 @@ serviceID=`docker run -d \
  --volume=${PROFILE_PATH}/hosts:/etc/hosts \
  --volume=${PROFILE_PATH}:/opt/profile \
  --volume=${SERVICE_NODE_HOME}/services/administration-service/build/libs/administration-service.jar:/opt/service/administration-service.jar \
+  --volume=${SERVICE_NODE_HOME}/service-chain-code/service-chain-code.tgz:/opt/service/service-chain-code.tgz \
  --volume=/var/run/:/host/var/run/ \
  --name $ADMINISTRATION_SERVICE_HOST \
  --network=$DOCKER_NETWORK \

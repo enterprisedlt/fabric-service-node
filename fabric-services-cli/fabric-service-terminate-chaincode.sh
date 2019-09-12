@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Usage example:
+# fabric-service-terminate-chaincode.sh ./test/org1/ peer0 service 1.0.0
+
+
 if [[ "$(uname)" = "Darwin" ]]; then
     PROFILE_PATH=$(greadlink -f "$1")
 else
@@ -17,7 +21,9 @@ curl -k -G --silent --show-error \
 --cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
 --request GET \
 http://${SERVICE_URL}/terminate-chaincode \
--d name=$2
+-d peerName=$2 \
+-d chainCodeName=$2 \
+-d chainCodeVersion=$2
 
 if [[ "$?" -ne 0 ]]; then
   echo "Failed to terminate chaincode."

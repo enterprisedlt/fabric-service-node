@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Usage example:
-# fabric-service-define-channel.sh ./test/org1/ service service 1.0.0
+# fabric-service-install-chaincode.sh ./test/org1/ service service 1.0.0
 
 if [[ "$(uname)" = "Darwin" ]]; then
     PROFILE_PATH=$(greadlink -f "$1")

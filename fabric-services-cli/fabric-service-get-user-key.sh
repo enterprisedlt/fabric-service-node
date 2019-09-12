@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Usage example:
+# fabric-service-get-user-key.sh ./test/org1/ user1 abc abc.p12
+
 if [[ "$(uname)" = "Darwin" ]]; then
     PROFILE_PATH=$(greadlink -f "$1")
 else
