@@ -41,4 +41,19 @@ class MaintenanceRestEndpoint(
         }
     }
 
+    override def createInvite: Either[String, Invite] = {
+        logger.info(s"Creating invite ${config.organization.name}...")
+        val address = externalAddress
+          .map(ea => s"${ea.host}:${ea.port}")
+          .getOrElse(s"maintenance.${config.organization.name}.${config.organization.domain}:$maintenanceServiceBindPort")
+        //TODO: password should be taken from request
+        val password = "join me"
+        val key = Util.createServiceUserKeyStore(config, s"join-${System.currentTimeMillis()}", password, cryptoPath)
+        val invite = Invite(
+            address,
+            Util.keyStoreToBase64(key, password)
+        )
+        Right(invite)
+    }
+
 }
