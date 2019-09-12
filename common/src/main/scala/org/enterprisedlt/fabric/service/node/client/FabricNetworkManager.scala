@@ -7,7 +7,7 @@ import java.util.concurrent.{CompletableFuture, TimeUnit}
 import com.google.protobuf.ByteString
 import org.enterprisedlt.fabric.service.model.Organization
 import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, OrganizationConfig, PeerConfig}
-import org.enterprisedlt.fabric.service.node.model.OrganizationCertificates
+import org.enterprisedlt.fabric.service.node.model.OrganizationCertificatesBase64
 import org.enterprisedlt.fabric.service.node.proto._
 import org.enterprisedlt.fabric.service.node.util.{PrivateCollectionConfiguration, Util}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
@@ -304,7 +304,7 @@ class FabricNetworkManager(
 
     //=========================================================================
 
-    def addOrgToChannel(organization: Organization, organizationCertificates: OrganizationCertificates, channelName: Option[String] = None): Either[String, Unit] = {
+    def addOrgToChannel(organization: Organization, organizationCertificates: OrganizationCertificatesBase64, channelName: Option[String] = None): Either[String, Unit] = {
         val channel: Channel =
             channelName
               .flatMap { name =>

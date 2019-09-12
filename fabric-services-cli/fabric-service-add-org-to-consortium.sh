@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Usage example:
-# fabric-service-define-osn.sh ./test/org1/ osn1 7001
+# fabric-service-add-org-to-consortium.sh ./test/org1/ ./test/org1/add-org-to-consortium.json
 
 if [[ "$(uname)" = "Darwin" ]]; then
     PROFILE_PATH=$(greadlink -f "$1")
@@ -12,21 +12,21 @@ fi
 
 . ${PROFILE_PATH}/settings
 
-OSN_CONFIG="{\"name\":\"$2\",\"port\":\"$3\"}"
 
-echo "Defining osn ..."
+
+echo "Adding org to consortium ..."
 
 SERVICE_URL="localhost:${ADMINISTRATION_SERVICE_BIND_PORT}"
 curl -k --silent --show-error \
 --key ${PROFILE_PATH}/crypto/users/admin/admin.key \
 --cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
 --request POST \
-http://${SERVICE_URL}/define-osn \
--d $OSN_CONFIG
+--data-binary "@$2" \
+http://${SERVICE_URL}/add-org-to-consortium
 
 if [[ "$?" -ne 0 ]]; then
-  echo "Failed to define osn."
-  exit 1
+    echo "Failed to add org to consortium."
+    exit 1
 fi
 
 echo "======================================================================"

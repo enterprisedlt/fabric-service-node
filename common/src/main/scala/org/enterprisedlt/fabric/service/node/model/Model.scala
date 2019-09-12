@@ -129,10 +129,15 @@ case class CallContractRequest(
 )
 
 case class OrganizationCertificates(
+    caCerts: String,
+    tlsCACerts: String,
+    adminCerts: String,
+)
+
+case class OrganizationCertificatesBase64(
     caCerts: Array[String],
     tlsCACerts: Array[String],
     adminCerts: Array[String],
-
 )
 
 

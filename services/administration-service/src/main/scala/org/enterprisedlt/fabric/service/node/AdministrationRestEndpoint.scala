@@ -1,7 +1,9 @@
 package org.enterprisedlt.fabric.service.node
 
 import java.io.{BufferedInputStream, FileInputStream}
+import java.nio.charset.StandardCharsets
 
+import com.google.protobuf.ByteString
 import org.enterprisedlt.fabric.service.node.client.FabricNetworkManager
 import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, OSNConfig, PeerConfig, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.constant.Constant._
@@ -107,7 +109,12 @@ class AdministrationRestEndpoint(
 
     override def addOrgToConsortium(request: AddOrgToConsortiumRequest): Either[String, Unit] = {
         logger.info(s"Adding org to consortium ...")
-        fabricNetworkManager.addOrgToChannel(request.organization, request.organizationCertificates)
+        val organizationCertificatesBase64 = OrganizationCertificatesBase64(
+            caCerts = Array(Util.base64Encode(ByteString.copyFrom(request.organizationCertificates.caCerts, StandardCharsets.UTF_8))),
+            tlsCACerts = Array(Util.base64Encode(ByteString.copyFrom(request.organizationCertificates.tlsCACerts, StandardCharsets.UTF_8))),
+            adminCerts = Array(Util.base64Encode(ByteString.copyFrom(request.organizationCertificates.adminCerts, StandardCharsets.UTF_8)))
+        )
+        fabricNetworkManager.addOrgToChannel(request.organization, organizationCertificatesBase64)
     }
 
     override def addOsnToConsortium(osnName: String): Either[String, Unit] = {
@@ -118,7 +125,12 @@ class AdministrationRestEndpoint(
 
     override def addOrgToChannel(request: AddOrgToChannelRequest): Either[String, Unit] = {
         logger.info(s"Adding org to channel ...")
-        fabricNetworkManager.addOrgToChannel(request.organization, request.organizationCertificates, Option(request.channelName))
+        val organizationCertificatesBase64 = OrganizationCertificatesBase64(
+            caCerts = Array(Util.base64Encode(ByteString.copyFrom(request.organizationCertificates.caCerts, StandardCharsets.UTF_8))),
+            tlsCACerts = Array(Util.base64Encode(ByteString.copyFrom(request.organizationCertificates.tlsCACerts, StandardCharsets.UTF_8))),
+            adminCerts = Array(Util.base64Encode(ByteString.copyFrom(request.organizationCertificates.adminCerts, StandardCharsets.UTF_8)))
+        )
+        fabricNetworkManager.addOrgToChannel(request.organization, organizationCertificatesBase64, Option(request.channelName))
     }
 
     override def addOsnToChannel(request: AddOsnToChannelRequest): Either[String, Unit] = {

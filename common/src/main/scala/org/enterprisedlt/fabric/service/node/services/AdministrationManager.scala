@@ -43,13 +43,13 @@ trait AdministrationManager {
     def upgradeChainCode(request: InstantiateChainCodeRequest): Either[String, Unit]
 
     @Post("/add-org-to-consortium")
-    def addOrgToConsortium(request: AddOrgToConsortiumRequest): Either[String, Unit] // TODO
+    def addOrgToConsortium(request: AddOrgToConsortiumRequest): Either[String, Unit]
 
     @Get("/add-osn-to-consortium")
     def addOsnToConsortium(osnName: String): Either[String, Unit]
 
     @Post("/add-org-to-channel")
-    def addOrgToChannel(request: AddOrgToChannelRequest): Either[String, Unit] // TODO
+    def addOrgToChannel(request: AddOrgToChannelRequest): Either[String, Unit]
 
     @Post("/add-osn-to-channel")
     def addOsnToChannel(request: AddOsnToChannelRequest): Either[String, Unit]
