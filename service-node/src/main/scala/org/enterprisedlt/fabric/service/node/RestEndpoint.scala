@@ -14,7 +14,7 @@ import org.enterprisedlt.fabric.service.node.client.FabricNetworkManager
 import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.constant.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.services.ProcessManagementManager
+import org.enterprisedlt.fabric.service.node.services.{HostsManager, ProcessManagementManager}
 import org.enterprisedlt.fabric.service.node.util.Util._
 import org.enterprisedlt.fabric.service.node.util.{PrivateCollectionConfiguration, Util}
 import org.hyperledger.fabric.sdk.User

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Usage example:
-# fabric-service-create-invite.sh ./test/org1/ invite.json
+# fabric-service-create-invite.sh ./test/org1/ ./test/invite_1.json
 
 if [[ "$(uname)" = "Darwin" ]]; then
     PROFILE_PATH=$(greadlink -f "$1")

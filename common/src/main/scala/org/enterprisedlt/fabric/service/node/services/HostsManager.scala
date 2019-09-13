@@ -1,4 +1,4 @@
-package org.enterprisedlt.fabric.service.node
+package org.enterprisedlt.fabric.service.node.services
 
 import java.io.FileWriter
 

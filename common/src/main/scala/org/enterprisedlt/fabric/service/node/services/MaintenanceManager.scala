@@ -1,7 +1,7 @@
 package org.enterprisedlt.fabric.service.node.services
 
 import org.enterprisedlt.fabric.service.node.configuration.BootstrapOptions
-import org.enterprisedlt.fabric.service.node.model.Invite
+import org.enterprisedlt.fabric.service.node.model.{Invite, JoinRequest, JoinResponse}
 import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
 
 /**
@@ -13,14 +13,13 @@ trait MaintenanceManager {
     def bootstrap(bootstrapOptions: BootstrapOptions): Either[String, Unit]
 
     @Get("/create-invite")
-    def createInvite: Either[String, Invite] // TODO
+    def createInvite: Either[String, Invite]
 
-//    @Post
-//    def requestJoin(invite: Invite): Either[String, Unit] // TODO
+    @Post("/request-join")
+    def requestJoin(invite: Invite): Either[String, Unit] // TODO
 
 
-    //
-    //    @Post
-    //    def joinNetwork(): Either[String, Unit] TODO
-    //
+    @Post("/join-org-to-network")
+    def joinOrgToNetwork(joinRequest: JoinRequest): Either[String, JoinResponse] // TODO
+
 }

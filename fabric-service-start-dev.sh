@@ -75,6 +75,8 @@ serviceID=`docker run -d \
  -e "PROCESS_MANAGEMENT_HOST=${PROCESS_MANAGEMENT_HOST}" \
  -e "ADMINISTRATION_SERVICE_BIND_PORT=${ADMINISTRATION_SERVICE_BIND_PORT}" \
  -e "ADMINISTRATION_SERVICE_HOST=${ADMINISTRATION_SERVICE_HOST}" \
+ -e "PROXY_SERVICE_BIND_PORT=${PROXY_SERVICE_BIND_PORT}" \
+ -e "PROXY_SERVICE_HOST=${PROXY_SERVICE_HOST}" \
  -e "SERVICE_EXTERNAL_ADDRESS=${SERVICE_EXTERNAL_ADDRESS}"\
  -e "DOCKER_SOCKET=unix:///host/var/run/docker.sock" \
  -p ${MAINTENANCE_SERVICE_BIND_PORT}:${MAINTENANCE_SERVICE_BIND_PORT} \
@@ -103,10 +105,10 @@ serviceID=`docker run -d \
  --name $PROXY_SERVICE_HOST \
  --network=$DOCKER_NETWORK \
 openjdk:8-jre java -jar /opt/service/proxy-service.jar`
-echo "Maintenance Service ID: ${serviceID}"
+echo "Proxy Service ID: ${serviceID}"
 
 # await maintenance node to start up
-grep -m 1 "MaintenanceNode\$ - Started" <(docker logs -f ${serviceID} 2>&1)
+grep -m 1 "ProxyNode\$ - Started" <(docker logs -f ${serviceID} 2>&1)
 
 if [[ ! -e ${PROFILE_PATH}/config/default.conf ]]; then
   mkdir -p ${PROFILE_PATH}/config/

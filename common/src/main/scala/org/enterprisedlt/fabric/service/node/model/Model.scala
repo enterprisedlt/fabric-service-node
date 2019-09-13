@@ -53,6 +53,16 @@ case class AddOrgToConsortiumRequest(
     organizationCertificates: OrganizationCertificates
 )
 
+case class JoinRequest(
+    organization: Organization,
+    //
+    organizationCertificates: OrganizationCertificates,
+    //
+    osnCertificates: OsnCertificates,
+    osnHost: String,
+    osnPort: Int
+)
+
 case class AddOrgToChannelRequest(
     channelName: String,
     organization: Organization,

@@ -21,9 +21,8 @@ object Bootstrap {
         user: User,
         externalAddress: Option[ExternalAddress],
         administrationClient: AdministrationManager,
-        processManagementManager: ProcessManagementManager
-    )(
-        bootstrapOptions: BootstrapOptions,
+        processManagementManager: ProcessManagementManager,
+        bootstrapOptions: BootstrapOptions
     ): Either[String, Unit] = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
         logger.info(s"[ $organizationFullName ] - Generating certificates ...")
