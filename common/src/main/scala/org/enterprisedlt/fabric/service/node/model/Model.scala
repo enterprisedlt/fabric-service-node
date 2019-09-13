@@ -150,3 +150,10 @@ case class Invite(
     address: String,
     key: String
 )
+
+case class ChaincodeRequest(
+    channelName: String,
+    chainCodeName: String,
+    functionName: String,
+    arguments: String*
+)

@@ -42,7 +42,7 @@ repositories {
 }
 
 shadowJar {
-    baseName = 'proxy-node'
+    baseName = 'proxy-service'
     version = null
     classifier = null
 

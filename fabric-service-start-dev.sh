@@ -90,6 +90,24 @@ echo "Maintenance Service ID: ${serviceID}"
 # await maintenance node to start up
 grep -m 1 "MaintenanceNode\$ - Started" <(docker logs -f ${serviceID} 2>&1)
 
+echo "Starting Fabric Proxy Node ..."
+serviceID=`docker run -d \
+ -e "PROXY_SERVICE_BIND_PORT=${PROXY_SERVICE_BIND_PORT}" \
+ -e "SERVICE_EXTERNAL_ADDRESS=${SERVICE_EXTERNAL_ADDRESS}"\
+ -e "DOCKER_SOCKET=unix:///host/var/run/docker.sock" \
+ -p ${PROXY_SERVICE_BIND_PORT}:${PROXY_SERVICE_BIND_PORT} \
+ --volume=${PROFILE_PATH}/hosts:/etc/hosts \
+ --volume=${PROFILE_PATH}:/opt/profile \
+ --volume=${SERVICE_NODE_HOME}/services/proxy-service/build/libs/proxy-service.jar:/opt/service/proxy-service.jar \
+ --volume=/var/run/:/host/var/run/ \
+ --name $PROXY_SERVICE_HOST \
+ --network=$DOCKER_NETWORK \
+openjdk:8-jre java -jar /opt/service/proxy-service.jar`
+echo "Maintenance Service ID: ${serviceID}"
+
+# await maintenance node to start up
+grep -m 1 "MaintenanceNode\$ - Started" <(docker logs -f ${serviceID} 2>&1)
+
 if [[ ! -e ${PROFILE_PATH}/config/default.conf ]]; then
   mkdir -p ${PROFILE_PATH}/config/
   fabric-service-balancer-generate.sh ./test/org1
