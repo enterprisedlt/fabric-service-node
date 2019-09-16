@@ -2,6 +2,7 @@ package org.enterprisedlt.fabric.service.node.model
 
 import java.util.{Map => JavaMap}
 
+import com.google.protobuf.ByteString
 import org.enterprisedlt.fabric.service.model.Organization
 
 case class CreateChannelRequest(
@@ -166,4 +167,13 @@ case class ChaincodeRequest(
     chainCodeName: String,
     functionName: String,
     arguments: String*
+)
+
+
+case class OSNDescriptor(
+    name: String,
+    host: String,
+    port: Int,
+    clientTLSCert: String,
+    serverTLSCert: String
 )

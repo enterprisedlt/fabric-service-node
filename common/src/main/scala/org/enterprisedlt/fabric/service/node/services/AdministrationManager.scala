@@ -25,7 +25,7 @@ trait AdministrationManager {
     def createChannel(request: CreateChannelRequest): Either[String, Unit]
 
     @Post("/define-osn")
-    def defineOsn(osnConfig: OSNConfig): Either[String, Unit]
+    def defineOsn(osnDescriptor: OSNDescriptor): Either[String, Unit]
 
     @Get("/fetch-latest-channel-block")
     def fetchLatestChannelBlock(channelName: String): Either[String, Array[Byte]]

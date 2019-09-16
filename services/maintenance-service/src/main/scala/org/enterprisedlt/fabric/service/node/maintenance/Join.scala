@@ -54,9 +54,9 @@ object Join {
                   .getOrElse(Array.empty)
             ),
             organizationCertificates = OrganizationCertificates(
-                caCerts = Util.readAsByteString(s"$cryptoPath/ca/ca.crt").toString,
-                tlsCACerts = Util.readAsByteString(s"$cryptoPath/tlsca/tlsca.crt").toString,
-                adminCerts = Util.readAsByteString(s"$cryptoPath/users/admin/admin.crt").toString
+                caCerts = Util.base64Encode(Util.readAsByteString(s"$cryptoPath/ca/ca.crt")),
+                tlsCACerts = Util.base64Encode(Util.readAsByteString(s"$cryptoPath/tlsca/tlsca.crt")),
+                adminCerts = Util.base64Encode(Util.readAsByteString(s"$cryptoPath/users/admin/admin.crt"))
             ),
             osnCertificates = OsnCertificates(
                 clientTlsCert = Util.base64Encode(Util.readAsByteString(s"$cryptoPath/orderers/${firstOrderingNode.name}.$organizationFullName/tls/server.crt")),
@@ -82,6 +82,14 @@ object Join {
                 //
                 logger.info(s"[ $organizationFullName ] - Starting ordering nodes ...")
                 config.network.orderingNodes.headOption.foreach { osnConfig =>
+                    val osnDescriptor = OSNDescriptor(
+                        osnConfig.name,
+                        s"${osnConfig.name}.$organizationFullName",
+                        osnConfig.port,
+                        Util.base64Encode(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt")),
+                        Util.base64Encode(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
+                    )
+                    administrationClient.defineOsn(osnDescriptor)
                     processManagementClient.startOrderingNode(osnConfig.name)
                     processManagementClient.osnAwaitJoinedToRaft(osnConfig.name)
                     processManagementClient.osnAwaitJoinedToChannel(osnConfig.name, SystemChannelName)
@@ -96,7 +104,14 @@ object Join {
                 logger.info(s"[ $organizationFullName ] - Connecting to channel ...")
                 config.network.orderingNodes.tail.foreach { osnConfig =>
                     logger.info(s"[ ${osnConfig.name}.$organizationFullName ] - Adding ordering service to channel ...")
-                    administrationClient.defineOsn(osnConfig)
+                    val osnDescriptor = OSNDescriptor(
+                        osnConfig.name,
+                        s"${osnConfig.name}.$organizationFullName",
+                        osnConfig.port,
+                        Util.base64Encode(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt")),
+                        Util.base64Encode(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
+                    )
+                    administrationClient.defineOsn(osnDescriptor)
                     administrationClient.addOsnToConsortium(osnConfig.name)
                     administrationClient.addOsnToChannel(AddOsnToChannelRequest(ServiceChannelName, osnConfig.name))
                     //

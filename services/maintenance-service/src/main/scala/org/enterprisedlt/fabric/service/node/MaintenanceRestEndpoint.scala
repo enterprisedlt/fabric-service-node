@@ -31,7 +31,7 @@ class MaintenanceRestEndpoint(
         val start = System.currentTimeMillis()
         try {
             logger.info(s"$bootstrapOptions")
-            Bootstrap.bootstrapOrganization(config, user, externalAddress, administrationClient, processManagementClient, bootstrapOptions)
+            Bootstrap.bootstrapOrganization(config, user, externalAddress, administrationClient, processManagementClient, cryptoPath, bootstrapOptions)
             val end = System.currentTimeMillis() - start
             logger.info(s"Bootstrap done ($end ms)")
             Right(())

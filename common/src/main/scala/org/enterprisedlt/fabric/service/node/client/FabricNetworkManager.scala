@@ -6,8 +6,8 @@ import java.util.concurrent.{CompletableFuture, TimeUnit}
 
 import com.google.protobuf.ByteString
 import org.enterprisedlt.fabric.service.model.Organization
-import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, OrganizationConfig, PeerConfig}
-import org.enterprisedlt.fabric.service.node.model.OrganizationCertificatesBase64
+import org.enterprisedlt.fabric.service.node.configuration.{OrganizationConfig, PeerConfig}
+import org.enterprisedlt.fabric.service.node.model.{OSNDescriptor, OrganizationCertificates}
 import org.enterprisedlt.fabric.service.node.proto._
 import org.enterprisedlt.fabric.service.node.util.{PrivateCollectionConfiguration, Util}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
@@ -45,7 +45,7 @@ class FabricNetworkManager(
     private val fabricClient = getHFClient(admin)
 
     private val peerByName = TrieMap.empty[String, PeerConfig]
-    private val osnByName = TrieMap.empty[String, OSNConfig]
+    private val osnByName = TrieMap.empty[String, OSNDescriptor]
     // ---------------------------------------------------------------------------------------------------------------
     private lazy val systemChannel: Channel = connectToSystemChannel
 
@@ -304,7 +304,7 @@ class FabricNetworkManager(
 
     //=========================================================================
 
-    def addOrgToChannel(organization: Organization, organizationCertificates: OrganizationCertificatesBase64, channelName: Option[String] = None): Either[String, Unit] = {
+    def addOrgToChannel(organization: Organization, organizationCertificates: OrganizationCertificates, channelName: Option[String] = None): Either[String, Unit] = {
         val channel: Channel =
             channelName
               .flatMap { name =>
@@ -319,9 +319,9 @@ class FabricNetworkManager(
                 writers = SignedByOneOf(MemberClassifier(organization.mspId, MSPRole.MSPRoleType.MEMBER)),
                 readers = SignedByOneOf(MemberClassifier(organization.mspId, MSPRole.MSPRoleType.MEMBER))
             ),
-            caCerts = organizationCertificates.caCerts.map(Util.base64Decode).toSeq,
-            tlsCACerts = organizationCertificates.tlsCACerts.map(Util.base64Decode).toSeq,
-            adminCerts = organizationCertificates.adminCerts.map(Util.base64Decode).toSeq
+            caCerts = Array(organizationCertificates.caCerts).map(Util.base64Decode).toSeq,
+            tlsCACerts = Array(organizationCertificates.tlsCACerts).map(Util.base64Decode).toSeq,
+            adminCerts = Array(organizationCertificates.adminCerts).map(Util.base64Decode).toSeq
         )
         val orderingOrganizationGroup = FabricBlock.newOrderingOrganizationGroup(organizationDefinition)
         logger.info("Adding application org...")
@@ -338,15 +338,15 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def addOsnToChannel(osnName: String, cryptoPath: String, channelName: Option[String] = None): Unit = {
+    def addOsnToChannel(osnName: String, channelName: Option[String] = None): Unit = {
         osnByName.get(osnName)
           .toRight(s"Unknown osn $osnName")
-          .map { osnConfig =>
+          .map { osnDescriptor =>
               val consenter = Consenter.newBuilder()
-                .setHost(s"${osnConfig.name}.$organizationFullName")
-                .setPort(osnConfig.port)
-                .setClientTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
-                .setServerTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
+                .setHost(s"${osnDescriptor.name}.$organizationFullName")
+                .setPort(osnDescriptor.port)
+                .setClientTlsCert(Util.base64Decode(osnDescriptor.clientTLSCert))
+                .setServerTlsCert(Util.base64Decode(osnDescriptor.serverTLSCert))
                 .build()
               val channel: Channel =
                   channelName
@@ -359,13 +359,13 @@ class FabricNetworkManager(
                   channel, admin,
                   FabricChannel.AddConsenter(consenter)
               )
-              val osn = mkOSN(osnConfig)
+              val osn = mkOSN(osnDescriptor)
               channel.addOrderer(osn)
           }
     }
 
-    def defineOsn(osnConfig: OSNConfig): Either[String, Unit] = {
-        osnByName += (osnConfig.name -> osnConfig)
+    def defineOsn(osnDescriptor: OSNDescriptor): Either[String, Unit] = {
+        osnByName += (osnDescriptor.name -> osnDescriptor)
         Right(())
     }
 
@@ -418,10 +418,10 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    private def mkOSN(config: OSNConfig): Orderer = {
+    private def mkOSN(osnDescriptor: OSNDescriptor): Orderer = {
         val properties = new Properties()
-        properties.put("pemFile", defaultOSNTLSPath(config.name))
-        fabricClient.newOrderer(config.name, s"grpcs://${config.name}.$organizationFullName:${config.port}", properties)
+        properties.put("pemFile", defaultOSNTLSPath(osnDescriptor.name))
+        fabricClient.newOrderer(osnDescriptor.name, s"grpcs://${osnDescriptor.name}.$organizationFullName:${osnDescriptor.port}", properties)
     }
 
     //=========================================================================

@@ -22,6 +22,7 @@ object Bootstrap {
         externalAddress: Option[ExternalAddress],
         administrationClient: AdministrationManager,
         processManagementManager: ProcessManagementManager,
+        cryptoPath:String,
         bootstrapOptions: BootstrapOptions
     ): Either[String, Unit] = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
@@ -50,7 +51,14 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
         config.network.orderingNodes.foreach { osnConfig =>
-            administrationClient.defineOsn(osnConfig)
+            val osnDescriptor = OSNDescriptor(
+                osnConfig.name,
+                s"${osnConfig.name}.$organizationFullName",
+                osnConfig.port,
+                Util.base64Encode(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt")),
+                Util.base64Encode(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
+            )
+            administrationClient.defineOsn(osnDescriptor)
         }
 
         //
