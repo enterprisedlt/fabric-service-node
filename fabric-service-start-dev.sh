@@ -112,7 +112,7 @@ grep -m 1 "ProxyNode\$ - Started" <(docker logs -f ${serviceID} 2>&1)
 
 if [[ ! -e ${PROFILE_PATH}/config/default.conf ]]; then
   mkdir -p ${PROFILE_PATH}/config/
-  fabric-service-balancer-generate.sh ./test/org1
+  fabric-service-balancer-generate.sh ${PROFILE_PATH}
 fi
 
 echo "Starting Balancer Node ..."
