@@ -1,0 +1,52 @@
+//
+plugins {
+    id 'scala'
+    id "com.github.johnrengelman.shadow" version "4.0.1"
+}
+
+compileScala.targetCompatibility = 1.8
+
+
+dependencies {
+    compile 'org.scala-lang:scala-library:2.12.0'
+    compile 'org.scala-lang.modules:scala-xml_2.12:1.1.0'
+
+    compile 'org.eclipse.jetty:jetty-server:9.4.17.v20190418'
+    compile 'org.eclipse.jetty:jetty-security:9.4.17.v20190418'
+    compile 'org.eclipse.jetty.websocket:websocket-server:9.4.17.v20190418'
+
+    compile('org.hyperledger.fabric-sdk-java:fabric-sdk-java:1.4.3') {
+        exclude group: 'commons-logging', module: 'commons-logging'
+    }
+    compile project(":service-chain-code:data-model")
+    compile project(":common")
+    compile 'org.apache.httpcomponents:httpclient:4.5.7'
+    compile 'org.apache.httpcomponents:httpmime:4.5.7'
+
+    compile 'org.slf4j:slf4j-api:1.7.25'
+    compile 'ch.qos.logback:logback-classic:1.2.3'
+    compile 'org.slf4j:jcl-over-slf4j:1.7.25'
+    compile 'org.slf4j:jul-to-slf4j:1.7.25'
+
+    compile 'com.github.docker-java:docker-java:3.1.2'
+
+    // testing libraries
+    testCompile 'junit:junit:4.12'
+    testCompile 'org.scalatest:scalatest_2.12:3.0.5'
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    jcenter()
+}
+
+shadowJar {
+    baseName = 'identity-service'
+    version = null
+    classifier = null
+
+    manifest {
+        attributes 'Main-Class': 'org.enterprisedlt.fabric.service.node.IdentityNode'
+    }
+}

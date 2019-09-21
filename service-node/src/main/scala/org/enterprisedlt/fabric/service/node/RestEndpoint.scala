@@ -2,7 +2,6 @@ package org.enterprisedlt.fabric.service.node
 
 import java.io.{BufferedInputStream, File, FileInputStream, FileReader}
 import java.nio.charset.StandardCharsets
-import java.util
 import java.util.concurrent.locks.ReentrantLock
 
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
@@ -11,10 +10,13 @@ import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
 import org.enterprisedlt.fabric.service.model.Contract
 import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
+import org.enterprisedlt.fabric.service.node.client.FabricNetworkManager
 import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, ServiceConfig}
-import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
-import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
+import org.enterprisedlt.fabric.service.node.constant.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.model._
+import org.enterprisedlt.fabric.service.node.services.{HostsManager, ProcessManagementManager}
+import org.enterprisedlt.fabric.service.node.util.Util._
+import org.enterprisedlt.fabric.service.node.util.{PrivateCollectionConfiguration, Util}
 import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
 
@@ -24,14 +26,14 @@ import scala.util.Try
   * @author Alexey Polubelov
   */
 class RestEndpoint(
-  bindPort: Int,
-  externalAddress: Option[ExternalAddress],
-  config: ServiceConfig,
-  cryptoManager: CryptoManager,
-  processManager: FabricProcessManager,
-  hostsManager: HostsManager
+    bindPort: Int,
+    externalAddress: Option[ExternalAddress],
+    config: ServiceConfig,
+    processManager: ProcessManagementManager,
+    hostsManager: HostsManager
 ) extends AbstractHandler {
     private val logger = LoggerFactory.getLogger(this.getClass)
+    val cryptoPath = "/opt/profile/crypto"
 
     override def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {
         implicit val user: Option[User] = FabricAuthenticator.getFabricUser(request)
@@ -71,7 +73,6 @@ class RestEndpoint(
                         response.setStatus(HttpServletResponse.SC_OK)
 
 
-
                     case "/admin/create-invite" =>
                         logger.info(s"Creating invite ${config.organization.name}...")
                         response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
@@ -81,7 +82,7 @@ class RestEndpoint(
                           .getOrElse(s"service.${config.organization.name}.${config.organization.domain}:$bindPort")
                         //TODO: password should be taken from request
                         val password = "join me"
-                        val key = cryptoManager.createServiceUserKeyStore(s"join-${System.currentTimeMillis()}", password)
+                        val key = createServiceUserKeyStore(config, s"join-${System.currentTimeMillis()}", password, cryptoPath)
                         val invite = Invite(
                             address,
                             Util.keyStoreToBase64(key, password)
@@ -90,22 +91,6 @@ class RestEndpoint(
                         out.flush()
                         response.setStatus(HttpServletResponse.SC_OK)
 
-                    case "/admin/create-user" =>
-                        val userName = request.getParameter("name")
-                        logger.info(s"Creating new user $userName ...")
-                        cryptoManager.createFabricUser(userName)
-                        response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
-                        response.getWriter.println("OK")
-                        response.setStatus(HttpServletResponse.SC_OK)
-
-                    case "/admin/get-user-key" =>
-                        val userName = request.getParameter("name")
-                        val password = request.getParameter("password")
-                        logger.info(s"Obtaining user key for $userName ...")
-                        val key = cryptoManager.getFabricUserKeyStore(userName, password)
-                        response.setContentType(ContentType.APPLICATION_OCTET_STREAM.getMimeType)
-                        key.store(response.getOutputStream, password.toCharArray)
-                        response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/service/list-messages" =>
                         logger.info(s"Querying messages for ${config.organization.name}...")
@@ -163,7 +148,7 @@ class RestEndpoint(
                         val start = System.currentTimeMillis()
                         try {
                             val bootstrapOptions = Util.codec.fromJson(request.getReader, classOf[BootstrapOptions])
-                            initNetworkManager(Bootstrap.bootstrapOrganization(config, bootstrapOptions, cryptoManager, processManager, hostsManager, externalAddress))
+                             initNetworkManager(Bootstrap.bootstrapOrganization(config, bootstrapOptions, processManager, hostsManager, externalAddress, user.getOrElse(throw new Exception("Need to provide user!")))) // TODO to fix
                             val end = System.currentTimeMillis() - start
                             logger.info(s"Bootstrap done ($end ms)")
                             response.setStatus(HttpServletResponse.SC_OK)
@@ -179,7 +164,7 @@ class RestEndpoint(
                           .flatMap { network =>
                               val joinRequest = Util.codec.fromJson(request.getReader, classOf[JoinRequest])
                               Join.joinOrgToNetwork(
-                                  config, cryptoManager, processManager,
+                                  config, processManager,
                                   network, joinRequest, hostsManager
                               )
                           } match {
@@ -198,8 +183,8 @@ class RestEndpoint(
                         logger.info("Requesting to joining network ...")
                         val start = System.currentTimeMillis()
                         val invite = Util.codec.fromJson(request.getReader, classOf[Invite])
-                        initNetworkManager(Join.join(config, cryptoManager, processManager, invite, externalAddress, hostsManager))
-                        val end = System.currentTimeMillis() - start
+                        initNetworkManager(Join.join(config, processManager, invite, externalAddress, hostsManager, user.getOrElse(throw new Exception("Need to provide user!")))) // TODO to fix
+                    val end = System.currentTimeMillis() - start
                         logger.info(s"Joined ($end ms)")
                         response.setStatus(HttpServletResponse.SC_OK)
 
@@ -376,7 +361,7 @@ class RestEndpoint(
 
                                       case "invoke" =>
                                           import scala.collection.JavaConverters._
-                                          implicit val transient: Option[util.Map[String, Array[Byte]]] =
+                                          implicit val transient: Option[java.util.Map[String, Array[Byte]]] =
                                               Option(contractRequest.transient)
                                                 .map(_.asScala.mapValues(_.getBytes(StandardCharsets.UTF_8)).asJava)
 

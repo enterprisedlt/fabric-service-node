@@ -1,12 +1,15 @@
 package org.enterprisedlt.fabric.service.node
 
-import java.io.{BufferedInputStream, File, FileInputStream}
+import java.io.{BufferedInputStream, FileInputStream}
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 
 import org.enterprisedlt.fabric.service.model.{Organization, ServiceVersion}
+import org.enterprisedlt.fabric.service.node.client.{FabricNetworkManager, OperationTimeout}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
-import org.enterprisedlt.fabric.service.node.flow.Constant._
+import org.enterprisedlt.fabric.service.node.constant.Constant._
+import org.enterprisedlt.fabric.service.node.services.{HostsManager, ProcessManagementManager}
+import org.enterprisedlt.fabric.service.node.util.Util
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.hyperledger.fabric.protos.peer.Chaincode.ChaincodeDeploymentSpec
 import org.hyperledger.fabric.sdk.{BlockEvent, BlockListener}
@@ -21,7 +24,7 @@ import scala.collection.JavaConverters._
 class NetworkMonitor(
     config: ServiceConfig,
     network: FabricNetworkManager,
-    processManager: FabricProcessManager,
+    processManager: ProcessManagementManager,
     hostsManager: HostsManager,
     initialVersion: ServiceVersion
 ) extends BlockListener {

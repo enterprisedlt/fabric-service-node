@@ -5,15 +5,15 @@ import java.io.FileReader
 import org.eclipse.jetty.http.HttpVersion
 import org.eclipse.jetty.security.{ConstraintMapping, ConstraintSecurityHandler}
 import org.eclipse.jetty.server._
-import org.eclipse.jetty.server.handler.{ContextHandler, ContextHandlerCollection, HandlerList, ResourceHandler}
+import org.eclipse.jetty.server.handler.{ContextHandler, ContextHandlerCollection, ResourceHandler}
 import org.eclipse.jetty.util.security.Constraint
 import org.eclipse.jetty.util.ssl.SslContextFactory
 import org.eclipse.jetty.websocket.server.WebSocketHandler
-import org.eclipse.jetty.websocket.servlet.{ServletUpgradeRequest, ServletUpgradeResponse, WebSocketCreator, WebSocketServletFactory}
+import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory
 import org.enterprisedlt.fabric.service.node.auth.{FabricAuthenticator, Role}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
-import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
-import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
+import org.enterprisedlt.fabric.service.node.services.HostsManager
+import org.enterprisedlt.fabric.service.node.util.Util
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.slf4j.LoggerFactory
 
@@ -26,29 +26,22 @@ object ServiceNode extends App {
     private val LogLevel = Option(Environment.get("LOG_LEVEL")).filter(_.trim.nonEmpty).getOrElse("INFO")
     private val ServiceBindPort = Option(Environment.get("SERVICE_BIND_PORT")).map(_.toInt).getOrElse(throw new Exception("Mandatory environment variable missing SERVICE_BIND_PORT!"))
     private val ServiceExternalAddress = Option(Environment.get("SERVICE_EXTERNAL_ADDRESS")).filter(_.trim.nonEmpty).map(parseExternalAddress(_, ServiceBindPort))
-    private val ProfilePath = Option(Environment.get("PROFILE_PATH")).getOrElse(throw new Exception("Mandatory environment variable missing PROFILE_PATH!"))
-    private val DockerSocket = Option(Environment.get("DOCKER_SOCKET")).getOrElse(throw new Exception("Mandatory environment variable missing DOCKER_SOCKET!"))
-    private val InitialName = Option(Environment.get("INITIAL_NAME")).getOrElse(throw new Exception("Mandatory environment variable missing INITIAL_NAME!"))
 
     Util.setupLogging(LogLevel)
     private val logger = LoggerFactory.getLogger(this.getClass)
-
+    private val cryptoPath = "/opt/profile/crypto"
     logger.info("Starting...")
     private val config = loadConfig("/opt/profile/service.json")
-    private val cryptography = new FileBasedCryptoManager(config, "/opt/profile/crypto")
     private val restEndpoint = new RestEndpoint(
-        ServiceBindPort, ServiceExternalAddress, config, cryptography,
-        processManager = new DockerBasedProcessManager(
-            ProfilePath, DockerSocket,
-            InitialName, config
-        ),
+        ServiceBindPort, ServiceExternalAddress, config,
+        processManager = ???, // TODO to add
         hostsManager = new HostsManager(
             "/opt/profile/hosts",
             config
         )
     )
     //TODO: make web app optional, based on configuration
-    private val server = createServer(ServiceBindPort, cryptography, restEndpoint, "/opt/profile/webapp")
+    private val server = createServer(ServiceBindPort, restEndpoint, "/opt/profile/webapp")
 
     setupShutdownHook()
     server.start()
@@ -67,7 +60,7 @@ object ServiceNode extends App {
         address.split(":") match {
             case Array(host, port) => ExternalAddress(host, port.toInt)
             case Array(host) => ExternalAddress(host, defaultPort)
-            case _ => throw new IllegalArgumentException(s"Invalid format of external address: '$address', expected: 'HOST[:PROT]'")
+            case _ => throw new IllegalArgumentException(s"Invalid format of external address: '$address', expected: 'HOST[:PORT]'")
         }
     }
 
@@ -82,10 +75,10 @@ object ServiceNode extends App {
         })
     }
 
-    private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: Handler, webAppResource: String): Server = {
+    private def createServer(bindPort: Int, endpoint: Handler, webAppResource: String): Server = {
         val server = new Server()
 
-        val connector = createTLSConnector(bindPort, server, cryptography)
+        val connector = createTLSConnector(bindPort, server)
         server.setConnectors(Array(connector))
 
         val security = new ConstraintSecurityHandler
@@ -98,7 +91,7 @@ object ServiceNode extends App {
                 newConstraint("socket", "/socket/*", Role.Admin, Role.User),
             )
         )
-        security.setAuthenticator(new FabricAuthenticator(cryptography))
+        security.setAuthenticator(new FabricAuthenticator(config.organization, cryptoPath))
 
         //
         val endpointContext = new ContextHandler("/")
@@ -128,7 +121,7 @@ object ServiceNode extends App {
         server
     }
 
-    private def createTLSConnector(bindPort: Int, server: Server, cryptography: CryptoManager): ServerConnector = {
+    private def createTLSConnector(bindPort: Int, server: Server): ServerConnector = {
         val httpConfiguration = new HttpConfiguration()
         httpConfiguration.setSecureScheme("https")
         httpConfiguration.setSecurePort(bindPort)
@@ -136,12 +129,8 @@ object ServiceNode extends App {
         //
         val sslContextFactory = new SslContextFactory.Server()
         val password = "password" // this will live only in our process memory so could be anything
-        val keyStore = cryptography.createServiceTLSKeyStore(password)
-        sslContextFactory.setKeyStore(keyStore)
         sslContextFactory.setKeyStorePassword(password)
 
-        val trustStore = cryptography.createServiceTrustStore(password)
-        sslContextFactory.setTrustStore(trustStore)
         sslContextFactory.setTrustStorePassword(password)
         sslContextFactory.setNeedClientAuth(true)
         //

@@ -1,3 +1,23 @@
 #!/bin/sh
-export SERVICE_BIND_PORT=8003
+export ORG=org4
+export DOMAIN=example.com
+export DOCKER_NETWORK=test_net
 
+export SERVICE_BIND_PORT=8003
+#
+export IDENTITY_SERVICE_HOST=identity.service.${ORG}.${DOMAIN}
+export IDENTITY_SERVICE_BIND_PORT=5002
+#
+export PROCESS_MANAGEMENT_HOST=process.management.service.${ORG}.${DOMAIN}
+export PROCESS_MANAGEMENT_BIND_PORT=5102
+#
+export ADMINISTRATION_SERVICE_HOST=administration.service.${ORG}.${DOMAIN}
+export ADMINISTRATION_SERVICE_BIND_PORT=5202
+#
+export MAINTENANCE_SERVICE_HOST=maintenance.service.${ORG}.${DOMAIN}
+export MAINTENANCE_SERVICE_BIND_PORT=5302
+#
+export PROXY_SERVICE_HOST=proxy.service.${ORG}.${DOMAIN}
+export PROXY_SERVICE_BIND_PORT=5402
+#
+export SERVICE_HOST=service.${ORG}.${DOMAIN}
