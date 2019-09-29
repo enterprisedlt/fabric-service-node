@@ -33,15 +33,18 @@ class FileBasedCryptoManager(
     // Initialization
     //
 
-    logger.info(s"Generating crypto for $orgFullName...")
-    FabricCryptoMaterial.generateOrgCrypto(
-        config.organization, orgFullName, rootDir,
-        config.network.orderingNodes.map(o => FabricComponent("orderers", o.name)) ++
-          config.network.peerNodes.map(p => FabricComponent("peers", p.name, Option("peer"))),
-        config.certificateDuration
-    )
-    logger.info(s"Generated crypto for $orgFullName.")
-
+    if(!new File(s"$rootDir/ca").exists()) {
+        logger.info(s"Generating crypto for $orgFullName...")
+        FabricCryptoMaterial.generateOrgCrypto(
+            config.organization, orgFullName, rootDir,
+            config.network.orderingNodes.map(o => FabricComponent("orderers", o.name)) ++
+              config.network.peerNodes.map(p => FabricComponent("peers", p.name, Option("peer"))),
+            config.certificateDuration
+        )
+        logger.info(s"Generated crypto for $orgFullName.")
+    } else {
+        logger.info(s"Crypto for $orgFullName already exist.")
+    }
 
     //=========================================================================
     override def loadDefaultAdmin: UserAccount =

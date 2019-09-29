@@ -1,0 +1,32 @@
+<template>
+  <div class="card aut-form-card">
+    <div class="card-header text-white bg-primary">
+      <h1>Join to network</h1>
+    </div>
+    <div class="card-body aut-form-card">
+      <form>
+
+        <div class="form-group row">
+          <label class="col-sm-2 col-form-label">Invite:</label>
+          <div class="input-group col-sm-10">
+            <div class="custom-file">
+              <input type="file" class="custom-file-input" id="inviteInput" files.bind="files">
+              <label class="custom-file-label" for="inviteInput">Choose file</label>
+            </div>
+          </div>
+<!--          <div class="custom-file col-sm-10">-->
+<!--            <input type="file" class="custom-file-input" id="customFile" files.bind="files">-->
+<!--            <label class="custom-file-label" for="customFile">Choose file</label>-->
+<!--          </div>-->
+        </div>
+
+        <hr>
+
+        <div class="form-group mt-1">
+          <button type="button" class="btn btn-outline-secondary" click.delegate="goInit()">Back</button>
+          <button type="button" class="btn btn-outline-success float-right" click.delegate="doJoin()">Join</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</template>

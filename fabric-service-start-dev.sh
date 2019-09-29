@@ -25,6 +25,7 @@ serviceID=`docker run -d \
  --volume=${PROFILE_PATH}:/opt/profile \
  --volume=${SERVICE_NODE_HOME}/service-node/build/libs/service-node.jar:/opt/service/service-node.jar \
  --volume=${SERVICE_NODE_HOME}/service-chain-code/service-chain-code.tgz:/opt/service/service-chain-code.tgz \
+ --volume=${SERVICE_NODE_HOME}/admin-console:/opt/service/admin-console \
  --volume=/var/run/:/host/var/run/ \
  --name $INITIAL_NAME \
 openjdk:8-jre java -jar /opt/service/service-node.jar`

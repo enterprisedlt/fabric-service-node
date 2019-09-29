@@ -3,6 +3,7 @@ package org.enterprisedlt.fabric.service.node
 import java.io.{BufferedInputStream, File, FileInputStream, FileReader}
 import java.nio.charset.StandardCharsets
 import java.util
+import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantLock
 
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
@@ -24,12 +25,13 @@ import scala.util.Try
   * @author Alexey Polubelov
   */
 class RestEndpoint(
-  bindPort: Int,
-  externalAddress: Option[ExternalAddress],
-  config: ServiceConfig,
-  cryptoManager: CryptoManager,
-  processManager: FabricProcessManager,
-  hostsManager: HostsManager
+    bindPort: Int,
+    externalAddress: Option[ExternalAddress],
+    config: ServiceConfig,
+    cryptoManager: CryptoManager,
+    processManager: FabricProcessManager,
+    hostsManager: HostsManager,
+    state: AtomicReference[FabricServiceState]
 ) extends AbstractHandler {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -40,6 +42,10 @@ class RestEndpoint(
                 request.getPathInfo match {
                     case "/service/organization-msp-id" =>
                         response.getWriter.println(Util.codec.toJson(config.organization.name))
+                        response.setStatus(HttpServletResponse.SC_OK)
+
+                    case "/service/state" =>
+                        response.getWriter.println(Util.codec.toJson(state.get()))
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/service/list-organizations" =>
@@ -69,8 +75,6 @@ class RestEndpoint(
                         response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                         response.getWriter.println(result)
                         response.setStatus(HttpServletResponse.SC_OK)
-
-
 
                     case "/admin/create-invite" =>
                         logger.info(s"Creating invite ${config.organization.name}...")
@@ -163,7 +167,8 @@ class RestEndpoint(
                         val start = System.currentTimeMillis()
                         try {
                             val bootstrapOptions = Util.codec.fromJson(request.getReader, classOf[BootstrapOptions])
-                            initNetworkManager(Bootstrap.bootstrapOrganization(config, bootstrapOptions, cryptoManager, processManager, hostsManager, externalAddress))
+                            state.set(FabricServiceState(FabricServiceState.BootstrapStarted))
+                            initNetworkManager(Bootstrap.bootstrapOrganization(config, bootstrapOptions, cryptoManager, processManager, hostsManager, externalAddress, state))
                             val end = System.currentTimeMillis() - start
                             logger.info(s"Bootstrap done ($end ms)")
                             response.setStatus(HttpServletResponse.SC_OK)
@@ -198,7 +203,8 @@ class RestEndpoint(
                         logger.info("Requesting to joining network ...")
                         val start = System.currentTimeMillis()
                         val invite = Util.codec.fromJson(request.getReader, classOf[Invite])
-                        initNetworkManager(Join.join(config, cryptoManager, processManager, invite, externalAddress, hostsManager))
+                        state.set(FabricServiceState(FabricServiceState.JoinStarted))
+                        initNetworkManager(Join.join(config, cryptoManager, processManager, invite, externalAddress, hostsManager, state))
                         val end = System.currentTimeMillis() - start
                         logger.info(s"Joined ($end ms)")
                         response.setStatus(HttpServletResponse.SC_OK)

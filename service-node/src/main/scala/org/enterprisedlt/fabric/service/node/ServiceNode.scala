@@ -1,6 +1,7 @@
 package org.enterprisedlt.fabric.service.node
 
 import java.io.FileReader
+import java.util.concurrent.atomic.AtomicReference
 
 import org.eclipse.jetty.http.HttpVersion
 import org.eclipse.jetty.security.{ConstraintMapping, ConstraintSecurityHandler}
@@ -13,6 +14,7 @@ import org.eclipse.jetty.websocket.servlet.{ServletUpgradeRequest, ServletUpgrad
 import org.enterprisedlt.fabric.service.node.auth.{FabricAuthenticator, Role}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
+import org.enterprisedlt.fabric.service.node.model.FabricServiceState
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.slf4j.LoggerFactory
@@ -34,6 +36,7 @@ object ServiceNode extends App {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
     logger.info("Starting...")
+    private val serviceState = new AtomicReference(FabricServiceState(FabricServiceState.NotInitialized))
     private val config = loadConfig("/opt/profile/service.json")
     private val cryptography = new FileBasedCryptoManager(config, "/opt/profile/crypto")
     private val restEndpoint = new RestEndpoint(
@@ -45,10 +48,16 @@ object ServiceNode extends App {
         hostsManager = new HostsManager(
             "/opt/profile/hosts",
             config
-        )
+        ),
+        serviceState
     )
     //TODO: make web app optional, based on configuration
-    private val server = createServer(ServiceBindPort, cryptography, restEndpoint, "/opt/profile/webapp")
+    private val server =
+        createServer(
+            ServiceBindPort, cryptography, restEndpoint,
+            "/opt/profile/webapp",
+            "/opt/service/admin-console"
+        )
 
     setupShutdownHook()
     server.start()
@@ -82,7 +91,7 @@ object ServiceNode extends App {
         })
     }
 
-    private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: Handler, webAppResource: String): Server = {
+    private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: Handler, webAppResource: String, adminConsole: String): Server = {
         val server = new Server()
 
         val connector = createTLSConnector(bindPort, server, cryptography)
@@ -92,9 +101,10 @@ object ServiceNode extends App {
         security.setConstraintMappings(
             Array(
                 newConstraint("admin", "/admin/*", Role.Admin),
+                newConstraint("admin-console", "/admin-console/*", Role.Admin),
                 newConstraint("join", "/join-network", Role.Admin, Role.JoinToken),
                 newConstraint("service", "/service/*", Role.Admin, Role.User),
-                newConstraint("webapp", "/webapp/*", Role.Admin, Role.User),
+                newConstraint("webapp", "/application/*", Role.Admin, Role.User),
                 newConstraint("socket", "/socket/*", Role.Admin, Role.User),
             )
         )
@@ -107,12 +117,24 @@ object ServiceNode extends App {
         // add serving for web app:
         Util.mkDirs(webAppResource)
         val webAppContext = new ContextHandler()
-        webAppContext.setContextPath("/webapp")
+        webAppContext.setContextPath("/application")
         val webApp = new ResourceHandler()
         webApp.setResourceBase(webAppResource)
         webApp.setDirectoriesListed(false)
         webApp.setWelcomeFiles(Array("index.html"))
         webAppContext.setHandler(webApp)
+
+        // add serving for web app:
+        Util.mkDirs(adminConsole)
+        val adminApp = new ResourceHandler()
+        adminApp.setResourceBase(adminConsole)
+        adminApp.setDirectoriesListed(false)
+        adminApp.setWelcomeFiles(Array("index.html"))
+
+        val adminAppContext = new ContextHandler()
+        adminAppContext.setContextPath("/admin-console")
+        adminAppContext.setHandler(adminApp)
+
 
         //TODO: make websocket server optional, based on configuration
         val webSocketContext = new ContextHandler("/socket")
@@ -123,7 +145,7 @@ object ServiceNode extends App {
         }
         webSocketContext.setHandler(wsHandler)
 
-        security.setHandler(new ContextHandlerCollection(webAppContext, webSocketContext, endpointContext))
+        security.setHandler(new ContextHandlerCollection(webAppContext, adminAppContext, webSocketContext, endpointContext))
         server.setHandler(security)
         server
     }
