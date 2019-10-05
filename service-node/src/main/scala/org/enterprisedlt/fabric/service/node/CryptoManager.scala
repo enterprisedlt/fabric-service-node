@@ -3,13 +3,17 @@ package org.enterprisedlt.fabric.service.node
 import java.security.KeyStore
 import java.security.cert.X509Certificate
 
-import org.enterprisedlt.fabric.service.node.cryptography.UserAccount
+import org.enterprisedlt.fabric.service.node.configuration.NetworkConfig
+import org.enterprisedlt.fabric.service.node.cryptography.{FabricComponent, UserAccount}
 import org.hyperledger.fabric.sdk.User
 
 /**
   * @author Alexey Polubelov
   */
 trait CryptoManager {
+
+    def createOrgCrypto(network: NetworkConfig, orgFullName: String, components: Array[FabricComponent]): Unit
+
     def loadDefaultAdmin: User
 
     def findUser(user: X509Certificate): Either[String, UserAccount]

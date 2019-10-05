@@ -12,11 +12,9 @@ import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
   */
 object FabricCryptoMaterial {
 
-    def generateOrgCrypto(orgConfig: OrganizationConfig, orgFullName: String, path: String, components: Array[FabricComponent], certificateDuration: String): Unit = {
-        val notBefore = new Date()
-        val notAfter = Util.futureDate(Util.parsePeriod(certificateDuration))
+    def generateOrgCrypto(orgConfig: OrganizationConfig, orgFullName: String, path: String, notBefore: Date, notAfter: Date): OrganizationCryptoMaterial = {
         //    CA
-        val caCert = FabricCryptoMaterial.generateCACert(
+        val caCert: CertAndKey = FabricCryptoMaterial.generateCACert(
             organization = orgFullName,
             location = orgConfig.location,
             state = orgConfig.state,
@@ -30,7 +28,7 @@ object FabricCryptoMaterial {
         writeToPemFile(s"$caDir/ca.key", caCert.key)
 
         //    TLS CA
-        val tlscaCert = FabricCryptoMaterial.generateTLSCACert(
+        val tlscaCert: CertAndKey = FabricCryptoMaterial.generateTLSCACert(
             organization = orgFullName,
             location = orgConfig.location,
             state = orgConfig.state,
@@ -44,7 +42,7 @@ object FabricCryptoMaterial {
         writeToPemFile(s"$tlscaDir/tlsca.key", tlscaCert.key)
 
         //    Admin
-        val adminCert = FabricCryptoMaterial.generateAdminCert(
+        val adminCert: CertAndKey = FabricCryptoMaterial.generateAdminCert(
             organization = orgFullName,
             location = orgConfig.location,
             state = orgConfig.state,
@@ -58,11 +56,17 @@ object FabricCryptoMaterial {
         writeToPemFile(s"$adminDir/admin.crt", adminCert.certificate)
         writeToPemFile(s"$adminDir/admin.key", adminCert.key)
 
-        components.foreach { component =>
-            createComponentDir(orgConfig, orgFullName, component, path, caCert, tlscaCert, adminCert, notBefore, notAfter)
-        }
+        OrganizationCryptoMaterial(
+            caCert,
+            tlscaCert,
+            adminCert)
+    }
 
-        createServiceDir(orgConfig, orgFullName, path, caCert, tlscaCert, notBefore, notAfter)
+    def createOrgCrypto(organizationConfig: OrganizationConfig, orgFullName: String, path: String, orgCrypto: OrganizationCryptoMaterial, notBefore: Date, notAfter: Date, components: Array[FabricComponent]): Unit = {
+        components.foreach { component =>
+            createComponentDir(organizationConfig, orgFullName, component, path, orgCrypto.caCert, orgCrypto.tlscaCert, orgCrypto.adminCert, notBefore, notAfter)
+        }
+        createServiceDir(organizationConfig, orgFullName, path, orgCrypto.caCert, orgCrypto.tlscaCert, notBefore, notAfter)
     }
 
     private def createComponentDir(

@@ -38,7 +38,7 @@ object ServiceNode extends App {
     logger.info("Starting...")
     private val serviceState = new AtomicReference(FabricServiceState(FabricServiceState.NotInitialized))
     private val config = loadConfig("/opt/profile/service.json")
-    private val cryptography = new FileBasedCryptoManager(config, "/opt/profile/crypto")
+    private val cryptography = new FileBasedCryptoManager(config.organization, config.certificateDuration,"/opt/profile/crypto")
     private val restEndpoint = new RestEndpoint(
         ServiceBindPort, ServiceExternalAddress, config, cryptography,
         processManager = new DockerBasedProcessManager(
