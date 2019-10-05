@@ -45,13 +45,13 @@ class FileBasedCryptoManager(
     } else {
         logger.info(s"Crypto for $orgFullName already exist.")
         OrganizationCryptoMaterial(
-            loadCertAndKey(s"$rootDir/ca/"),
-            loadCertAndKey(s"$rootDir/tlsca/"),
-            loadCertAndKey(s"$rootDir/users/admin/")
+            loadCertAndKey(s"$rootDir/ca/ca"),
+            loadCertAndKey(s"$rootDir/tlsca/tlsca"),
+            loadCertAndKey(s"$rootDir/users/admin/admin")
         )
     }
 
-    override def createOrgCrypto(network: NetworkConfig, orgFullName: String, components: Array[FabricComponent]): Unit = {
+    override def createOrgCrypto(network: NetworkConfig, orgFullName: String): Unit = {
         val components = network.orderingNodes.map(o => FabricComponent("orderers", o.name)) ++
           network.peerNodes.map(p => FabricComponent("peers", p.name, Option("peer")))
         FabricCryptoMaterial.createOrgCrypto(organizationConfig, orgFullName, rootDir, orgCryptoMaterial, notBefore, notAfter, components)
