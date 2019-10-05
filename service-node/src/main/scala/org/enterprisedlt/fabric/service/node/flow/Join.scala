@@ -1,3 +1,4 @@
+/*
 package org.enterprisedlt.fabric.service.node.flow
 
 import java.io.{BufferedInputStream, FileInputStream}
@@ -25,7 +26,7 @@ object Join {
         externalAddress: Option[ExternalAddress],
         hostsManager: HostsManager,
         state: AtomicReference[FabricServiceState]
-    ): FabricNetworkManager = {
+    ): Managers = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
         val cryptoPath = "/opt/profile/crypto"
         val firstOrderingNode = config.network.orderingNodes.head
@@ -159,7 +160,7 @@ object Join {
                 state.set(FabricServiceState(FabricServiceState.JoinSettingUpBlockListener))
                 network.setupBlockListener(ServiceChannelName, new NetworkMonitor(config, network, processManager, hostsManager, serviceVersion))
                 state.set(FabricServiceState(FabricServiceState.Ready))
-                network
+                Managers(network,???)
         }
     }
 
@@ -288,3 +289,4 @@ object Join {
 
 
 }
+*/

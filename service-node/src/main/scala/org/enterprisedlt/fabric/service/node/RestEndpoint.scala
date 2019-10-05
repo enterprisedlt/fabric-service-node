@@ -4,7 +4,6 @@ import java.io.{BufferedInputStream, File, FileInputStream, FileReader}
 import java.nio.charset.StandardCharsets
 import java.util
 import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.locks.ReentrantLock
 
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.apache.http.entity.ContentType
@@ -13,8 +12,8 @@ import org.eclipse.jetty.server.handler.AbstractHandler
 import org.enterprisedlt.fabric.service.model.Contract
 import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
 import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.flow.Bootstrap
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
-import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
 import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
@@ -29,8 +28,10 @@ class RestEndpoint(
     externalAddress: Option[ExternalAddress],
     config: ServiceConfig,
     cryptoManager: CryptoManager,
-    processManager: FabricProcessManager,
     hostsManager: HostsManager,
+    profilePath: String,
+    dockerSocket: String,
+    initialName: String,
     state: AtomicReference[FabricServiceState]
 ) extends AbstractHandler {
     private val logger = LoggerFactory.getLogger(this.getClass)
@@ -168,7 +169,17 @@ class RestEndpoint(
                         try {
                             val bootstrapOptions = Util.codec.fromJson(request.getReader, classOf[BootstrapOptions])
                             state.set(FabricServiceState(FabricServiceState.BootstrapStarted))
-                            initNetworkManager(Bootstrap.bootstrapOrganization(config, bootstrapOptions, cryptoManager, processManager, hostsManager, externalAddress, state))
+                            initManagers(Bootstrap.bootstrapOrganization(
+                                config,
+                                bootstrapOptions,
+                                cryptoManager,
+                                hostsManager,
+                                externalAddress,
+                                profilePath,
+                                dockerSocket,
+                                initialName,
+                                state)
+                            )
                             val end = System.currentTimeMillis() - start
                             logger.info(s"Bootstrap done ($end ms)")
                             response.setStatus(HttpServletResponse.SC_OK)
@@ -178,36 +189,36 @@ class RestEndpoint(
                                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                         }
 
-                    case "/join-network" =>
-                        networkManager
-                          .toRight("Network is not initialized yet")
-                          .flatMap { network =>
-                              val joinRequest = Util.codec.fromJson(request.getReader, classOf[JoinRequest])
-                              Join.joinOrgToNetwork(
-                                  config, cryptoManager, processManager,
-                                  network, joinRequest, hostsManager
-                              )
-                          } match {
-                            case Right(joinResponse) =>
-                                val out = response.getOutputStream
-                                out.print(Util.codec.toJson(joinResponse))
-                                out.flush()
-                                response.setStatus(HttpServletResponse.SC_OK)
-
-                            case Left(error) =>
-                                logger.error(error)
-                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                        }
-
-                    case "/admin/request-join" =>
-                        logger.info("Requesting to joining network ...")
-                        val start = System.currentTimeMillis()
-                        val invite = Util.codec.fromJson(request.getReader, classOf[Invite])
-                        state.set(FabricServiceState(FabricServiceState.JoinStarted))
-                        initNetworkManager(Join.join(config, cryptoManager, processManager, invite, externalAddress, hostsManager, state))
-                        val end = System.currentTimeMillis() - start
-                        logger.info(s"Joined ($end ms)")
-                        response.setStatus(HttpServletResponse.SC_OK)
+//                    case "/join-network" =>
+//                        networkManager
+//                          .toRight("Network is not initialized yet")
+//                          .flatMap { network =>
+//                              val joinRequest = Util.codec.fromJson(request.getReader, classOf[JoinRequest])
+//                              Join.joinOrgToNetwork(
+//                                  config, cryptoManager,
+//                                  network, joinRequest, hostsManager
+//                              )
+//                          } match {
+//                            case Right(joinResponse) =>
+//                                val out = response.getOutputStream
+//                                out.print(Util.codec.toJson(joinResponse))
+//                                out.flush()
+//                                response.setStatus(HttpServletResponse.SC_OK)
+//
+//                            case Left(error) =>
+//                                logger.error(error)
+//                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+//                        }
+//
+//                    case "/admin/request-join" =>
+//                        logger.info("Requesting to joining network ...")
+//                        val start = System.currentTimeMillis()
+//                        val invite = Util.codec.fromJson(request.getReader, classOf[Invite])
+//                        state.set(FabricServiceState(FabricServiceState.JoinStarted))
+//                        initManagers(Join.join(config, cryptoManager, invite, externalAddress, hostsManager, state))
+//                        val end = System.currentTimeMillis() - start
+//                        logger.info(s"Joined ($end ms)")
+//                        response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/admin/create-contract" =>
                         logger.info("Creating contract ...")
@@ -430,24 +441,16 @@ class RestEndpoint(
     }
 
 
-    private val networkManagerLock = new ReentrantLock()
-    private var networkManager_ : Option[FabricNetworkManager] = None
+    private val managers = new AtomicReference[Managers]()
 
-    private def networkManager: Option[FabricNetworkManager] = {
-        networkManagerLock.lock()
-        try {
-            networkManager_
-        } finally {
-            networkManagerLock.unlock()
-        }
-    }
+    private def networkManager: Option[FabricNetworkManager] = Option(managers.get()).map(_.networkManager)
 
-    private def initNetworkManager(value: FabricNetworkManager): Unit = {
-        networkManagerLock.lock()
-        try {
-            networkManager_ = Option(value)
-        } finally {
-            networkManagerLock.unlock()
-        }
-    }
+    private def initManagers(managers: Managers): Unit = this.managers.set(managers)
+
+
 }
+
+case class Managers(
+    networkManager: FabricNetworkManager,
+    processManager: FabricProcessManager
+)

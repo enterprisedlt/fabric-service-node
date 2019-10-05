@@ -8,6 +8,7 @@ import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model.FabricServiceState
+import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
 import org.enterprisedlt.fabric.service.node.proto._
 import org.slf4j.LoggerFactory
 
@@ -21,13 +22,27 @@ object Bootstrap {
         config: ServiceConfig,
         bootstrapOptions: BootstrapOptions,
         cryptography: CryptoManager,
-        processManager: FabricProcessManager,
         hostsManager: HostsManager,
         externalAddress: Option[ExternalAddress],
+        profilePath: String,
+        dockerSocket: String,
+        initialName: String,
         state: AtomicReference[FabricServiceState]
-    ): FabricNetworkManager = {
+    ): Managers = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
         //
+        logger.info(s"[ $organizationFullName ] - Starting process manager ...")
+        val processManager = new DockerBasedProcessManager(
+            profilePath,
+            dockerSocket,
+            initialName,
+            config,
+            bootstrapOptions.network
+        )
+        //
+        logger.info(s"[ $organizationFullName ] - Generating crypto material...")
+        cryptography.createOrgCrypto(bootstrapOptions.network, organizationFullName)
+
         logger.info(s"[ $organizationFullName ] - Creating genesis ...")
         state.set(FabricServiceState(FabricServiceState.BootstrapCreatingGenesis))
 
@@ -38,26 +53,26 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Starting ordering nodes ...")
         state.set(FabricServiceState(FabricServiceState.BootstrapStartingOrdering))
-        config.network.orderingNodes.foreach { osnConfig =>
+        bootstrapOptions.network.orderingNodes.foreach { osnConfig =>
             processManager.startOrderingNode(osnConfig.name)
         }
         state.set(FabricServiceState(FabricServiceState.BootstrapAwaitingOrdering))
-        config.network.orderingNodes.foreach { osnConfig =>
+        bootstrapOptions.network.orderingNodes.foreach { osnConfig =>
             processManager.osnAwaitJoinedToRaft(osnConfig.name)
         }
 
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
         val admin = cryptography.loadDefaultAdmin
-        val network = new FabricNetworkManager(config.organization, config.network.orderingNodes.head, admin)
+        val network = new FabricNetworkManager(config.organization, bootstrapOptions.network.orderingNodes.head, admin)
         //
-        config.network.orderingNodes.tail.foreach { osnConfig =>
+        bootstrapOptions.network.orderingNodes.tail.foreach { osnConfig =>
             network.defineOsn(osnConfig)
         }
 
         logger.info(s"[ $organizationFullName ] - Starting peer nodes ...")
         state.set(FabricServiceState(FabricServiceState.BootstrapStartingPeers))
-        config.network.peerNodes.foreach { peerConfig =>
+        bootstrapOptions.network.peerNodes.foreach { peerConfig =>
             processManager.startPeerNode(peerConfig.name)
             network.definePeer(peerConfig)
         }
@@ -70,14 +85,14 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Adding peers to channel ...")
         state.set(FabricServiceState(FabricServiceState.BootstrapAddingPeersToChannel))
-        config.network.peerNodes.foreach { peerConfig =>
+        bootstrapOptions.network.peerNodes.foreach { peerConfig =>
             network.addPeerToChannel(ServiceChannelName, peerConfig.name)
         }
 
         //
         logger.info(s"[ $organizationFullName ] - Updating anchors for channel ...")
         state.set(FabricServiceState(FabricServiceState.BootstrapUpdatingAnchors))
-        config.network.peerNodes.foreach { peerConfig =>
+        bootstrapOptions.network.peerNodes.foreach { peerConfig =>
             network.addAnchorsToChannel(ServiceChannelName, peerConfig.name)
         }
 
@@ -98,8 +113,8 @@ object Bootstrap {
                 name = config.organization.name,
                 memberNumber = 1,
                 knownHosts = externalAddress.map { address =>
-                    config.network.orderingNodes.map(osn => KnownHostRecord(address.host, s"${osn.name}.$organizationFullName")) ++
-                      config.network.peerNodes.map(peer => KnownHostRecord(address.host, s"${peer.name}.$organizationFullName")) :+
+                    bootstrapOptions.network.orderingNodes.map(osn => KnownHostRecord(address.host, s"${osn.name}.$organizationFullName")) ++
+                      bootstrapOptions.network.peerNodes.map(peer => KnownHostRecord(address.host, s"${peer.name}.$organizationFullName")) :+
                       KnownHostRecord(address.host, s"service.$organizationFullName")
                 }
                   .getOrElse(Array.empty)
@@ -120,11 +135,11 @@ object Bootstrap {
         )
 
         state.set(FabricServiceState(FabricServiceState.BootstrapSettingUpBlockListener))
-        network.setupBlockListener(ServiceChannelName, new NetworkMonitor(config, network, processManager, hostsManager, serviceVersion))
+        network.setupBlockListener(ServiceChannelName, new NetworkMonitor(config, bootstrapOptions.network, network, processManager, hostsManager, serviceVersion))
 
         //
         logger.info(s"[ $organizationFullName ] - Bootstrap done.")
         state.set(FabricServiceState(FabricServiceState.Ready))
-        network
+        Managers(network, processManager)
     }
 }

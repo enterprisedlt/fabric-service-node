@@ -46,7 +46,7 @@ object Genesis {
                     batchTimeOut = blockConfig.batchTimeOut,
                     capabilities = Set(CapabilityValue.V1_1),
                     orderingNodes =
-                      config.network.orderingNodes.map { osnConfig =>
+                      bootstrapOptions.network.orderingNodes.map { osnConfig =>
                           OrderingNodeDefinition(
                               host = s"${osnConfig.name}.$organizationFullName",
                               port = osnConfig.port,

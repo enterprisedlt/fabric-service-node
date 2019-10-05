@@ -6,16 +6,15 @@ import java.util.concurrent.atomic.AtomicReference
 import org.eclipse.jetty.http.HttpVersion
 import org.eclipse.jetty.security.{ConstraintMapping, ConstraintSecurityHandler}
 import org.eclipse.jetty.server._
-import org.eclipse.jetty.server.handler.{ContextHandler, ContextHandlerCollection, HandlerList, ResourceHandler}
+import org.eclipse.jetty.server.handler.{ContextHandler, ContextHandlerCollection, ResourceHandler}
 import org.eclipse.jetty.util.security.Constraint
 import org.eclipse.jetty.util.ssl.SslContextFactory
 import org.eclipse.jetty.websocket.server.WebSocketHandler
-import org.eclipse.jetty.websocket.servlet.{ServletUpgradeRequest, ServletUpgradeResponse, WebSocketCreator, WebSocketServletFactory}
+import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory
 import org.enterprisedlt.fabric.service.node.auth.{FabricAuthenticator, Role}
 import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
 import org.enterprisedlt.fabric.service.node.model.FabricServiceState
-import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.slf4j.LoggerFactory
 
@@ -38,17 +37,14 @@ object ServiceNode extends App {
     logger.info("Starting...")
     private val serviceState = new AtomicReference(FabricServiceState(FabricServiceState.NotInitialized))
     private val config = loadConfig("/opt/profile/service.json")
-    private val cryptography = new FileBasedCryptoManager(config.organization, config.certificateDuration,"/opt/profile/crypto")
+    private val cryptography = new FileBasedCryptoManager(config.organization, config.organization.certificateDuration, "/opt/profile/crypto")
     private val restEndpoint = new RestEndpoint(
         ServiceBindPort, ServiceExternalAddress, config, cryptography,
-        processManager = new DockerBasedProcessManager(
-            ProfilePath, DockerSocket,
-            InitialName, config
-        ),
         hostsManager = new HostsManager(
             "/opt/profile/hosts",
             config
         ),
+        ProfilePath, DockerSocket, InitialName,
         serviceState
     )
     //TODO: make web app optional, based on configuration
