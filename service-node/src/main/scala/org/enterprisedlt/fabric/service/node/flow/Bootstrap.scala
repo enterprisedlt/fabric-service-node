@@ -28,7 +28,7 @@ object Bootstrap {
         dockerSocket: String,
         initialName: String,
         state: AtomicReference[FabricServiceState]
-    ): Managers = {
+    ): GlobalState = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
         //
         logger.info(s"[ $organizationFullName ] - Starting process manager ...")
@@ -140,6 +140,6 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Bootstrap done.")
         state.set(FabricServiceState(FabricServiceState.Ready))
-        Managers(network, processManager)
+        GlobalState(network, processManager,bootstrapOptions.network)
     }
 }

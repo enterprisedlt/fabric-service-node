@@ -37,20 +37,17 @@ object ServiceNode extends App {
     logger.info("Starting...")
     private val serviceState = new AtomicReference(FabricServiceState(FabricServiceState.NotInitialized))
     private val config = loadConfig("/opt/profile/service.json")
-    private val cryptography = new FileBasedCryptoManager(config.organization, config.organization.certificateDuration, "/opt/profile/crypto")
+    private val cryptoManager = new FileBasedCryptoManager(config.organization, config.organization.certificateDuration, "/opt/profile/crypto")
     private val restEndpoint = new RestEndpoint(
-        ServiceBindPort, ServiceExternalAddress, config, cryptography,
-        hostsManager = new HostsManager(
-            "/opt/profile/hosts",
-            config
-        ),
+        ServiceBindPort, ServiceExternalAddress, config, cryptoManager,
+        hostsManager = new HostsManager("/opt/profile/hosts", config),
         ProfilePath, DockerSocket, InitialName,
         serviceState
     )
     //TODO: make web app optional, based on configuration
     private val server =
         createServer(
-            ServiceBindPort, cryptography, restEndpoint,
+            ServiceBindPort, cryptoManager, restEndpoint,
             "/opt/profile/webapp",
             "/opt/service/admin-console"
         )
