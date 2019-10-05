@@ -4,33 +4,7 @@
     "domain": "example.com",
     "location": "San Francisco",
     "state": "California",
-    "country": "US"
-  },
-  "network": {
-    "name": "test_net",
-    "orderingNodes": [
-      {
-        "name": "osn1",
-        "port": 4001
-      },
-      {
-        "name": "osn2",
-        "port": 4002
-      },
-      {
-        "name": "osn3",
-        "port": 4003
-      }
-    ],
-    "peerNodes": [
-      {
-        "name": "peer0",
-        "port": 4010,
-        "couchDB": {
-          "port": 4011
-        }
-      }
-    ]
-  },
-  "certificateDuration": "P2Y"
+    "country": "US",
+    "certificateDuration": "P2Y"
+  }
 }

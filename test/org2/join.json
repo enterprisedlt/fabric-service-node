@@ -1,0 +1,28 @@
+{
+  "network": {
+    "name": "test_net",
+    "orderingNodes": [
+      {
+        "name": "osn1",
+        "port": 6001
+      },
+      {
+        "name": "osn2",
+        "port": 6002
+      },
+      {
+        "name": "osn3",
+        "port": 6003
+      }
+    ],
+    "peerNodes": [
+      {
+        "name": "peer0",
+        "port": 6010,
+        "couchDB": {
+          "port": 6011
+        }
+      }
+    ]
+  }
+}
