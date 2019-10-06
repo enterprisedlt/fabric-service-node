@@ -33,8 +33,7 @@ class FileBasedCryptoManager(
     //
     val notBefore: Date = new Date()
     val notAfter: Date = Util.futureDate(Util.parsePeriod(organizationConfig.certificateDuration))
-    val orgCryptoMaterial: OrganizationCryptoMaterial = if (CryptoUtil.checkOrgCryptoExists(rootDir) ||
-      CryptoUtil.checkServiceCryptoExists(rootDir)) {
+    val orgCryptoMaterial: OrganizationCryptoMaterial = if (!new File(s"$rootDir/ca").exists()) {
         logger.info(s"Generating crypto for $orgFullName...")
         val orgCryptoMaterial = FabricCryptoMaterial.generateOrgCrypto(
             organizationConfig, orgFullName, rootDir,

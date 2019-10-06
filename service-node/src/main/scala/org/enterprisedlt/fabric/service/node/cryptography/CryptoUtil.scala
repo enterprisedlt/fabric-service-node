@@ -140,18 +140,6 @@ object CryptoUtil {
 
         case x => throw new UnsupportedOperationException(s"Unsupported ASN identifier $x")
     }
-
-
-    def checkOrgCryptoExists(rootDir: String): Boolean = {
-        !new File(s"$rootDir/ca").exists() ||
-        !new File(s"$rootDir/tlsca").exists() ||
-        !new File(s"$rootDir/users/admin/").exists()
-    }
-    def checkServiceCryptoExists(rootDir: String): Boolean = {
-        !new File(s"$rootDir/service/ca/").exists() ||
-        !new File(s"$rootDir/service/tls/").exists() ||
-        !new File(s"$rootDir/service/users/").exists()
-    }
 }
 
 case class OrgMeta(
