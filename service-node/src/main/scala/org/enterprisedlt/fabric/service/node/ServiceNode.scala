@@ -12,7 +12,7 @@ import org.eclipse.jetty.util.ssl.SslContextFactory
 import org.eclipse.jetty.websocket.server.WebSocketHandler
 import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory
 import org.enterprisedlt.fabric.service.node.auth.{FabricAuthenticator, Role}
-import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
+import org.enterprisedlt.fabric.service.node.configuration.{OrganizationConfig, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
 import org.enterprisedlt.fabric.service.node.model.FabricServiceState
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
@@ -30,17 +30,30 @@ object ServiceNode extends App {
     private val ProfilePath = Option(Environment.get("PROFILE_PATH")).getOrElse(throw new Exception("Mandatory environment variable missing PROFILE_PATH!"))
     private val DockerSocket = Option(Environment.get("DOCKER_SOCKET")).getOrElse(throw new Exception("Mandatory environment variable missing DOCKER_SOCKET!"))
     private val InitialName = Option(Environment.get("INITIAL_NAME")).getOrElse(throw new Exception("Mandatory environment variable missing INITIAL_NAME!"))
-
+    // Org variables
+    private val OrgName = Option(Environment.get("ORG")).getOrElse(throw new Exception("Mandatory environment variable missing ORG!"))
+    private val Domain = Option(Environment.get("DOMAIN")).getOrElse(throw new Exception("Mandatory environment variable missing DOMAIN!"))
+    private val Location = Option(Environment.get("ORG_LOCATION")).filter(_.trim.nonEmpty).getOrElse("San Francisco")
+    private val State = Option(Environment.get("ORG_STATE")).filter(_.trim.nonEmpty).getOrElse("California")
+    private val Country = Option(Environment.get("ORG_COUNTRY")).filter(_.trim.nonEmpty).getOrElse("US")
+    private val CertificateDuration = Option(Environment.get("CERTIFICATION_DURATION")).filter(_.trim.nonEmpty).getOrElse("P2Y")
+    //
     Util.setupLogging(LogLevel)
     private val logger = LoggerFactory.getLogger(this.getClass)
 
-    logger.info("Starting...")
+    logger.info(s"Starting service node for Org $OrgName.$Domain ...")
     private val serviceState = new AtomicReference(FabricServiceState(FabricServiceState.NotInitialized))
-    private val config = loadConfig("/opt/profile/service.json")
-    private val cryptoManager = new FileBasedCryptoManager(config.organization, config.organization.certificateDuration, "/opt/profile/crypto")
+    private val organizationConfig: OrganizationConfig = OrganizationConfig(
+        OrgName,
+        Domain,
+        Location,
+        State,
+        Country,
+        CertificateDuration)
+    private val cryptoManager = new FileBasedCryptoManager(organizationConfig,  "/opt/profile/crypto")
     private val restEndpoint = new RestEndpoint(
-        ServiceBindPort, ServiceExternalAddress, config, cryptoManager,
-        hostsManager = new HostsManager("/opt/profile/hosts", config),
+        ServiceBindPort, ServiceExternalAddress, organizationConfig, cryptoManager,
+        hostsManager = new HostsManager("/opt/profile/hosts", organizationConfig),
         ProfilePath, DockerSocket, InitialName,
         serviceState
     )
@@ -188,6 +201,6 @@ object ServiceNode extends App {
 }
 
 case class ExternalAddress(
-    host: String,
-    port: Int
-)
+                            host: String,
+                            port: Int
+                          )

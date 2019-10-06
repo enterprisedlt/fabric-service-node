@@ -11,7 +11,7 @@ import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
 import org.enterprisedlt.fabric.service.model.Contract
 import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
-import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, JoinOptions, NetworkConfig, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
@@ -26,7 +26,7 @@ import scala.util.Try
 class RestEndpoint(
     bindPort: Int,
     externalAddress: Option[ExternalAddress],
-    config: ServiceConfig,
+    organizationConfig: OrganizationConfig,
     cryptoManager: CryptoManager,
     hostsManager: HostsManager,
     profilePath: String,
@@ -42,7 +42,7 @@ class RestEndpoint(
             case "GET" =>
                 request.getPathInfo match {
                     case "/service/organization-msp-id" =>
-                        response.getWriter.println(Util.codec.toJson(config.organization.name))
+                        response.getWriter.println(Util.codec.toJson(organizationConfig.name))
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/service/state" =>
@@ -78,12 +78,12 @@ class RestEndpoint(
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/admin/create-invite" =>
-                        logger.info(s"Creating invite ${config.organization.name}...")
+                        logger.info(s"Creating invite ${organizationConfig.name}...")
                         response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                         val out = response.getOutputStream
                         val address = externalAddress
                           .map(ea => s"${ea.host}:${ea.port}")
-                          .getOrElse(s"service.${config.organization.name}.${config.organization.domain}:$bindPort")
+                          .getOrElse(s"service.${organizationConfig.name}.${organizationConfig.domain}:$bindPort")
                         //TODO: password should be taken from request
                         val password = "join me"
                         val key = cryptoManager.createServiceUserKeyStore(s"join-${System.currentTimeMillis()}", password)
@@ -113,7 +113,7 @@ class RestEndpoint(
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/service/list-messages" =>
-                        logger.info(s"Querying messages for ${config.organization.name}...")
+                        logger.info(s"Querying messages for ${organizationConfig.name}...")
                         val result =
                             globalState
                               .toRight("Node is not initialized yet")
@@ -127,7 +127,7 @@ class RestEndpoint(
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/service/list-confirmations" =>
-                        logger.info(s"Querying confirmations for ${config.organization.name}...")
+                        logger.info(s"Querying confirmations for ${organizationConfig.name}...")
                         val result =
                             globalState
                               .toRight("Node is not initialized yet")
@@ -141,7 +141,7 @@ class RestEndpoint(
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/service/list-contracts" =>
-                        logger.info(s"Querying contracts for ${config.organization.name}...")
+                        logger.info(s"Querying contracts for ${organizationConfig.name}...")
                         val result =
                             globalState
                               .toRight("Node is not initialized yet")
@@ -164,13 +164,13 @@ class RestEndpoint(
 
                 request.getPathInfo match {
                     case "/admin/bootstrap" =>
-                        logger.info(s"Bootstrapping organization ${config.organization.name}...")
+                        logger.info(s"Bootstrapping organization ${organizationConfig.name}...")
                         val start = System.currentTimeMillis()
                         try {
                             val bootstrapOptions = Util.codec.fromJson(request.getReader, classOf[BootstrapOptions])
                             state.set(FabricServiceState(FabricServiceState.BootstrapStarted))
                             init(Bootstrap.bootstrapOrganization(
-                                config,
+                                organizationConfig,
                                 bootstrapOptions,
                                 cryptoManager,
                                 hostsManager,
@@ -195,7 +195,6 @@ class RestEndpoint(
                           .flatMap { state =>
                               val joinRequest = Util.codec.fromJson(request.getReader, classOf[JoinRequest])
                               Join.joinOrgToNetwork(
-                                  config,
                                   state,
                                   cryptoManager,
                                   joinRequest,
@@ -218,7 +217,7 @@ class RestEndpoint(
                         val start = System.currentTimeMillis()
                         val joinOptions = Util.codec.fromJson(request.getReader, classOf[JoinOptions])
                         state.set(FabricServiceState(FabricServiceState.JoinStarted))
-                        init(Join.join(config,
+                        init(Join.join(organizationConfig,
                             cryptoManager,
                             joinOptions,
                             externalAddress,
@@ -233,7 +232,7 @@ class RestEndpoint(
 
                     case "/admin/create-contract" =>
                         logger.info("Creating contract ...")
-                        val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
+                        val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
                         val createContractRequest = Util.codec.fromJson(request.getReader, classOf[CreateContractRequest])
                         logger.info(s"createContractRequest =  $createContractRequest")
                         globalState
@@ -297,7 +296,7 @@ class RestEndpoint(
 
                     case "/admin/contract-join" =>
                         logger.info("Joining deployed contract ...")
-                        val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
+                        val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
                         val joinReq = Util.codec.fromJson(request.getReader, classOf[ContractJoinRequest])
                         logger.info(s"joinReq is $joinReq")
                         globalState

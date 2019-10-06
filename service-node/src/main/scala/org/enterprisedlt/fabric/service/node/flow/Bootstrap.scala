@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, ServiceVersion}
 import org.enterprisedlt.fabric.service.node._
-import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, OrganizationConfig, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model.FabricServiceState
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
@@ -19,7 +19,7 @@ object Bootstrap {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
     def bootstrapOrganization(
-        config: ServiceConfig,
+        organizationConfig: OrganizationConfig,
         bootstrapOptions: BootstrapOptions,
         cryptography: CryptoManager,
         hostsManager: HostsManager,
@@ -29,14 +29,14 @@ object Bootstrap {
         initialName: String,
         state: AtomicReference[FabricServiceState]
     ): GlobalState = {
-        val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
+        val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
         //
         logger.info(s"[ $organizationFullName ] - Starting process manager ...")
         val processManager = new DockerBasedProcessManager(
             profilePath,
             dockerSocket,
             initialName,
-            config,
+            organizationConfig,
             bootstrapOptions.network
         )
         //
@@ -46,7 +46,7 @@ object Bootstrap {
         logger.info(s"[ $organizationFullName ] - Creating genesis ...")
         state.set(FabricServiceState(FabricServiceState.BootstrapCreatingGenesis))
 
-        val genesisDefinition = Genesis.newDefinition("/opt/profile", config, bootstrapOptions)
+        val genesisDefinition = Genesis.newDefinition("/opt/profile", organizationConfig, bootstrapOptions)
         val genesis = FabricBlock.create(genesisDefinition, bootstrapOptions)
         Util.storeToFile("/opt/profile/artifacts/genesis.block", genesis)
 
@@ -64,7 +64,7 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
         val admin = cryptography.loadDefaultAdmin
-        val network = new FabricNetworkManager(config.organization, bootstrapOptions.network.orderingNodes.head, admin)
+        val network = new FabricNetworkManager(organizationConfig, bootstrapOptions.network.orderingNodes.head, admin)
         //
         bootstrapOptions.network.orderingNodes.tail.foreach { osnConfig =>
             network.defineOsn(osnConfig)
@@ -80,7 +80,7 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Creating channel ...")
         state.set(FabricServiceState(FabricServiceState.BootstrapCreatingServiceChannel))
-        network.createChannel(ServiceChannelName, FabricChannel.CreateChannel(ServiceChannelName, DefaultConsortiumName, config.organization.name))
+        network.createChannel(ServiceChannelName, FabricChannel.CreateChannel(ServiceChannelName, DefaultConsortiumName, organizationConfig.name))
 
         //
         logger.info(s"[ $organizationFullName ] - Adding peers to channel ...")
@@ -109,8 +109,8 @@ object Bootstrap {
         logger.info(s"[ $organizationFullName ] - Instantiating service chain code ...")
         val organization =
             Organization(
-                mspId = config.organization.name,
-                name = config.organization.name,
+                mspId = organizationConfig.name,
+                name = organizationConfig.name,
                 memberNumber = 1,
                 knownHosts = externalAddress.map { address =>
                     bootstrapOptions.network.orderingNodes.map(osn => KnownHostRecord(address.host, s"${osn.name}.$organizationFullName")) ++
@@ -135,7 +135,7 @@ object Bootstrap {
         )
 
         state.set(FabricServiceState(FabricServiceState.BootstrapSettingUpBlockListener))
-        network.setupBlockListener(ServiceChannelName, new NetworkMonitor(config, bootstrapOptions.network, network, processManager, hostsManager, serviceVersion))
+        network.setupBlockListener(ServiceChannelName, new NetworkMonitor(organizationConfig, bootstrapOptions.network, network, processManager, hostsManager, serviceVersion))
 
         //
         logger.info(s"[ $organizationFullName ] - Bootstrap done.")

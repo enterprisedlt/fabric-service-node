@@ -12,7 +12,7 @@ import com.github.dockerjava.api.model.Ports.Binding
 import com.github.dockerjava.api.model._
 import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientBuilder}
 import org.enterprisedlt.fabric.service.node.FabricProcessManager
-import org.enterprisedlt.fabric.service.node.configuration.{NetworkConfig, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{NetworkConfig, OrganizationConfig, ServiceConfig}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
@@ -24,12 +24,12 @@ class DockerBasedProcessManager(
     hostHomePath: String,
     dockerSocket: String,
     selfContainerName: String,
-    config: ServiceConfig,
+    organizationConfig: OrganizationConfig,
     networkConfig: NetworkConfig,
     LogWindow: Int = 1500
 ) extends FabricProcessManager {
     private val logger = LoggerFactory.getLogger(this.getClass)
-    private val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
+    private val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
     private val dockerConfig = DefaultDockerClientConfig.createDefaultConfigBuilder.withDockerHost(dockerSocket).build
     private val docker: DockerClient = DockerClientBuilder.getInstance(dockerConfig).build()
     private val DefaultLabels =
@@ -90,7 +90,7 @@ class DockerBasedProcessManager(
                     s"ORDERER_GENERAL_LISTENPORT=${osnConfig.port}",
                     "ORDERER_GENERAL_GENESISMETHOD=file",
                     "ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block",
-                    s"ORDERER_GENERAL_LOCALMSPID=${config.organization.name}",
+                    s"ORDERER_GENERAL_LOCALMSPID=${organizationConfig.name}",
                     "ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp",
                     "ORDERER_GENERAL_TLS_ENABLED=true",
                     "ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key",
@@ -166,7 +166,7 @@ class DockerBasedProcessManager(
                         "CORE_CHAINCODE_JAVA_RUNTIME=enterprisedlt/fabric-jar-env",
                         s"CORE_PEER_GOSSIP_BOOTSTRAP=$peerFullName:${peerConfig.port}",
                         s"CORE_PEER_GOSSIP_EXTERNALENDPOINT=$peerFullName:${peerConfig.port}",
-                        s"CORE_PEER_LOCALMSPID=${config.organization.name}"
+                        s"CORE_PEER_LOCALMSPID=${organizationConfig.name}"
                     ) ++ couchEnv: _*
                 )
                 .withWorkingDir("/opt/gopath/src/github.com/hyperledger/fabric/peer")

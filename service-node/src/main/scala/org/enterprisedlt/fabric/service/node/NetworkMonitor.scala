@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 
 import org.enterprisedlt.fabric.service.model.{Organization, ServiceVersion}
-import org.enterprisedlt.fabric.service.node.configuration.{NetworkConfig, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{NetworkConfig, OrganizationConfig, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.hyperledger.fabric.protos.peer.Chaincode.ChaincodeDeploymentSpec
@@ -19,7 +19,7 @@ import scala.collection.JavaConverters._
   * @author Alexey Polubelov
   */
 class NetworkMonitor(
-    config: ServiceConfig,
+    organizationConfig: OrganizationConfig,
     networkConfig: NetworkConfig,
     network: FabricNetworkManager,
     processManager: FabricProcessManager,
@@ -27,7 +27,7 @@ class NetworkMonitor(
     initialVersion: ServiceVersion
 ) extends BlockListener {
     private val logger = LoggerFactory.getLogger(this.getClass)
-    private val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
+    private val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
     private var currentVersion = initialVersion
 
     override def received(blockEvent: BlockEvent): Unit = {
@@ -64,7 +64,7 @@ class NetworkMonitor(
         logger.info(s"Detected service upgrade [ From $updaterMspId, Version: $version] ")
         val oldVersion = currentVersion
         currentVersion = version
-        if (updaterMspId != config.organization.name) {
+        if (updaterMspId != organizationConfig.name) {
             logger.info(s"[ $organizationFullName ] - Preparing service chain code ...")
             val chainCodePkg = new BufferedInputStream(new FileInputStream(ServiceChainCodePath))
 

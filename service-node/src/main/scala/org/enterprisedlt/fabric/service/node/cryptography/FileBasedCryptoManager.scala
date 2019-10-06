@@ -24,7 +24,6 @@ import org.slf4j.LoggerFactory
   */
 class FileBasedCryptoManager(
     organizationConfig: OrganizationConfig,
-    certificateDuration: String,
     rootDir: String
 ) extends CryptoManager {
     private val logger = LoggerFactory.getLogger(this.getClass)
@@ -33,7 +32,7 @@ class FileBasedCryptoManager(
     // Initialization
     //
     val notBefore: Date = new Date()
-    val notAfter: Date = Util.futureDate(Util.parsePeriod(certificateDuration))
+    val notAfter: Date = Util.futureDate(Util.parsePeriod(organizationConfig.certificateDuration))
     val orgCryptoMaterial: OrganizationCryptoMaterial = if (CryptoUtil.checkOrgCryptoExists(rootDir) ||
       CryptoUtil.checkServiceCryptoExists(rootDir)) {
         logger.info(s"Generating crypto for $orgFullName...")
@@ -119,7 +118,7 @@ class FileBasedCryptoManager(
     //=========================================================================
     override def createFabricUser(name: String): Unit = {
         val notBefore = new Date
-        val notAfter = Util.futureDate(Util.parsePeriod(certificateDuration))
+        val notAfter = Util.futureDate(Util.parsePeriod(organizationConfig.certificateDuration))
         val orgConfig = organizationConfig
         val caCert = loadCertAndKey(s"$rootDir/ca/ca")
         val theCert = FabricCryptoMaterial.generateUserCert(
@@ -146,7 +145,7 @@ class FileBasedCryptoManager(
     //=========================================================================
     override def createServiceUserKeyStore(name: String, password: String): KeyStore = {
         val notBefore = new Date
-        val notAfter = Util.futureDate(Util.parsePeriod(certificateDuration))
+        val notAfter = Util.futureDate(Util.parsePeriod(organizationConfig.certificateDuration))
         val path = s"$rootDir/service"
         val orgConfig = organizationConfig
         val serviceCACert = loadCertAndKey(s"$path/ca/server")

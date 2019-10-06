@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, OrganizationsOrdering, ServiceVersion}
 import org.enterprisedlt.fabric.service.node._
-import org.enterprisedlt.fabric.service.node.configuration.{JoinOptions, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{JoinOptions, OrganizationConfig, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
@@ -21,7 +21,7 @@ object Join {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
     def join(
-        config: ServiceConfig, cryptoManager: CryptoManager,
+        organizationConfig: OrganizationConfig, cryptoManager: CryptoManager,
         joinOptions: JoinOptions,
         externalAddress: Option[ExternalAddress],
         hostsManager: HostsManager,
@@ -30,14 +30,14 @@ object Join {
         initialName: String,
         state: AtomicReference[FabricServiceState]
     ): GlobalState = {
-        val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
+        val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
         val cryptoPath = "/opt/profile/crypto"
         logger.info(s"[ $organizationFullName ] - Starting process manager ...")
         val processManager = new DockerBasedProcessManager(
             profilePath,
             dockerSocket,
             initialName,
-            config,
+            organizationConfig,
             joinOptions.network
         )
         logger.info(s"[ $organizationFullName ] - Generating crypto material...")
@@ -49,8 +49,8 @@ object Join {
         //
         val joinRequest = JoinRequest(
             organization = Organization(
-                mspId = config.organization.name,
-                name = config.organization.name,
+                mspId = organizationConfig.name,
+                name = organizationConfig.name,
                 memberNumber = 0,
                 knownHosts = externalAddress.map { address =>
                     joinOptions.network.orderingNodes.map(osn => KnownHostRecord(address.host, s"${osn.name}.$organizationFullName")) ++
@@ -100,7 +100,7 @@ object Join {
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
         val admin = cryptoManager.loadDefaultAdmin
-        val network = new FabricNetworkManager(config.organization, joinOptions.network.orderingNodes.head, admin)
+        val network = new FabricNetworkManager(organizationConfig, joinOptions.network.orderingNodes.head, admin)
         network.defineChannel(ServiceChannelName)
 
         state.set(FabricServiceState(FabricServiceState.JoinConnectingToNetwork))
@@ -171,14 +171,14 @@ object Join {
             case Left(error) => throw new Exception(s"Failed to warn up service chain code: $error")
             case Right(serviceVersion) =>
                 state.set(FabricServiceState(FabricServiceState.JoinSettingUpBlockListener))
-                network.setupBlockListener(ServiceChannelName, new NetworkMonitor(config, joinOptions.network, network, processManager, hostsManager, serviceVersion))
+                network.setupBlockListener(ServiceChannelName, new NetworkMonitor(organizationConfig, joinOptions.network, network, processManager, hostsManager, serviceVersion))
                 state.set(FabricServiceState(FabricServiceState.Ready))
                 GlobalState(network, processManager,joinOptions.network)
         }
     }
 
     def joinOrgToNetwork(
-        config: ServiceConfig, state: GlobalState,
+        state: GlobalState,
         cryptoManager: CryptoManager,
         joinRequest: JoinRequest, hostsManager: HostsManager,
     ): Either[String, JoinResponse] = {
