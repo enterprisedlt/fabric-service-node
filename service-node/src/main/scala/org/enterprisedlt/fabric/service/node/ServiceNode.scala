@@ -72,10 +72,6 @@ object ServiceNode extends App {
     //=========================================================================
     // Utilities
     //=========================================================================
-    private def loadConfig(configFile: String): ServiceConfig =
-        Util.codec.fromJson(new FileReader(configFile), classOf[ServiceConfig])
-
-    //=========================================================================
     private def parseExternalAddress(address: String, defaultPort: Int): ExternalAddress = {
         address.split(":") match {
             case Array(host, port) => ExternalAddress(host, port.toInt)
