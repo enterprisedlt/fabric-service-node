@@ -1,3 +1,9 @@
 #!/bin/sh
 export SERVICE_BIND_PORT=8000
+export ORG="org1"
+export DOMAIN="example.com"
+export ORG_LOCATION="San Francisco"
+export ORG_STATE="California"
+export ORG_COUNTRY="US"
+export CERTIFICATION_DURATION="P2Y"
 

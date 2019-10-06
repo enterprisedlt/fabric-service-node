@@ -4,7 +4,6 @@ import java.io.{BufferedInputStream, File, FileInputStream, FileReader}
 import java.nio.charset.StandardCharsets
 import java.util
 import java.util.concurrent.atomic.AtomicReference
-import java.util.concurrent.locks.ReentrantLock
 
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.apache.http.entity.ContentType
@@ -12,7 +11,7 @@ import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
 import org.enterprisedlt.fabric.service.model.Contract
 import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
-import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
@@ -27,10 +26,11 @@ import scala.util.Try
 class RestEndpoint(
     bindPort: Int,
     externalAddress: Option[ExternalAddress],
-    config: ServiceConfig,
+    organizationConfig: OrganizationConfig,
     cryptoManager: CryptoManager,
-    processManager: FabricProcessManager,
     hostsManager: HostsManager,
+    profilePath: String,
+    dockerSocket: String,
     state: AtomicReference[FabricServiceState]
 ) extends AbstractHandler {
     private val logger = LoggerFactory.getLogger(this.getClass)
@@ -41,7 +41,7 @@ class RestEndpoint(
             case "GET" =>
                 request.getPathInfo match {
                     case "/service/organization-msp-id" =>
-                        response.getWriter.println(Util.codec.toJson(config.organization.name))
+                        response.getWriter.println(Util.codec.toJson(organizationConfig.name))
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/service/state" =>
@@ -51,10 +51,10 @@ class RestEndpoint(
                     case "/service/list-organizations" =>
                         logger.info(s"ListOrganizations ...")
                         val result =
-                            networkManager
-                              .toRight("Network is not initialized yet")
-                              .flatMap { network =>
-                                  network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listOrganizations")
+                            globalState
+                              .toRight("Node is not initialized yet")
+                              .flatMap { manager =>
+                                  manager.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listOrganizations")
                                     .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
                               }
                               .merge
@@ -65,10 +65,10 @@ class RestEndpoint(
                     case "/service/list-collections" =>
                         logger.info(s"Collections ...")
                         val result =
-                            networkManager
-                              .toRight("Network is not initialized yet")
-                              .flatMap { network =>
-                                  network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listCollections")
+                            globalState
+                              .toRight("Node is not initialized yet")
+                              .flatMap { state =>
+                                  state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listCollections")
                                     .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
                               }
                               .merge
@@ -77,22 +77,33 @@ class RestEndpoint(
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/admin/create-invite" =>
-                        logger.info(s"Creating invite ${config.organization.name}...")
-                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                        val out = response.getOutputStream
-                        val address = externalAddress
-                          .map(ea => s"${ea.host}:${ea.port}")
-                          .getOrElse(s"service.${config.organization.name}.${config.organization.domain}:$bindPort")
-                        //TODO: password should be taken from request
-                        val password = "join me"
-                        val key = cryptoManager.createServiceUserKeyStore(s"join-${System.currentTimeMillis()}", password)
-                        val invite = Invite(
-                            address,
-                            Util.keyStoreToBase64(key, password)
-                        )
-                        out.println(Util.codec.toJson(invite))
-                        out.flush()
-                        response.setStatus(HttpServletResponse.SC_OK)
+                        globalState
+                          .toRight("Node is not initialized yet")
+                          .map { state =>
+                              logger.info(s"Creating invite ${organizationConfig.name}...")
+                              val address = externalAddress
+                                .map(ea => s"${ea.host}:${ea.port}")
+                                .getOrElse(s"service.${organizationConfig.name}.${organizationConfig.domain}:$bindPort")
+                              //TODO: password should be taken from request
+                              val password = "join me"
+                              val key = cryptoManager.createServiceUserKeyStore(s"join-${System.currentTimeMillis()}", password)
+                              Invite(
+                                  state.networkName,
+                                  address,
+                                  Util.keyStoreToBase64(key, password)
+                              )
+                          } match {
+                            case Right(invite) =>
+                                val out = response.getOutputStream
+                                out.println(Util.codec.toJson(invite))
+                                out.flush()
+                                response.setStatus(HttpServletResponse.SC_OK)
+
+                            case Left(error) =>
+                                logger.error(error)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
+
 
                     case "/admin/create-user" =>
                         val userName = request.getParameter("name")
@@ -112,12 +123,12 @@ class RestEndpoint(
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/service/list-messages" =>
-                        logger.info(s"Querying messages for ${config.organization.name}...")
+                        logger.info(s"Querying messages for ${organizationConfig.name}...")
                         val result =
-                            networkManager
-                              .toRight("Network is not initialized yet")
-                              .flatMap { network =>
-                                  network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listMessages")
+                            globalState
+                              .toRight("Node is not initialized yet")
+                              .flatMap { state =>
+                                  state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listMessages")
                                     .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
                               }
                               .merge
@@ -126,12 +137,12 @@ class RestEndpoint(
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/service/list-confirmations" =>
-                        logger.info(s"Querying confirmations for ${config.organization.name}...")
+                        logger.info(s"Querying confirmations for ${organizationConfig.name}...")
                         val result =
-                            networkManager
-                              .toRight("Network is not initialized yet")
-                              .flatMap { network =>
-                                  network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContractConfirmations")
+                            globalState
+                              .toRight("Node is not initialized yet")
+                              .flatMap { state =>
+                                  state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContractConfirmations")
                                     .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
                               }
                               .merge
@@ -140,12 +151,12 @@ class RestEndpoint(
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/service/list-contracts" =>
-                        logger.info(s"Querying contracts for ${config.organization.name}...")
+                        logger.info(s"Querying contracts for ${organizationConfig.name}...")
                         val result =
-                            networkManager
-                              .toRight("Network is not initialized yet")
-                              .flatMap { network =>
-                                  network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContracts")
+                            globalState
+                              .toRight("Node is not initialized yet")
+                              .flatMap { state =>
+                                  state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContracts")
                                     .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
                               }
                               .merge
@@ -163,12 +174,21 @@ class RestEndpoint(
 
                 request.getPathInfo match {
                     case "/admin/bootstrap" =>
-                        logger.info(s"Bootstrapping organization ${config.organization.name}...")
+                        logger.info(s"Bootstrapping organization ${organizationConfig.name}...")
                         val start = System.currentTimeMillis()
                         try {
                             val bootstrapOptions = Util.codec.fromJson(request.getReader, classOf[BootstrapOptions])
                             state.set(FabricServiceState(FabricServiceState.BootstrapStarted))
-                            initNetworkManager(Bootstrap.bootstrapOrganization(config, bootstrapOptions, cryptoManager, processManager, hostsManager, externalAddress, state))
+                            init(Bootstrap.bootstrapOrganization(
+                                organizationConfig,
+                                bootstrapOptions,
+                                cryptoManager,
+                                hostsManager,
+                                externalAddress,
+                                profilePath,
+                                dockerSocket,
+                                state)
+                            )
                             val end = System.currentTimeMillis() - start
                             logger.info(s"Bootstrap done ($end ms)")
                             response.setStatus(HttpServletResponse.SC_OK)
@@ -179,13 +199,15 @@ class RestEndpoint(
                         }
 
                     case "/join-network" =>
-                        networkManager
-                          .toRight("Network is not initialized yet")
-                          .flatMap { network =>
+                        globalState
+                          .toRight("Node is not initialized yet")
+                          .flatMap { state =>
                               val joinRequest = Util.codec.fromJson(request.getReader, classOf[JoinRequest])
                               Join.joinOrgToNetwork(
-                                  config, cryptoManager, processManager,
-                                  network, joinRequest, hostsManager
+                                  state,
+                                  cryptoManager,
+                                  joinRequest,
+                                  hostsManager
                               )
                           } match {
                             case Right(joinResponse) =>
@@ -202,21 +224,29 @@ class RestEndpoint(
                     case "/admin/request-join" =>
                         logger.info("Requesting to joining network ...")
                         val start = System.currentTimeMillis()
-                        val invite = Util.codec.fromJson(request.getReader, classOf[Invite])
+                        val joinOptions = Util.codec.fromJson(request.getReader, classOf[JoinOptions])
                         state.set(FabricServiceState(FabricServiceState.JoinStarted))
-                        initNetworkManager(Join.join(config, cryptoManager, processManager, invite, externalAddress, hostsManager, state))
+                        init(Join.join(organizationConfig,
+                            cryptoManager,
+                            joinOptions,
+                            externalAddress,
+                            hostsManager,
+                            profilePath,
+                            dockerSocket,
+                            state)
+                        )
                         val end = System.currentTimeMillis() - start
                         logger.info(s"Joined ($end ms)")
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/admin/create-contract" =>
                         logger.info("Creating contract ...")
-                        val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
+                        val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
                         val createContractRequest = Util.codec.fromJson(request.getReader, classOf[CreateContractRequest])
                         logger.info(s"createContractRequest =  $createContractRequest")
-                        networkManager
-                          .toRight("Network is not initialized yet")
-                          .flatMap { network =>
+                        globalState
+                          .toRight("Node is not initialized yet")
+                          .flatMap { state =>
                               logger.info(s"[ $organizationFullName ] - Preparing ${createContractRequest.name} chain code ...")
                               val filesBaseName = s"${createContractRequest.contractType}-${createContractRequest.version}"
                               val chainCodeName = s"${createContractRequest.name}-${createContractRequest.version}"
@@ -227,7 +257,7 @@ class RestEndpoint(
                                   chainCodePkg <- Option(new BufferedInputStream(new FileInputStream(file))).toRight(s"Can't prepare cc pkg stream")
                                   _ <- {
                                       logger.info(s"[ $organizationFullName ] - Installing $chainCodeName chain code ...")
-                                      network.installChainCode(ServiceChannelName, createContractRequest.name, createContractRequest.version, chainCodePkg)
+                                      state.networkManager.installChainCode(ServiceChannelName, createContractRequest.name, createContractRequest.version, chainCodePkg)
                                   }
                                   _ <- {
                                       logger.info(s"[ $organizationFullName ] - Instantiating $chainCodeName chain code ...")
@@ -243,7 +273,7 @@ class RestEndpoint(
                                               )
                                           )
                                       }
-                                      network.instantiateChainCode(
+                                      state.networkManager.instantiateChainCode(
                                           ServiceChannelName, createContractRequest.name,
                                           createContractRequest.version,
                                           endorsementPolicy = Option(endorsementPolicy),
@@ -258,7 +288,7 @@ class RestEndpoint(
                                           createContractRequest.version,
                                           createContractRequest.parties.map(_.mspId)
                                       )
-                                      network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "createContract", Util.codec.toJson(contract))
+                                      state.networkManager.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "createContract", Util.codec.toJson(contract))
                                   }
                                   result <- Try(response.get()).toEither.left.map(_.getMessage)
                               } yield result
@@ -275,15 +305,15 @@ class RestEndpoint(
 
                     case "/admin/contract-join" =>
                         logger.info("Joining deployed contract ...")
-                        val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
+                        val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
                         val joinReq = Util.codec.fromJson(request.getReader, classOf[ContractJoinRequest])
                         logger.info(s"joinReq is $joinReq")
-                        networkManager
-                          .toRight("Network is not initialized yet")
-                          .flatMap { network =>
+                        globalState
+                          .toRight("Node is not initialized yet")
+                          .flatMap { state =>
                               for {
                                   queryResult <- {
-                                      network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getContract", joinReq.name, joinReq.founder)
+                                      state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getContract", joinReq.name, joinReq.founder)
                                         .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getContract method in system chain-code"))
                                   }
                                   contractDetails <- {
@@ -297,10 +327,10 @@ class RestEndpoint(
                                   _ <- {
                                       val chainCodePkg = new BufferedInputStream(new FileInputStream(file))
                                       logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
-                                      network.installChainCode(ServiceChannelName, contractDetails.chainCodeName, contractDetails.chainCodeVersion, chainCodePkg)
+                                      state.networkManager.installChainCode(ServiceChannelName, contractDetails.chainCodeName, contractDetails.chainCodeVersion, chainCodePkg)
                                   }
                               } yield {
-                                  network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
+                                  state.networkManager.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
                               } match {
                                   case Right(invokeResult) =>
                                       invokeResult.get()
@@ -318,10 +348,10 @@ class RestEndpoint(
                     case "/service/send-message" =>
                         val message = Util.codec.fromJson(request.getReader, classOf[SendMessageRequest])
                         logger.info(s"Sending message to ${message.to} ...")
-                        networkManager
-                          .toRight("Network is not initialized yet")
-                          .flatMap { network =>
-                              network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "putMessage", Util.codec.toJson(message))
+                        globalState
+                          .toRight("Node is not initialized yet")
+                          .flatMap { state =>
+                              state.networkManager.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "putMessage", Util.codec.toJson(message))
                           } match {
                             case Right(answer) =>
                                 answer.get()
@@ -339,10 +369,10 @@ class RestEndpoint(
                         val messageRequest = Util.codec.fromJson(request.getReader, classOf[GetMessageRequest])
                         logger.info("Obtaining message ...")
                         val result =
-                            networkManager
-                              .toRight("Network is not initialized yet")
-                              .flatMap { network =>
-                                  network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getMessage", messageRequest.messageKey, messageRequest.sender)
+                            globalState
+                              .toRight("Node is not initialized yet")
+                              .flatMap { state =>
+                                  state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getMessage", messageRequest.messageKey, messageRequest.sender)
                                     .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
                               }.merge
                         response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
@@ -353,10 +383,10 @@ class RestEndpoint(
                         val delMessageRequest = Util.codec.fromJson(request.getReader, classOf[DeleteMessageRequest])
                         logger.info("Requesting for deleting message ...")
                         val result =
-                            networkManager
-                              .toRight("Network is not initialized yet")
-                              .flatMap { network =>
-                                  network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delMessage", delMessageRequest.messageKey, delMessageRequest.sender)
+                            globalState
+                              .toRight("Node is not initialized yet")
+                              .flatMap { state =>
+                                  state.networkManager.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delMessage", delMessageRequest.messageKey, delMessageRequest.sender)
                               }.merge
                         response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                         response.getWriter.println(result)
@@ -366,12 +396,12 @@ class RestEndpoint(
                         logger.info("Processing request to contract ...")
                         val contractRequest = Util.codec.fromJson(request.getReader, classOf[CallContractRequest])
                         val result =
-                            networkManager
-                              .toRight("Network is not initialized yet")
-                              .flatMap { network =>
+                            globalState
+                              .toRight("Node is not initialized yet")
+                              .flatMap { state =>
                                   contractRequest.callType match {
                                       case "query" =>
-                                          network
+                                          state.networkManager
                                             .queryChainCode(
                                                 ServiceChannelName,
                                                 contractRequest.contractName,
@@ -386,7 +416,7 @@ class RestEndpoint(
                                               Option(contractRequest.transient)
                                                 .map(_.asScala.mapValues(_.getBytes(StandardCharsets.UTF_8)).asJava)
 
-                                          network
+                                          state.networkManager
                                             .invokeChainCode(
                                                 ServiceChannelName,
                                                 contractRequest.contractName,
@@ -430,24 +460,18 @@ class RestEndpoint(
     }
 
 
-    private val networkManagerLock = new ReentrantLock()
-    private var networkManager_ : Option[FabricNetworkManager] = None
+    private val _globalState = new AtomicReference[GlobalState]()
 
-    private def networkManager: Option[FabricNetworkManager] = {
-        networkManagerLock.lock()
-        try {
-            networkManager_
-        } finally {
-            networkManagerLock.unlock()
-        }
-    }
+    private def globalState: Option[GlobalState] = Option(_globalState.get())
 
-    private def initNetworkManager(value: FabricNetworkManager): Unit = {
-        networkManagerLock.lock()
-        try {
-            networkManager_ = Option(value)
-        } finally {
-            networkManagerLock.unlock()
-        }
-    }
+    private def init(globalState: GlobalState): Unit = this._globalState.set(globalState)
+
+
 }
+
+case class GlobalState(
+    networkManager: FabricNetworkManager,
+    processManager: FabricProcessManager,
+    network: NetworkConfig,
+    networkName: String
+  )

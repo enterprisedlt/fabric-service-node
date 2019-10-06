@@ -13,7 +13,7 @@ import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
-import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
+import org.enterprisedlt.fabric.service.node.configuration.{NetworkConfig, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.cryptography.FabricCryptoMaterial.writeToPemFile
 import org.enterprisedlt.fabric.service.node.{CryptoManager, Util}
 import org.hyperledger.fabric.sdk.identity.X509Enrollment
@@ -23,34 +23,44 @@ import org.slf4j.LoggerFactory
   * @author Alexey Polubelov
   */
 class FileBasedCryptoManager(
-    config: ServiceConfig,
+    organizationConfig: OrganizationConfig,
     rootDir: String
 ) extends CryptoManager {
     private val logger = LoggerFactory.getLogger(this.getClass)
-    private val orgFullName = s"${config.organization.name}.${config.organization.domain}"
-
+    private val orgFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
     //
     // Initialization
     //
-
-    if(!new File(s"$rootDir/ca").exists()) {
+    val notBefore: Date = new Date()
+    val notAfter: Date = Util.futureDate(Util.parsePeriod(organizationConfig.certificateDuration))
+    val orgCryptoMaterial: OrganizationCryptoMaterial = if (!new File(s"$rootDir/ca").exists()) {
         logger.info(s"Generating crypto for $orgFullName...")
-        FabricCryptoMaterial.generateOrgCrypto(
-            config.organization, orgFullName, rootDir,
-            config.network.orderingNodes.map(o => FabricComponent("orderers", o.name)) ++
-              config.network.peerNodes.map(p => FabricComponent("peers", p.name, Option("peer"))),
-            config.certificateDuration
+        val orgCryptoMaterial = FabricCryptoMaterial.generateOrgCrypto(
+            organizationConfig, orgFullName, rootDir,
+            notBefore, notAfter
         )
         logger.info(s"Generated crypto for $orgFullName.")
+        orgCryptoMaterial
     } else {
         logger.info(s"Crypto for $orgFullName already exist.")
+        OrganizationCryptoMaterial(
+            loadCertAndKey(s"$rootDir/ca/ca"),
+            loadCertAndKey(s"$rootDir/tlsca/tlsca"),
+            loadCertAndKey(s"$rootDir/users/admin/admin")
+        )
+    }
+
+    override def createOrgCrypto(network: NetworkConfig, orgFullName: String): Unit = {
+        val components = network.orderingNodes.map(o => FabricComponent("orderers", o.name)) ++
+          network.peerNodes.map(p => FabricComponent("peers", p.name, Option("peer")))
+        FabricCryptoMaterial.createOrgCrypto(organizationConfig, orgFullName, rootDir, orgCryptoMaterial, notBefore, notAfter, components)
     }
 
     //=========================================================================
     override def loadDefaultAdmin: UserAccount =
         loadUser(
             "admin",
-            config.organization.name,
+            organizationConfig.name,
             s"$rootDir/users/admin",
             AccountType.Fabric
         )
@@ -77,7 +87,7 @@ class FileBasedCryptoManager(
         val userBaseDir = s"$usersBaseDir/$userName"
         val f = new File(userBaseDir)
         if (f.exists() && f.isDirectory) {
-            Right(loadUser(userName, config.organization.name, userBaseDir, aType))
+            Right(loadUser(userName, organizationConfig.name, userBaseDir, aType))
         } else {
             Left(s"Unknown user $userName")
         }
@@ -107,8 +117,8 @@ class FileBasedCryptoManager(
     //=========================================================================
     override def createFabricUser(name: String): Unit = {
         val notBefore = new Date
-        val notAfter = Util.futureDate(Util.parsePeriod(config.certificateDuration))
-        val orgConfig = config.organization
+        val notAfter = Util.futureDate(Util.parsePeriod(organizationConfig.certificateDuration))
+        val orgConfig = organizationConfig
         val caCert = loadCertAndKey(s"$rootDir/ca/ca")
         val theCert = FabricCryptoMaterial.generateUserCert(
             userName = name,
@@ -134,9 +144,9 @@ class FileBasedCryptoManager(
     //=========================================================================
     override def createServiceUserKeyStore(name: String, password: String): KeyStore = {
         val notBefore = new Date
-        val notAfter = Util.futureDate(Util.parsePeriod(config.certificateDuration))
+        val notAfter = Util.futureDate(Util.parsePeriod(organizationConfig.certificateDuration))
         val path = s"$rootDir/service"
-        val orgConfig = config.organization
+        val orgConfig = organizationConfig
         val serviceCACert = loadCertAndKey(s"$path/ca/server")
         val theCert = FabricCryptoMaterial.generateUserCert(
             userName = name,

@@ -5,7 +5,7 @@ import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 
 import org.enterprisedlt.fabric.service.model.{Organization, ServiceVersion}
-import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
+import org.enterprisedlt.fabric.service.node.configuration.{NetworkConfig, OrganizationConfig, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.hyperledger.fabric.protos.peer.Chaincode.ChaincodeDeploymentSpec
@@ -19,14 +19,15 @@ import scala.collection.JavaConverters._
   * @author Alexey Polubelov
   */
 class NetworkMonitor(
-    config: ServiceConfig,
+    organizationConfig: OrganizationConfig,
+    networkConfig: NetworkConfig,
     network: FabricNetworkManager,
     processManager: FabricProcessManager,
     hostsManager: HostsManager,
     initialVersion: ServiceVersion
 ) extends BlockListener {
     private val logger = LoggerFactory.getLogger(this.getClass)
-    private val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
+    private val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
     private var currentVersion = initialVersion
 
     override def received(blockEvent: BlockEvent): Unit = {
@@ -63,7 +64,7 @@ class NetworkMonitor(
         logger.info(s"Detected service upgrade [ From $updaterMspId, Version: $version] ")
         val oldVersion = currentVersion
         currentVersion = version
-        if (updaterMspId != config.organization.name) {
+        if (updaterMspId != organizationConfig.name) {
             logger.info(s"[ $organizationFullName ] - Preparing service chain code ...")
             val chainCodePkg = new BufferedInputStream(new FileInputStream(ServiceChainCodePath))
 
@@ -80,7 +81,7 @@ class NetworkMonitor(
               .map(Util.codec.fromJson(_, classOf[ServiceVersion]))
 
             logger.info(s"[ $organizationFullName ] - Cleaning up old service chain codes ...")
-            config.network.peerNodes.foreach { peer =>
+            networkConfig.peerNodes.foreach { peer =>
                 val previousVersion = s"${oldVersion.chainCodeVersion}.${oldVersion.networkVersion}"
                 logger.info(s"Removing previous version [$previousVersion] of service on ${peer.name} ...")
                 processManager.terminateChainCode(peer.name, ServiceChainCodeName, previousVersion)

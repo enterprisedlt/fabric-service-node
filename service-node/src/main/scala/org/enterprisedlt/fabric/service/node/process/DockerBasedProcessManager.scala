@@ -12,7 +12,7 @@ import com.github.dockerjava.api.model.Ports.Binding
 import com.github.dockerjava.api.model._
 import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientBuilder}
 import org.enterprisedlt.fabric.service.node.FabricProcessManager
-import org.enterprisedlt.fabric.service.node.configuration.ServiceConfig
+import org.enterprisedlt.fabric.service.node.configuration.{NetworkConfig, OrganizationConfig, ServiceConfig}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
@@ -23,37 +23,36 @@ import scala.collection.JavaConverters._
 class DockerBasedProcessManager(
     hostHomePath: String,
     dockerSocket: String,
-    selfContainerName: String,
-    config: ServiceConfig,
+    organizationConfig: OrganizationConfig,
+    networkName: String,
+    networkConfig: NetworkConfig,
     LogWindow: Int = 1500
 ) extends FabricProcessManager {
     private val logger = LoggerFactory.getLogger(this.getClass)
-    private val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
+    private val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
     private val dockerConfig = DefaultDockerClientConfig.createDefaultConfigBuilder.withDockerHost(dockerSocket).build
     private val docker: DockerClient = DockerClientBuilder.getInstance(dockerConfig).build()
     private val DefaultLabels =
         Map(
-            "com.docker.compose.project" -> config.network.name,
+            "com.docker.compose.project" -> networkName,
             "com.docker.compose.service" -> organizationFullName
         ).asJava
 
     // =================================================================================================================
     logger.info(s"Initializing ${this.getClass.getSimpleName} ...")
-    val targetName = s"service.$organizationFullName"
-    logger.info(s"Renaming '$selfContainerName' -> '$targetName' ...")
-    docker.renameContainerCmd(selfContainerName).withName(targetName).exec()
+    val containerName = s"service.$organizationFullName"
     logger.info(s"Checking network ...")
-    if (docker.listNetworksCmd().withNameFilter(config.network.name).exec().isEmpty) {
-        logger.info(s"Network ${config.network.name} does not exist, creating ...")
+    if (docker.listNetworksCmd().withNameFilter(networkName).exec().isEmpty) {
+        logger.info(s"Network $networkName does not exist, creating ...")
         docker.createNetworkCmd()
-          .withName(config.network.name)
+          .withName(networkName)
           .withDriver("bridge")
           .exec()
     }
-    logger.info(s"Connecting myself ($targetName) to network ${config.network.name} ...")
+    logger.info(s"Connecting myself ($containerName) to network $networkName ...")
     docker.connectToNetworkCmd()
-      .withContainerId(targetName)
-      .withNetworkId(config.network.name)
+      .withContainerId(containerName)
+      .withNetworkId(networkName)
       .exec()
     // =================================================================================================================
 
@@ -65,7 +64,7 @@ class DockerBasedProcessManager(
         if (checkContainerExistence(osnFullName: String)) {
             stopAndRemoveContainer(osnFullName: String)
         }
-        config.network.orderingNodes
+        networkConfig.orderingNodes
           .find(_.name == name)
           .toRight(s"There is no configuration for $osnFullName")
           .map { osnConfig =>
@@ -79,7 +78,7 @@ class DockerBasedProcessManager(
                 .withPortBindings(
                     new PortBinding(new Binding("0.0.0.0", osnConfig.port.toString), new ExposedPort(osnConfig.port, InternetProtocol.TCP))
                 )
-                .withNetworkMode(config.network.name)
+                .withNetworkMode(networkName)
 
               val osnContainerId: String = docker.createContainerCmd("hyperledger/fabric-orderer")
                 .withName(osnFullName)
@@ -89,7 +88,7 @@ class DockerBasedProcessManager(
                     s"ORDERER_GENERAL_LISTENPORT=${osnConfig.port}",
                     "ORDERER_GENERAL_GENESISMETHOD=file",
                     "ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block",
-                    s"ORDERER_GENERAL_LOCALMSPID=${config.organization.name}",
+                    s"ORDERER_GENERAL_LOCALMSPID=${organizationConfig.name}",
                     "ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp",
                     "ORDERER_GENERAL_TLS_ENABLED=true",
                     "ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key",
@@ -118,7 +117,7 @@ class DockerBasedProcessManager(
         if (checkContainerExistence(peerFullName: String)) {
             stopAndRemoveContainer(peerFullName: String)
         }
-        config.network.peerNodes
+        networkConfig.peerNodes
           .find(_.name == name)
           .toRight(s"There is no configuration for $peerFullName")
           .map { peerConfig =>
@@ -143,14 +142,14 @@ class DockerBasedProcessManager(
                 .withPortBindings(
                     new PortBinding(new Binding("0.0.0.0", peerConfig.port.toString), new ExposedPort(peerConfig.port, InternetProtocol.TCP))
                 )
-                .withNetworkMode(config.network.name)
+                .withNetworkMode(networkName)
 
 
               val peerContainerId: String = docker.createContainerCmd("hyperledger/fabric-peer")
                 .withName(peerFullName)
                 .withEnv(
                     List("CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock",
-                        s"CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${config.network.name}",
+                        s"CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${networkName}",
                         "FABRIC_LOGGING_SPEC=INFO",
                         "CORE_PEER_TLS_ENABLED=true",
                         "CORE_PEER_GOSSIP_USELEADERELECTION=true",
@@ -165,7 +164,7 @@ class DockerBasedProcessManager(
                         "CORE_CHAINCODE_JAVA_RUNTIME=enterprisedlt/fabric-jar-env",
                         s"CORE_PEER_GOSSIP_BOOTSTRAP=$peerFullName:${peerConfig.port}",
                         s"CORE_PEER_GOSSIP_EXTERNALENDPOINT=$peerFullName:${peerConfig.port}",
-                        s"CORE_PEER_LOCALMSPID=${config.organization.name}"
+                        s"CORE_PEER_LOCALMSPID=${organizationConfig.name}"
                     ) ++ couchEnv: _*
                 )
                 .withWorkingDir("/opt/gopath/src/github.com/hyperledger/fabric/peer")
@@ -194,7 +193,7 @@ class DockerBasedProcessManager(
           .withPortBindings(
               new PortBinding(new Binding("0.0.0.0", port.toString), new ExposedPort(5984, InternetProtocol.TCP))
           )
-          .withNetworkMode(config.network.name)
+          .withNetworkMode(networkName)
 
         val couchDBContainerId: String = docker.createContainerCmd("hyperledger/fabric-couchdb")
           .withName(couchDBFullName)

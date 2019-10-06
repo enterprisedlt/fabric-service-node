@@ -1,5 +1,6 @@
 package org.enterprisedlt.fabric.service.node.cryptography
 
+import java.io.File
 import java.math.BigInteger
 import java.security._
 import java.security.cert.X509Certificate

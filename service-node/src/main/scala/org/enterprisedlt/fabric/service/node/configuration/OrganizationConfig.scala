@@ -8,5 +8,6 @@ case class OrganizationConfig(
     domain: String,
     location: String,
     state: String,
-    country: String
+    country: String,
+    certificateDuration: String
 )

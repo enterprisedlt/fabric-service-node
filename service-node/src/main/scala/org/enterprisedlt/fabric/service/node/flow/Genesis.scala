@@ -1,7 +1,7 @@
 package org.enterprisedlt.fabric.service.node.flow
 
 import org.enterprisedlt.fabric.service.node.Util
-import org.enterprisedlt.fabric.service.node.configuration.{BlockConfig, BootstrapOptions, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{BlockConfig, BootstrapOptions, OrganizationConfig, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, SystemChannelName}
 import org.enterprisedlt.fabric.service.node.proto._
 import org.hyperledger.fabric.protos.common.MspPrincipal.MSPRole
@@ -11,11 +11,15 @@ import org.hyperledger.fabric.protos.common.MspPrincipal.MSPRole
   */
 object Genesis {
 
-    def newDefinition(profilePath: String, config: ServiceConfig, bootstrapOptions: BootstrapOptions): ChannelDefinition = {
-        val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
+    def newDefinition(
+       profilePath: String,
+       organizationConfig: OrganizationConfig,
+       bootstrapOptions: BootstrapOptions
+     ): ChannelDefinition = {
+        val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
         val certificatesPath = s"$profilePath/crypto"
 
-        val orgMspId = config.organization.name
+        val orgMspId = organizationConfig.name
         val organizationDefinition =
             OrganizationDefinition(
                 mspId = orgMspId,
@@ -46,7 +50,7 @@ object Genesis {
                     batchTimeOut = blockConfig.batchTimeOut,
                     capabilities = Set(CapabilityValue.V1_1),
                     orderingNodes =
-                      config.network.orderingNodes.map { osnConfig =>
+                      bootstrapOptions.network.orderingNodes.map { osnConfig =>
                           OrderingNodeDefinition(
                               host = s"${osnConfig.name}.$organizationFullName",
                               port = osnConfig.port,
