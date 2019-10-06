@@ -8,5 +8,4 @@ import org.enterprisedlt.fabric.service.node.model.Invite
 case class JoinOptions(
     invite: Invite,
     network: NetworkConfig,
-    certificateDuration: String
 )

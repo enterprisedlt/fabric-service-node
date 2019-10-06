@@ -32,7 +32,16 @@ object Join {
     ): GlobalState = {
         val organizationFullName = s"${config.organization.name}.${config.organization.domain}"
         val cryptoPath = "/opt/profile/crypto"
-
+        logger.info(s"[ $organizationFullName ] - Starting process manager ...")
+        val processManager = new DockerBasedProcessManager(
+            profilePath,
+            dockerSocket,
+            initialName,
+            config,
+            joinOptions.network
+        )
+        logger.info(s"[ $organizationFullName ] - Generating crypto material...")
+        cryptoManager.createOrgCrypto(joinOptions.network, organizationFullName)
         val firstOrderingNode = joinOptions.network.orderingNodes.head
         //
         logger.info(s"[ $organizationFullName ] - Creating JoinRequest ...")
@@ -73,14 +82,6 @@ object Join {
 
         joinResponse.knownOrganizations.foreach(hostsManager.addOrganization)
 
-        logger.info(s"[ $organizationFullName ] - Starting process manager ...")
-        val processManager = new DockerBasedProcessManager(
-            profilePath,
-            dockerSocket,
-            initialName,
-            config,
-            joinOptions.network
-        )
         //
         logger.info(s"[ $organizationFullName ] - Saving genesis to boot from ...")
         Util.storeToFile("/opt/profile/artifacts/genesis.block", Base64.getDecoder.decode(joinResponse.genesis))
