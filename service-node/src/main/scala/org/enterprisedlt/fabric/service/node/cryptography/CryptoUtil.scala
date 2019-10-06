@@ -1,5 +1,6 @@
 package org.enterprisedlt.fabric.service.node.cryptography
 
+import java.io.File
 import java.math.BigInteger
 import java.security._
 import java.security.cert.X509Certificate
@@ -138,6 +139,18 @@ object CryptoUtil {
             )
 
         case x => throw new UnsupportedOperationException(s"Unsupported ASN identifier $x")
+    }
+
+
+    def checkOrgCryptoExists(rootDir: String): Boolean = {
+        !new File(s"$rootDir/ca").exists() ||
+        !new File(s"$rootDir/tlsca").exists() ||
+        !new File(s"$rootDir/users/admin/").exists()
+    }
+    def checkServiceCryptoExists(rootDir: String): Boolean = {
+        !new File(s"$rootDir/service/ca/").exists() ||
+        !new File(s"$rootDir/service/tls/").exists() ||
+        !new File(s"$rootDir/service/users/").exists()
     }
 }
 
