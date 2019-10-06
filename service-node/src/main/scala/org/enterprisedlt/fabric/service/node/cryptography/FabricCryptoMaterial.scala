@@ -12,13 +12,13 @@ import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
   */
 object FabricCryptoMaterial {
 
-    def generateOrgCrypto(orgConfig: OrganizationConfig, orgFullName: String, path: String, notBefore: Date, notAfter: Date): OrganizationCryptoMaterial = {
+    def generateOrgCrypto(organizationConfig: OrganizationConfig, orgFullName: String, path: String, notBefore: Date, notAfter: Date): OrganizationCryptoMaterial = {
         //    CA
         val caCert: CertAndKey = FabricCryptoMaterial.generateCACert(
             organization = orgFullName,
-            location = orgConfig.location,
-            state = orgConfig.state,
-            country = orgConfig.country,
+            location = organizationConfig.location,
+            state = organizationConfig.state,
+            country = organizationConfig.country,
             notBefore = notBefore,
             notAfter = notAfter
         )
@@ -30,9 +30,9 @@ object FabricCryptoMaterial {
         //    TLS CA
         val tlscaCert: CertAndKey = FabricCryptoMaterial.generateTLSCACert(
             organization = orgFullName,
-            location = orgConfig.location,
-            state = orgConfig.state,
-            country = orgConfig.country,
+            location = organizationConfig.location,
+            state = organizationConfig.state,
+            country = organizationConfig.country,
             notBefore = notBefore,
             notAfter = notAfter
         )
@@ -44,9 +44,9 @@ object FabricCryptoMaterial {
         //    Admin
         val adminCert: CertAndKey = FabricCryptoMaterial.generateAdminCert(
             organization = orgFullName,
-            location = orgConfig.location,
-            state = orgConfig.state,
-            country = orgConfig.country,
+            location = organizationConfig.location,
+            state = organizationConfig.state,
+            country = organizationConfig.country,
             signCert = caCert,
             notBefore = notBefore,
             notAfter = notAfter
@@ -56,6 +56,8 @@ object FabricCryptoMaterial {
         writeToPemFile(s"$adminDir/admin.crt", adminCert.certificate)
         writeToPemFile(s"$adminDir/admin.key", adminCert.key)
 
+        //  Service certificates
+        createServiceDir(organizationConfig, orgFullName, path, caCert, tlscaCert, notBefore, notAfter)
         OrganizationCryptoMaterial(
             caCert,
             tlscaCert,
@@ -66,7 +68,6 @@ object FabricCryptoMaterial {
         components.foreach { component =>
             createComponentDir(organizationConfig, orgFullName, component, path, orgCrypto.caCert, orgCrypto.tlscaCert, orgCrypto.adminCert, notBefore, notAfter)
         }
-        createServiceDir(organizationConfig, orgFullName, path, orgCrypto.caCert, orgCrypto.tlscaCert, notBefore, notAfter)
     }
 
     private def createComponentDir(
