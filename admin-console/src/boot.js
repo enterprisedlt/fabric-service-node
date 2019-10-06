@@ -17,6 +17,33 @@ export class Boot {
       heartbeatTick: 1,
       maxInflightBlocks: 5,
       snapshotIntervalSize: 20971520
+    },
+    networkName: "test_net",
+    network: {
+
+      orderingNodes: [
+        {
+          name: "osn1",
+          port: 7001
+        },
+        {
+          name: "osn2",
+          port: 7002
+        },
+        {
+          name: "osn3",
+          port: 7003
+        }
+      ],
+      peerNodes: [
+        {
+          name: "peer0",
+          port: 7010,
+          couchDB: {
+            port: 7011
+          }
+        }
+      ]
     }
   };
 

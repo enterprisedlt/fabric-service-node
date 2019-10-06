@@ -24,6 +24,7 @@ class DockerBasedProcessManager(
     hostHomePath: String,
     dockerSocket: String,
     organizationConfig: OrganizationConfig,
+    networkName: String,
     networkConfig: NetworkConfig,
     LogWindow: Int = 1500
 ) extends FabricProcessManager {
@@ -33,7 +34,7 @@ class DockerBasedProcessManager(
     private val docker: DockerClient = DockerClientBuilder.getInstance(dockerConfig).build()
     private val DefaultLabels =
         Map(
-            "com.docker.compose.project" -> networkConfig.name,
+            "com.docker.compose.project" -> networkName,
             "com.docker.compose.service" -> organizationFullName
         ).asJava
 
@@ -41,17 +42,17 @@ class DockerBasedProcessManager(
     logger.info(s"Initializing ${this.getClass.getSimpleName} ...")
     val containerName = s"service.$organizationFullName"
     logger.info(s"Checking network ...")
-    if (docker.listNetworksCmd().withNameFilter(networkConfig.name).exec().isEmpty) {
-        logger.info(s"Network ${networkConfig.name} does not exist, creating ...")
+    if (docker.listNetworksCmd().withNameFilter(networkName).exec().isEmpty) {
+        logger.info(s"Network $networkName does not exist, creating ...")
         docker.createNetworkCmd()
-          .withName(networkConfig.name)
+          .withName(networkName)
           .withDriver("bridge")
           .exec()
     }
-    logger.info(s"Connecting myself ($containerName) to network ${networkConfig.name} ...")
+    logger.info(s"Connecting myself ($containerName) to network $networkName ...")
     docker.connectToNetworkCmd()
       .withContainerId(containerName)
-      .withNetworkId(networkConfig.name)
+      .withNetworkId(networkName)
       .exec()
     // =================================================================================================================
 
@@ -77,7 +78,7 @@ class DockerBasedProcessManager(
                 .withPortBindings(
                     new PortBinding(new Binding("0.0.0.0", osnConfig.port.toString), new ExposedPort(osnConfig.port, InternetProtocol.TCP))
                 )
-                .withNetworkMode(networkConfig.name)
+                .withNetworkMode(networkName)
 
               val osnContainerId: String = docker.createContainerCmd("hyperledger/fabric-orderer")
                 .withName(osnFullName)
@@ -141,14 +142,14 @@ class DockerBasedProcessManager(
                 .withPortBindings(
                     new PortBinding(new Binding("0.0.0.0", peerConfig.port.toString), new ExposedPort(peerConfig.port, InternetProtocol.TCP))
                 )
-                .withNetworkMode(networkConfig.name)
+                .withNetworkMode(networkName)
 
 
               val peerContainerId: String = docker.createContainerCmd("hyperledger/fabric-peer")
                 .withName(peerFullName)
                 .withEnv(
                     List("CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock",
-                        s"CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${networkConfig.name}",
+                        s"CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${networkName}",
                         "FABRIC_LOGGING_SPEC=INFO",
                         "CORE_PEER_TLS_ENABLED=true",
                         "CORE_PEER_GOSSIP_USELEADERELECTION=true",
@@ -192,7 +193,7 @@ class DockerBasedProcessManager(
           .withPortBindings(
               new PortBinding(new Binding("0.0.0.0", port.toString), new ExposedPort(5984, InternetProtocol.TCP))
           )
-          .withNetworkMode(networkConfig.name)
+          .withNetworkMode(networkName)
 
         val couchDBContainerId: String = docker.createContainerCmd("hyperledger/fabric-couchdb")
           .withName(couchDBFullName)

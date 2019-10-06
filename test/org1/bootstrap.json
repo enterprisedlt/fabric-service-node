@@ -12,8 +12,8 @@
     "maxInflightBlocks": 5,
     "snapshotIntervalSize": 20971520
   },
+  "networkName": "test_net",
   "network": {
-    "name": "test_net",
     "orderingNodes": [
       {
         "name": "osn1",

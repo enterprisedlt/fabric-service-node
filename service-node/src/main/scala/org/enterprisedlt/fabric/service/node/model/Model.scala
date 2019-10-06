@@ -41,6 +41,7 @@ case class QueryChainCodeRequest(
 )
 
 case class Invite(
+    networkName: String,
     address: String,
     key: String
 )

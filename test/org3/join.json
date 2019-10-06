@@ -1,6 +1,5 @@
 {
   "network": {
-    "name": "test_net",
     "orderingNodes": [
       {
         "name": "osn1",

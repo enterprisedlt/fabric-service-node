@@ -36,6 +36,7 @@ object Join {
             profilePath,
             dockerSocket,
             organizationConfig,
+            joinOptions.invite.networkName,
             joinOptions.network
         )
         logger.info(s"[ $organizationFullName ] - Generating crypto material...")
@@ -171,7 +172,7 @@ object Join {
                 state.set(FabricServiceState(FabricServiceState.JoinSettingUpBlockListener))
                 network.setupBlockListener(ServiceChannelName, new NetworkMonitor(organizationConfig, joinOptions.network, network, processManager, hostsManager, serviceVersion))
                 state.set(FabricServiceState(FabricServiceState.Ready))
-                GlobalState(network, processManager,joinOptions.network)
+                GlobalState(network, processManager,joinOptions.network,joinOptions.invite.networkName)
         }
     }
 

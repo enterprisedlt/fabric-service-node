@@ -35,6 +35,7 @@ object Bootstrap {
             profilePath,
             dockerSocket,
             organizationConfig,
+            bootstrapOptions.networkName,
             bootstrapOptions.network
         )
         //
@@ -138,6 +139,6 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Bootstrap done.")
         state.set(FabricServiceState(FabricServiceState.Ready))
-        GlobalState(network, processManager,bootstrapOptions.network)
+        GlobalState(network, processManager,bootstrapOptions.network,bootstrapOptions.networkName)
     }
 }

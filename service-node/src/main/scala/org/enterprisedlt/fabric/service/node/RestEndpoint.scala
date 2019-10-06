@@ -77,22 +77,33 @@ class RestEndpoint(
                         response.setStatus(HttpServletResponse.SC_OK)
 
                     case "/admin/create-invite" =>
-                        logger.info(s"Creating invite ${organizationConfig.name}...")
-                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                        val out = response.getOutputStream
-                        val address = externalAddress
-                          .map(ea => s"${ea.host}:${ea.port}")
-                          .getOrElse(s"service.${organizationConfig.name}.${organizationConfig.domain}:$bindPort")
-                        //TODO: password should be taken from request
-                        val password = "join me"
-                        val key = cryptoManager.createServiceUserKeyStore(s"join-${System.currentTimeMillis()}", password)
-                        val invite = Invite(
-                            address,
-                            Util.keyStoreToBase64(key, password)
-                        )
-                        out.println(Util.codec.toJson(invite))
-                        out.flush()
-                        response.setStatus(HttpServletResponse.SC_OK)
+                        globalState
+                          .toRight("Node is not initialized yet")
+                          .map { state =>
+                              logger.info(s"Creating invite ${organizationConfig.name}...")
+                              val address = externalAddress
+                                .map(ea => s"${ea.host}:${ea.port}")
+                                .getOrElse(s"service.${organizationConfig.name}.${organizationConfig.domain}:$bindPort")
+                              //TODO: password should be taken from request
+                              val password = "join me"
+                              val key = cryptoManager.createServiceUserKeyStore(s"join-${System.currentTimeMillis()}", password)
+                              Invite(
+                                  state.networkName,
+                                  address,
+                                  Util.keyStoreToBase64(key, password)
+                              )
+                          } match {
+                            case Right(invite) =>
+                                val out = response.getOutputStream
+                                out.println(Util.codec.toJson(invite))
+                                out.flush()
+                                response.setStatus(HttpServletResponse.SC_OK)
+
+                            case Left(error) =>
+                                logger.error(error)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
+
 
                     case "/admin/create-user" =>
                         val userName = request.getParameter("name")
@@ -461,5 +472,6 @@ class RestEndpoint(
 case class GlobalState(
     networkManager: FabricNetworkManager,
     processManager: FabricProcessManager,
-    network: NetworkConfig
-)
+    network: NetworkConfig,
+    networkName: String
+  )
