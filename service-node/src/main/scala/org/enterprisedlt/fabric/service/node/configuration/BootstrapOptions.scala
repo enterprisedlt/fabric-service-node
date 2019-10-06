@@ -6,6 +6,5 @@ package org.enterprisedlt.fabric.service.node.configuration
 case class BootstrapOptions(
     block: BlockConfig,
     raft: RaftConfig,
-    network: NetworkConfig,
-    certificateDuration: String
+    network: NetworkConfig
 )
