@@ -29,7 +29,6 @@ object ServiceNode extends App {
     private val ServiceExternalAddress = Option(Environment.get("SERVICE_EXTERNAL_ADDRESS")).filter(_.trim.nonEmpty).map(parseExternalAddress(_, ServiceBindPort))
     private val ProfilePath = Option(Environment.get("PROFILE_PATH")).getOrElse(throw new Exception("Mandatory environment variable missing PROFILE_PATH!"))
     private val DockerSocket = Option(Environment.get("DOCKER_SOCKET")).getOrElse(throw new Exception("Mandatory environment variable missing DOCKER_SOCKET!"))
-    private val InitialName = Option(Environment.get("INITIAL_NAME")).getOrElse(throw new Exception("Mandatory environment variable missing INITIAL_NAME!"))
     // Org variables
     private val OrgName = Option(Environment.get("ORG")).getOrElse(throw new Exception("Mandatory environment variable missing ORG!"))
     private val Domain = Option(Environment.get("DOMAIN")).getOrElse(throw new Exception("Mandatory environment variable missing DOMAIN!"))
@@ -50,12 +49,11 @@ object ServiceNode extends App {
         State,
         Country,
         CertificateDuration)
-    private val cryptoManager = new FileBasedCryptoManager(organizationConfig,  "/opt/profile/crypto")
+    private val cryptoManager = new FileBasedCryptoManager(organizationConfig, "/opt/profile/crypto")
     private val restEndpoint = new RestEndpoint(
         ServiceBindPort, ServiceExternalAddress, organizationConfig, cryptoManager,
         hostsManager = new HostsManager("/opt/profile/hosts", organizationConfig),
-        ProfilePath, DockerSocket, InitialName,
-        serviceState
+        ProfilePath, DockerSocket, serviceState
     )
     //TODO: make web app optional, based on configuration
     private val server =
@@ -201,6 +199,6 @@ object ServiceNode extends App {
 }
 
 case class ExternalAddress(
-                            host: String,
-                            port: Int
-                          )
+    host: String,
+    port: Int
+  )

@@ -23,7 +23,6 @@ import scala.collection.JavaConverters._
 class DockerBasedProcessManager(
     hostHomePath: String,
     dockerSocket: String,
-    selfContainerName: String,
     organizationConfig: OrganizationConfig,
     networkConfig: NetworkConfig,
     LogWindow: Int = 1500
@@ -40,9 +39,7 @@ class DockerBasedProcessManager(
 
     // =================================================================================================================
     logger.info(s"Initializing ${this.getClass.getSimpleName} ...")
-    val targetName = s"service.$organizationFullName"
-    logger.info(s"Renaming '$selfContainerName' -> '$targetName' ...")
-    docker.renameContainerCmd(selfContainerName).withName(targetName).exec()
+    val containerName = s"service.$organizationFullName"
     logger.info(s"Checking network ...")
     if (docker.listNetworksCmd().withNameFilter(networkConfig.name).exec().isEmpty) {
         logger.info(s"Network ${networkConfig.name} does not exist, creating ...")
@@ -51,9 +48,9 @@ class DockerBasedProcessManager(
           .withDriver("bridge")
           .exec()
     }
-    logger.info(s"Connecting myself ($targetName) to network ${networkConfig.name} ...")
+    logger.info(s"Connecting myself ($containerName) to network ${networkConfig.name} ...")
     docker.connectToNetworkCmd()
-      .withContainerId(targetName)
+      .withContainerId(containerName)
       .withNetworkId(networkConfig.name)
       .exec()
     // =================================================================================================================

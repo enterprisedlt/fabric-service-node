@@ -13,9 +13,7 @@ fi
 . ${PROFILE_PATH}/settings
 
 echo "Starting Fabric Service Node ..."
-INITIAL_NAME="fabric.service.node.${SERVICE_BIND_PORT}"
 serviceID=`docker run -d \
- -e "INITIAL_NAME=${INITIAL_NAME}" \
  -e "PROFILE_PATH=${PROFILE_PATH}" \
  -e "ORG=${ORG}" \
  -e "DOMAIN=${DOMAIN}" \
@@ -33,7 +31,7 @@ serviceID=`docker run -d \
  --volume=${SERVICE_NODE_HOME}/service-chain-code/service-chain-code.tgz:/opt/service/service-chain-code.tgz \
  --volume=${SERVICE_NODE_HOME}/admin-console:/opt/service/admin-console \
  --volume=/var/run/:/host/var/run/ \
- --name $INITIAL_NAME \
+ --name service.${ORG}.${DOMAIN} \
 openjdk:8-jre java -jar /opt/service/service-node.jar`
 echo "Service ID: ${serviceID}"
 

@@ -27,7 +27,6 @@ object Join {
         hostsManager: HostsManager,
         profilePath: String,
         dockerSocket: String,
-        initialName: String,
         state: AtomicReference[FabricServiceState]
     ): GlobalState = {
         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
@@ -36,7 +35,6 @@ object Join {
         val processManager = new DockerBasedProcessManager(
             profilePath,
             dockerSocket,
-            initialName,
             organizationConfig,
             joinOptions.network
         )

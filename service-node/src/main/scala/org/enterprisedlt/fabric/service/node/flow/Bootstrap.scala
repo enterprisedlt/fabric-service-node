@@ -26,7 +26,6 @@ object Bootstrap {
         externalAddress: Option[ExternalAddress],
         profilePath: String,
         dockerSocket: String,
-        initialName: String,
         state: AtomicReference[FabricServiceState]
     ): GlobalState = {
         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
@@ -35,7 +34,6 @@ object Bootstrap {
         val processManager = new DockerBasedProcessManager(
             profilePath,
             dockerSocket,
-            initialName,
             organizationConfig,
             bootstrapOptions.network
         )

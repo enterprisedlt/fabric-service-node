@@ -9,9 +9,7 @@ fi
 . ${PROFILE_PATH}/settings
 
 echo "Starting Fabric Service Node ..."
-INITIAL_NAME="fabric.service.node.${SERVICE_BIND_PORT}"
 serviceID=`docker run -d \
- -e "INITIAL_NAME=${INITIAL_NAME}" \
  -e "PROFILE_PATH=${PROFILE_PATH}" \
  -e "ORG=${ORG}" \
  -e "DOMAIN=${DOMAIN}" \
@@ -26,7 +24,7 @@ serviceID=`docker run -d \
  --volume=${PROFILE_PATH}/hosts:/etc/hosts \
  --volume=${PROFILE_PATH}:/opt/profile \
  --volume=/var/run/:/host/var/run/ \
- --name $INITIAL_NAME \
+ --name service.${ORG}.${DOMAIN} \
  enterprisedlt/fabric-service-node`
 echo "Service ID: ${serviceID}"
 

@@ -31,7 +31,6 @@ class RestEndpoint(
     hostsManager: HostsManager,
     profilePath: String,
     dockerSocket: String,
-    initialName: String,
     state: AtomicReference[FabricServiceState]
 ) extends AbstractHandler {
     private val logger = LoggerFactory.getLogger(this.getClass)
@@ -177,7 +176,6 @@ class RestEndpoint(
                                 externalAddress,
                                 profilePath,
                                 dockerSocket,
-                                initialName,
                                 state)
                             )
                             val end = System.currentTimeMillis() - start
@@ -224,8 +222,8 @@ class RestEndpoint(
                             hostsManager,
                             profilePath,
                             dockerSocket,
-                            initialName,
-                            state))
+                            state)
+                        )
                         val end = System.currentTimeMillis() - start
                         logger.info(s"Joined ($end ms)")
                         response.setStatus(HttpServletResponse.SC_OK)
