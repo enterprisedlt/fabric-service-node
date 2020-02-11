@@ -1,0 +1,5 @@
+ORG,DOMAIN,SERVICE_EXTERNAL_ADDRESS, SERVICE_BIND_PORT
+org1,example.com,,8000
+org2,example.com,,8001
+org3,example.com,,8002
+org4,example.com,,8003
