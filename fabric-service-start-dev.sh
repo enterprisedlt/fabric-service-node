@@ -27,8 +27,8 @@ serviceID=`docker run -d \
  -p ${SERVICE_BIND_PORT}:${SERVICE_BIND_PORT} \
  --volume=${PROFILE_PATH}/hosts:/etc/hosts \
  --volume=${PROFILE_PATH}:/opt/profile \
- --volume=${SERVICE_NODE_HOME}/service-node/build/libs/service-node.jar:/opt/service/service-node.jar \
- --volume=${SERVICE_NODE_HOME}/service-chain-code/service-chain-code.tgz:/opt/service/service-chain-code.tgz \
+ --volume=${SERVICE_NODE_HOME}/service-node/target/scala-2.12/service-node.jar:/opt/service/service-node.jar \
+ --volume=${SERVICE_NODE_HOME}/service-chain-code/service/target/service-chain-code.tgz:/opt/service/service-chain-code.tgz \
  --volume=${SERVICE_NODE_HOME}/admin-console:/opt/service/admin-console \
  --volume=/var/run/:/host/var/run/ \
  --name service.${ORG}.${DOMAIN} \

@@ -1,17 +1,22 @@
 #!/bin/bash
 
 # build fresh chain-code and server
-gradle clean
-gradle service-node:shadowJar
-gradle service-chain-code:shadowJar
+sbt clean assembly
 
-pushd admin-console
+pushd admin-console || exit
     npm install
     au build --env prod
-popd
+popd || exit
 
 # pack chain-code to deploy-able tarball
-./bin/fabric-service-pack-chaincode.sh ./service-chain-code service-chain-code.tgz
+pushd ./service-chain-code/service/target/ || exit
+  mkdir src
+  cp ./scala-2.12/chaincode.jar ./src/chaincode.jar
+  tar -czf service-chain-code.tgz ./src/chaincode.jar
+  rm -rf src
+popd || exit
+
+#./bin/fabric-service-pack-chaincode.sh ./service-chain-code service-chain-code.tgz
 
 docker build -t enterprisedlt/fabric-service-node:1.4.2-rc-3 .
 docker tag enterprisedlt/fabric-service-node:1.4.2-rc-3 enterprisedlt/fabric-service-node

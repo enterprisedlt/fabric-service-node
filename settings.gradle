@@ -1,5 +1,0 @@
-rootProject.name = 'fabric-service-node'
-
-include ':service-chain-code:service'
-include ':service-chain-code:data-model'
-include ':service-node'
