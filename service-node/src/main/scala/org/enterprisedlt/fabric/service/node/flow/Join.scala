@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, OrganizationsOrdering, ServiceVersion}
 import org.enterprisedlt.fabric.service.node._
-import org.enterprisedlt.fabric.service.node.configuration.{ExternalOSNConfig, JoinOptions, OrganizationConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{ JoinOptions, OSNConfig, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
@@ -84,7 +84,7 @@ object Join {
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
         val admin = cryptoManager.loadDefaultAdmin
-        val network = new FabricNetworkManager(organizationConfig, ExternalOSNConfig(joinResponse.osnHost,joinResponse.osnPort), admin)
+        val network = new FabricNetworkManager(organizationConfig, OSNConfig(joinResponse.osnHost,joinResponse.osnPort), admin)
         network.defineChannel(ServiceChannelName)
 
         state.set(FabricServiceState(FabricServiceState.JoinConnectingToNetwork))
@@ -240,7 +240,7 @@ object Join {
                 genesis = Base64.getEncoder.encodeToString(latestBlock.toByteArray),
                 version = nextVersion,
                 knownOrganizations = currentOrganizations,
-                osnHost = s"${osnConfigFirstOrg.fullName(organizationFullName)}",
+                osnHost = s"${osnConfigFirstOrg}.${organizationFullName}",
                 osnPort = osnConfigFirstOrg.port
             )
         }
