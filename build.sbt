@@ -146,5 +146,6 @@ lazy val Jetty = Seq(
 lazy val DockerJava = Seq(
     "com.github.docker-java" % "docker-java-api" % DockerApiVersion,
     "com.github.docker-java" % "docker-java-core" % DockerApiVersion,
-    "com.github.docker-java" % "docker-java-transport-netty" % DockerApiVersion
+    "com.github.docker-java" % "docker-java-transport-okhttp" % DockerApiVersion
+//      "docker-java-transport-netty" % DockerApiVersion
 )

@@ -10,7 +10,11 @@ fi
 
 ORG_LIST_FILE="${PROFILE_PATH}/shared/list";
 
-[[ -f ${ORG_LIST_FILE} ]] || (echo "Orgs list does not exist!" && exit 1);
+if [[ ! -f ${ORG_LIST_FILE} ]]
+then
+  echo "Orgs list does not exist!"
+  exit 1
+fi
 
 #
 # Bootstrap first organization

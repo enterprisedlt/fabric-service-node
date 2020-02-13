@@ -8,10 +8,14 @@ else
 fi
 ENV_CONFIG="${PROFILE_PATH}/config.csv";
 
-[[ -f ${ENV_CONFIG} ]] || (echo "Profile config does not exist!" && exit 1);
+if [[ ! -f ${ENV_CONFIG} ]]
+then
+  echo "Profile config does not exist!"
+  exit 1
+fi
 
 
-#for i in `ls ${PROFILE_PATH} | grep -v 'config.csv'`; do rm -rfv "${PROFILE_PATH}/${i}"; done
+for i in `ls ${PROFILE_PATH} | grep -v 'config.csv'`; do rm -rfv "${PROFILE_PATH}/${i}"; done
 
 mkdir -p ${PROFILE_PATH}/shared
 cat ${ENV_CONFIG} | awk -v PROFILE_PATH="${PROFILE_PATH}" -F, '
