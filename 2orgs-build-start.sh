@@ -5,6 +5,8 @@
 
 ./build.sh
 
+./bin/fabric-service-generate-static-env.sh ./test
+
 # start ORG1
 ./fabric-service-start-dev.sh ./test/org1
 #fabric-service-get-user-key.sh ./test/org1 admin admin ./admin-org1.p12
