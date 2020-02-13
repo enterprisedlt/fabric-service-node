@@ -334,16 +334,6 @@ class FabricNetworkManager(
             FabricChannel.AddConsortiumOrg(organizationDefinition.mspId, orderingOrganizationGroup)
         )
         logger.info("Adding OSN 1...")
-        val consenter = Consenter.newBuilder()
-          .setHost(joinRequest.osnHost)
-          .setPort(joinRequest.osnPort)
-          .setClientTlsCert(Util.base64Decode(joinRequest.osnCertificates.clientTlsCert))
-          .setServerTlsCert(Util.base64Decode(joinRequest.osnCertificates.serverTlsCert))
-          .build()
-        applyChannelUpdate(
-            systemChannel, admin,
-            FabricChannel.AddConsenter(consenter)
-        )
     }
 
     //=========================================================================
@@ -371,17 +361,6 @@ class FabricNetworkManager(
               applyChannelUpdate(
                   channel, admin,
                   FabricChannel.AddOrderingOrg(organizationDefinition.mspId, orderingOrganizationGroup)
-              )
-              logger.info("Adding OSN 1...")
-              val consenter = Consenter.newBuilder()
-                .setHost(joinRequest.osnHost)
-                .setPort(joinRequest.osnPort)
-                .setClientTlsCert(Util.base64Decode(joinRequest.osnCertificates.clientTlsCert))
-                .setServerTlsCert(Util.base64Decode(joinRequest.osnCertificates.serverTlsCert))
-                .build()
-              applyChannelUpdate(
-                  channel, admin,
-                  FabricChannel.AddConsenter(consenter)
               )
           }
     }

@@ -48,18 +48,15 @@ case class Invite(
 
 case class JoinRequest(
     organization: Organization,
-    //
     organizationCertificates: OrganizationCertificates,
-    //
-    osnCertificates: OsnCertificates,
-    osnHost: String,
-    osnPort: Int
 )
 
 case class JoinResponse(
     genesis: String,
     version: String,
-    knownOrganizations: Array[Organization]
+    knownOrganizations: Array[Organization],
+    osnHost: String,
+    osnPort: Int
 )
 
 case class SendMessageRequest(

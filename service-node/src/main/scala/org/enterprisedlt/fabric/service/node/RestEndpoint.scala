@@ -207,7 +207,8 @@ class RestEndpoint(
                                   state,
                                   cryptoManager,
                                   joinRequest,
-                                  hostsManager
+                                  hostsManager,
+                                  organizationConfig
                               )
                           } match {
                             case Right(joinResponse) =>
@@ -473,5 +474,5 @@ case class GlobalState(
     networkManager: FabricNetworkManager,
     processManager: FabricProcessManager,
     network: NetworkConfig,
-    networkName: String
+    networkName: String,
   )
