@@ -1,6 +1,5 @@
 package org.enterprisedlt.fabric.service.node.cryptography
 
-import java.io.File
 import java.math.BigInteger
 import java.security._
 import java.security.cert.X509Certificate
@@ -11,14 +10,12 @@ import org.bouncycastle.asn1.x500.{X500Name, X500NameBuilder}
 import org.bouncycastle.asn1.x509._
 import org.bouncycastle.asn1.{ASN1Encodable, ASN1ObjectIdentifier, DERSequence}
 import org.bouncycastle.cert.jcajce.{JcaX509CertificateConverter, JcaX509ExtensionUtils, JcaX509v3CertificateBuilder}
-import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object CryptoUtil {
-    Security.addProvider(new BouncyCastleProvider)
     private val random = new SecureRandom()
 
     def newKeyPair(): KeyPair = {

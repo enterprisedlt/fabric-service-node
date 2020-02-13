@@ -7,12 +7,14 @@ import java.util.concurrent.atomic.AtomicReference
 
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback
+import com.github.dockerjava.api.command.DockerCmdExecFactory
 import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.model.Ports.Binding
 import com.github.dockerjava.api.model._
-import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientBuilder}
+import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientImpl}
+import com.github.dockerjava.okhttp.OkHttpDockerCmdExecFactory
 import org.enterprisedlt.fabric.service.node.FabricProcessManager
-import org.enterprisedlt.fabric.service.node.configuration.{NetworkConfig, OrganizationConfig, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{NetworkConfig, OrganizationConfig}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
@@ -30,8 +32,9 @@ class DockerBasedProcessManager(
 ) extends FabricProcessManager {
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
-    private val dockerConfig = DefaultDockerClientConfig.createDefaultConfigBuilder.withDockerHost(dockerSocket).build
-    private val docker: DockerClient = DockerClientBuilder.getInstance(dockerConfig).build()
+    private val dockerConfig = new DefaultDockerClientConfig.Builder().withDockerHost(dockerSocket).build
+    private val execFactory: DockerCmdExecFactory = new OkHttpDockerCmdExecFactory
+    private val docker: DockerClient = DockerClientImpl.getInstance(dockerConfig).withDockerCmdExecFactory(execFactory)
     private val DefaultLabels =
         Map(
             "com.docker.compose.project" -> networkName,
@@ -149,7 +152,7 @@ class DockerBasedProcessManager(
                 .withName(peerFullName)
                 .withEnv(
                     List("CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock",
-                        s"CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=${networkName}",
+                        s"CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=$networkName",
                         "FABRIC_LOGGING_SPEC=INFO",
                         "CORE_PEER_TLS_ENABLED=true",
                         "CORE_PEER_GOSSIP_USELEADERELECTION=true",

@@ -181,13 +181,13 @@ object Join {
             // fetch current network version
             chainCodeVersion <- state.networkManager
               .queryChainCode(ServiceChannelName, ServiceChainCodeName, "getServiceVersion")
-              .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("Empty result"))
+              .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("getServiceVersion - Empty result"))
               .map(Util.codec.fromJson(_, classOf[ServiceVersion]))
 
             // fetch current list of organizations
             currentOrganizations <- state.networkManager
               .queryChainCode(ServiceChannelName, ServiceChainCodeName, "listOrganizations")
-              .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("Empty result"))
+              .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("listOrganizations - Empty result"))
               .map(Util.codec.fromJson(_, classOf[Array[Organization]]).sorted(OrganizationsOrdering))
 
         } yield {
