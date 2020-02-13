@@ -48,7 +48,6 @@ class FabricNetworkManager(
     private val osnByName = TrieMap(bootstrapOsn.name -> bootstrapOsn)
     // ---------------------------------------------------------------------------------------------------------------
     private lazy val systemChannel: Channel = connectToSystemChannel
-
     //
     //
     //
@@ -104,7 +103,7 @@ class FabricNetworkManager(
               peerByName.get(peerName)
                 .toRight(s"Unknown peer $peerName")
                 .map { peer =>
-                    applyChannelUpdate(channel, admin, FabricChannel.AddAnchorPeer(organization.name, s"${peer.name}.$organizationFullName", peer.port))
+                    applyChannelUpdate(channel, admin, FabricChannel.AddAnchorPeer(organization.name, s"${peer.name}", peer.port))
                 }
           }
 
@@ -378,8 +377,8 @@ class FabricNetworkManager(
               val consenter = Consenter.newBuilder()
                 .setHost(s"${osnConfig.name}.$organizationFullName")
                 .setPort(osnConfig.port)
-                .setClientTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
-                .setServerTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
+                .setClientTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.fullName(organizationFullName)}/tls/server.crt"))
+                .setServerTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.fullName(organizationFullName)}/tls/server.crt"))
                 .build()
               val channel: Channel =
                   channelName
@@ -434,7 +433,7 @@ class FabricNetworkManager(
     private def mkOSN(config: OSNConfig): Orderer = {
         val properties = new Properties()
         properties.put("pemFile", defaultOSNTLSPath(config.name))
-        fabricClient.newOrderer(config.name, s"grpcs://${config.name}.$organizationFullName:${config.port}", properties)
+        fabricClient.newOrderer(config.name, s"grpcs://${config.fullName(organizationFullName)}:${config.port}", properties)
     }
 
     //=========================================================================

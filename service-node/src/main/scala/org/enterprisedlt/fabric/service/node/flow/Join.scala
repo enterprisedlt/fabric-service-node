@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, OrganizationsOrdering, ServiceVersion}
 import org.enterprisedlt.fabric.service.node._
-import org.enterprisedlt.fabric.service.node.configuration.{JoinOptions, OrganizationConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{ExternalOSNConfig, JoinOptions, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
@@ -41,7 +41,6 @@ object Join {
         )
         logger.info(s"[ $organizationFullName ] - Generating crypto material...")
         cryptoManager.createOrgCrypto(joinOptions.network, organizationFullName)
-//        val firstOrderingNode = joinOptions.network.orderingNodes.head
         //
         logger.info(s"[ $organizationFullName ] - Creating JoinRequest ...")
         state.set(FabricServiceState(FabricServiceState.JoinCreatingJoinRequest))
@@ -85,7 +84,7 @@ object Join {
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
         val admin = cryptoManager.loadDefaultAdmin
-        val network = new FabricNetworkManager(organizationConfig, joinOptions.network.orderingNodes.head, admin)
+        val network = new FabricNetworkManager(organizationConfig, ExternalOSNConfig(joinResponse.osnHost,joinResponse.osnPort), admin)
         network.defineChannel(ServiceChannelName)
 
         state.set(FabricServiceState(FabricServiceState.JoinConnectingToNetwork))
@@ -241,7 +240,7 @@ object Join {
                 genesis = Base64.getEncoder.encodeToString(latestBlock.toByteArray),
                 version = nextVersion,
                 knownOrganizations = currentOrganizations,
-                osnHost = s"${osnConfigFirstOrg.name}.${organizationFullName}",
+                osnHost = s"${osnConfigFirstOrg.fullName(organizationFullName)}",
                 osnPort = osnConfigFirstOrg.port
             )
         }
