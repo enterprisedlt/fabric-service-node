@@ -1,29 +1,30 @@
 package org.enterprisedlt.fabric.service.operations
 
-import org.enterprisedlt.fabric.contract.annotation.ContractOperation
-import org.enterprisedlt.fabric.contract.{ContractContext, ContractResponse, Success}
+import org.enterprisedlt.fabric.contract.OperationContext
 import org.enterprisedlt.fabric.service.Main
 import org.enterprisedlt.fabric.service.model.{CollectionsHelper, Organization, OrganizationsOrdering}
+import org.enterprisedlt.spec._
+import org.enterprisedlt.spec.{ContractOperation, ContractResult}
+
+import scala.util.Try
 
 /**
-  * @author Andrew Pudovikov
-  */
+ * @author Andrew Pudovikov
+ */
 trait ServiceOperations {
     self: Main.type =>
 
-    @ContractOperation
-    def listCollections(context: ContractContext): ContractResponse =
-        Success(
-            CollectionsHelper.collectionsFromOrganizations(
-                context.store
-                  .list[Organization]
-                  .map(_.value)
-                  .toSeq
-                  .sorted(OrganizationsOrdering)
-                  .map(_.mspId)
-            ).toArray
-        )
-
+    @ContractOperation(OperationType.Query)
+    def listCollections: ContractResult[Array[String]] = Try {
+        CollectionsHelper.collectionsFromOrganizations(
+            OperationContext.store
+              .list[Organization]
+              .map(_.value)
+              .toSeq
+              .sorted(OrganizationsOrdering)
+              .map(_.mspId)
+        ).toArray
+    }
 
     //    @ContractOperation
     //    def putInviteRequests(context: ContractContext, orgs: Array[String], app: String): ContractResponse = {

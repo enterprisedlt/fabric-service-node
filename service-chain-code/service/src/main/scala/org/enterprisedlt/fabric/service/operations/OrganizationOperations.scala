@@ -1,45 +1,47 @@
 package org.enterprisedlt.fabric.service.operations
 
-import org.enterprisedlt.fabric.service.model.{Constant, Organization, ServiceVersion}
-import org.enterprisedlt.fabric.contract.annotation.ContractOperation
-import org.enterprisedlt.fabric.contract.{ContractContext, ContractResponse, Error, Success}
-import org.enterprisedlt.fabric.contract.ContractResponseConversions._
+import org.enterprisedlt.fabric.contract.OperationContext
 import org.enterprisedlt.fabric.service.Main
+import org.enterprisedlt.fabric.service.model.Organization
+import org.enterprisedlt.spec.{ContractOperation, ContractResult}
+import org.enterprisedlt.spec._
+
+import scala.util.Try
 
 /**
-  * @author Andrew Pudovikov
-  */
+ * @author Andrew Pudovikov
+ */
 trait OrganizationOperations {
     self: Main.type =>
 
-    @ContractOperation
-    def putOrganization(context: ContractContext, organization: Organization): ContractResponse =
+    @ContractOperation(OperationType.Invoke)
+    def putOrganization(organization: Organization): ContractResult[Unit] =
         Option(organization.mspId)
           .toRight("Organization code is empty!")
           .map { code =>
-              context.store.put[Organization](code, organization)
+              OperationContext.store.put[Organization](code, organization)
           }
 
-    @ContractOperation
-    def listOrganizations(context: ContractContext): ContractResponse =
-        Success(
-            context.store
-              .list[Organization]
-              .map(_.value)
-              .toArray
-        )
+    @ContractOperation(OperationType.Query)
+    def listOrganizations: ContractResult[Array[Organization]] = Try {
+        OperationContext.store
+          .list[Organization]
+          .map(_.value)
+          .toArray
+    }
 
-    @ContractOperation
-    def getOrganization(context: ContractContext, mspId: String): ContractResponse =
-        context.store
+
+    @ContractOperation(OperationType.Query)
+    def getOrganization(mspId: String): ContractResult[Organization] =
+        OperationContext.store
           .get[Organization](mspId)
           .toRight(s"There is no organization with id: $mspId")
 
 
-    @ContractOperation
-    def deleteOrganisation(context: ContractContext, mspId: String): ContractResponse =
-        context.store.get[Organization](mspId)
+    @ContractOperation(OperationType.Invoke)
+    def deleteOrganisation(mspId: String): ContractResult[Unit] =
+        OperationContext.store.get[Organization](mspId)
           .toRight(s"No organization with id $mspId found")
-          .map(_ => context.store.del[Organization](mspId))
+          .map(_ => OperationContext.store.del[Organization](mspId))
 
 }
