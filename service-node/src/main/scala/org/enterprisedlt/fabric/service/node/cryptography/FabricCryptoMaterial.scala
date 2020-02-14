@@ -81,7 +81,7 @@ object FabricCryptoMaterial {
         notBefore: Date,
         notAfter: Date
     ): Unit = {
-        val outPath = s"$path/${component.group}/${component.name}.$orgFullName"
+        val outPath = s"$path/${component.group}/${component.name}"
         Util.mkDirs(s"$outPath/msp/admincerts")
         writeToPemFile(s"$outPath/msp/admincerts/Admin@$orgFullName-cert.pem", adminCert.certificate)
 

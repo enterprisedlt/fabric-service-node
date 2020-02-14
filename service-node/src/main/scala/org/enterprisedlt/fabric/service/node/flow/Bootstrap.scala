@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, ServiceVersion}
 import org.enterprisedlt.fabric.service.node._
-import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, OrganizationConfig, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model.FabricServiceState
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
@@ -112,7 +112,7 @@ object Bootstrap {
                 name = organizationConfig.name,
                 memberNumber = 1,
                 knownHosts = externalAddress.map { address =>
-                    bootstrapOptions.network.orderingNodes.map(osn => KnownHostRecord(address.host, s"${osn.name}.$organizationFullName")) ++
+                    bootstrapOptions.network.orderingNodes.map(osn => KnownHostRecord(address.host, s"${osn.name}")) ++
                       bootstrapOptions.network.peerNodes.map(peer => KnownHostRecord(address.host, s"${peer.name}.$organizationFullName")) :+
                       KnownHostRecord(address.host, s"service.$organizationFullName")
                 }

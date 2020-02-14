@@ -61,22 +61,21 @@ class DockerBasedProcessManager(
 
 
     //=========================================================================
-    override def startOrderingNode(name: String): Either[String, String] = {
-        val osnFullName = s"$name.$organizationFullName"
+    override def startOrderingNode(osnFullName: String): Either[String, String] = {
         logger.info(s"Starting $osnFullName ...")
         if (checkContainerExistence(osnFullName: String)) {
             stopAndRemoveContainer(osnFullName: String)
         }
         networkConfig.orderingNodes
-          .find(_.name == name)
+          .find(_.name == osnFullName)
           .toRight(s"There is no configuration for $osnFullName")
           .map { osnConfig =>
               val configHost = new HostConfig()
                 .withBinds(
                     new Bind(s"$hostHomePath/hosts", new Volume("/etc/hosts")),
                     new Bind(s"$hostHomePath/artifacts/genesis.block", new Volume("/var/hyperledger/orderer/orderer.genesis.block")),
-                    new Bind(s"$hostHomePath/crypto/orderers/$name.$organizationFullName/msp", new Volume("/var/hyperledger/orderer/msp")),
-                    new Bind(s"$hostHomePath/crypto/orderers/$name.$organizationFullName/tls", new Volume("/var/hyperledger/orderer/tls"))
+                    new Bind(s"$hostHomePath/crypto/orderers/$osnFullName/msp", new Volume("/var/hyperledger/orderer/msp")),
+                    new Bind(s"$hostHomePath/crypto/orderers/$osnFullName/tls", new Volume("/var/hyperledger/orderer/tls"))
                 )
                 .withPortBindings(
                     new PortBinding(new Binding("0.0.0.0", osnConfig.port.toString), new ExposedPort(osnConfig.port, InternetProtocol.TCP))
@@ -114,22 +113,22 @@ class DockerBasedProcessManager(
     }
 
     //=============================================================================
-    override def startPeerNode(name: String): Either[String, String] = {
-        val peerFullName = s"$name.$organizationFullName"
+    override def startPeerNode(peerFullName: String): Either[String, String] = {
+//        val peerFullName = s"$name.$organizationFullName"
         logger.info(s"Starting $peerFullName ...")
         if (checkContainerExistence(peerFullName: String)) {
             stopAndRemoveContainer(peerFullName: String)
         }
         networkConfig.peerNodes
-          .find(_.name == name)
+          .find(_.name == peerFullName)
           .toRight(s"There is no configuration for $peerFullName")
           .map { peerConfig =>
               val couchEnv = Option(peerConfig.couchDB)
                 .map { couchDBConfig =>
-                    val couchDBName = s"couchdb.$name"
+                    val couchDBName = s"couchdb.$peerFullName"
                     this.startCouchDB(couchDBName, couchDBConfig.port)
                     List("CORE_LEDGER_STATE_STATEDATABASE=CouchDB",
-                        s"CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=$couchDBName.$organizationFullName:5984",
+                        s"CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=$couchDBName:5984",
                         s"CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=",
                         s"CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=")
                 }
@@ -186,8 +185,7 @@ class DockerBasedProcessManager(
     }
 
     //=============================================================================
-    private def startCouchDB(name: String, port: Int): String = {
-        val couchDBFullName = s"$name.$organizationFullName"
+    private def startCouchDB(couchDBFullName: String, port: Int): String = {
         logger.info(s"Starting $couchDBFullName ...")
         if (checkContainerExistence(couchDBFullName)) {
             stopAndRemoveContainer(couchDBFullName)
@@ -213,8 +211,7 @@ class DockerBasedProcessManager(
         couchDBContainerId
     }
 
-    override def osnAwaitJoinedToRaft(name: String): Unit = {
-        val osnFullName = s"$name.$organizationFullName"
+    override def osnAwaitJoinedToRaft(osnFullName: String): Unit = {
         logger.info(s"Awaiting for $osnFullName to join RAFT cluster ...")
         val findResult = docker.logContainerCmd(osnFullName)
           .withStdOut(true)
@@ -232,8 +229,7 @@ class DockerBasedProcessManager(
         }
     }
 
-    override def osnAwaitJoinedToChannel(name: String, channelName: String): Unit = {
-        val osnFullName = s"$name.$organizationFullName"
+    override def osnAwaitJoinedToChannel(osnFullName: String, channelName: String): Unit = {
         (for {
             findResult <- docker.logContainerCmd(osnFullName)
               .withStdOut(true)
@@ -266,8 +262,7 @@ class DockerBasedProcessManager(
         }
     }
 
-    override def peerAwaitForBlock(name: String, blockNumber: Long): Unit = {
-        val peerFullName = s"$name.$organizationFullName"
+    override def peerAwaitForBlock(peerFullName: String, blockNumber: Long): Unit = {
         logger.info(s"Awaiting for block $blockNumber on peer $peerFullName ...")
         val findResult = docker.logContainerCmd(peerFullName)
           .withStdOut(true)
@@ -286,7 +281,7 @@ class DockerBasedProcessManager(
     }
 
     def terminateChainCode(peerName: String, chainCodeName: String, chainCodeVersion: String): Unit = {
-        val containerName = s"dev-$peerName.$organizationFullName-$chainCodeName-$chainCodeVersion"
+        val containerName = s"dev-$peerName-$chainCodeName-$chainCodeVersion"
         stopAndRemoveContainer(containerName)
     }
 

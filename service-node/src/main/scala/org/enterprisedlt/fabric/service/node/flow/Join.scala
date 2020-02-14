@@ -51,8 +51,8 @@ object Join {
                 name = organizationConfig.name,
                 memberNumber = 0,
                 knownHosts = externalAddress.map { address =>
-                    joinOptions.network.orderingNodes.map(osn => KnownHostRecord(address.host, s"${osn.name}.$organizationFullName")) ++
-                      joinOptions.network.peerNodes.map(peer => KnownHostRecord(address.host, s"${peer.name}.$organizationFullName")) :+
+                    joinOptions.network.orderingNodes.map(osn => KnownHostRecord(address.host, osn.name)) ++
+                      joinOptions.network.peerNodes.map(peer => KnownHostRecord(address.host, peer.name)) :+
                       KnownHostRecord(address.host, s"service.$organizationFullName")
                 }
                   .getOrElse(Array.empty)
@@ -64,7 +64,6 @@ object Join {
 
             )
         )
-
         //
         logger.info(s"[ $organizationFullName ] - Sending JoinRequest to ${joinOptions.invite.address} ...")
         state.set(FabricServiceState(FabricServiceState.JoinAwaitingJoin))
@@ -73,7 +72,9 @@ object Join {
         val joinResponse = Util.executePostRequest(s"https://${joinOptions.invite.address}/join-network", key, password, joinRequest, classOf[JoinResponse])
 
         joinResponse.knownOrganizations.foreach(hostsManager.addOrganization)
-
+        //
+        logger.info(s"[ $organizationFullName ] - Saving Osn cert to file ...")
+        Util.storeToFile(s"/opt/profile/crypto/orderers/${joinResponse.osnHost}/tls/server.crt", Base64.getDecoder.decode(joinResponse.osnTLSCert))
         //
         logger.info(s"[ $organizationFullName ] - Saving genesis to boot from ...")
         Util.storeToFile("/opt/profile/artifacts/genesis.block", Base64.getDecoder.decode(joinResponse.genesis))
@@ -91,7 +92,7 @@ object Join {
 
         logger.info(s"[ $organizationFullName ] - Connecting to channel ...")
         joinOptions.network.orderingNodes.foreach { osnConfig =>
-            logger.info(s"[ ${osnConfig.name}.$organizationFullName ] - Adding ordering service to channel ...")
+            logger.info(s"[ ${osnConfig.name} ] - Adding ordering service to channel ...")
             network.defineOsn(osnConfig)
             network.addOsnToChannel(osnConfig.name, cryptoPath)
             network.addOsnToChannel(osnConfig.name, cryptoPath, Some(ServiceChannelName))
@@ -235,13 +236,14 @@ object Join {
             logger.info(s"Preparing JoinResponse ...")
             val latestBlock = state.networkManager.fetchLatestSystemBlock
             val osnConfigFirstOrg = state.network.orderingNodes.head
-            val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
+            val osnTLSCert = Util.base64Encode(Util.readAsByteString(s"/opt/profile/crypto/orderers/${osnConfigFirstOrg.name}/tls/server.crt"))
             JoinResponse(
                 genesis = Base64.getEncoder.encodeToString(latestBlock.toByteArray),
                 version = nextVersion,
                 knownOrganizations = currentOrganizations,
-                osnHost = s"${osnConfigFirstOrg}.${organizationFullName}",
-                osnPort = osnConfigFirstOrg.port
+                osnHost = osnConfigFirstOrg.name,
+                osnPort = osnConfigFirstOrg.port,
+                osnTLSCert = osnTLSCert
             )
         }
     }

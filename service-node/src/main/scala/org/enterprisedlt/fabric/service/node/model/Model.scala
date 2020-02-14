@@ -56,7 +56,8 @@ case class JoinResponse(
     version: String,
     knownOrganizations: Array[Organization],
     osnHost: String,
-    osnPort: Int
+    osnPort: Int,
+    osnTLSCert: String //base64
 )
 
 case class SendMessageRequest(

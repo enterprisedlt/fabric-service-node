@@ -41,7 +41,6 @@ class FabricNetworkManager(
     System.setProperty(Config.ORDERER_WAIT_TIME, TimeUnit.MINUTES.toMillis(1).toString)
     // ---------------------------------------------------------------------------------------------------------------
     private val logger = LoggerFactory.getLogger(this.getClass)
-    private val organizationFullName = s"${organization.name}.${organization.domain}"
     private val fabricClient = getHFClient(admin)
 
     private val peerByName = TrieMap.empty[String, PeerConfig]
@@ -375,10 +374,10 @@ class FabricNetworkManager(
           .toRight(s"Unknown osn $osnName")
           .map { osnConfig =>
               val consenter = Consenter.newBuilder()
-                .setHost(s"${osnConfig.name}.$organizationFullName")
+                .setHost(s"${osnConfig.name}")
                 .setPort(osnConfig.port)
-                .setClientTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnName}.${organizationFullName}/tls/server.crt"))
-                .setServerTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnName}.${organizationFullName}/tls/server.crt"))
+                .setClientTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnName}/tls/server.crt"))
+                .setServerTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnName}/tls/server.crt"))
                 .build()
               val channel: Channel =
                   channelName
@@ -421,24 +420,24 @@ class FabricNetworkManager(
     private def mkPeer(config: PeerConfig): Peer = {
         val properties = new Properties()
         properties.put("pemFile", defaultPeerTLSPath(config.name))
-        fabricClient.newPeer(config.name, s"grpcs://${config.name}.$organizationFullName:${config.port}", properties)
+        fabricClient.newPeer(config.name, s"grpcs://${config.name}:${config.port}", properties)
     }
 
     //=========================================================================
     private def defaultPeerTLSPath(name: String): String = {
-        s"/opt/profile/crypto/peers/$name.$organizationFullName/tls/server.crt"
+        s"/opt/profile/crypto/peers/$name/tls/server.crt"
     }
 
     //=========================================================================
     private def mkOSN(config: OSNConfig): Orderer = {
         val properties = new Properties()
         properties.put("pemFile", defaultOSNTLSPath(config.name))
-        fabricClient.newOrderer(config.name, s"grpcs://${config.name}.${organizationFullName}:${config.port}", properties)
+        fabricClient.newOrderer(config.name, s"grpcs://${config.name}:${config.port}", properties)
     }
 
     //=========================================================================
     private def defaultOSNTLSPath(name: String): String = {
-        s"/opt/profile/crypto/orderers/$name.$organizationFullName/tls/server.crt"
+        s"/opt/profile/crypto/orderers/$name/tls/server.crt"
     }
 
     //=========================================================================
