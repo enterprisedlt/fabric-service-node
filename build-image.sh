@@ -7,6 +7,8 @@ gradle service-chain-code:shadowJar
 
 pushd admin-console
     npm install
+    command -v au >>/dev/null 2>/dev/null
+    [ $? -eq 1 ] && npm i -g aurelia-cli
     au build --env prod
 popd
 

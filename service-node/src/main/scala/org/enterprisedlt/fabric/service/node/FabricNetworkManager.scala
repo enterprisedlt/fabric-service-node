@@ -51,7 +51,7 @@ class FabricNetworkManager(
 
     //
     //
-    //
+    //TODO Make it accessible throw rest-endpoint
     //=========================================================================
     def createChannel(channelName: String, channelTx: Envelope): Unit = {
         val bootstrapOsnName = mkOSN(osnByName.head._2)

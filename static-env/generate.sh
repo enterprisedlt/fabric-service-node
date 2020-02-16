@@ -13,6 +13,7 @@ ENV_CONFIG="${PROFILE_PATH}/config.csv";
 
 #for i in `ls ${PROFILE_PATH} | grep -v 'config.csv'`; do rm -rfv "${PROFILE_PATH}/${i}"; done
 
+rm -rf ${PROFILE_PATH}/shared/* 2> /dev/null
 mkdir -p ${PROFILE_PATH}/shared
 cat ${ENV_CONFIG} | awk -v PROFILE_PATH="${PROFILE_PATH}" -F, '
     {
