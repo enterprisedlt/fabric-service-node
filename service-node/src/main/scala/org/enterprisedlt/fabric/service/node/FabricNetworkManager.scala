@@ -52,7 +52,7 @@ class FabricNetworkManager(
     //
     //=========================================================================
     def createChannel(channelName: String, channelTx: Envelope): Unit = {
-        val bootstrapOsnName = mkOSN(osnByName.head._2)
+        val bootstrapOsnName = mkOSN(bootstrapOsn)
         val chCfg = new ChannelConfiguration(channelTx.toByteArray)
         val sign = fabricClient.getChannelConfigurationSignature(chCfg, admin)
         fabricClient.newChannel(channelName, bootstrapOsnName, chCfg, sign)
@@ -60,7 +60,7 @@ class FabricNetworkManager(
 
     //=========================================================================
     def defineChannel(channelName: String): Unit = {
-        val bootstrapOsnName = mkOSN(osnByName.head._2)
+        val bootstrapOsnName = mkOSN(bootstrapOsn)
         val channel = fabricClient.newChannel(channelName)
         channel.addOrderer(bootstrapOsnName)
     }
@@ -441,7 +441,7 @@ class FabricNetworkManager(
 
     //=========================================================================
     private def connectToSystemChannel: Channel = {
-        val bootstrapOsnName = mkOSN(osnByName.head._2)
+        val bootstrapOsnName = mkOSN(bootstrapOsn)
         val channel = fabricClient.newChannel("system-channel")
         channel.addOrderer(bootstrapOsnName)
         channel.initialize()
