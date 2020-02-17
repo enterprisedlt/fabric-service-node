@@ -51,13 +51,14 @@ class FabricNetworkManager(
 
     //
     //
-    //TODO Make it accessible throw rest-endpoint
     //=========================================================================
-    def createChannel(channelName: String, channelTx: Envelope): Unit = {
+    def createChannel(channelName: String, channelTx: Envelope): Either[String, String] = {
         val bootstrapOsnName = mkOSN(osnByName.head._2)
         val chCfg = new ChannelConfiguration(channelTx.toByteArray)
         val sign = fabricClient.getChannelConfigurationSignature(chCfg, admin)
-        fabricClient.newChannel(channelName, bootstrapOsnName, chCfg, sign)
+        Option(fabricClient.newChannel(channelName, bootstrapOsnName, chCfg, sign))
+          .toRight(s"Can't create $channelName channel")
+          .map(_.getName)
     }
 
     //=========================================================================

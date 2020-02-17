@@ -12,17 +12,18 @@ import org.eclipse.jetty.server.handler.AbstractHandler
 import org.enterprisedlt.fabric.service.model.Contract
 import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
 import org.enterprisedlt.fabric.service.node.configuration._
-import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
+import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
+import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
 
 import scala.util.Try
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 class RestEndpoint(
     bindPort: Int,
     externalAddress: Option[ExternalAddress],
@@ -121,6 +122,29 @@ class RestEndpoint(
                         response.setContentType(ContentType.APPLICATION_OCTET_STREAM.getMimeType)
                         key.store(response.getOutputStream, password.toCharArray)
                         response.setStatus(HttpServletResponse.SC_OK)
+
+                    case "/admin/channel-create" =>
+                        val channelName = request.getParameter("channel")
+                        logger.info(s"Creating new channel $channelName ...")
+                        globalState
+                          .toRight("Node is not initialized yet")
+                          .map { state =>
+                              state.networkManager.createChannel(
+                                  channelName,
+                                  FabricChannel.CreateChannel(channelName,
+                                      DefaultConsortiumName,
+                                      organizationConfig.name
+                                  )) match {
+                                  case Right(chName) =>
+                                      response.getWriter.println(s"$chName has been created")
+                                      response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                      response.setStatus(HttpServletResponse.SC_OK)
+                                  case Left(errorMsg) =>
+                                      response.getWriter.println(errorMsg)
+                                      response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                              }
+                          }
 
                     case "/service/list-messages" =>
                         logger.info(s"Querying messages for ${organizationConfig.name}...")
@@ -474,4 +498,4 @@ case class GlobalState(
     processManager: FabricProcessManager,
     network: NetworkConfig,
     networkName: String
-  )
+)
