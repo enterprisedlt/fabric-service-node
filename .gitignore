@@ -1,11 +1,9 @@
 #
-.gradle
 .idea
 *.iml
 
 # ignore build output directory
-build
-out
+target
 
 #
 artifacts

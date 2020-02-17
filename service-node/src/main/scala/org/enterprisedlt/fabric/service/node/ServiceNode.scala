@@ -1,8 +1,9 @@
 package org.enterprisedlt.fabric.service.node
 
-import java.io.FileReader
+import java.security.Security
 import java.util.concurrent.atomic.AtomicReference
 
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.eclipse.jetty.http.HttpVersion
 import org.eclipse.jetty.security.{ConstraintMapping, ConstraintSecurityHandler}
 import org.eclipse.jetty.server._
@@ -12,7 +13,7 @@ import org.eclipse.jetty.util.ssl.SslContextFactory
 import org.eclipse.jetty.websocket.server.WebSocketHandler
 import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory
 import org.enterprisedlt.fabric.service.node.auth.{FabricAuthenticator, Role}
-import org.enterprisedlt.fabric.service.node.configuration.{OrganizationConfig, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
 import org.enterprisedlt.fabric.service.node.model.FabricServiceState
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
@@ -37,6 +38,7 @@ object ServiceNode extends App {
     private val Country = Option(Environment.get("ORG_COUNTRY")).filter(_.trim.nonEmpty).getOrElse("US")
     private val CertificateDuration = Option(Environment.get("CERTIFICATION_DURATION")).filter(_.trim.nonEmpty).getOrElse("P2Y")
     //
+    Security.addProvider(new BouncyCastleProvider)
     Util.setupLogging(LogLevel)
     private val logger = LoggerFactory.getLogger(this.getClass)
 

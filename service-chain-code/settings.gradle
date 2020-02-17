@@ -1,3 +1,0 @@
-rootProject.name = 'service-chain-code'
-include ':service'
-include ':data-model'
