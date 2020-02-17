@@ -26,6 +26,6 @@ elif [[ "$(uname)" == "Linux" ]]; then
 fi
 checkComponentIsInstalled docker
 checkComponentIsInstalled jq
-checkComponentIsInstalled gradle
+checkComponentIsInstalled sbt
 pullDockerImages
 checkComponentIsInstalled fabric-service-bootstrap.sh "should add \$PROJECT_DIR/bin to PATH variable"
