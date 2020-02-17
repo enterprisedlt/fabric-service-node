@@ -39,4 +39,5 @@ checkComponentIsInstalled docker
 checkComponentIsInstalled jq
 checkComponentIsInstalled sbt
 pullDockerImages
-checkComponentIsInstalled fabric-service-bootstrap.sh "fabric-service-*.sh scripts should add to PATH variable"
+checkComponentIsInstalled au "aurelia build tool should be installed by ${ITALIC}npm i -g aurelia-cli${NC}"
+checkComponentIsInstalled fabric-service-start.sh "fabric-service scripts should add to PATH variable"
