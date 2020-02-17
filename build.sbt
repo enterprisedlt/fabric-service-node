@@ -23,7 +23,8 @@ lazy val root = project.in(file("."))
   .disablePlugins(AssemblyPlugin)
   .aggregate(
       service_node,
-      service_chain_code
+      service_chain_code,
+      admin_console
   )
 
 lazy val service_node = project.in(file("service-node"))
@@ -66,6 +67,46 @@ lazy val service_chain_code_service = project.in(file("./service-chain-code/serv
       assemblyJarName in assembly := "chaincode.jar"
   )
   .dependsOn(service_chain_code_model)
+
+val BundlePath = file("admin-console/bundle/js")
+lazy val admin_console = project.in(file("admin-console"))
+  .settings(
+      name := "admin-console",
+      scalacOptions ++= Seq("-P:scalajs:sjsDefinedByDefault"),
+      scalaJSUseMainModuleInitializer := true,
+      mainClass := Some("org.enterprisedlt.fabric.service.node.AdminConsole"),
+      libraryDependencies ++= Seq(
+          "org.scala-js" %%% "scalajs-dom" % "0.9.7",
+          "com.github.japgolly.scalajs-react" %%% "core" % "1.6.0" //"0.11.3"
+      ),
+      jsDependencies ++= Seq(
+
+          "org.webjars.npm" % "react" % "16.7.0"
+            / "umd/react.development.js"
+            minified "umd/react.production.min.js"
+            commonJSName "React",
+
+          "org.webjars.npm" % "react-dom" % "16.7.0"
+            / "umd/react-dom.development.js"
+            minified "umd/react-dom.production.min.js"
+            dependsOn "umd/react.development.js"
+            commonJSName "ReactDOM",
+
+          "org.webjars.npm" % "react-dom" % "16.7.0"
+            / "umd/react-dom-server.browser.development.js"
+            minified "umd/react-dom-server.browser.production.min.js"
+            dependsOn "umd/react-dom.development.js"
+            commonJSName "ReactDOMServer"
+      ),
+      // Target files for Scala.js plugin
+      Compile / fastOptJS / artifactPath := BundlePath / "admin-console.js",
+      Compile / fullOptJS / artifactPath := BundlePath / "admin-console.js",
+      Compile / packageJSDependencies / artifactPath := BundlePath / "admin-console-deps.js",
+      Compile / packageMinifiedJSDependencies / artifactPath := BundlePath / "admin-console-deps.js",
+  )
+  .disablePlugins(AssemblyPlugin)
+  .enablePlugins(ScalaJSPlugin)
+
 
 // ========================================================================
 //
