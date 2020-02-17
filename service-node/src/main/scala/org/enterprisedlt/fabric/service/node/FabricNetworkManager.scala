@@ -331,7 +331,6 @@ class FabricNetworkManager(
             systemChannel, admin,
             FabricChannel.AddConsortiumOrg(organizationDefinition.mspId, orderingOrganizationGroup)
         )
-        logger.info("Adding OSN 1...")
     }
 
     //=========================================================================
