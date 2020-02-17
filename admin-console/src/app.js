@@ -13,30 +13,44 @@ export class App {
   composeRef;
   model = {};
   currentViewModelPath;
+  organisationFullName;
 
   constructor(connector) {
     this.connector = connector;
+    this.organisationFullName = "";
   }
 
   activate() {
+    return Promise.all([
+      this.resolveOrganisationFullName(),
+      this.resolveServiceState()
+    ])
+  }
+
+
+  resolveOrganisationFullName() {
+    return this.connector.getOrganisationFullName()
+      .then(response => response.json())
+      .then(data => {
+        console.log(data);
+        this.organisationFullName = data;
+      })
+  }
+
+  resolveServiceState() {
     return this.connector.getServiceState()
       .then(response => response.json())
       .then(data => {
         let stateCode = data.stateCode;
-        if(stateCode === NotInitialized) {
+        if (stateCode === NotInitialized) {
           this.currentViewModelPath = 'init';
-
         } else if (stateCode >= BootstrapStarted && stateCode <= BootstrapMaxValue) {
           this.currentViewModelPath = 'boot-progress';
-
         } else if (stateCode >= JoinStarted && stateCode <= JoinMaxValue) {
-          //this.currentViewModelPath = 'boot-progress';
-
         } else if (stateCode === Ready) {
           this.currentViewModelPath = 'admin';
-
         }
-      });
+      })
   }
 
   goInit() {
