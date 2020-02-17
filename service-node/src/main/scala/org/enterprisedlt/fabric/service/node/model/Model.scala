@@ -100,6 +100,7 @@ case class CreateContractRequest(
     name: String,
     version: String,
     contractType: String,
+    channelName: String,
     parties: Array[ContractParticipant],
     initArgs: Array[String]
 )
