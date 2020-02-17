@@ -9,10 +9,10 @@ export class Boot {
   constructor(app, connector) {
     this.app = app;
     this.connector = connector;
-    this.bootstrapSettings = this.mkBootrstrapSettings()
+    this.bootstrapSettings = this.mkBootrstrapSettings(app.organisationFullName)
   }
 
-  mkBootrstrapSettings(){
+  mkBootrstrapSettings(orgName){
     return {
       block: {
         maxMessageCount: 150,
@@ -31,21 +31,21 @@ export class Boot {
       network: {
         orderingNodes: [
           {
-            name: this.mkFullName("osn1", this.app.organisationFullName),
+            name: this.mkFullName("osn1", orgName),
             port: 7001
           },
           {
-            name: this.mkFullName("osn2", this.app.organisationFullName),
+            name: this.mkFullName("osn2", orgName),
             port: 7002
           },
           {
-            name: this.mkFullName("osn3", this.app.organisationFullName),
+            name: this.mkFullName("osn3", orgName),
             port: 7003
           }
         ],
         peerNodes: [
           {
-            name: this.mkFullName("peer0", this.app.organisationFullName),
+            name: this.mkFullName("peer0", orgName),
             port: 7010,
             couchDB: {
               port: 7011

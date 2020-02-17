@@ -9,29 +9,29 @@ export class Join {
   constructor(app, connector) {
     this.app = app;
     this.connector = connector;
-    this.joinSettings = this.mkJoinSettings()
+    this.joinSettings = this.mkJoinSettings(app.organisationFullName)
   }
 
-  mkJoinSettings() {
+  mkJoinSettings(orgName) {
     return {
       network: {
         orderingNodes: [
           {
-            name: this.mkFullName("osn1", this.app.organisationFullName),
+            name: this.mkFullName("osn1", orgName),
             port: 6001
           },
           {
-            name: this.mkFullName("osn2", this.app.organisationFullName),
+            name: this.mkFullName("osn2", orgName),
             port: 6002
           },
           {
-            name: this.mkFullName("osn3", this.app.organisationFullName),
+            name: this.mkFullName("osn3", orgName),
             port: 6003
           }
         ],
           peerNodes: [
           {
-            name: this.mkFullName("peer0", this.app.organisationFullName),
+            name: this.mkFullName("peer0", orgName),
             port: 6010,
             couchDB: {
               port: 6011
