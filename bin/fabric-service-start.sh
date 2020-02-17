@@ -15,7 +15,7 @@ serviceID=`docker run -d \
  -e "DOMAIN=${DOMAIN}" \
  -e "ORG_LOCATION=${ORG_LOCATION}" \
  -e "ORG_STATE=${ORG_STATE}" \
- -e "LOG_LEVEL=${DEBUG}" \
+ -e "LOG_LEVEL=${SERVICE_LOG_LEVEL:-DEBUG}" \
  -e "ORG_COUNTRY=${ORG_COUNTRY}" \
  -e "CERTIFICATION_DURATION=${CERTIFICATION_DURATION}" \
  -e "SERVICE_BIND_PORT=${SERVICE_BIND_PORT}" \
@@ -25,6 +25,8 @@ serviceID=`docker run -d \
  --volume=${PROFILE_PATH}/hosts:/etc/hosts \
  --volume=${PROFILE_PATH}:/opt/profile \
  --volume=/var/run/:/host/var/run/ \
+ --label com.docker.compose.project=${COMPOSE_PROJECT_NAME:-test_net} \
+ --label com.docker.compose.service=${ORG}.${DOMAIN} \
  --name service.${ORG}.${DOMAIN} \
  enterprisedlt/fabric-service-node`
 echo "Service ID: ${serviceID}"

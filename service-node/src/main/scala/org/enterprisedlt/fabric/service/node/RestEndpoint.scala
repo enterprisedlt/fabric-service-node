@@ -123,7 +123,7 @@ class RestEndpoint(
                         key.store(response.getOutputStream, password.toCharArray)
                         response.setStatus(HttpServletResponse.SC_OK)
 
-                    case "/admin/channel-create" =>
+                    case "/admin/create-channel" =>
                         val channelName = request.getParameter("channel")
                         logger.info(s"Creating new channel $channelName ...")
                         globalState

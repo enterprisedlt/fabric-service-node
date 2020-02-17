@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
+import scala.util.Try
 
 
 /**
@@ -56,9 +57,8 @@ class FabricNetworkManager(
         val bootstrapOsnName = mkOSN(osnByName.head._2)
         val chCfg = new ChannelConfiguration(channelTx.toByteArray)
         val sign = fabricClient.getChannelConfigurationSignature(chCfg, admin)
-        Option(fabricClient.newChannel(channelName, bootstrapOsnName, chCfg, sign))
-          .toRight(s"Can't create $channelName channel")
-          .map(_.getName)
+        Try(fabricClient.newChannel(channelName, bootstrapOsnName, chCfg, sign).getName)
+          .toEither.left.map(_.getMessage)
     }
 
     //=========================================================================
