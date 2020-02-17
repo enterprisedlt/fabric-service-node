@@ -104,7 +104,7 @@ class FabricNetworkManager(
               peerByName.get(peerName)
                 .toRight(s"Unknown peer $peerName")
                 .map { peer =>
-                    applyChannelUpdate(channel, admin, FabricChannel.AddAnchorPeer(organization.name, s"${peer.name}", peer.port))
+                    applyChannelUpdate(channel, admin, FabricChannel.AddAnchorPeer(organization.name, peer.name, peer.port))
                 }
           }
 
@@ -384,8 +384,8 @@ class FabricNetworkManager(
               val consenter = Consenter.newBuilder()
                 .setHost(osnConfig.name)
                 .setPort(osnConfig.port)
-                .setClientTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnName}/tls/server.crt"))
-                .setServerTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnName}/tls/server.crt"))
+                .setClientTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/$osnName/tls/server.crt"))
+                .setServerTlsCert(Util.readAsByteString(s"""$cryptoPath/orderers/$osnName/tls/server.crt"""))
                 .build()
               val channel: Channel =
                   channelName
