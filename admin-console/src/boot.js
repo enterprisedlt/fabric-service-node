@@ -9,7 +9,11 @@ export class Boot {
   constructor(app, connector) {
     this.app = app;
     this.connector = connector;
-    this.bootstrapSettings = {
+    this.bootstrapSettings = this.mkBootrstrapSettings()
+  }
+
+  mkBootrstrapSettings(){
+    return {
       block: {
         maxMessageCount: 150,
         absoluteMaxBytes: 103809024,
@@ -52,14 +56,13 @@ export class Boot {
     };
   }
 
+
   doBootstrap() {
     if (this.app) {
       this.app.goBootstrapProgress();
       let control = this.app;
       this.connector.executeBootstrap(this.bootstrapSettings)
-      //   .then(response => {
-      //   control.goAdministration();
-      // });
+
     }
   }
 

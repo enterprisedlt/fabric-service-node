@@ -9,7 +9,11 @@ export class Join {
   constructor(app, connector) {
     this.app = app;
     this.connector = connector;
-    this.joinSettings = {
+    this.joinSettings = this.mkJoinSettings()
+  }
+
+  mkJoinSettings() {
+    return {
       network: {
         orderingNodes: [
           {
@@ -25,7 +29,7 @@ export class Join {
             port: 6003
           }
         ],
-        peerNodes: [
+          peerNodes: [
           {
             name: this.mkFullName("peer0", this.app.organisationFullName),
             port: 6010,
