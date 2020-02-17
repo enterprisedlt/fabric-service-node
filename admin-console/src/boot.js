@@ -4,63 +4,65 @@ import {Connector} from "./service/connector";
 
 @inject(App, Connector)
 export class Boot {
-  bootstrapSettings = {
-    block: {
-      maxMessageCount: 150,
-      absoluteMaxBytes: 103809024,
-      preferredMaxBytes: 524288,
-      batchTimeOut: "1s"
-    },
-    raftSettings: {
-      tickInterval: "500ms",
-      electionTick: 10,
-      heartbeatTick: 1,
-      maxInflightBlocks: 5,
-      snapshotIntervalSize: 20971520
-    },
-    networkName: "test_net",
-    network: {
-
-      orderingNodes: [
-        {
-          name: "osn1",
-          port: 7001
-        },
-        {
-          name: "osn2",
-          port: 7002
-        },
-        {
-          name: "osn3",
-          port: 7003
-        }
-      ],
-      peerNodes: [
-        {
-          name: "peer0",
-          port: 7010,
-          couchDB: {
-            port: 7011
-          }
-        }
-      ]
-    }
-  };
 
 
   constructor(app, connector) {
     this.app = app;
     this.connector = connector;
+    this.bootstrapSettings = this.mkBootrstrapSettings(app.organisationFullName)
   }
+
+  mkBootrstrapSettings(orgName){
+    return {
+      block: {
+        maxMessageCount: 150,
+        absoluteMaxBytes: 103809024,
+        preferredMaxBytes: 524288,
+        batchTimeOut: "1s"
+      },
+      raftSettings: {
+        tickInterval: "500ms",
+        electionTick: 10,
+        heartbeatTick: 1,
+        maxInflightBlocks: 5,
+        snapshotIntervalSize: 20971520
+      },
+      networkName: "test_net",
+      network: {
+        orderingNodes: [
+          {
+            name: this.mkFullName("osn1", orgName),
+            port: 7001
+          },
+          {
+            name: this.mkFullName("osn2", orgName),
+            port: 7002
+          },
+          {
+            name: this.mkFullName("osn3", orgName),
+            port: 7003
+          }
+        ],
+        peerNodes: [
+          {
+            name: this.mkFullName("peer0", orgName),
+            port: 7010,
+            couchDB: {
+              port: 7011
+            }
+          }
+        ]
+      }
+    };
+  }
+
 
   doBootstrap() {
     if (this.app) {
       this.app.goBootstrapProgress();
       let control = this.app;
       this.connector.executeBootstrap(this.bootstrapSettings)
-      //   .then(response => {
-      //   control.goAdministration();
-      // });
+
     }
   }
 
@@ -69,4 +71,9 @@ export class Boot {
       this.app.goInit()
     }
   }
+
+  mkFullName(name, fullName) {
+    return name + "." + fullName
+  }
+
 }

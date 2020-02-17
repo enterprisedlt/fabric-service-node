@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, OrganizationsOrdering, ServiceVersion}
 import org.enterprisedlt.fabric.service.node._
-import org.enterprisedlt.fabric.service.node.configuration.{JoinOptions, OrganizationConfig, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{ JoinOptions, OSNConfig, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
@@ -41,7 +41,6 @@ object Join {
         )
         logger.info(s"[ $organizationFullName ] - Generating crypto material...")
         cryptoManager.createOrgCrypto(joinOptions.network, organizationFullName)
-        val firstOrderingNode = joinOptions.network.orderingNodes.head
         //
         logger.info(s"[ $organizationFullName ] - Creating JoinRequest ...")
         state.set(FabricServiceState(FabricServiceState.JoinCreatingJoinRequest))
@@ -52,8 +51,8 @@ object Join {
                 name = organizationConfig.name,
                 memberNumber = 0,
                 knownHosts = externalAddress.map { address =>
-                    joinOptions.network.orderingNodes.map(osn => KnownHostRecord(address.host, s"${osn.name}.$organizationFullName")) ++
-                      joinOptions.network.peerNodes.map(peer => KnownHostRecord(address.host, s"${peer.name}.$organizationFullName")) :+
+                    joinOptions.network.orderingNodes.map(osn => KnownHostRecord(address.host, osn.name)) ++
+                      joinOptions.network.peerNodes.map(peer => KnownHostRecord(address.host, peer.name)) :+
                       KnownHostRecord(address.host, s"service.$organizationFullName")
                 }
                   .getOrElse(Array.empty)
@@ -63,15 +62,8 @@ object Join {
                 tlsCACerts = Array(Util.readAsByteString(s"$cryptoPath/tlsca/tlsca.crt")).map(Util.base64Encode),
                 adminCerts = Array(Util.readAsByteString(s"$cryptoPath/users/admin/admin.crt")).map(Util.base64Encode)
 
-            ),
-            osnCertificates = OsnCertificates(
-                clientTlsCert = Util.base64Encode(Util.readAsByteString(s"$cryptoPath/orderers/${firstOrderingNode.name}.$organizationFullName/tls/server.crt")),
-                serverTlsCert = Util.base64Encode(Util.readAsByteString(s"$cryptoPath/orderers/${firstOrderingNode.name}.$organizationFullName/tls/server.crt"))
-            ),
-            osnHost = s"${firstOrderingNode.name}.$organizationFullName",
-            osnPort = firstOrderingNode.port
+            )
         )
-
         //
         logger.info(s"[ $organizationFullName ] - Sending JoinRequest to ${joinOptions.invite.address} ...")
         state.set(FabricServiceState(FabricServiceState.JoinAwaitingJoin))
@@ -80,7 +72,9 @@ object Join {
         val joinResponse = Util.executePostRequest(s"https://${joinOptions.invite.address}/join-network", key, password, joinRequest, classOf[JoinResponse])
 
         joinResponse.knownOrganizations.foreach(hostsManager.addOrganization)
-
+        //
+        logger.info(s"[ $organizationFullName ] - Saving Osn cert to file ...")
+        Util.storeToFile(s"/opt/profile/crypto/orderers/${joinResponse.osnHost}/tls/server.crt", Base64.getDecoder.decode(joinResponse.osnTLSCert))
         //
         logger.info(s"[ $organizationFullName ] - Saving genesis to boot from ...")
         Util.storeToFile("/opt/profile/artifacts/genesis.block", Base64.getDecoder.decode(joinResponse.genesis))
@@ -88,25 +82,17 @@ object Join {
         //
         logger.info(s"[ $organizationFullName ] - Starting ordering nodes ...")
         state.set(FabricServiceState(FabricServiceState.JoinStartingOrdering))
-
-        joinOptions.network.orderingNodes.headOption.foreach { osnConfig =>
-            processManager.startOrderingNode(osnConfig.name)
-            processManager.osnAwaitJoinedToRaft(osnConfig.name)
-            processManager.osnAwaitJoinedToChannel(osnConfig.name, SystemChannelName)
-            processManager.osnAwaitJoinedToChannel(osnConfig.name, ServiceChannelName)
-        }
-
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
         val admin = cryptoManager.loadDefaultAdmin
-        val network = new FabricNetworkManager(organizationConfig, joinOptions.network.orderingNodes.head, admin)
+        val network = new FabricNetworkManager(organizationConfig, OSNConfig(joinResponse.osnHost,joinResponse.osnPort), admin)
         network.defineChannel(ServiceChannelName)
 
         state.set(FabricServiceState(FabricServiceState.JoinConnectingToNetwork))
 
         logger.info(s"[ $organizationFullName ] - Connecting to channel ...")
-        joinOptions.network.orderingNodes.tail.foreach { osnConfig =>
-            logger.info(s"[ ${osnConfig.name}.$organizationFullName ] - Adding ordering service to channel ...")
+        joinOptions.network.orderingNodes.foreach { osnConfig =>
+            logger.info(s"[ ${osnConfig.name} ] - Adding ordering service to channel ...")
             network.defineOsn(osnConfig)
             network.addOsnToChannel(osnConfig.name, cryptoPath)
             network.addOsnToChannel(osnConfig.name, cryptoPath, Some(ServiceChannelName))
@@ -172,14 +158,16 @@ object Join {
                 state.set(FabricServiceState(FabricServiceState.JoinSettingUpBlockListener))
                 network.setupBlockListener(ServiceChannelName, new NetworkMonitor(organizationConfig, joinOptions.network, network, processManager, hostsManager, serviceVersion))
                 state.set(FabricServiceState(FabricServiceState.Ready))
-                GlobalState(network, processManager,joinOptions.network,joinOptions.invite.networkName)
+                GlobalState(network, processManager, joinOptions.network, joinOptions.invite.networkName)
         }
     }
 
     def joinOrgToNetwork(
         state: GlobalState,
         cryptoManager: CryptoManager,
-        joinRequest: JoinRequest, hostsManager: HostsManager,
+        joinRequest: JoinRequest,
+        hostsManager: HostsManager,
+        organizationConfig: OrganizationConfig
     ): Either[String, JoinResponse] = {
 
         logger.info(s"Joining ${joinRequest.organization.name} to network ...")
@@ -247,10 +235,15 @@ object Join {
             // create result
             logger.info(s"Preparing JoinResponse ...")
             val latestBlock = state.networkManager.fetchLatestSystemBlock
+            val osnConfigFirstOrg = state.network.orderingNodes.head
+            val osnTLSCert = Util.base64Encode(Util.readAsByteString(s"/opt/profile/crypto/orderers/${osnConfigFirstOrg.name}/tls/server.crt"))
             JoinResponse(
                 genesis = Base64.getEncoder.encodeToString(latestBlock.toByteArray),
                 version = nextVersion,
-                knownOrganizations = currentOrganizations
+                knownOrganizations = currentOrganizations,
+                osnHost = osnConfigFirstOrg.name,
+                osnPort = osnConfigFirstOrg.port,
+                osnTLSCert = osnTLSCert
             )
         }
     }

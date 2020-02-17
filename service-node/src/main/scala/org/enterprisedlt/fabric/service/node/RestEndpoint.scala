@@ -45,6 +45,11 @@ class RestEndpoint(
                         response.getWriter.println(Util.codec.toJson(organizationConfig.name))
                         response.setStatus(HttpServletResponse.SC_OK)
 
+                    case "/service/organization-full-name" =>
+                        val orgFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
+                        response.getWriter.println(Util.codec.toJson(orgFullName))
+                        response.setStatus(HttpServletResponse.SC_OK)
+
                     case "/service/state" =>
                         response.getWriter.println(Util.codec.toJson(state.get()))
                         response.setStatus(HttpServletResponse.SC_OK)
@@ -231,7 +236,8 @@ class RestEndpoint(
                                   state,
                                   cryptoManager,
                                   joinRequest,
-                                  hostsManager
+                                  hostsManager,
+                                  organizationConfig
                               )
                           } match {
                             case Right(joinResponse) =>

@@ -42,19 +42,18 @@ class FabricNetworkManager(
     System.setProperty(Config.ORDERER_WAIT_TIME, TimeUnit.MINUTES.toMillis(1).toString)
     // ---------------------------------------------------------------------------------------------------------------
     private val logger = LoggerFactory.getLogger(this.getClass)
-    private val organizationFullName = s"${organization.name}.${organization.domain}"
     private val fabricClient = getHFClient(admin)
 
     private val peerByName = TrieMap.empty[String, PeerConfig]
     private val osnByName = TrieMap(bootstrapOsn.name -> bootstrapOsn)
     // ---------------------------------------------------------------------------------------------------------------
     private lazy val systemChannel: Channel = connectToSystemChannel
-
+    //
     //
     //
     //=========================================================================
     def createChannel(channelName: String, channelTx: Envelope): Either[String, String] = {
-        val bootstrapOsnName = mkOSN(osnByName.head._2)
+        val bootstrapOsnName = mkOSN(bootstrapOsn)
         val chCfg = new ChannelConfiguration(channelTx.toByteArray)
         val sign = fabricClient.getChannelConfigurationSignature(chCfg, admin)
         Try(fabricClient.newChannel(channelName, bootstrapOsnName, chCfg, sign).getName)
@@ -63,7 +62,7 @@ class FabricNetworkManager(
 
     //=========================================================================
     def defineChannel(channelName: String): Unit = {
-        val bootstrapOsnName = mkOSN(osnByName.head._2)
+        val bootstrapOsnName = mkOSN(bootstrapOsn)
         val channel = fabricClient.newChannel(channelName)
         channel.addOrderer(bootstrapOsnName)
     }
@@ -105,7 +104,7 @@ class FabricNetworkManager(
               peerByName.get(peerName)
                 .toRight(s"Unknown peer $peerName")
                 .map { peer =>
-                    applyChannelUpdate(channel, admin, FabricChannel.AddAnchorPeer(organization.name, s"${peer.name}.$organizationFullName", peer.port))
+                    applyChannelUpdate(channel, admin, FabricChannel.AddAnchorPeer(organization.name, peer.name, peer.port))
                 }
           }
 
@@ -118,8 +117,7 @@ class FabricNetworkManager(
         getChannel(channelName)
           .map { channel =>
               val installProposal = fabricClient.newInstallProposalRequest()
-              val chaincodeID =
-                  ChaincodeID.newBuilder()
+              val chaincodeID = ChaincodeID.newBuilder()
                     .setName(chainCodeName)
                     .setVersion(version)
                     .build
@@ -342,17 +340,6 @@ class FabricNetworkManager(
             systemChannel, admin,
             FabricChannel.AddConsortiumOrg(organizationDefinition.mspId, orderingOrganizationGroup)
         )
-        logger.info("Adding OSN 1...")
-        val consenter = Consenter.newBuilder()
-          .setHost(joinRequest.osnHost)
-          .setPort(joinRequest.osnPort)
-          .setClientTlsCert(Util.base64Decode(joinRequest.osnCertificates.clientTlsCert))
-          .setServerTlsCert(Util.base64Decode(joinRequest.osnCertificates.serverTlsCert))
-          .build()
-        applyChannelUpdate(
-            systemChannel, admin,
-            FabricChannel.AddConsenter(consenter)
-        )
     }
 
     //=========================================================================
@@ -381,17 +368,6 @@ class FabricNetworkManager(
                   channel, admin,
                   FabricChannel.AddOrderingOrg(organizationDefinition.mspId, orderingOrganizationGroup)
               )
-              logger.info("Adding OSN 1...")
-              val consenter = Consenter.newBuilder()
-                .setHost(joinRequest.osnHost)
-                .setPort(joinRequest.osnPort)
-                .setClientTlsCert(Util.base64Decode(joinRequest.osnCertificates.clientTlsCert))
-                .setServerTlsCert(Util.base64Decode(joinRequest.osnCertificates.serverTlsCert))
-                .build()
-              applyChannelUpdate(
-                  channel, admin,
-                  FabricChannel.AddConsenter(consenter)
-              )
           }
     }
 
@@ -406,10 +382,10 @@ class FabricNetworkManager(
           .toRight(s"Unknown osn $osnName")
           .map { osnConfig =>
               val consenter = Consenter.newBuilder()
-                .setHost(s"${osnConfig.name}.$organizationFullName")
+                .setHost(osnConfig.name)
                 .setPort(osnConfig.port)
-                .setClientTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
-                .setServerTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"))
+                .setClientTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/$osnName/tls/server.crt"))
+                .setServerTlsCert(Util.readAsByteString(s"""$cryptoPath/orderers/$osnName/tls/server.crt"""))
                 .build()
               val channel: Channel =
                   channelName
@@ -452,29 +428,29 @@ class FabricNetworkManager(
     private def mkPeer(config: PeerConfig): Peer = {
         val properties = new Properties()
         properties.put("pemFile", defaultPeerTLSPath(config.name))
-        fabricClient.newPeer(config.name, s"grpcs://${config.name}.$organizationFullName:${config.port}", properties)
+        fabricClient.newPeer(config.name, s"grpcs://${config.name}:${config.port}", properties)
     }
 
     //=========================================================================
     private def defaultPeerTLSPath(name: String): String = {
-        s"/opt/profile/crypto/peers/$name.$organizationFullName/tls/server.crt"
+        s"/opt/profile/crypto/peers/$name/tls/server.crt"
     }
 
     //=========================================================================
     private def mkOSN(config: OSNConfig): Orderer = {
         val properties = new Properties()
         properties.put("pemFile", defaultOSNTLSPath(config.name))
-        fabricClient.newOrderer(config.name, s"grpcs://${config.name}.$organizationFullName:${config.port}", properties)
+        fabricClient.newOrderer(config.name, s"grpcs://${config.name}:${config.port}", properties)
     }
 
     //=========================================================================
     private def defaultOSNTLSPath(name: String): String = {
-        s"/opt/profile/crypto/orderers/$name.$organizationFullName/tls/server.crt"
+        s"/opt/profile/crypto/orderers/$name/tls/server.crt"
     }
 
     //=========================================================================
     private def connectToSystemChannel: Channel = {
-        val bootstrapOsnName = mkOSN(osnByName.head._2)
+        val bootstrapOsnName = mkOSN(bootstrapOsn)
         val channel = fabricClient.newChannel("system-channel")
         channel.addOrderer(bootstrapOsnName)
         channel.initialize()

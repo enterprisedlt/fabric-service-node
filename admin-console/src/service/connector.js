@@ -21,6 +21,10 @@ export class Connector {
     return this.http.fetch('/service/state');
   }
 
+  getOrganisationFullName(){
+    return this.http.fetch('/service/organization-full-name');
+  }
+
   createInvite() {
     return this.http.fetch('/admin/create-invite')
       .then(response => response.blob())

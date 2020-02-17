@@ -5,39 +5,41 @@ import {Connector} from "./service/connector";
 @inject(App, Connector)
 export class Join {
   files = {};
-  joinSettings = {
-    network: {
-      orderingNodes: [
-        {
-          name: "osn1",
-          port: 6001
-        },
-        {
-          name: "osn2",
-          port: 6002
-        },
-        {
-          name: "osn3",
-          port: 6003
-        }
-      ],
-      peerNodes: [
-        {
-          name: "peer0",
-          port: 6010,
-          couchDB: {
-            port: 6011
-          }
-        }
-      ]
-    }
-  };
-
-
 
   constructor(app, connector) {
     this.app = app;
     this.connector = connector;
+    this.joinSettings = this.mkJoinSettings(app.organisationFullName)
+  }
+
+  mkJoinSettings(orgName) {
+    return {
+      network: {
+        orderingNodes: [
+          {
+            name: this.mkFullName("osn1", orgName),
+            port: 6001
+          },
+          {
+            name: this.mkFullName("osn2", orgName),
+            port: 6002
+          },
+          {
+            name: this.mkFullName("osn3", orgName),
+            port: 6003
+          }
+        ],
+          peerNodes: [
+          {
+            name: this.mkFullName("peer0", orgName),
+            port: 6010,
+            couchDB: {
+              port: 6011
+            }
+          }
+        ]
+      }
+    };
   }
 
   doJoin() {
@@ -64,4 +66,9 @@ export class Join {
       this.app.goInit()
     }
   }
+
+  mkFullName(name, fullName) {
+    return name + "." + fullName
+  }
+
 }

@@ -1,7 +1,7 @@
 package org.enterprisedlt.fabric.service.node.flow
 
 import org.enterprisedlt.fabric.service.node.Util
-import org.enterprisedlt.fabric.service.node.configuration.{BlockConfig, BootstrapOptions, OrganizationConfig, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{BlockConfig, BootstrapOptions, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, SystemChannelName}
 import org.enterprisedlt.fabric.service.node.proto._
 import org.hyperledger.fabric.protos.common.MspPrincipal.MSPRole
@@ -52,10 +52,10 @@ object Genesis {
                     orderingNodes =
                       bootstrapOptions.network.orderingNodes.map { osnConfig =>
                           OrderingNodeDefinition(
-                              host = s"${osnConfig.name}.$organizationFullName",
+                              host = osnConfig.name,
                               port = osnConfig.port,
-                              clientTlsCert = Util.readAsByteString(s"$certificatesPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt"),
-                              serverTlsCert = Util.readAsByteString(s"$certificatesPath/orderers/${osnConfig.name}.$organizationFullName/tls/server.crt")
+                              clientTlsCert = Util.readAsByteString(s"$certificatesPath/orderers/${osnConfig.name}/tls/server.crt"),
+                              serverTlsCert = Util.readAsByteString(s"$certificatesPath/orderers/${osnConfig.name}/tls/server.crt")
                           )
                       },
                     organizations = Seq(organizationDefinition)
