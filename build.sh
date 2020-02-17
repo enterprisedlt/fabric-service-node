@@ -19,6 +19,8 @@ popd || exit
 # bundle admin console:
 pushd admin-console || exit
     npm install
+    command -v au >>/dev/null 2>/dev/null
+    [ $? -eq 1 ] && npm i -g aurelia-cli
     au build --env prod
 popd || exit
 

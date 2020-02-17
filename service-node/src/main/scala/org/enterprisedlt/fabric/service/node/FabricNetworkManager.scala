@@ -25,8 +25,8 @@ import scala.util.Try
 
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 class FabricNetworkManager(
     organization: OrganizationConfig,
     bootstrapOsn: OSNConfig,
@@ -110,7 +110,11 @@ class FabricNetworkManager(
           }
 
     //=========================================================================
-    def installChainCode(channelName: String, chainCodeName: String, version: String, chainCodeTarGzStream: InputStream): Either[String, util.Collection[ProposalResponse]] = {
+    def installChainCode(channelName: String,
+        chainCodeName: String,
+        version: String,
+        chainCodeTarGzStream: InputStream
+    ): Either[String, util.Collection[ProposalResponse]] = {
         getChannel(channelName)
           .map { channel =>
               val installProposal = fabricClient.newInstallProposalRequest()
@@ -133,7 +137,9 @@ class FabricNetworkManager(
 
     //=========================================================================
     def instantiateChainCode(
-        channelName: String, chainCodeName: String, version: String,
+        channelName: String,
+        chainCodeName: String,
+        version: String,
         endorsementPolicy: Option[ChaincodeEndorsementPolicy] = None,
         collectionConfig: Option[ChaincodeCollectionConfiguration] = None,
         arguments: Array[String] = Array.empty
@@ -188,7 +194,9 @@ class FabricNetworkManager(
     //=========================================================================
     //        val endorsementPolicy = policyAnyOf(listMembers(client, channel, user))
     def upgradeChainCode(
-        channelName: String, ccName: String, version: String,
+        channelName: String,
+        ccName: String,
+        version: String,
         endorsementPolicy: Option[ChaincodeEndorsementPolicy] = None,
         collectionConfig: Option[ChaincodeCollectionConfiguration] = None,
         arguments: Array[String] = Array.empty

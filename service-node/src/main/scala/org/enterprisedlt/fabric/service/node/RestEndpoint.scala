@@ -281,7 +281,7 @@ class RestEndpoint(
                                   chainCodePkg <- Option(new BufferedInputStream(new FileInputStream(file))).toRight(s"Can't prepare cc pkg stream")
                                   _ <- {
                                       logger.info(s"[ $organizationFullName ] - Installing $chainCodeName chain code ...")
-                                      state.networkManager.installChainCode(ServiceChannelName, createContractRequest.name, createContractRequest.version, chainCodePkg)
+                                      state.networkManager.installChainCode(createContractRequest.channelName, createContractRequest.name, createContractRequest.version, chainCodePkg)
                                   }
                                   _ <- {
                                       logger.info(s"[ $organizationFullName ] - Instantiating $chainCodeName chain code ...")
@@ -298,7 +298,8 @@ class RestEndpoint(
                                           )
                                       }
                                       state.networkManager.instantiateChainCode(
-                                          ServiceChannelName, createContractRequest.name,
+                                          createContractRequest.channelName,
+                                          createContractRequest.name,
                                           createContractRequest.version,
                                           endorsementPolicy = Option(endorsementPolicy),
                                           collectionConfig = Option(Util.createCollectionsConfig(collections)),
