@@ -25,8 +25,6 @@ serviceID=`docker run -d \
  --volume=${PROFILE_PATH}/hosts:/etc/hosts \
  --volume=${PROFILE_PATH}:/opt/profile \
  --volume=/var/run/:/host/var/run/ \
- --label com.docker.compose.project=${COMPOSE_PROJECT_NAME:-test_net} \
- --label com.docker.compose.service=${ORG}.${DOMAIN} \
  --name service.${ORG}.${DOMAIN} \
  enterprisedlt/fabric-service-node`
 echo "Service ID: ${serviceID}"
