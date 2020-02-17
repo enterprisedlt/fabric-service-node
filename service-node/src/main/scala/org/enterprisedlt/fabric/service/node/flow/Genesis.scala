@@ -52,7 +52,7 @@ object Genesis {
                     orderingNodes =
                       bootstrapOptions.network.orderingNodes.map { osnConfig =>
                           OrderingNodeDefinition(
-                              host = s"${osnConfig.name}",
+                              host = osnConfig.name,
                               port = osnConfig.port,
                               clientTlsCert = Util.readAsByteString(s"$certificatesPath/orderers/${osnConfig.name}/tls/server.crt"),
                               serverTlsCert = Util.readAsByteString(s"$certificatesPath/orderers/${osnConfig.name}/tls/server.crt")

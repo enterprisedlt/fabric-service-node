@@ -117,8 +117,7 @@ class FabricNetworkManager(
         getChannel(channelName)
           .map { channel =>
               val installProposal = fabricClient.newInstallProposalRequest()
-              val chaincodeID =
-                  ChaincodeID.newBuilder()
+              val chaincodeID = ChaincodeID.newBuilder()
                     .setName(chainCodeName)
                     .setVersion(version)
                     .build
@@ -383,7 +382,7 @@ class FabricNetworkManager(
           .toRight(s"Unknown osn $osnName")
           .map { osnConfig =>
               val consenter = Consenter.newBuilder()
-                .setHost(s"${osnConfig.name}")
+                .setHost(osnConfig.name)
                 .setPort(osnConfig.port)
                 .setClientTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnName}/tls/server.crt"))
                 .setServerTlsCert(Util.readAsByteString(s"$cryptoPath/orderers/${osnName}/tls/server.crt"))
