@@ -11,7 +11,15 @@ class BootstrapOptions(
     val raft: RaftConfig,
     val networkName: String,
     val network: NetworkConfig
-) extends js.Object
+) extends js.Object {
+    def copy(
+        block: BlockConfig = this.block,
+        raft: RaftConfig = this.raft,
+        networkName: String = this.networkName,
+        network: NetworkConfig = this.network
+    ): BootstrapOptions =
+        new BootstrapOptions(block, raft, networkName, network)
+}
 
 object BootstrapOptions {
     val Defaults: BootstrapOptions =
@@ -58,7 +66,6 @@ object JoinOptions {
                 networkName = "",
                 address = "",
                 key = ""
-
             )
         )
 }
@@ -68,7 +75,15 @@ class BlockConfig(
     val absoluteMaxBytes: Int,
     val preferredMaxBytes: Int,
     val batchTimeOut: String
-) extends js.Object
+) extends js.Object {
+    def copy(
+        maxMessageCount: Int = this.maxMessageCount,
+        absoluteMaxBytes: Int = this.absoluteMaxBytes,
+        preferredMaxBytes: Int = this.preferredMaxBytes,
+        batchTimeOut: String = this.batchTimeOut
+    ): BlockConfig =
+        new BlockConfig(maxMessageCount, absoluteMaxBytes, preferredMaxBytes, batchTimeOut)
+}
 
 class RaftConfig(
     val tickInterval: String,
