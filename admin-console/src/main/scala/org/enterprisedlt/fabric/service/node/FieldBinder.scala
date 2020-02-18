@@ -9,10 +9,10 @@ import japgolly.scalajs.react.{BackendScope, CallbackTo, ReactEventFromInput}
 trait FieldBinder[S] {
     def $: BackendScope[_, S]
 
-    def bind(s: S)(read: S => String)(updater: String => S => S): TagMod = {
+    def bind(v: String)(updater: String => S => S): TagMod = {
         Seq(
             ^.onChange ==> update(updater),
-            ^.value := read(s)
+            ^.value := v
         ).toTagMod
     }
 

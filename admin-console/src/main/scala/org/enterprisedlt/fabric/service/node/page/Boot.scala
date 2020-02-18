@@ -78,15 +78,15 @@ object Boot {
                         <.label(^.className := "col-sm-2 col-form-label", "Batch timeout"),
                         <.div(^.className := "col-sm-10",
                             <.input(^.`type` := "text", ^.className := "form-control",
-                                bind(s)(_.block.batchTimeOut)(v => x => x.copy(block = x.block.copy(batchTimeOut = v)))
-                                //TODO:value.bind="bootstrapSettings.block.batchTimeOut">
+                                bind(s.block.batchTimeOut)(v => x => x.copy(block = x.block.copy(batchTimeOut = v)))
                             )
                         )
                     ),
                     <.div(^.className := "form-group row",
                         <.label(^.className := "col-sm-2 col-form-label", "Max messages count"),
                         <.div(^.className := "col-sm-10",
-                            <.input(^.`type` := "text", ^.className := "form-control" //TODO:value.bind="bootstrapSettings.block.maxMessageCount">
+                            <.input(^.`type` := "text", ^.className := "form-control",
+                                bind(s.block.maxMessageCount.toString)(v => x => x.copy(block = x.block.copy(maxMessageCount = v.toInt)))
                             )
                         )
                     ),
