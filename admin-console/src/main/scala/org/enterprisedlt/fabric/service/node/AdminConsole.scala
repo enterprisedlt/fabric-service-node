@@ -2,7 +2,7 @@ package org.enterprisedlt.fabric.service.node
 
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, ScalaComponent}
-import org.enterprisedlt.fabric.service.node.page.{Boot, Init}
+import org.enterprisedlt.fabric.service.node.page.{Boot, Init, Join}
 import org.enterprisedlt.fabric.service.node.state.{GlobalStateAware, WithGlobalState}
 import org.scalajs.dom
 import org.scalajs.dom.html.Div
@@ -30,7 +30,8 @@ object AdminConsole {
         def render(s: State): VdomTagOf[Div] =
             <.div(
                 Init().when(s.global == Initial),
-                Boot().when(s.global == BootstrapMode)
+                Boot().when(s.global == BootstrapMode),
+                Join().when(s.global == JoinMode)
             )
     }
 
