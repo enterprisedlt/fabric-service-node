@@ -3,8 +3,8 @@ package org.enterprisedlt.fabric.service.node.model
 import scala.scalajs.js
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 
 class BootstrapOptions(
     val block: BlockConfig,
@@ -33,6 +33,32 @@ object BootstrapOptions {
             network = new NetworkConfig(
                 orderingNodes = new js.Array[OSNConfig](),
                 peerNodes = new js.Array[PeerConfig]()
+            )
+        )
+}
+
+class JoinOptions(
+    network: NetworkConfig,
+    invite: Invite
+) extends js.Object
+
+object JoinOptions {
+    val Defaults: JoinOptions =
+        new JoinOptions(
+            network = new NetworkConfig(
+                orderingNodes = new js.Array[OSNConfig](),
+                peerNodes = js.Array[PeerConfig](
+                    new PeerConfig(
+                        name = "peer0",
+                        port = 7014,
+                        couchDB = new CouchDBConfig(
+                            port = 7015
+                        )))),
+            invite = new Invite(
+                networkName = "",
+                address = "",
+                key = ""
+
             )
         )
 }
@@ -70,4 +96,10 @@ class PeerConfig(
 
 class CouchDBConfig(
     val port: Int
+) extends js.Object
+
+class Invite(
+    networkName: String,
+    address: String,
+    key: String
 ) extends js.Object

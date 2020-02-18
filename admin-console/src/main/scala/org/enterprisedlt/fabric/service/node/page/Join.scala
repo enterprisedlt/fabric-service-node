@@ -3,6 +3,7 @@ package org.enterprisedlt.fabric.service.node.page
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
+import org.enterprisedlt.fabric.service.node.model.JoinOptions
 import org.enterprisedlt.fabric.service.node.{Context, Initial}
 import org.scalajs.dom.html.Div
 
@@ -11,17 +12,15 @@ import org.scalajs.dom.html.Div
   */
 object Join {
 
-    case class JoinSettings(
-        //TODO
-    )
+
 
     private val component = ScalaComponent.builder[Unit]("JoinMode")
-      .initialState(JoinSettings())
+      .initialState(JoinOptions.Defaults)
       .renderBackend[Backend]
       .build
 
 
-    class Backend(val $: BackendScope[Unit, JoinSettings]) {
+    class Backend(val $: BackendScope[Unit, JoinOptions]) {
 
         def goInit: Callback = Callback {
             Context.State.update(_ => Initial)
@@ -29,7 +28,7 @@ object Join {
 
         def goBootProgress: Callback = Callback() // TODO
 
-        def render(s: JoinSettings): VdomTagOf[Div] =
+        def render(s: JoinOptions): VdomTagOf[Div] =
             <.div(^.className := "card aut-form-card",
                 <.div(^.className := "card-header text-white bg-primary",
                     <.h1("Join to new network")
@@ -98,6 +97,6 @@ object Join {
             )
     }
 
-    def apply(): Unmounted[Unit, JoinSettings, Backend] = component()
+    def apply(): Unmounted[Unit, JoinOptions, Backend] = component()
 
 }
