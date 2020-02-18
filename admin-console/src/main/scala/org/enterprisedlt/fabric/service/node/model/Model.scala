@@ -1,6 +1,7 @@
 package org.enterprisedlt.fabric.service.node.model
 
 import monocle.macros.Lenses
+import upickle.default.{ReadWriter => RW, macroRW}
 
 /**
  * @author Alexey Polubelov
@@ -35,6 +36,8 @@ object BootstrapOptions {
                 peerNodes = Array.empty[PeerConfig]
             )
         )
+
+    implicit val rw: RW[BootstrapOptions] = macroRW
 }
 
 
@@ -74,6 +77,10 @@ object JoinOptions {
     batchTimeOut: String
 )
 
+object BlockConfig {
+    implicit val rw: RW[BlockConfig] = macroRW
+}
+
 @Lenses case class RaftConfig(
     tickInterval: String,
     electionTick: Int,
@@ -82,15 +89,27 @@ object JoinOptions {
     snapshotIntervalSize: Int
 )
 
+object RaftConfig {
+    implicit val rw: RW[RaftConfig] = macroRW
+}
+
 @Lenses case class NetworkConfig(
     orderingNodes: Array[OSNConfig],
     peerNodes: Array[PeerConfig]
 )
 
+object NetworkConfig {
+    implicit val rw: RW[NetworkConfig] = macroRW
+}
+
 @Lenses case class OSNConfig(
     name: String,
     port: Int
 )
+
+object OSNConfig {
+    implicit val rw: RW[OSNConfig] = macroRW
+}
 
 @Lenses case class PeerConfig(
     name: String,
@@ -98,9 +117,17 @@ object JoinOptions {
     couchDB: CouchDBConfig
 )
 
+object PeerConfig {
+    implicit val rw: RW[PeerConfig] = macroRW
+}
+
 @Lenses case class CouchDBConfig(
     port: Int
 )
+
+object CouchDBConfig {
+    implicit val rw: RW[CouchDBConfig] = macroRW
+}
 
 case class Invite(
     networkName: String,

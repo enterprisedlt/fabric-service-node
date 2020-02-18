@@ -3,6 +3,7 @@ package org.enterprisedlt.fabric.service.node.page
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
+import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model.{BlockConfig, BootstrapOptions}
 import org.enterprisedlt.fabric.service.node.{Context, FieldBinder, Initial}
 import org.scalajs.dom.html.Div
@@ -23,7 +24,10 @@ object Boot {
             Context.State.update(_ => Initial)
         }
 
-        def goBootProgress: Callback = Callback() // TODO
+        // TODO: implement
+        def goBootProgress(s: BootstrapOptions): Callback = Callback(
+           ServiceNodeRemote.executeBootstrap(s)
+        )
 
         def render(s: BootstrapOptions): VdomTagOf[Div] =
             <.div(^.className := "card aut-form-card",
@@ -146,7 +150,7 @@ object Boot {
                 <.hr(),
                 <.div(^.className := "form-group mt-1",
                     <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
-                    <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goBootProgress, "Bootstrap")
+                    <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goBootProgress(s), "Bootstrap")
                 )
                 //                                                                                                        </form>
             )

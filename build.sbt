@@ -78,7 +78,8 @@ lazy val admin_console = project.in(file("admin-console"))
       mainClass := Some("org.enterprisedlt.fabric.service.node.AdminConsole"),
       libraryDependencies ++= Seq(
           "org.scala-js" %%% "scalajs-dom" % "0.9.7",
-          "com.github.japgolly.scalajs-react" %%% "core" % "1.6.0"
+          "com.github.japgolly.scalajs-react" %%% "core" % "1.6.0",
+          "com.lihaoyi" %%% "upickle" % "0.9.5"
       ) ++ Monocle,
       jsDependencies ++= Seq(
 
