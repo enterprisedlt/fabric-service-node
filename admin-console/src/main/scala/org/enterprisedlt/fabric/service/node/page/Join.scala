@@ -36,24 +36,65 @@ object Join {
                 ),
                 <.hr(),
                 <.div(^.className := "card-body aut-form-card",
-                <.div(^.className := "form-group row",
-                    <.label(^.className := "col-sm-2 col-form-label", "Invite:"),
-                    <.div(^.className := "input-group col-sm-10",
-                        <.div(^.`class` := "custom-file",
-                            <.input(^.`type` := "file", ^.`class` := "custom-file-input", ^.id := "inviteInput"),
-                            <.label(^.`class` := "custom-file-label", "Choose file")
+                    <.h5("Join settings:"),
+                    <.div(^.className := "form-group row",
+                        <.label(^.className := "col-sm-2 col-form-label", "Invite:"),
+                        <.div(^.className := "input-group col-sm-10",
+                            <.div(^.`class` := "custom-file",
+                                <.input(^.`type` := "file", ^.`class` := "custom-file-input", ^.id := "inviteInput"),
+                                <.label(^.`class` := "custom-file-label", "Choose file")
+                            )
                         )
+                    ),
+                    <.hr(),
+                    <.h5("Network settings"),
+                    <.div(^.className := "form-group row",
+                        <.table(^.className := "table table-hover table-sm",
+                            <.thead(
+                                <.tr(
+                                    <.th(^.scope := "col", "#"),
+                                    <.th(^.scope := "col", "Component type"),
+                                    <.th(^.scope := "col", "Component name"),
+                                    <.th(^.scope := "col", "Port"),
+                                    <.th(^.scope := "col", "Actions"),
+                                )
+                            ),
+                            <.tbody(
+                                //TODO
+                            )
+                        )
+                    ),
+                    <.div(^.className := "form-group row",
+                        <.label(^.`for` := "componentType", ^.className := "col-sm-2 col-form-label", "Component type"),
+                        <.div(^.className := "col-sm-10",
+                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentType")
+                        )
+                    ),
+                    <.div(^.className := "form-group row",
+                        <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "Component name"),
+                        <.div(^.className := "col-sm-10",
+                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentName")
+                        )
+                    ),
+                    <.div(^.className := "form-group row",
+                        <.label(^.`for` := "port", ^.className := "col-sm-2 col-form-label", "Port"),
+                        <.div(^.className := "col-sm-10",
+                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "port")
+                        )
+                    ),
+                    <.div(^.className := "form-group row",
+                        <.button(
+                            ^.className := "btn btn-primary",
+                            "Add component"
+                        )
+                    ),
+                    <.div(^.className := "form-group mt-1",
+                        <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
+                        <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goBootProgress, "Join")
                     )
-                ),
-
-
-
-                <.div(^.className := "form-group mt-1",
-                    <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
-                    <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goBootProgress, "Join")
+                    //                                                                                                        </form>
                 )
-                //                                                                                                        </form>
-            ))
+            )
     }
 
     def apply(): Unmounted[Unit, JoinSettings, Backend] = component()
