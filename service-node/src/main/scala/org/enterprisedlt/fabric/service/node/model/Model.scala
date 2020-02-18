@@ -48,18 +48,16 @@ case class Invite(
 
 case class JoinRequest(
     organization: Organization,
-    //
     organizationCertificates: OrganizationCertificates,
-    //
-    osnCertificates: OsnCertificates,
-    osnHost: String,
-    osnPort: Int
 )
 
 case class JoinResponse(
     genesis: String,
     version: String,
-    knownOrganizations: Array[Organization]
+    knownOrganizations: Array[Organization],
+    osnHost: String,
+    osnPort: Int,
+    osnTLSCert: String //base64
 )
 
 case class SendMessageRequest(
@@ -102,6 +100,7 @@ case class CreateContractRequest(
     name: String,
     version: String,
     contractType: String,
+    channelName: String,
     parties: Array[ContractParticipant],
     initArgs: Array[String]
 )

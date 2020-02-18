@@ -1,22 +1,21 @@
 #!/bin/bash
 
-PROFILE_PATH=${1:-.};
-if [[ "$(uname)" = "Darwin" ]]; then
-    PROFILE_PATH=$(greadlink -f "${PROFILE_PATH}");
+PROFILE_PATH=${1:-.}
+if [[ "$(uname)" == "Darwin" ]]; then
+  PROFILE_PATH=$(greadlink -f "${PROFILE_PATH}")
 else
-    PROFILE_PATH=$(readlink -f "${PROFILE_PATH}");
+  PROFILE_PATH=$(readlink -f "${PROFILE_PATH}")
 fi
-ENV_CONFIG="${PROFILE_PATH}/config.csv";
+ENV_CONFIG="${PROFILE_PATH}/config.csv"
 
-if [[ ! -f ${ENV_CONFIG} ]]
-then
+if [[ ! -f ${ENV_CONFIG} ]]; then
   echo "Profile config does not exist!"
   exit 1
 fi
 
+for i in $(ls ${PROFILE_PATH} | grep -v 'config.csv'); do rm -rfv "${PROFILE_PATH}/${i}"; done
 
-for i in `ls ${PROFILE_PATH} | grep -v 'config.csv'`; do rm -rfv "${PROFILE_PATH}/${i}"; done
-
+rm -rf ${PROFILE_PATH}/shared
 mkdir -p ${PROFILE_PATH}/shared
 cat ${ENV_CONFIG} | awk -v PROFILE_PATH="${PROFILE_PATH}" -F, '
     {
@@ -46,41 +45,40 @@ cat ${ENV_CONFIG} | awk -v PROFILE_PATH="${PROFILE_PATH}" -F, '
     }
 '
 
-
-PORT=7000;
-for ORG in `cat ${PROFILE_PATH}/shared/list`
-do
-cat > ${PROFILE_PATH}/${ORG}/components.json << EOL
+PORT=7000
+for ORG in $(cat ${PROFILE_PATH}/shared/list); do
+  . ${PROFILE_PATH}/${ORG}/settings
+  cat >${PROFILE_PATH}/${ORG}/components.json <<EOL
 {
   "network": {
     "orderingNodes": [
       {
-        "name": "osn1",
-        "port": $((PORT+1))
+        "name": "osn1.${ORG}.${DOMAIN}",
+        "port": $((PORT + 1))
       },
       {
-        "name": "osn2",
-        "port": $((PORT+2))
+        "name": "osn2.${ORG}.${DOMAIN}",
+        "port": $((PORT + 2))
       },
       {
-        "name": "osn3",
-        "port": $((PORT+3))
+        "name": "osn3.${ORG}.${DOMAIN}",
+        "port": $((PORT + 3))
       }
     ],
     "peerNodes": [
       {
-        "name": "peer0",
-        "port": $((PORT+4)),
+        "name": "peer0.${ORG}.${DOMAIN}",
+        "port": $((PORT + 4)),
         "couchDB": {
-          "port": $((PORT+5))
+          "port": $((PORT + 5))
         }
       }
     ]
   }
 }
 EOL
-PORT=$((PORT+10));
-echo "" > ${PROFILE_PATH}/${ORG}/hosts;
+  PORT=$((PORT + 10))
+  echo "" >${PROFILE_PATH}/${ORG}/hosts
 done
 
 echo "Done"

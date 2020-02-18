@@ -3,7 +3,7 @@
 #
 ./clean-docker.sh
 
-./build.sh
+./build-image.sh
 
 ./bin/fabric-service-generate-static-env.sh ./test
 

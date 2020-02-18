@@ -81,7 +81,7 @@ object FabricCryptoMaterial {
         notBefore: Date,
         notAfter: Date
     ): Unit = {
-        val outPath = s"$path/${component.group}/${component.name}.$orgFullName"
+        val outPath = s"$path/${component.group}/${component.name}"
         Util.mkDirs(s"$outPath/msp/admincerts")
         writeToPemFile(s"$outPath/msp/admincerts/Admin@$orgFullName-cert.pem", adminCert.certificate)
 
@@ -103,10 +103,10 @@ object FabricCryptoMaterial {
             notAfter = notAfter
         )
         Util.mkDirs(s"$outPath/msp/keystore")
-        writeToPemFile(s"$outPath/msp/keystore/${component}_sk", theCert.key)
+        writeToPemFile(s"$outPath/msp/keystore/${component.name}_sk", theCert.key)
 
         Util.mkDirs(s"$outPath/msp/signcerts")
-        writeToPemFile(s"$outPath/msp/signcerts/$component.$orgFullName-cert.pem", theCert.certificate)
+        writeToPemFile(s"$outPath/msp/signcerts/${component.name}.$orgFullName-cert.pem", theCert.certificate)
 
         val tlsCert = FabricCryptoMaterial.generateComponentTlsCert(
             componentName = component.name,
