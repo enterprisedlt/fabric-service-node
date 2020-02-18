@@ -36,7 +36,7 @@ object Join {
                 ),
                 <.hr(),
                 <.div(^.className := "card-body aut-form-card",
-                    <.h5("Join settings:"),
+                    <.h5("Join settings"),
                     <.div(^.className := "form-group row",
                         <.label(^.className := "col-sm-2 col-form-label", "Invite:"),
                         <.div(^.className := "input-group col-sm-10",
@@ -82,6 +82,7 @@ object Join {
                             <.input(^.`type` := "text", ^.className := "form-control", ^.id := "port")
                         )
                     ),
+                    <.hr(),
                     <.div(^.className := "form-group row",
                         <.button(
                             ^.className := "btn btn-primary",
