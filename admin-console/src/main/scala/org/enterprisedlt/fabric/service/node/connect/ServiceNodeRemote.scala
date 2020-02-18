@@ -12,15 +12,15 @@ import scala.scalajs.js.JSON
  */
 object ServiceNodeRemote {
 
-    def executeBootstrap(bootstrapOptions: BootstrapOptions): Future[Unit] = {
-        Ajax
-          .post("/admin/bootstrap", JSON.stringify(bootstrapOptions))
-          .map { _ => () } // JSON.parse(xhr.responseText).asInstanceOf[String]
-    }
-
-    def executeJoin(joinOptions: JoinOptions): Future[Unit] = {
-        Ajax
-          .post("/admin/join", JSON.stringify(joinOptions))
-          .map { _ => () } // JSON.parse(xhr.responseText).asInstanceOf[String]
-    }
+//    def executeBootstrap(bootstrapOptions: BootstrapOptions): Future[Unit] = {
+//        Ajax
+//          .post("/admin/bootstrap", JSON.stringify(bootstrapOptions))
+//          .map { _ => () } // JSON.parse(xhr.responseText).asInstanceOf[String]
+//    }
+//
+//    def executeJoin(joinOptions: JoinOptions): Future[Unit] = {
+//        Ajax
+//          .post("/admin/join", JSON.stringify(joinOptions))
+//          .map { _ => () } // JSON.parse(xhr.responseText).asInstanceOf[String]
+//    }
 }

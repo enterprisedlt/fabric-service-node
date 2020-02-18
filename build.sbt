@@ -14,6 +14,7 @@ val BouncyCastleVersion = "1.60"
 val JettyVersion = "9.4.26.v20200117"
 val DockerApiVersion = "3.2.0-rc3" // "3.1.5"
 val GRPCVersion = "1.9.0"
+val MonocleVersion = "2.0.1"
 
 
 lazy val root = project.in(file("."))
@@ -77,8 +78,8 @@ lazy val admin_console = project.in(file("admin-console"))
       mainClass := Some("org.enterprisedlt.fabric.service.node.AdminConsole"),
       libraryDependencies ++= Seq(
           "org.scala-js" %%% "scalajs-dom" % "0.9.7",
-          "com.github.japgolly.scalajs-react" %%% "core" % "1.6.0" //"0.11.3"
-      ),
+          "com.github.japgolly.scalajs-react" %%% "core" % "1.6.0"
+      ) ++ Monocle,
       jsDependencies ++= Seq(
 
           "org.webjars.npm" % "react" % "16.7.0"
@@ -103,10 +104,11 @@ lazy val admin_console = project.in(file("admin-console"))
       Compile / fullOptJS / artifactPath := BundlePath / "admin-console.js",
       Compile / packageJSDependencies / artifactPath := BundlePath / "admin-console-deps.js",
       Compile / packageMinifiedJSDependencies / artifactPath := BundlePath / "admin-console-deps.js",
+
+      addCompilerPlugin("org.scalamacros" %% "paradise" % "2.1.1" cross CrossVersion.full)
   )
   .disablePlugins(AssemblyPlugin)
   .enablePlugins(ScalaJSPlugin)
-
 
 // ========================================================================
 //
@@ -189,4 +191,10 @@ lazy val DockerJava = Seq(
     "com.github.docker-java" % "docker-java-core" % DockerApiVersion,
     "com.github.docker-java" % "docker-java-transport-okhttp" % DockerApiVersion
 //      "docker-java-transport-netty" % DockerApiVersion
+)
+
+lazy val Monocle = Seq(
+    "com.github.julien-truffaut" %%  "monocle-core"  % MonocleVersion,
+    "com.github.julien-truffaut" %%  "monocle-macro" % MonocleVersion,
+    "com.github.julien-truffaut" %%  "monocle-law"   % MonocleVersion % "test"
 )

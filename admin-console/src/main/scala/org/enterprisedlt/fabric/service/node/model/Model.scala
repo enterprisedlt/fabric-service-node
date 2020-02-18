@@ -1,68 +1,65 @@
 package org.enterprisedlt.fabric.service.node.model
 
-import scala.scalajs.js
+import monocle.macros.Lenses
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 
-class BootstrapOptions(
-    val block: BlockConfig,
-    val raft: RaftConfig,
-    val networkName: String,
-    val network: NetworkConfig
-) extends js.Object {
-    def copy(
-        block: BlockConfig = this.block,
-        raft: RaftConfig = this.raft,
-        networkName: String = this.networkName,
-        network: NetworkConfig = this.network
-    ): BootstrapOptions =
-        new BootstrapOptions(block, raft, networkName, network)
-}
+@Lenses case class BootstrapOptions(
+    block: BlockConfig,
+    raft: RaftConfig,
+    networkName: String,
+    network: NetworkConfig
+)
 
 object BootstrapOptions {
     val Defaults: BootstrapOptions =
         new BootstrapOptions(
-            networkName = "",
-            block = new BlockConfig(
+            networkName = "test_net",
+            block = BlockConfig(
                 maxMessageCount = 150,
                 absoluteMaxBytes = 103809024,
                 preferredMaxBytes = 524288,
                 batchTimeOut = "1s"
             ),
-            raft = new RaftConfig(
+            raft = RaftConfig(
                 tickInterval = "500ms",
                 electionTick = 10,
                 heartbeatTick = 1,
                 maxInflightBlocks = 5,
                 snapshotIntervalSize = 20971520
             ),
-            network = new NetworkConfig(
-                orderingNodes = new js.Array[OSNConfig](),
-                peerNodes = new js.Array[PeerConfig]()
+            network = NetworkConfig(
+                orderingNodes = Array.empty[OSNConfig],
+                peerNodes = Array.empty[PeerConfig]
             )
         )
 }
 
-class JoinOptions(
+
+@Lenses case class JoinOptions(
     network: NetworkConfig,
     invite: Invite
-) extends js.Object
+)
 
 object JoinOptions {
     val Defaults: JoinOptions =
-        new JoinOptions(
-            network = new NetworkConfig(
-                orderingNodes = new js.Array[OSNConfig](),
-                peerNodes = js.Array[PeerConfig](
-                    new PeerConfig(
-                        name = "peer0",
-                        port = 7014,
-                        couchDB = new CouchDBConfig(
-                            port = 7015
-                        )))),
-            invite = new Invite(
+        JoinOptions(
+            network = NetworkConfig(
+                orderingNodes = Array.empty[OSNConfig],
+                peerNodes =
+                  Array(
+                      PeerConfig(
+                          name = "peer0",
+                          port = 7014,
+                          couchDB = CouchDBConfig(
+                              port = 7015
+                          )
+                      )
+                  )
+            ),
+            invite = Invite(
                 networkName = "",
                 address = "",
                 key = ""
@@ -70,51 +67,43 @@ object JoinOptions {
         )
 }
 
-class BlockConfig(
-    val maxMessageCount: Int,
-    val absoluteMaxBytes: Int,
-    val preferredMaxBytes: Int,
-    val batchTimeOut: String
-) extends js.Object {
-    def copy(
-        maxMessageCount: Int = this.maxMessageCount,
-        absoluteMaxBytes: Int = this.absoluteMaxBytes,
-        preferredMaxBytes: Int = this.preferredMaxBytes,
-        batchTimeOut: String = this.batchTimeOut
-    ): BlockConfig =
-        new BlockConfig(maxMessageCount, absoluteMaxBytes, preferredMaxBytes, batchTimeOut)
-}
+@Lenses case class BlockConfig(
+    maxMessageCount: Int,
+    absoluteMaxBytes: Int,
+    preferredMaxBytes: Int,
+    batchTimeOut: String
+)
 
-class RaftConfig(
-    val tickInterval: String,
-    val electionTick: Int,
-    val heartbeatTick: Int,
-    val maxInflightBlocks: Int,
-    val snapshotIntervalSize: Int
-) extends js.Object
+@Lenses case class RaftConfig(
+    tickInterval: String,
+    electionTick: Int,
+    heartbeatTick: Int,
+    maxInflightBlocks: Int,
+    snapshotIntervalSize: Int
+)
 
-class NetworkConfig(
-    val orderingNodes: js.Array[OSNConfig],
-    val peerNodes: js.Array[PeerConfig]
-) extends js.Object
+@Lenses case class NetworkConfig(
+    orderingNodes: Array[OSNConfig],
+    peerNodes: Array[PeerConfig]
+)
 
-class OSNConfig(
-    val name: String,
-    val port: Int
-) extends js.Object
+@Lenses case class OSNConfig(
+    name: String,
+    port: Int
+)
 
-class PeerConfig(
-    val name: String,
-    val port: Int,
-    val couchDB: CouchDBConfig
-) extends js.Object
+@Lenses case class PeerConfig(
+    name: String,
+    port: Int,
+    couchDB: CouchDBConfig
+)
 
-class CouchDBConfig(
-    val port: Int
-) extends js.Object
+@Lenses case class CouchDBConfig(
+    port: Int
+)
 
-class Invite(
+case class Invite(
     networkName: String,
     address: String,
     key: String
-) extends js.Object
+)

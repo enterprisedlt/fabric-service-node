@@ -3,7 +3,7 @@ package org.enterprisedlt.fabric.service.node.page
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
-import org.enterprisedlt.fabric.service.node.model.BootstrapOptions
+import org.enterprisedlt.fabric.service.node.model.{BlockConfig, BootstrapOptions}
 import org.enterprisedlt.fabric.service.node.{Context, FieldBinder, Initial}
 import org.scalajs.dom.html.Div
 
@@ -17,7 +17,7 @@ object Boot {
       .renderBackend[Backend]
       .build
 
-    class Backend(val $: BackendScope[Unit, BootstrapOptions]) extends FieldBinder[BootstrapOptions]{
+    class Backend(val $: BackendScope[Unit, BootstrapOptions]) extends FieldBinder[BootstrapOptions] {
 
         def goInit: Callback = Callback {
             Context.State.update(_ => Initial)
@@ -78,7 +78,7 @@ object Boot {
                         <.label(^.className := "col-sm-2 col-form-label", "Batch timeout"),
                         <.div(^.className := "col-sm-10",
                             <.input(^.`type` := "text", ^.className := "form-control",
-                                bind(s.block.batchTimeOut)(v => x => x.copy(block = x.block.copy(batchTimeOut = v)))
+                                bind(s) := BootstrapOptions.block / BlockConfig.batchTimeOut
                             )
                         )
                     ),
@@ -86,7 +86,7 @@ object Boot {
                         <.label(^.className := "col-sm-2 col-form-label", "Max messages count"),
                         <.div(^.className := "col-sm-10",
                             <.input(^.`type` := "text", ^.className := "form-control",
-                                bind(s.block.maxMessageCount.toString)(v => x => x.copy(block = x.block.copy(maxMessageCount = v.toInt)))
+                                bind(s) := BootstrapOptions.block / BlockConfig.maxMessageCount
                             )
                         )
                     ),
