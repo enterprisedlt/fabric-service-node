@@ -32,16 +32,30 @@ object Join {
         def render(s: JoinSettings): VdomTagOf[Div] =
             <.div(^.className := "card aut-form-card",
                 <.div(^.className := "card-header text-white bg-primary",
-                    <.h1("Bootstrap new network")
+                    <.h1("Join to new network")
                 ),
                 <.hr(),
+                <.div(^.className := "card-body aut-form-card",
+                <.div(^.className := "form-group row",
+                    <.label(^.className := "col-sm-2 col-form-label", "Invite:"),
+                    <.div(^.className := "input-group col-sm-10",
+                        <.div(^.`class` := "custom-file",
+                            <.input(^.`type` := "file", ^.`class` := "custom-file-input", ^.id := "inviteInput"),
+                            <.label(^.`class` := "custom-file-label", "Choose file")
+                        )
+                    )
+                ),
+
+
+
                 <.div(^.className := "form-group mt-1",
                     <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
-                    <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goBootProgress, "Bootstrap")
+                    <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goBootProgress, "Join")
                 )
                 //                                                                                                        </form>
-            )
+            ))
     }
+
     def apply(): Unmounted[Unit, JoinSettings, Backend] = component()
 
 }
