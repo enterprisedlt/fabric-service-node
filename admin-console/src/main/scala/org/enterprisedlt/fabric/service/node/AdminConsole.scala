@@ -33,6 +33,7 @@ object AdminConsole {
                 Boot().when(s.global == BootstrapMode),
                 Join().when(s.global == JoinMode),
                 BootProgress().when(s.global == BootstrapInProgress),
+                JoinProgress().when(s.global == JoinInProgress),
                 Dashboard().when(s.global == ReadyForUse)
             )
     }

@@ -19,4 +19,6 @@ case object JoinMode extends AppState
 
 case object BootstrapInProgress extends AppState
 
+case object JoinInProgress extends AppState
+
 case object ReadyForUse extends AppState

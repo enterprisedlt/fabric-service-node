@@ -7,8 +7,10 @@ import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ScalaComponen
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.{Context, FieldBinder, Initial}
+import org.enterprisedlt.fabric.service.node.{Context, FieldBinder, Initial, JoinInProgress}
 import org.scalajs.dom.html.{Div, Select}
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * @author Maxim Fedin
@@ -45,7 +47,9 @@ object Join {
         }
 
         def goJoinProgress(s: JoinOptions): Callback = Callback(
-            ServiceNodeRemote.executeJoin(s)
+            ServiceNodeRemote.executeJoin(s).foreach { _ =>
+                Context.State.update(_ => JoinInProgress)
+            }
         ) //
 
         def deleteComponent(componentConfig: ComponentConfig): CallbackTo[Unit] = {
