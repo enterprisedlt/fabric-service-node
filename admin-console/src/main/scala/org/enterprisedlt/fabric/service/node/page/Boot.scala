@@ -5,8 +5,10 @@ import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model.{BlockConfig, BootstrapOptions}
-import org.enterprisedlt.fabric.service.node.{Context, FieldBinder, Initial}
+import org.enterprisedlt.fabric.service.node.{BootstrapInProgress, Context, FieldBinder, Initial}
 import org.scalajs.dom.html.Div
+
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
  * @author Alexey Polubelov
@@ -24,9 +26,10 @@ object Boot {
             Context.State.update(_ => Initial)
         }
 
-        // TODO: implement
         def goBootProgress(s: BootstrapOptions): Callback = Callback(
-           ServiceNodeRemote.executeBootstrap(s)
+            ServiceNodeRemote.executeBootstrap(s).foreach { _ =>
+                Context.State.update(_ => BootstrapInProgress)
+            }
         )
 
         def render(s: BootstrapOptions): VdomTagOf[Div] =

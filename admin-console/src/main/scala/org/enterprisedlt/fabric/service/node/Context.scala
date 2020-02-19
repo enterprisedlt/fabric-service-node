@@ -16,3 +16,7 @@ case object Initial extends AppState
 case object BootstrapMode extends AppState
 
 case object JoinMode extends AppState
+
+case object BootstrapInProgress extends AppState
+
+case object ReadyForUse extends AppState

@@ -134,3 +134,11 @@ case class Invite(
     address: String,
     key: String
 )
+
+case class FabricServiceState(
+    stateCode: Int
+)
+
+object FabricServiceState {
+    implicit val rw: RW[FabricServiceState] = macroRW
+}

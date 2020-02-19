@@ -2,7 +2,7 @@ package org.enterprisedlt.fabric.service.node
 
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, ScalaComponent}
-import org.enterprisedlt.fabric.service.node.page.{Boot, Init, Join}
+import org.enterprisedlt.fabric.service.node.page._
 import org.enterprisedlt.fabric.service.node.state.{GlobalStateAware, WithGlobalState}
 import org.scalajs.dom
 import org.scalajs.dom.html.Div
@@ -31,7 +31,9 @@ object AdminConsole {
             <.div(
                 Init().when(s.global == Initial),
                 Boot().when(s.global == BootstrapMode),
-                Join().when(s.global == JoinMode)
+                Join().when(s.global == JoinMode),
+                BootProgress().when(s.global == BootstrapInProgress),
+                Dashboard().when(s.global == ReadyForUse)
             )
     }
 
