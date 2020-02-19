@@ -176,6 +176,7 @@ object Join {
                             )
                         )
                     ),
+                    <.hr(),
                     <.div(^.className := "form-group row",
                         <.label(^.`for` := "componentType", ^.className := "col-sm-2 col-form-label", "Component type"),
                         <.div(^.className := "col-sm-10", renderComponentType(s),
@@ -198,7 +199,6 @@ object Join {
                                 bind(s) := JoinState.componentCandidate / ComponentCandidate.port)
                         )
                     ),
-                    <.hr(),
                     <.div(^.className := "form-group row",
                         <.button(
                             ^.className := "btn btn-primary",
@@ -206,6 +206,7 @@ object Join {
                             ^.onClick --> addNetworkComponent(s)
                         )
                     ),
+                    <.hr(),
                     <.div(^.className := "form-group mt-1",
                         <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
                         <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goJoinProgress(s.joinOptions), "Join")
