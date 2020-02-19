@@ -42,6 +42,11 @@ object Join {
 
     class Backend(val $: BackendScope[Unit, JoinState]) extends FieldBinder[JoinState] {
 
+
+        val PeerNodes = JoinState.joinOptions / JoinOptions.network / NetworkConfig.peerNodes
+        val OsnNodes = JoinState.joinOptions / JoinOptions.network / NetworkConfig.orderingNodes
+
+
         def goInit: Callback = Callback {
             Context.State.update(_ => Initial)
         }
@@ -66,10 +71,9 @@ object Join {
 
 
         def addNetworkComponent(componentCandidate: ComponentCandidate): CallbackTo[Unit] = {
-            val state = componentCandidate.componentType match {
+            val state: JoinState => JoinState = componentCandidate.componentType match {
                 case "peer" =>
-                    val l = JoinState.joinOptions / JoinOptions.network / NetworkConfig.peerNodes
-                    l.modify { x =>
+                    PeerNodes.modify { x =>
                         x :+ PeerConfig(
                             name = componentCandidate.name,
                             port = componentCandidate.port,
@@ -77,8 +81,7 @@ object Join {
                         )
                     }
                 case "orderer" =>
-                    val l = JoinState.joinOptions / JoinOptions.network / NetworkConfig.orderingNodes
-                    l.modify { x =>
+                    OsnNodes.modify { x =>
                         x :+ OSNConfig(
                             name = componentCandidate.name,
                             port = componentCandidate.port
@@ -86,15 +89,15 @@ object Join {
                     }
                 case _ => throw new Exception
             }
-            $.modState(state)
+            $.modState(state.andThen(_.copy(componentCandidate = JoinState.Defaults.componentCandidate)))
         }
 
         def renderComponentType(s: JoinState): VdomTagOf[Select] = {
             <.select(className := "form-control",
                 id := "componentType",
                 bind(s) := JoinState.componentCandidate / ComponentCandidate.componentType,
-                option((className := "selected"), "orderer"),
-                option( "peer")
+                option(className := "selected", "orderer"),
+                option("peer")
             )
         }
 
