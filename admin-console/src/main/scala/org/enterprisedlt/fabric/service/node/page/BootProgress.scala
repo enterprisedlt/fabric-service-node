@@ -4,11 +4,11 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ScalaComponent}
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
-import org.enterprisedlt.fabric.service.node.{BootstrapMode, Context, JoinMode, ReadyForUse}
+import org.enterprisedlt.fabric.service.node.{Context, ReadyForUse}
 import org.scalajs.dom.html.Div
 
-import scala.scalajs.js
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.scalajs.js
 
 /**
  * @author Alexey Polubelov
@@ -53,17 +53,13 @@ object BootProgress {
 
     class Backend(val $: BackendScope[Unit, State]) {
 
-        var tmp: Int = NotInitialized
-
         def goAdministration: Callback = Callback {
             Context.State.update(_ => ReadyForUse)
         }
 
         def checkServiceState: Callback = Callback.future {
-            ServiceNodeRemote.getServiceState().map { data =>
-                val stateCode = tmp
-                tmp = tmp + 1
-                //data.stateCode;
+            ServiceNodeRemote.getServiceState.map { data =>
+                val stateCode = data.stateCode
                 if (stateCode == NotInitialized) {
                     scheduleCheck
 
@@ -83,7 +79,6 @@ object BootProgress {
                     )
 
                 } else {
-                    if(tmp > BootstrapMaxValue) tmp = Ready
                     println("Unexpected state code:", stateCode)
                     scheduleCheck
                 }

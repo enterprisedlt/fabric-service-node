@@ -11,8 +11,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object JoinProgress {
 
     case class State(
@@ -53,17 +53,13 @@ object JoinProgress {
 
     class Backend(val $: BackendScope[Unit, State]) {
 
-        var tmp: Int = NotInitialized
-
         def goAdministration: Callback = Callback {
             Context.State.update(_ => ReadyForUse)
         }
 
         def checkServiceState: Callback = Callback.future {
-            ServiceNodeRemote.getServiceState().map { data =>
-                val stateCode = tmp
-                tmp = tmp + 1
-                //data.stateCode;
+            ServiceNodeRemote.getServiceState.map { data =>
+                val stateCode = data.stateCode
                 if (stateCode == NotInitialized) {
                     scheduleCheck
 
@@ -83,7 +79,6 @@ object JoinProgress {
                     )
 
                 } else {
-                    if (tmp > JoinMaxValue) tmp = Ready
                     println("Unexpected state code:", stateCode)
                     scheduleCheck
                 }

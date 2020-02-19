@@ -1,33 +1,40 @@
 package org.enterprisedlt.fabric.service.node.connect
 
 import org.enterprisedlt.fabric.service.node.model.{BootstrapOptions, FabricServiceState, JoinOptions}
+import org.scalajs.dom.ext.Ajax
 
 import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object ServiceNodeRemote {
 
-    def getServiceState(): Future[FabricServiceState] = {
-        Future.successful(FabricServiceState(0))
+    def getServiceState: Future[FabricServiceState] = {
+        Ajax
+          .get("/service/state")
+          .map(_.responseText)
+          .map(r => upickle.default.read[FabricServiceState](r))
     }
 
     def executeBootstrap(bootstrapOptions: BootstrapOptions): Future[Unit] = {
         val json = upickle.default.write(bootstrapOptions)
-        println(json)
-        Future.successful(())
-        //        Ajax
-        //          .post("/admin/bootstrap", json)
-        //          .map { _ => () }
+        Ajax
+          .post("/admin/bootstrap", json)
+          .map { _ => () }
     }
 
     def executeJoin(joinOptions: JoinOptions): Future[Unit] = {
         val json = upickle.default.write(joinOptions)
-        println(json)
-        Future.successful(())
-        //        Ajax
-        //          .post("/admin/join", json)
-        //          .map { _ => () } // JSON.parse(xhr.responseText).asInstanceOf[String]
+        Ajax
+          .post("/admin/request-join", json)
+          .map { _ => () }
+    }
+
+    def createInvite: Future[String] = {
+        Ajax
+          .get("/admin/create-invite")
+          .map(_.responseText)
     }
 }

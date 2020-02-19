@@ -4,8 +4,8 @@ import monocle.macros.Lenses
 import upickle.default.{macroRW, ReadWriter => RW}
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 
 @Lenses case class BootstrapOptions(
     block: BlockConfig,
@@ -32,8 +32,27 @@ object BootstrapOptions {
                 snapshotIntervalSize = 20971520
             ),
             network = NetworkConfig(
-                orderingNodes = Array.empty[OSNConfig],
-                peerNodes = Array.empty[PeerConfig]
+                orderingNodes = Array(
+                    OSNConfig(
+                        name = "osn1.org1.example.com",
+                        port = 7001
+                    ),
+                    OSNConfig(
+                        name = "osn2.org1.example.com",
+                        port = 7002
+                    ),
+                    OSNConfig(
+                        name = "osn3.org1.example.com",
+                        port = 7003
+                    )
+                ),
+                peerNodes = Array(
+                    PeerConfig(
+                        name = "peer0.org1.example.com",
+                        port = 7010,
+                        couchDB = null
+                    )
+                )
             )
         )
 
@@ -54,7 +73,7 @@ object JoinOptions {
                 peerNodes =
                   Array(
                       PeerConfig(
-                          name = "peer0",
+                          name = "peer0.org2.example.com",
                           port = 7014,
                           couchDB = null
                       )

@@ -8,8 +8,6 @@ import org.enterprisedlt.fabric.service.node.model.{BlockConfig, BootstrapOption
 import org.enterprisedlt.fabric.service.node.{BootstrapInProgress, Context, FieldBinder, Initial}
 import org.scalajs.dom.html.Div
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
 /**
  * @author Alexey Polubelov
  */
@@ -26,11 +24,10 @@ object Boot {
             Context.State.update(_ => Initial)
         }
 
-        def goBootProgress(s: BootstrapOptions): Callback = Callback(
-            ServiceNodeRemote.executeBootstrap(s).foreach { _ =>
-                Context.State.update(_ => BootstrapInProgress)
-            }
-        )
+        def goBootProgress(s: BootstrapOptions): Callback = Callback {
+            ServiceNodeRemote.executeBootstrap(s) // this call will block until bootstrap complete, so ignore the future
+            Context.State.update(_ => BootstrapInProgress)
+        }
 
         def render(s: BootstrapOptions): VdomTagOf[Div] =
             <.div(^.className := "card aut-form-card",

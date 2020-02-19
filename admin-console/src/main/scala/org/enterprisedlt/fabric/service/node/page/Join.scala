@@ -11,11 +11,9 @@ import org.enterprisedlt.fabric.service.node.{Context, FieldBinder, Initial, Joi
 import org.scalajs.dom.html.{Div, Select}
 import org.scalajs.dom.raw.{File, FileReader}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-
 /**
-  * @author Maxim Fedin
-  */
+ * @author Maxim Fedin
+ */
 object Join {
 
     @Lenses case class JoinState(
@@ -61,9 +59,8 @@ object Join {
             reader.onload = _ => {
                 val invite = upickle.default.read[Invite](reader.result.asInstanceOf[String])
                 val updatedJoinOptions = joinState.joinOptions.copy(invite = invite)
-                ServiceNodeRemote.executeJoin(updatedJoinOptions).foreach { _ =>
-                    Context.State.update(_ => JoinInProgress)
-                }
+                ServiceNodeRemote.executeJoin(updatedJoinOptions)
+                Context.State.update(_ => JoinInProgress)
             }
             reader.readAsText(joinState.file)
         }
@@ -105,7 +102,7 @@ object Join {
                             port = componentCandidate.port
                         )
                     }
-                case _ => throw new Exception
+                case _ => throw new Exception("Unknown component type")
             }
         }
 
