@@ -23,13 +23,15 @@ object Join {
     )
 
     object JoinState {
+        val ComponentTypes = Seq("orderer", "peer")
+
         val Defaults: JoinState =
             JoinState(
                 JoinOptions.Defaults,
                 ComponentCandidate(
                     name = "",
                     port = 0,
-                    componentType = "orderer"
+                    componentType = ComponentTypes.head
                 )
             )
     }
@@ -42,9 +44,8 @@ object Join {
 
     class Backend(val $: BackendScope[Unit, JoinState]) extends FieldBinder[JoinState] {
 
-
-        val PeerNodes = JoinState.joinOptions / JoinOptions.network / NetworkConfig.peerNodes
-        val OsnNodes = JoinState.joinOptions / JoinOptions.network / NetworkConfig.orderingNodes
+        private val PeerNodes = JoinState.joinOptions / JoinOptions.network / NetworkConfig.peerNodes
+        private val OsnNodes = JoinState.joinOptions / JoinOptions.network / NetworkConfig.orderingNodes
 
 
         def goInit: Callback = Callback {
@@ -90,7 +91,6 @@ object Join {
                     }
                 case _ => throw new Exception
             }
-            renderComponentType(joinState)
             $.modState(updatedState.andThen(_.copy(componentCandidate = JoinState.Defaults.componentCandidate)))
         }
 
@@ -98,9 +98,14 @@ object Join {
             <.select(className := "form-control",
                 id := "componentType",
                 bind(s) := JoinState.componentCandidate / ComponentCandidate.componentType,
-                option(className := "selected", "orderer"),
-                option("peer")
+                componentTypeOptions(s)
             )
+        }
+
+        def componentTypeOptions(s: JoinState): TagMod = {
+            JoinState.ComponentTypes.map { name =>
+                option((className := "selected").when(s.componentCandidate.componentType == name), name)
+            }.toTagMod
         }
 
         def render(s: JoinState): VdomTagOf[Div] =
