@@ -56,9 +56,7 @@ object JoinOptions {
                       PeerConfig(
                           name = "peer0",
                           port = 7014,
-                          couchDB = CouchDBConfig(
-                              port = null
-                          )
+                          couchDB = null
                       )
                   )
             ),

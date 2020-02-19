@@ -13,8 +13,8 @@ import org.scalajs.dom.html.{Div, Select}
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
-  * @author Maxim Fedin
-  */
+ * @author Maxim Fedin
+ */
 object Join {
 
     @Lenses case class JoinState(
@@ -72,8 +72,14 @@ object Join {
 
 
         def addNetworkComponent(joinState: JoinState): CallbackTo[Unit] = {
+            $.modState(
+                addComponent(joinState) andThen JoinState.componentCandidate.set(JoinState.Defaults.componentCandidate)
+            )
+        }
+
+        private def addComponent(joinState: JoinState): JoinState => JoinState = {
             val componentCandidate = joinState.componentCandidate
-            val updatedState = componentCandidate.componentType match {
+            componentCandidate.componentType match {
                 case "peer" =>
                     PeerNodes.modify { x =>
                         x :+ PeerConfig(
@@ -91,7 +97,6 @@ object Join {
                     }
                 case _ => throw new Exception
             }
-            $.modState(updatedState.andThen(_.copy(componentCandidate = JoinState.Defaults.componentCandidate)))
         }
 
         def renderComponentType(s: JoinState): VdomTagOf[Select] = {
