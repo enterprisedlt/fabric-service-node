@@ -3,28 +3,30 @@ package org.enterprisedlt.fabric.service.node.page
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.all.{VdomTagOf, className, id, option}
 import japgolly.scalajs.react.vdom.html_<^._
-import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ScalaComponent}
+import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ReactEventFromInput, ScalaComponent}
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.{Context, FieldBinder, Initial, JoinInProgress}
 import org.scalajs.dom.html.{Div, Select}
+import org.scalajs.dom.raw.{File, FileReader}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
- * @author Maxim Fedin
- */
+  * @author Maxim Fedin
+  */
 object Join {
 
     @Lenses case class JoinState(
         joinOptions: JoinOptions,
-        componentCandidate: ComponentCandidate
+        componentCandidate: ComponentCandidate,
+        file: File,
+        fileName: String
     )
 
     object JoinState {
         val ComponentTypes = Seq("orderer", "peer")
-
         val Defaults: JoinState =
             JoinState(
                 JoinOptions.Defaults,
@@ -32,7 +34,9 @@ object Join {
                     name = "",
                     port = 0,
                     componentType = ComponentTypes.head
-                )
+                ),
+                null,
+                "Choose file"
             )
     }
 
@@ -52,11 +56,17 @@ object Join {
             Context.State.update(_ => Initial)
         }
 
-        def goJoinProgress(joinOptions: JoinOptions): Callback = Callback(
-            ServiceNodeRemote.executeJoin(joinOptions).foreach { _ =>
-                Context.State.update(_ => JoinInProgress)
+        def goJoinProgress(joinState: JoinState): Callback = Callback {
+            val reader = new FileReader()
+            reader.onload = _ => {
+                val invite = upickle.default.read[Invite](reader.result.asInstanceOf[String])
+                val updatedJoinOptions = joinState.joinOptions.copy(invite = invite)
+                ServiceNodeRemote.executeJoin(updatedJoinOptions).foreach { _ =>
+                    Context.State.update(_ => JoinInProgress)
+                }
             }
-        ) //
+            reader.readAsText(joinState.file)
+        }
 
         def deleteComponent(componentConfig: ComponentConfig): CallbackTo[Unit] = {
             val state = componentConfig match {
@@ -113,6 +123,11 @@ object Join {
             }.toTagMod
         }
 
+        def addFile(event: ReactEventFromInput): CallbackTo[Unit] = {
+            val file: File = event.target.files(0)
+            $.modState(x => x.copy(fileName = file.name, file = file))
+        }
+
         def render(s: JoinState): VdomTagOf[Div] =
             <.div(^.className := "card aut-form-card",
                 <.div(^.className := "card-header text-white bg-primary",
@@ -125,8 +140,8 @@ object Join {
                         <.label(^.className := "col-sm-2 col-form-label", "Invite:"),
                         <.div(^.className := "input-group col-sm-10",
                             <.div(^.`class` := "custom-file",
-                                <.input(^.`type` := "file", ^.`class` := "custom-file-input", ^.id := "inviteInput"),
-                                <.label(^.`class` := "custom-file-label", "Choose file")
+                                <.input(^.`type` := "file", ^.`class` := "custom-file-input", ^.id := "inviteInput", ^.onChange ==> addFile),
+                                <.label(^.`class` := "custom-file-label", s.fileName)
                             )
                         )
                     ),
@@ -209,7 +224,7 @@ object Join {
                     <.hr(),
                     <.div(^.className := "form-group mt-1",
                         <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
-                        <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goJoinProgress(s.joinOptions), "Join")
+                        <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goJoinProgress(s), "Join")
                     )
                     //                                                                                                        </form>
                 )
