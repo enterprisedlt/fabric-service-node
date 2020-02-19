@@ -1,11 +1,11 @@
 package org.enterprisedlt.fabric.service.node.model
 
 import monocle.macros.Lenses
-import upickle.default.{ReadWriter => RW, macroRW}
+import upickle.default.{macroRW, ReadWriter => RW}
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 
 @Lenses case class BootstrapOptions(
     block: BlockConfig,
@@ -41,33 +41,61 @@ object BootstrapOptions {
 }
 
 
+@Lenses case class JoinState(
+    joinOptions: JoinOptions,
+    componentCandidate: ComponentCandidate
+)
+
+object JoinState {
+    val Defaults: JoinState =
+        JoinState(
+            JoinOptions(
+                network = NetworkConfig(
+                    orderingNodes = Array.empty[OSNConfig],
+                    peerNodes =
+                      Array(
+                          PeerConfig(
+                              name = "peer0",
+                              port = 7014,
+                              couchDB = CouchDBConfig(
+                                  port = 7015
+                              )
+                          )
+                      )
+                ),
+                invite = Invite(
+                    networkName = "",
+                    address = "",
+                    key = ""
+                )
+            ),
+            ComponentCandidate(
+                name = "",
+                port = 0,
+                componentType = ""
+
+            )
+        )
+    implicit val rw: RW[JoinState] = macroRW
+}
+
 @Lenses case class JoinOptions(
     network: NetworkConfig,
     invite: Invite
 )
 
 object JoinOptions {
-    val Defaults: JoinOptions =
-        JoinOptions(
-            network = NetworkConfig(
-                orderingNodes = Array.empty[OSNConfig],
-                peerNodes =
-                  Array(
-                      PeerConfig(
-                          name = "peer0",
-                          port = 7014,
-                          couchDB = CouchDBConfig(
-                              port = 7015
-                          )
-                      )
-                  )
-            ),
-            invite = Invite(
-                networkName = "",
-                address = "",
-                key = ""
-            )
-        )
+    implicit val rw: RW[JoinOptions] = macroRW
+}
+
+@Lenses case class ComponentCandidate(
+    name: String,
+    port: Int,
+    componentType: String
+)
+
+object ComponentCandidate {
+    implicit val rw: RW[ComponentCandidate] = macroRW
 }
 
 @Lenses case class BlockConfig(
@@ -102,10 +130,13 @@ object NetworkConfig {
     implicit val rw: RW[NetworkConfig] = macroRW
 }
 
+
+trait ComponentConfig
+
 @Lenses case class OSNConfig(
     name: String,
     port: Int
-)
+)extends ComponentConfig
 
 object OSNConfig {
     implicit val rw: RW[OSNConfig] = macroRW
@@ -115,7 +146,7 @@ object OSNConfig {
     name: String,
     port: Int,
     couchDB: CouchDBConfig
-)
+)extends ComponentConfig
 
 object PeerConfig {
     implicit val rw: RW[PeerConfig] = macroRW
@@ -129,11 +160,15 @@ object CouchDBConfig {
     implicit val rw: RW[CouchDBConfig] = macroRW
 }
 
-case class Invite(
+@Lenses case class Invite(
     networkName: String,
     address: String,
     key: String
 )
+
+object Invite {
+    implicit val rw: RW[Invite] = macroRW
+}
 
 case class FabricServiceState(
     stateCode: Int

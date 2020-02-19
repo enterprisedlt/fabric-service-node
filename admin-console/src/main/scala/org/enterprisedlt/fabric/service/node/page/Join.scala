@@ -2,9 +2,10 @@ package org.enterprisedlt.fabric.service.node.page
 
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
-import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
-import org.enterprisedlt.fabric.service.node.model.JoinOptions
-import org.enterprisedlt.fabric.service.node.{Context, Initial}
+import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ScalaComponent}
+import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
+import org.enterprisedlt.fabric.service.node.model._
+import org.enterprisedlt.fabric.service.node.{Context, FieldBinder, Initial}
 import org.scalajs.dom.html.Div
 
 /**
@@ -13,22 +14,60 @@ import org.scalajs.dom.html.Div
 object Join {
 
 
-
     private val component = ScalaComponent.builder[Unit]("JoinMode")
-      .initialState(JoinOptions.Defaults)
+      .initialState(JoinState.Defaults)
       .renderBackend[Backend]
       .build
 
 
-    class Backend(val $: BackendScope[Unit, JoinOptions]) {
+    class Backend(val $: BackendScope[Unit, JoinState]) extends FieldBinder[JoinState] {
 
         def goInit: Callback = Callback {
             Context.State.update(_ => Initial)
         }
 
-        def goBootProgress: Callback = Callback() // TODO
+        def goJoinProgress(s: JoinOptions): Callback = Callback(
+            ServiceNodeRemote.executeJoin(s)
+        ) //
 
-        def render(s: JoinOptions): VdomTagOf[Div] =
+        def deleteComponent(componentConfig: ComponentConfig): CallbackTo[Unit] = {
+            val state = componentConfig match {
+                case oc: OSNConfig =>
+                    val l = JoinState.joinOptions / JoinOptions.network / NetworkConfig.orderingNodes
+                    l.modify (_.filter(_.name != oc.name))
+                case pc: PeerConfig =>
+                    val l = JoinState.joinOptions / JoinOptions.network / NetworkConfig.peerNodes
+                    l.modify (_.filter(_.name != pc.name))
+            }
+            $.modState(state)
+        }
+
+
+        def addNetworkComponent(componentCandidate: ComponentCandidate): CallbackTo[Unit] = {
+            val state = componentCandidate.componentType match {
+                case "peer" =>
+                    val l = JoinState.joinOptions / JoinOptions.network / NetworkConfig.peerNodes
+                    l.modify { x =>
+                        x :+ PeerConfig(
+                            name = componentCandidate.name,
+                            port = componentCandidate.port,
+                            couchDB = null
+                        )
+                    }
+                case "orderer" =>
+                    val l = JoinState.joinOptions / JoinOptions.network / NetworkConfig.orderingNodes
+                    l.modify { x =>
+                        x :+ OSNConfig(
+                            name = componentCandidate.name,
+                            port = componentCandidate.port
+                        )
+                    }
+                case _ => throw new Exception
+            }
+            $.modState(state)
+        }
+
+        def render(s: JoinState): VdomTagOf[Div] =
             <.div(^.className := "card aut-form-card",
                 <.div(^.className := "card-header text-white bg-primary",
                     <.h1("Join to new network")
@@ -59,44 +98,77 @@ object Join {
                                 )
                             ),
                             <.tbody(
-                                //TODO
+                                s.joinOptions.network.orderingNodes.zipWithIndex.map { case (osnNode, index) =>
+                                    <.tr(
+                                        <.td(^.scope := "row", s"${index + 1}"),
+                                        <.td("orderer"),
+                                        <.td(osnNode.name),
+                                        <.td(osnNode.port),
+                                        <.td(
+                                            <.button(
+                                                ^.className := "btn btn-primary",
+                                                "Remove",
+                                                ^.onClick --> deleteComponent(osnNode))
+                                        )
+                                    )
+                                }.toTagMod,
+                                s.joinOptions.network.peerNodes.zipWithIndex.map { case (peerNode, index) =>
+                                    <.tr(
+                                        <.td(^.scope := "row", s"${s.joinOptions.network.orderingNodes.length + index + 1}"),
+                                        <.td("peer"),
+                                        <.td(peerNode.name),
+                                        <.td(peerNode.port),
+                                        <.td(
+                                            <.button(
+                                                ^.className := "btn btn-primary",
+                                                "Remove",
+                                                ^.onClick --> deleteComponent(peerNode))
+                                        )
+                                    )
+                                }.toTagMod
+
                             )
                         )
                     ),
                     <.div(^.className := "form-group row",
                         <.label(^.`for` := "componentType", ^.className := "col-sm-2 col-form-label", "Component type"),
                         <.div(^.className := "col-sm-10",
-                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentType")
+                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentType",
+                                bind(s) := JoinState.componentCandidate / ComponentCandidate.componentType
+                            )
                         )
                     ),
                     <.div(^.className := "form-group row",
                         <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "Component name"),
                         <.div(^.className := "col-sm-10",
-                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentName")
+                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentName",
+                                bind(s) := JoinState.componentCandidate / ComponentCandidate.name)
                         )
                     ),
                     <.div(^.className := "form-group row",
                         <.label(^.`for` := "port", ^.className := "col-sm-2 col-form-label", "Port"),
                         <.div(^.className := "col-sm-10",
-                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "port")
+                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "port",
+                                bind(s) := JoinState.componentCandidate / ComponentCandidate.port)
                         )
                     ),
                     <.hr(),
                     <.div(^.className := "form-group row",
                         <.button(
                             ^.className := "btn btn-primary",
-                            "Add component"
+                            "Add component",
+                            ^.onClick --> addNetworkComponent(s.componentCandidate)
                         )
                     ),
                     <.div(^.className := "form-group mt-1",
                         <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
-                        <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goBootProgress, "Join")
+                        <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goJoinProgress(s.joinOptions), "Join")
                     )
                     //                                                                                                        </form>
                 )
             )
     }
 
-    def apply(): Unmounted[Unit, JoinOptions, Backend] = component()
+    def apply(): Unmounted[Unit, JoinState, Backend] = component()
 
 }
