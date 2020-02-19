@@ -51,8 +51,8 @@ object Join {
             Context.State.update(_ => Initial)
         }
 
-        def goJoinProgress(s: JoinOptions): Callback = Callback(
-            ServiceNodeRemote.executeJoin(s).foreach { _ =>
+        def goJoinProgress(joinOptions: JoinOptions): Callback = Callback(
+            ServiceNodeRemote.executeJoin(joinOptions).foreach { _ =>
                 Context.State.update(_ => JoinInProgress)
             }
         ) //
@@ -70,8 +70,9 @@ object Join {
         }
 
 
-        def addNetworkComponent(componentCandidate: ComponentCandidate): CallbackTo[Unit] = {
-            val state: JoinState => JoinState = componentCandidate.componentType match {
+        def addNetworkComponent(joinState: JoinState): CallbackTo[Unit] = {
+            val componentCandidate = joinState.componentCandidate
+            val updatedState = componentCandidate.componentType match {
                 case "peer" =>
                     PeerNodes.modify { x =>
                         x :+ PeerConfig(
@@ -89,7 +90,8 @@ object Join {
                     }
                 case _ => throw new Exception
             }
-            $.modState(state.andThen(_.copy(componentCandidate = JoinState.Defaults.componentCandidate)))
+            renderComponentType(joinState)
+            $.modState(updatedState.andThen(_.copy(componentCandidate = JoinState.Defaults.componentCandidate)))
         }
 
         def renderComponentType(s: JoinState): VdomTagOf[Select] = {
@@ -191,7 +193,7 @@ object Join {
                         <.button(
                             ^.className := "btn btn-primary",
                             "Add component",
-                            ^.onClick --> addNetworkComponent(s.componentCandidate)
+                            ^.onClick --> addNetworkComponent(s)
                         )
                     ),
                     <.div(^.className := "form-group mt-1",
