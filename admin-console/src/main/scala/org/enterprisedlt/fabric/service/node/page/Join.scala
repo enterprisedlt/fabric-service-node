@@ -1,18 +1,36 @@
 package org.enterprisedlt.fabric.service.node.page
 
 import japgolly.scalajs.react.component.Scala.Unmounted
+import japgolly.scalajs.react.vdom.all.{VdomTagOf, className, id, option}
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ScalaComponent}
+import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.{Context, FieldBinder, Initial}
-import org.scalajs.dom.html.Div
+import org.scalajs.dom.html.{Div, Select}
 
 /**
   * @author Maxim Fedin
   */
 object Join {
 
+    @Lenses case class JoinState(
+        joinOptions: JoinOptions,
+        componentCandidate: ComponentCandidate
+    )
+
+    object JoinState {
+        val Defaults: JoinState =
+            JoinState(
+                JoinOptions.Defaults,
+                ComponentCandidate(
+                    name = "orderer",
+                    port = 0,
+                    componentType = ""
+                )
+            )
+    }
 
     private val component = ScalaComponent.builder[Unit]("JoinMode")
       .initialState(JoinState.Defaults)
@@ -34,10 +52,10 @@ object Join {
             val state = componentConfig match {
                 case oc: OSNConfig =>
                     val l = JoinState.joinOptions / JoinOptions.network / NetworkConfig.orderingNodes
-                    l.modify (_.filter(_.name != oc.name))
+                    l.modify(_.filter(_.name != oc.name))
                 case pc: PeerConfig =>
                     val l = JoinState.joinOptions / JoinOptions.network / NetworkConfig.peerNodes
-                    l.modify (_.filter(_.name != pc.name))
+                    l.modify(_.filter(_.name != pc.name))
             }
             $.modState(state)
         }
@@ -65,6 +83,15 @@ object Join {
                 case _ => throw new Exception
             }
             $.modState(state)
+        }
+
+        def renderComponentType(s: JoinState): VdomTagOf[Select] = {
+            <.select(className := "form-control",
+                id := "componentType",
+                bind(s) := JoinState.componentCandidate / ComponentCandidate.componentType,
+                option((className := "selected"), "orderer"),
+                option( "peer")
+            )
         }
 
         def render(s: JoinState): VdomTagOf[Div] =
@@ -132,10 +159,10 @@ object Join {
                     ),
                     <.div(^.className := "form-group row",
                         <.label(^.`for` := "componentType", ^.className := "col-sm-2 col-form-label", "Component type"),
-                        <.div(^.className := "col-sm-10",
-                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentType",
-                                bind(s) := JoinState.componentCandidate / ComponentCandidate.componentType
-                            )
+                        <.div(^.className := "col-sm-10", renderComponentType(s),
+                            //                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentType",
+                            //                                bind(s) := JoinState.componentCandidate / ComponentCandidate.componentType
+                            //                            )
                         )
                     ),
                     <.div(^.className := "form-group row",

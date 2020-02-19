@@ -41,50 +41,33 @@ object BootstrapOptions {
 }
 
 
-@Lenses case class JoinState(
-    joinOptions: JoinOptions,
-    componentCandidate: ComponentCandidate
-)
-
-object JoinState {
-    val Defaults: JoinState =
-        JoinState(
-            JoinOptions(
-                network = NetworkConfig(
-                    orderingNodes = Array.empty[OSNConfig],
-                    peerNodes =
-                      Array(
-                          PeerConfig(
-                              name = "peer0",
-                              port = 7014,
-                              couchDB = CouchDBConfig(
-                                  port = 7015
-                              )
-                          )
-                      )
-                ),
-                invite = Invite(
-                    networkName = "",
-                    address = "",
-                    key = ""
-                )
-            ),
-            ComponentCandidate(
-                name = "",
-                port = 0,
-                componentType = ""
-
-            )
-        )
-    implicit val rw: RW[JoinState] = macroRW
-}
-
 @Lenses case class JoinOptions(
     network: NetworkConfig,
     invite: Invite
 )
 
 object JoinOptions {
+    val Defaults: JoinOptions =
+        JoinOptions(
+            network = NetworkConfig(
+                orderingNodes = Array.empty[OSNConfig],
+                peerNodes =
+                  Array(
+                      PeerConfig(
+                          name = "peer0",
+                          port = 7014,
+                          couchDB = CouchDBConfig(
+                              port = 7015
+                          )
+                      )
+                  )
+            ),
+            invite = Invite(
+                networkName = "",
+                address = "",
+                key = ""
+            )
+        )
     implicit val rw: RW[JoinOptions] = macroRW
 }
 
@@ -136,7 +119,7 @@ trait ComponentConfig
 @Lenses case class OSNConfig(
     name: String,
     port: Int
-)extends ComponentConfig
+) extends ComponentConfig
 
 object OSNConfig {
     implicit val rw: RW[OSNConfig] = macroRW
@@ -146,7 +129,7 @@ object OSNConfig {
     name: String,
     port: Int,
     couchDB: CouchDBConfig
-)extends ComponentConfig
+) extends ComponentConfig
 
 object PeerConfig {
     implicit val rw: RW[PeerConfig] = macroRW
