@@ -27,8 +27,8 @@ object JoinProgress {
 
     val StateUpdateInterval = 500
     val NotInitialized = 0
-    val JoinStarted = 11
-    val JoinMaxValue = 21
+    val JoinStarted = 50
+    val JoinMaxValue = 60
     val Ready = 100
 
     private val JoinMessages = Array(
