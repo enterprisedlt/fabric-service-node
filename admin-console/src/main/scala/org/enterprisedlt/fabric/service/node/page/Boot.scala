@@ -3,9 +3,10 @@ package org.enterprisedlt.fabric.service.node.page
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
+import org.enterprisedlt.fabric.service.node.Context.{BootstrapInProgress, InitMode}
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model.{BlockConfig, BootstrapOptions}
-import org.enterprisedlt.fabric.service.node.{BootstrapInProgress, Context, FieldBinder, Initial}
+import org.enterprisedlt.fabric.service.node.{Context, FieldBinder}
 import org.scalajs.dom.html.Div
 
 /**
@@ -21,12 +22,12 @@ object Boot {
     class Backend(val $: BackendScope[Unit, BootstrapOptions]) extends FieldBinder[BootstrapOptions] {
 
         def goInit: Callback = Callback {
-            Context.State.update(_ => Initial)
+            Context.switchModeTo(InitMode)
         }
 
         def goBootProgress(s: BootstrapOptions): Callback = Callback {
             ServiceNodeRemote.executeBootstrap(s) // this call will block until bootstrap complete, so ignore the future
-            Context.State.update(_ => BootstrapInProgress)
+            Context.switchModeTo(BootstrapInProgress)
         }
 
         def render(s: BootstrapOptions): VdomTagOf[Div] =

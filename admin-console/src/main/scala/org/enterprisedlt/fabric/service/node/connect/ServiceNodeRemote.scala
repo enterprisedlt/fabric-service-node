@@ -11,6 +11,13 @@ import scala.concurrent.ExecutionContext.Implicits.global
  */
 object ServiceNodeRemote {
 
+    def getOrganisationFullName: Future[String] = {
+        Ajax
+          .get("/service/organization-full-name")
+          .map(_.responseText)
+          .map(r => upickle.default.read[String](r))
+    }
+
     def getServiceState: Future[FabricServiceState] = {
         Ajax
           .get("/service/state")

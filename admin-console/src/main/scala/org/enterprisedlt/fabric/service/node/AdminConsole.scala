@@ -29,17 +29,28 @@ object AdminConsole {
     class MainBackend(val $: BackendScope[Unit, State]) extends GlobalStateAware[AppState, State] {
         def render(s: State): VdomTagOf[Div] =
             <.div(
-                Init().when(s.global == Initial),
-                Boot().when(s.global == BootstrapMode),
-                Join().when(s.global == JoinMode),
-                BootProgress().when(s.global == BootstrapInProgress),
-                JoinProgress().when(s.global == JoinInProgress),
-                Dashboard().when(s.global == ReadyForUse)
+                s.global match {
+                    case Initial => loadingScreen
+                    case GlobalState(InitMode, _) => Init()
+                    case GlobalState(BootstrapMode, _) => Boot()
+                    case GlobalState(JoinMode, _) => Join()
+                    case GlobalState(BootstrapInProgress, _) => BootProgress()
+                    case GlobalState(JoinInProgress, _) => JoinProgress()
+                    case GlobalState(ReadyForUse, _) => Dashboard()
+                }
             )
     }
 
+    private def loadingScreen: VdomTagOf[Div] =
+        <.div(^.className := "d-flex justify-content-center",
+            <.div(^.className := "spinner-border", ^.role := "status",
+                <.span(^.className := "sr-only", "Loading...")
+            )
+        )
+
     @JSExport
     def main(args: Array[String]): Unit = {
+        Context.initialize
         rootComponent().renderIntoDOM(dom.document.getElementById("root"))
     }
 }
