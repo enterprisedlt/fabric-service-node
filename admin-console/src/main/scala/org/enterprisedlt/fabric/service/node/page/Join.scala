@@ -27,9 +27,9 @@ object Join {
             JoinState(
                 JoinOptions.Defaults,
                 ComponentCandidate(
-                    name = "orderer",
+                    name = "",
                     port = 0,
-                    componentType = ""
+                    componentType = "orderer"
                 )
             )
     }
