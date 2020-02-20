@@ -32,27 +32,8 @@ object BootstrapOptions {
                 snapshotIntervalSize = 20971520
             ),
             network = NetworkConfig(
-                orderingNodes = Array(
-                    OSNConfig(
-                        name = "osn1.org1.example.com",
-                        port = 7001
-                    ),
-                    OSNConfig(
-                        name = "osn2.org1.example.com",
-                        port = 7002
-                    ),
-                    OSNConfig(
-                        name = "osn3.org1.example.com",
-                        port = 7003
-                    )
-                ),
-                peerNodes = Array(
-                    PeerConfig(
-                        name = "peer0.org1.example.com",
-                        port = 7010,
-                        couchDB = null
-                    )
-                )
+                orderingNodes = Array.empty[OSNConfig],
+                peerNodes = Array.empty[PeerConfig]
             )
         )
 
@@ -70,14 +51,7 @@ object JoinOptions {
         JoinOptions(
             network = NetworkConfig(
                 orderingNodes = Array.empty[OSNConfig],
-                peerNodes =
-                  Array(
-                      PeerConfig(
-                          name = "peer0.org2.example.com",
-                          port = 7014,
-                          couchDB = null
-                      )
-                  )
+                peerNodes = Array.empty[PeerConfig]
             ),
             invite = Invite(
                 networkName = "",
