@@ -2,9 +2,11 @@ package org.enterprisedlt.fabric.service.node.page
 
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
-import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ReactEventFromInput, ScalaComponent}
+import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
-import org.enterprisedlt.fabric.service.node.util.Tags._
+import org.enterprisedlt.fabric.service.node.page.form.AddOrganization
+import org.enterprisedlt.fabric.service.node.state.{GlobalStateAware, WithGlobalState}
+import org.enterprisedlt.fabric.service.node.{AppState, Context, GlobalState, Initial}
 import org.scalajs.dom
 import org.scalajs.dom.html.Div
 import org.scalajs.dom.raw.{Blob, HTMLLinkElement, URL}
@@ -13,18 +15,23 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object Dashboard {
 
-    case class State()
+    case class State(
+        global: AppState = Initial
+    ) extends WithGlobalState[AppState, State] {
+        override def withGlobalState(global: AppState): State = this.copy(global = global)
+    }
 
     private val component = ScalaComponent.builder[Unit]("Dashboard")
       .initialState(State())
       .renderBackend[Backend]
+      .componentDidMount($ => Context.State.connect($.backend))
       .build
 
-    class Backend(val $: BackendScope[Unit, State]) {
+    class Backend(val $: BackendScope[Unit, State]) extends GlobalStateAware[AppState, State] {
 
         def createInvite: Callback = Callback {
             ServiceNodeRemote.createInvite.map { invite =>
@@ -32,130 +39,75 @@ object Dashboard {
             }
         }
 
+        def render(s: State): VdomTagOf[Div] = s.global match {
+            case g: GlobalState =>
+                <.div(
+                    renderTabs(
+                        <.div(^.float.right,
+                            <.h5(g.orgFullName)
+                        ),
+                        ("organizations", "Organizations",
+                          <.div(^.className := "card-body aut-form-card",
+                              <.h4("Invite organization"),
+                              <.div(^.float.right, ^.verticalAlign.`text-top`,
+                                  <.button(^.tpe := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> createInvite, "Invite organization")
+                              ),
+                              <.ul(
+                                  <.li("Org1"),
+                                  <.li("Org2")
+                              ),
 
-        def addFile(event: ReactEventFromInput): CallbackTo[Unit] = ???
+                              <.hr(),
+                              <.h4("Add organization"),
+                              <.div(^.float.right, ^.verticalAlign.`text-top`,
+                                  <.button(^.tpe := "button", ^.className := "btn btn-outline-secondary", "Add organization")
+                              ),
 
-        def render(s: State): VdomTagOf[Div] =
-            <.div(
-                Tabs(
-                    ("organizations", "Organizations",
-                      <.div(^.className := "card-body aut-form-card",
-                          <.h4("Invite organization"),
-                          <.div(^.float.right, ^.verticalAlign.`text-top`,
-                              <.button(^.tpe := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> createInvite, "Invite organization")
-                          ),
-                          <.ul(
-                              <.li("Org1"),
-                              <.li("Org2")
-                          ),
+                              <.span(<.br()),
+                              AddOrganization()
+                          )
+                        ),
+                        ("users", "Users",
+                          <.div(
 
-                          <.hr(),
-                          <.h4("Add organization"),
-                          <.div(^.float.right, ^.verticalAlign.`text-top`,
-                              <.button(^.tpe := "button", ^.className := "btn btn-outline-secondary",  "Add organization")
-                          ),
+                          )
+                        ),
+                        ("contracts", "Contracts",
+                          <.div(
 
-                          <.span(<.br()),
-                          <.h5("Certificates"),
+                          )
+                        )
+                    )
+                )
+            case _ => <.div()
+        }
 
-                          <.div(^.className := "form-group row",
-                              <.label(^.className := "col-sm-2 col-form-label", "Ca Cert:"),
-                              <.div(^.className := "input-group col-sm-10",
-                                  <.div(^.`class` := "custom-file",
-                                      <.input(^.`type` := "file", ^.`class` := "custom-file-input", ^.id := "caCerts", ^.onChange ==> addFile),
-                                      <.label(^.`class` := "custom-file-label", "Choose file")
-                                  )
-                              )
-                          ),
-                          <.div(^.className := "form-group row",
-                              <.label(^.className := "col-sm-2 col-form-label", "TLS Ca Cert:"),
-                              <.div(^.className := "input-group col-sm-10",
-                                  <.div(^.`class` := "custom-file",
-                                      <.input(^.`type` := "file", ^.`class` := "custom-file-input", ^.id := "tlsCACerts", ^.onChange ==> addFile),
-                                      <.label(^.`class` := "custom-file-label", "Choose file")
-                                  )
-                              )
-                          ),
-                          <.div(^.className := "form-group row",
-                              <.label(^.className := "col-sm-2 col-form-label", "Admin cert:"),
-                              <.div(^.className := "input-group col-sm-10",
-                                  <.div(^.`class` := "custom-file",
-                                      <.input(^.`type` := "file", ^.`class` := "custom-file-input", ^.id := "adminCerts", ^.onChange ==> addFile),
-                                      <.label(^.`class` := "custom-file-label", "Choose file")
-                                  )
-                              )
-                          ),
-                          <.hr(),
-                          <.h5("Organization Info"),
-
-                          <.div(^.className := "form-group row",
-                              <.label(^.className := "col-sm-2 col-form-label", "Organization msp Id"),
-                              <.div(^.className := "col-sm-10",
-                                  <.input(^.`type` := "text", ^.className := "form-control",
-                                  )
-                              )
-                          ),
-
-                          <.div(^.className := "form-group row",
-                              <.label(^.className := "col-sm-2 col-form-label", "Organization name"),
-                              <.div(^.className := "col-sm-10",
-                                  <.input(^.`type` := "text", ^.className := "form-control",
-                                  )
-                              )
-                          ),
-                          <.div(^.className := "form-group row",
-                              <.label(^.className := "col-sm-2 col-form-label", "Member number"),
-                              <.div(^.className := "col-sm-10",
-                                  <.input(^.`type` := "text", ^.className := "form-control",
-                                  )
-                              )
-                          ),
-                          <.hr(),
-                          <.h5("Known hosts"),
-
-                          <.div(^.className := "form-group row",
-                              <.table(^.className := "table table-hover table-sm",
-                                  <.thead(
-                                      <.tr(
-                                          <.th(^.scope := "col", "#"),
-                                          <.th(^.scope := "col", "IP address"),
-                                          <.th(^.scope := "col", "DNS name"),
-                                          <.th(^.scope := "col", "Actions"),
-                                      )
-                                  ),
-                                  <.tbody()
-                              )
-                          ),
-
-                          <.div(^.className := "form-group row",
-                              <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "IP address"),
-                              <.div(^.className := "col-sm-10",
-                                  <.input(^.`type` := "text", ^.className := "form-control", ^.id := "ipAddress")
-                              )),
-                          <.div(^.className := "form-group row",
-                              <.label(^.`for` := "port", ^.className := "col-sm-2 col-form-label", "DNS name"),
-                              <.div(^.className := "col-sm-10",
-                                  <.input(^.`type` := "text", ^.className := "form-control", ^.id := "dnsName"))),
-                          <.div(^.className := "form-group row",
-                              <.button(
-                                  ^.className := "btn btn-primary",
-                                  "Add host")
-                          ),
-
-
-                      )
+        // name, title, content
+        def renderTabs(heading: TagMod, tabs: (String, String, TagMod)*): VdomTagOf[Div] =
+            <.div(^.className := "card ",
+                <.div(^.className := "card-header", //bg-primary text-white
+                    //                    <.h1("Fabric service node"),
+                    heading,
+                    <.div(^.className := "nav nav-tabs card-header-tabs", ^.id := "nav-tab", ^.role := "tablist", //
+                        tabs.zipWithIndex.map { case ((name, title, _), index) =>
+                            <.a(
+                                ^.className := s"nav-link${if (index == 0) " active" else ""}",
+                                ^.id := s"nav-$name-tab",
+                                data.toggle := "tab",
+                                ^.href := s"#nav-$name",
+                                ^.role.tab,
+                                ^.aria.controls := s"nav-$name",
+                                ^.aria.selected := false,
+                                title
+                            )
+                        }.toTagMod
                     ),
-
-
-                    ("users", "Users",
-                      <.div(
-
-                      )
-                    ),
-                    ("contracts", "Contracts",
-                      <.div(
-
-                      )
+                ),
+                <.div(^.className := "card-body ", //aut-form-card
+                    <.div(^.className := "tab-content", ^.id := "nav-tabContent",
+                        tabs.zipWithIndex.map { case ((name, _, content), index) =>
+                            <.div(^.className := s"tab-pane${if (index == 0) " active" else ""}", ^.id := s"nav-$name", ^.role.tabpanel, ^.aria.labelledBy := s"nav-$name-tab", content)
+                        }.toTagMod
                     )
                 )
             )
@@ -180,4 +132,9 @@ object Dashboard {
     }
 
     def apply(): Unmounted[Unit, State, Backend] = component()
+
+    object data {
+        def toggle: VdomAttr[Any] = VdomAttr("data-toggle")
+    }
+
 }
