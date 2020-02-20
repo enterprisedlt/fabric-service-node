@@ -20,8 +20,8 @@ object Join {
     @Lenses case class JoinState(
         joinOptions: JoinOptions,
         componentCandidate: ComponentCandidate,
-        file: File,
-        fileName: String,
+        joinFile: File,
+        joinFileName: String,
         global: AppState
     ) extends WithGlobalState[AppState, JoinState] {
         override def withGlobalState(g: AppState): JoinState = this.copy(global = g)
@@ -68,7 +68,7 @@ object Join {
                 ServiceNodeRemote.executeJoin(updatedJoinOptions)
                 Context.switchModeTo(JoinInProgress)
             }
-            reader.readAsText(joinState.file)
+            reader.readAsText(joinState.joinFile)
         }
 
         def deleteComponent(componentConfig: ComponentConfig): CallbackTo[Unit] = {
@@ -126,7 +126,7 @@ object Join {
 
         def addFile(event: ReactEventFromInput): CallbackTo[Unit] = {
             val file: File = event.target.files(0)
-            $.modState(x => x.copy(fileName = file.name, file = file))
+            $.modState(x => x.copy(joinFileName = file.name, joinFile = file))
         }
 
         def render(s: JoinState): VdomTagOf[Div] =
@@ -144,7 +144,7 @@ object Join {
                                 <.div(^.className := "input-group col-sm-10",
                                     <.div(^.`class` := "custom-file",
                                         <.input(^.`type` := "file", ^.`class` := "custom-file-input", ^.id := "inviteInput", ^.onChange ==> addFile),
-                                        <.label(^.`class` := "custom-file-label", s.fileName)
+                                        <.label(^.`class` := "custom-file-label", s.joinFileName)
                                     )
                                 )
                             ),
