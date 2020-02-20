@@ -102,21 +102,16 @@ object AddOrganization {
         def addCaCertFile(event: ReactEventFromInput): CallbackTo[Unit] = {
             val file: File = event.target.files(0)
             $.modState(x => x.copy(caCertFileName = file.name, caCertFile = file))
-
         }
 
         def addTlsCaCertFile(event: ReactEventFromInput): CallbackTo[Unit] = {
             val file: File = event.target.files(0)
             $.modState(x => x.copy(tlsCaCertFileName = file.name, tlsCaCertFile = file))
-
-
         }
 
         def addAdminCertFile(event: ReactEventFromInput): CallbackTo[Unit] = {
             val file: File = event.target.files(0)
             $.modState(x => x.copy(adminCertFileName = file.name, adminCertFile = file))
-
-
         }
 
 
@@ -217,7 +212,6 @@ object AddOrganization {
                         )
                     )
                 ),
-
                 <.div(^.className := "form-group row",
                     <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "IP address"),
                     <.div(^.className := "col-sm-10",
@@ -236,7 +230,6 @@ object AddOrganization {
                         "Add host")
                 ),
             )
-
     }
 
     def apply(): Unmounted[Unit, AddOrganizationState, Backend] = component()
