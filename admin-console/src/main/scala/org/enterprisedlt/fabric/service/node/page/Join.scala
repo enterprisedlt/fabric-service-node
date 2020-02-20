@@ -68,11 +68,9 @@ object Join {
         def deleteComponent(componentConfig: ComponentConfig): CallbackTo[Unit] = {
             val state = componentConfig match {
                 case oc: OSNConfig =>
-                    val l = JoinState.joinOptions / JoinOptions.network / NetworkConfig.orderingNodes
-                    l.modify(_.filter(_.name != oc.name))
+                    OsnNodes.modify(_.filter(_.name != oc.name))
                 case pc: PeerConfig =>
-                    val l = JoinState.joinOptions / JoinOptions.network / NetworkConfig.peerNodes
-                    l.modify(_.filter(_.name != pc.name))
+                    PeerNodes.modify(_.filter(_.name != pc.name))
             }
             $.modState(state)
         }
