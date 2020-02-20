@@ -1,9 +1,10 @@
 package org.enterprisedlt.fabric.service.node.page
-
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ScalaComponent}
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
+import org.enterprisedlt.fabric.service.node.model.Status
+import org.enterprisedlt.fabric.service.node.model.Status.BootProgressStatus
 import org.enterprisedlt.fabric.service.node.{Context, ReadyForUse}
 import org.scalajs.dom.html.Div
 
@@ -24,12 +25,6 @@ object BootProgress {
         isInProgress: Boolean,
         text: String
     )
-
-    val StateUpdateInterval = 500
-    val NotInitialized = 0
-    val BootstrapStarted = 11
-    val BootstrapMaxValue = 21
-    val Ready = 100
 
     private val BootMessages = Array(
         "Starting bootstrap process",
@@ -60,13 +55,13 @@ object BootProgress {
         def checkServiceState: Callback = Callback.future {
             ServiceNodeRemote.getServiceState.map { data =>
                 val stateCode = data.stateCode
-                if (stateCode == NotInitialized) {
+                if (stateCode == Status.NotInitialized) {
                     scheduleCheck
 
-                } else if (stateCode >= BootstrapStarted && stateCode <= BootstrapMaxValue) {
-                    progressToState(stateCode - BootstrapStarted) >> scheduleCheck
+                } else if (stateCode >= BootProgressStatus.BootstrapStarted && stateCode <= BootProgressStatus.BootstrapMaxValue) {
+                    progressToState(stateCode - BootProgressStatus.BootstrapStarted) >> scheduleCheck
 
-                } else if (stateCode == Ready) {
+                } else if (stateCode == Status.Ready) {
                     $.setState(
                         State(
                             progress = BootMessages.map(msg =>
@@ -101,7 +96,7 @@ object BootProgress {
         }
 
         def scheduleCheck: Callback = Callback {
-            js.timers.setTimeout(StateUpdateInterval)(checkServiceState.runNow())
+            js.timers.setTimeout(BootProgressStatus.StateUpdateInterval)(checkServiceState.runNow())
         }
 
         def render(s: State): VdomTagOf[Div] =

@@ -4,6 +4,8 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ScalaComponent}
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
+import org.enterprisedlt.fabric.service.node.model.Status
+import org.enterprisedlt.fabric.service.node.model.Status.JoinProgressStatus
 import org.enterprisedlt.fabric.service.node.{Context, ReadyForUse}
 import org.scalajs.dom.html.Div
 
@@ -25,11 +27,6 @@ object JoinProgress {
         text: String
     )
 
-    val StateUpdateInterval = 500
-    val NotInitialized = 0
-    val JoinStarted = 50
-    val JoinMaxValue = 60
-    val Ready = 100
 
     private val JoinMessages = Array(
         "Starting join process",
@@ -60,13 +57,13 @@ object JoinProgress {
         def checkServiceState: Callback = Callback.future {
             ServiceNodeRemote.getServiceState.map { data =>
                 val stateCode = data.stateCode
-                if (stateCode == NotInitialized) {
+                if (stateCode == Status.NotInitialized) {
                     scheduleCheck
 
-                } else if (stateCode >= JoinStarted && stateCode <= JoinMaxValue) {
-                    progressToState(stateCode - JoinStarted) >> scheduleCheck
+                } else if (stateCode >= JoinProgressStatus.JoinStarted && stateCode <= JoinProgressStatus.JoinMaxValue) {
+                    progressToState(stateCode - JoinProgressStatus.JoinStarted) >> scheduleCheck
 
-                } else if (stateCode == Ready) {
+                } else if (stateCode == Status.Ready) {
                     $.setState(
                         State(
                             progress = JoinMessages.map(msg =>
@@ -101,7 +98,7 @@ object JoinProgress {
         }
 
         def scheduleCheck: Callback = Callback {
-            js.timers.setTimeout(StateUpdateInterval)(checkServiceState.runNow())
+            js.timers.setTimeout(JoinProgressStatus.StateUpdateInterval)(checkServiceState.runNow())
         }
 
         def render(s: State): VdomTagOf[Div] =
