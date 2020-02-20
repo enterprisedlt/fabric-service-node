@@ -35,9 +35,15 @@ object Dashboard {
         def render(s: State): VdomTagOf[Div] =
             <.div(
                 Tabs(
-                    ("general", "General",
+                    ("organizations", "Organizations",
                       <.div(
-                          <.button(^.tpe := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> createInvite, "Create invite")
+                          <.ul(
+                              <.li("Org1"),
+                              <.li("Org2")
+                          ),
+                          <.div(^.float.right, ^.verticalAlign.`text-top`,
+                              <.button(^.tpe := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> createInvite, "Invite organization")
+                          )
                       )
                     ),
                     ("users", "Users",

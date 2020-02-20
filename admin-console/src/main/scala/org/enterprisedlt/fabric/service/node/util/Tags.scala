@@ -17,9 +17,13 @@ object Tags {
 
         // name, title, content
         def apply(tabs: (String, String, TagMod)*): VdomTagOf[Div] =
-            <.div(^.className := "card aut-form-card",
-                <.div(^.className := "card-header text-white bg-primary",
-                    <.div(^.className := "nav nav-tabs card-header-tabs", ^.id := "nav-tab", ^.role := "tablist",
+            <.div(^.className := "card ",
+                <.div(^.className := "card-header", //bg-primary text-white
+                    //                    <.h1("Fabric service node"),
+                                        <.div(^.float.right,
+                                            <.h5("org1.example.com")
+                                        ),
+                    <.div(^.className := "nav nav-tabs card-header-tabs", ^.id := "nav-tab", ^.role := "tablist", //
                         tabs.zipWithIndex.map { case ((name, title, _), index) =>
                             <.a(
                                 ^.className := s"nav-link${if (index == 0) " active" else ""}",
@@ -32,9 +36,9 @@ object Tags {
                                 title
                             )
                         }.toTagMod
-                    )
+                    ),
                 ),
-                <.div(^.className := "card-body aut-form-card",
+                <.div(^.className := "card-body ", //aut-form-card
                     <.div(^.className := "tab-content", ^.id := "nav-tabContent",
                         tabs.zipWithIndex.map { case ((name, _, content), index) =>
                             <.div(^.className := s"tab-pane${if (index == 0) " active" else ""}", ^.id := s"nav-$name", ^.role.tabpanel, ^.aria.labelledBy := s"nav-$name-tab", content)
