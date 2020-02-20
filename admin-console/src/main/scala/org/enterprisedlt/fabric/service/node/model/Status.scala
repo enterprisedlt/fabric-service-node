@@ -8,14 +8,18 @@ object Status {
     val Ready = 100
 
     object BootProgressStatus {
-        val StateUpdateInterval = 500
         val BootstrapStarted = 11
         val BootstrapMaxValue = 21
     }
 
     object JoinProgressStatus {
-        val StateUpdateInterval = 500
         val JoinStarted = 50
         val JoinMaxValue = 60
     }
+
+}
+
+
+object StateUpdate {
+    val Interval = 500
 }

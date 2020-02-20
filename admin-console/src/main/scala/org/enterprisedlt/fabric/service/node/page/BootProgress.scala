@@ -3,7 +3,7 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ScalaComponent}
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
-import org.enterprisedlt.fabric.service.node.model.Status
+import org.enterprisedlt.fabric.service.node.model.{StateUpdate, Status}
 import org.enterprisedlt.fabric.service.node.model.Status.BootProgressStatus
 import org.enterprisedlt.fabric.service.node.{Context, ReadyForUse}
 import org.scalajs.dom.html.Div
@@ -96,7 +96,7 @@ object BootProgress {
         }
 
         def scheduleCheck: Callback = Callback {
-            js.timers.setTimeout(BootProgressStatus.StateUpdateInterval)(checkServiceState.runNow())
+            js.timers.setTimeout(StateUpdate.Interval)(checkServiceState.runNow())
         }
 
         def render(s: State): VdomTagOf[Div] =
