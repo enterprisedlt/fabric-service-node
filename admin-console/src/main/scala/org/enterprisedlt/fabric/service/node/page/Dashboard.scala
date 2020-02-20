@@ -58,12 +58,7 @@ object Dashboard {
                               ),
 
                               <.hr(),
-                              <.h4("Add organization"),
-                              <.div(^.float.right, ^.verticalAlign.`text-top`,
-                                  <.button(^.tpe := "button", ^.className := "btn btn-outline-secondary", "Add organization")
-                              ),
 
-                              <.span(<.br()),
                               AddOrganization()
                           )
                         ),

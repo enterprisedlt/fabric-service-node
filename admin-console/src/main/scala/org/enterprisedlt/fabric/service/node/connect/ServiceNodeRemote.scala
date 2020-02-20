@@ -1,14 +1,14 @@
 package org.enterprisedlt.fabric.service.node.connect
 
-import org.enterprisedlt.fabric.service.node.model.{BootstrapOptions, FabricServiceState, JoinOptions}
+import org.enterprisedlt.fabric.service.node.model.{BootstrapOptions, FabricServiceState, JoinOptions, JoinRequest}
 import org.scalajs.dom.ext.Ajax
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 object ServiceNodeRemote {
 
     def getOrganisationFullName: Future[String] = {
@@ -44,4 +44,11 @@ object ServiceNodeRemote {
           .get("/admin/create-invite")
           .map(_.responseText)
     }
+
+    def joinNetwork(joinRequest: JoinRequest): Future[Unit] = {
+        val json = upickle.default.write(joinRequest)
+        Ajax.post("/join-network", json)
+          .map(_ => ())
+    }
+
 }
