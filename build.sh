@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # build fresh chain-code and server
-sbt clean assembly fastOptJS
+sbt clean assembly
 
 mkdir ./target/assembly
 cp ./service-node/target/scala-2.12/service-node.jar ./target/assembly/service-node.jar
@@ -17,5 +17,4 @@ pushd ./target/assembly/ || exit
 popd || exit
 
 # bundle admin console:
-mkdir ./target/assembly/admin-console
-cp -r ./admin-console/bundle/* ./target/assembly/admin-console/
+./build-webapp.sh
