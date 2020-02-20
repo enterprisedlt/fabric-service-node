@@ -11,8 +11,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 object JoinProgress {
 
     case class State(
@@ -54,7 +54,7 @@ object JoinProgress {
     class Backend(val $: BackendScope[Unit, State]) {
 
         def goAdministration: Callback = Callback {
-            Context.State.update(_ => ReadyForUse)
+            Context.switchModeTo(ReadyForUse)
         }
 
         def checkServiceState: Callback = Callback.future {

@@ -3,10 +3,9 @@ package org.enterprisedlt.fabric.service.node.page
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
-import org.enterprisedlt.fabric.service.node.Context.{BootstrapInProgress, InitMode}
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model.{BlockConfig, BootstrapOptions}
-import org.enterprisedlt.fabric.service.node.{Context, FieldBinder}
+import org.enterprisedlt.fabric.service.node.{BootstrapInProgress, Context, FieldBinder, InitMode}
 import org.scalajs.dom.html.Div
 
 /**

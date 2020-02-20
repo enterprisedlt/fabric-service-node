@@ -23,10 +23,11 @@ object Context {
         }
     }
 
-    def switchModeTo(mode:  AppMode): Unit = {
+    def switchModeTo(mode: AppMode): Unit = {
         State.update {
-            case x : GlobalState => x.copy(mode = mode)
+            case x: GlobalState => x.copy(mode = mode)
             case s => throw new IllegalStateException(s"Unexpected state $s")
+        }
     }
 }
 

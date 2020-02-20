@@ -3,9 +3,8 @@ package org.enterprisedlt.fabric.service.node.page
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ScalaComponent}
-import org.enterprisedlt.fabric.service.node.Context
-import org.enterprisedlt.fabric.service.node.Context.ReadyForUse
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
+import org.enterprisedlt.fabric.service.node.{Context, ReadyForUse}
 import org.scalajs.dom.html.Div
 
 import scala.concurrent.ExecutionContext.Implicits.global

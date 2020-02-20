@@ -7,7 +7,7 @@ import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ReactEventFro
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.{Context, FieldBinder, Initial, JoinInProgress}
+import org.enterprisedlt.fabric.service.node.{Context, FieldBinder, InitMode, JoinInProgress}
 import org.scalajs.dom.html.{Div, Select}
 import org.scalajs.dom.raw.{File, FileReader}
 
@@ -51,7 +51,7 @@ object Join {
 
 
         def goInit: Callback = Callback {
-            Context.State.update(_ => Initial)
+            Context.switchModeTo(InitMode)
         }
 
         def goJoinProgress(joinState: JoinState): Callback = Callback {
@@ -60,7 +60,7 @@ object Join {
                 val invite = upickle.default.read[Invite](reader.result.asInstanceOf[String])
                 val updatedJoinOptions = joinState.joinOptions.copy(invite = invite)
                 ServiceNodeRemote.executeJoin(updatedJoinOptions)
-                Context.State.update(_ => JoinInProgress)
+                Context.switchModeTo(JoinInProgress)
             }
             reader.readAsText(joinState.file)
         }

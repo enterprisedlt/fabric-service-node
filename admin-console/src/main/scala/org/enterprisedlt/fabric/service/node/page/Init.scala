@@ -3,8 +3,7 @@ package org.enterprisedlt.fabric.service.node.page
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
-import org.enterprisedlt.fabric.service.node.{AppState, BootstrapMode, Context, JoinMode}
-import org.enterprisedlt.fabric.service.node.state.GlobalStateAware
+import org.enterprisedlt.fabric.service.node.{BootstrapMode, Context, JoinMode}
 import org.scalajs.dom.html.Div
 
 /**
@@ -22,11 +21,11 @@ object Init {
     class Backend(val $: BackendScope[Unit, State]) {
 
         def goBootstrap: Callback = Callback {
-            Context.State.update(_ => BootstrapMode)
+            Context.switchModeTo(BootstrapMode)
         }
 
         def goJoin: Callback = Callback {
-            Context.State.update(_ => JoinMode)
+            Context.switchModeTo(JoinMode)
         }
 
         def render(s: State): VdomTagOf[Div] =

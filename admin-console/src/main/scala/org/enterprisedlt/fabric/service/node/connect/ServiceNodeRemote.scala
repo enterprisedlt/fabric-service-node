@@ -3,8 +3,8 @@ package org.enterprisedlt.fabric.service.node.connect
 import org.enterprisedlt.fabric.service.node.model.{BootstrapOptions, FabricServiceState, JoinOptions}
 import org.scalajs.dom.ext.Ajax
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 
 /**
  * @author Alexey Polubelov

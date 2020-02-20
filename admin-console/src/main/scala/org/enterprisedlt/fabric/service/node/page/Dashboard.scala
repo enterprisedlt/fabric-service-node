@@ -1,7 +1,5 @@
 package org.enterprisedlt.fabric.service.node.page
 
-import java.nio.charset.StandardCharsets
-
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
@@ -9,10 +7,10 @@ import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.util.Tags._
 import org.scalajs.dom
 import org.scalajs.dom.html.Div
-import org.scalajs.dom.raw.{Blob, FileReader, HTMLLinkElement, URL}
+import org.scalajs.dom.raw.{Blob, HTMLLinkElement, URL}
 
-import scala.scalajs.js
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.scalajs.js
 
 /**
  * @author Alexey Polubelov
@@ -55,7 +53,7 @@ object Dashboard {
                 )
             )
 
-        def doDownload(content: String, name: String): Unit  = {
+        def doDownload(content: String, name: String): Unit = {
             val blob = new Blob(js.Array(content))
             val dataUrl = URL.createObjectURL(blob)
             val anchor = dom.document.createElement("a").asInstanceOf[HTMLLinkElement]
