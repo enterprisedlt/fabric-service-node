@@ -5,23 +5,27 @@ import japgolly.scalajs.react.vdom.all.{VdomTagOf, className, id, option}
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ReactEventFromInput, ScalaComponent}
 import monocle.macros.Lenses
+import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.{Context, FieldBinder, InitMode, JoinInProgress}
+import org.enterprisedlt.fabric.service.node.state.{GlobalStateAware, WithGlobalState}
 import org.scalajs.dom.html.{Div, Select}
 import org.scalajs.dom.raw.{File, FileReader}
 
 /**
- * @author Maxim Fedin
- */
+  * @author Maxim Fedin
+  */
 object Join {
 
     @Lenses case class JoinState(
         joinOptions: JoinOptions,
         componentCandidate: ComponentCandidate,
         file: File,
-        fileName: String
-    )
+        fileName: String,
+        global: AppState
+    ) extends WithGlobalState[AppState, JoinState] {
+        override def withGlobalState(g: AppState): JoinState = this.copy(global = g)
+    }
 
     object JoinState {
         val ComponentTypes = Seq("orderer", "peer")
@@ -34,17 +38,19 @@ object Join {
                     componentType = ComponentTypes.head
                 ),
                 null,
-                "Choose file"
+                "Choose file",
+                global = Initial
             )
     }
 
     private val component = ScalaComponent.builder[Unit]("JoinMode")
       .initialState(JoinState.Defaults)
       .renderBackend[Backend]
+      .componentDidMount($ => Context.State.connect($.backend))
       .build
 
 
-    class Backend(val $: BackendScope[Unit, JoinState]) extends FieldBinder[JoinState] {
+    class Backend(val $: BackendScope[Unit, JoinState]) extends FieldBinder[JoinState] with GlobalStateAware[AppState, JoinState]{
 
         private val PeerNodes = JoinState.joinOptions / JoinOptions.network / NetworkConfig.peerNodes
         private val OsnNodes = JoinState.joinOptions / JoinOptions.network / NetworkConfig.orderingNodes
@@ -76,19 +82,19 @@ object Join {
         }
 
 
-        def addNetworkComponent(joinState: JoinState): CallbackTo[Unit] = {
+        def addNetworkComponent(joinState: JoinState, g: GlobalState): CallbackTo[Unit] = {
             $.modState(
-                addComponent(joinState) andThen JoinState.componentCandidate.set(JoinState.Defaults.componentCandidate)
+                addComponent(joinState, g) andThen JoinState.componentCandidate.set(JoinState.Defaults.componentCandidate)
             )
         }
 
-        private def addComponent(joinState: JoinState): JoinState => JoinState = {
+        private def addComponent(joinState: JoinState, g: GlobalState): JoinState => JoinState = {
             val componentCandidate = joinState.componentCandidate
             componentCandidate.componentType match {
                 case "peer" =>
                     PeerNodes.modify { x =>
                         x :+ PeerConfig(
-                            name = componentCandidate.name,
+                            name = s"${componentCandidate.name}.${g.orgFullName}",
                             port = componentCandidate.port,
                             couchDB = null
                         )
@@ -96,7 +102,7 @@ object Join {
                 case "orderer" =>
                     OsnNodes.modify { x =>
                         x :+ OSNConfig(
-                            name = componentCandidate.name,
+                            name = s"${componentCandidate.name}.${g.orgFullName}",
                             port = componentCandidate.port
                         )
                     }
@@ -124,106 +130,110 @@ object Join {
         }
 
         def render(s: JoinState): VdomTagOf[Div] =
-            <.div(^.className := "card aut-form-card",
-                <.div(^.className := "card-header text-white bg-primary",
-                    <.h1("Join to new network")
-                ),
-                <.hr(),
-                <.div(^.className := "card-body aut-form-card",
-                    <.h5("Join settings"),
-                    <.div(^.className := "form-group row",
-                        <.label(^.className := "col-sm-2 col-form-label", "Invite:"),
-                        <.div(^.className := "input-group col-sm-10",
-                            <.div(^.`class` := "custom-file",
-                                <.input(^.`type` := "file", ^.`class` := "custom-file-input", ^.id := "inviteInput", ^.onChange ==> addFile),
-                                <.label(^.`class` := "custom-file-label", s.fileName)
-                            )
-                        )
-                    ),
-                    <.hr(),
-                    <.h5("Network settings"),
-                    <.div(^.className := "form-group row",
-                        <.table(^.className := "table table-hover table-sm",
-                            <.thead(
-                                <.tr(
-                                    <.th(^.scope := "col", "#"),
-                                    <.th(^.scope := "col", "Component type"),
-                                    <.th(^.scope := "col", "Component name"),
-                                    <.th(^.scope := "col", "Port"),
-                                    <.th(^.scope := "col", "Actions"),
+            s.global match {
+                case g: GlobalState =>
+                    <.div(^.className := "card aut-form-card",
+                        <.div(^.className := "card-header text-white bg-primary",
+                            <.h1("Join to new network")
+                        ),
+                        <.hr(),
+                        <.div(^.className := "card-body aut-form-card",
+                            <.h5("Join settings"),
+                            <.div(^.className := "form-group row",
+                                <.label(^.className := "col-sm-2 col-form-label", "Invite:"),
+                                <.div(^.className := "input-group col-sm-10",
+                                    <.div(^.`class` := "custom-file",
+                                        <.input(^.`type` := "file", ^.`class` := "custom-file-input", ^.id := "inviteInput", ^.onChange ==> addFile),
+                                        <.label(^.`class` := "custom-file-label", s.fileName)
+                                    )
                                 )
                             ),
-                            <.tbody(
-                                s.joinOptions.network.orderingNodes.zipWithIndex.map { case (osnNode, index) =>
-                                    <.tr(
-                                        <.td(^.scope := "row", s"${index + 1}"),
-                                        <.td("orderer"),
-                                        <.td(osnNode.name),
-                                        <.td(osnNode.port),
-                                        <.td(
-                                            <.button(
-                                                ^.className := "btn btn-primary",
-                                                "Remove",
-                                                ^.onClick --> deleteComponent(osnNode))
+                            <.hr(),
+                            <.h5("Network settings"),
+                            <.div(^.className := "form-group row",
+                                <.table(^.className := "table table-hover table-sm",
+                                    <.thead(
+                                        <.tr(
+                                            <.th(^.scope := "col", "#"),
+                                            <.th(^.scope := "col", "Component type"),
+                                            <.th(^.scope := "col", "Component name"),
+                                            <.th(^.scope := "col", "Port"),
+                                            <.th(^.scope := "col", "Actions"),
                                         )
-                                    )
-                                }.toTagMod,
-                                s.joinOptions.network.peerNodes.zipWithIndex.map { case (peerNode, index) =>
-                                    <.tr(
-                                        <.td(^.scope := "row", s"${s.joinOptions.network.orderingNodes.length + index + 1}"),
-                                        <.td("peer"),
-                                        <.td(peerNode.name),
-                                        <.td(peerNode.port),
-                                        <.td(
-                                            <.button(
-                                                ^.className := "btn btn-primary",
-                                                "Remove",
-                                                ^.onClick --> deleteComponent(peerNode))
-                                        )
-                                    )
-                                }.toTagMod
+                                    ),
+                                    <.tbody(
+                                        s.joinOptions.network.orderingNodes.zipWithIndex.map { case (osnNode, index) =>
+                                            <.tr(
+                                                <.td(^.scope := "row", s"${index + 1}"),
+                                                <.td("orderer"),
+                                                <.td(osnNode.name),
+                                                <.td(osnNode.port),
+                                                <.td(
+                                                    <.button(
+                                                        ^.className := "btn btn-primary",
+                                                        "Remove",
+                                                        ^.onClick --> deleteComponent(osnNode))
+                                                )
+                                            )
+                                        }.toTagMod,
+                                        s.joinOptions.network.peerNodes.zipWithIndex.map { case (peerNode, index) =>
+                                            <.tr(
+                                                <.td(^.scope := "row", s"${s.joinOptions.network.orderingNodes.length + index + 1}"),
+                                                <.td("peer"),
+                                                <.td(peerNode.name),
+                                                <.td(peerNode.port),
+                                                <.td(
+                                                    <.button(
+                                                        ^.className := "btn btn-primary",
+                                                        "Remove",
+                                                        ^.onClick --> deleteComponent(peerNode))
+                                                )
+                                            )
+                                        }.toTagMod
 
+                                    )
+                                )
+                            ),
+                            <.hr(),
+                            <.div(^.className := "form-group row",
+                                <.label(^.`for` := "componentType", ^.className := "col-sm-2 col-form-label", "Component type"),
+                                <.div(^.className := "col-sm-10", renderComponentType(s),
+                                    //                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentType",
+                                    //                                bind(s) := JoinState.componentCandidate / ComponentCandidate.componentType
+                                    //                            )
+                                )
+                            ),
+                            <.div(^.className := "form-group row",
+                                <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "Component name"),
+                                <.div(^.className := "col-sm-10",
+                                    <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentName",
+                                        bind(s) := JoinState.componentCandidate / ComponentCandidate.name)
+                                )
+                            ),
+                            <.div(^.className := "form-group row",
+                                <.label(^.`for` := "port", ^.className := "col-sm-2 col-form-label", "Port"),
+                                <.div(^.className := "col-sm-10",
+                                    <.input(^.`type` := "text", ^.className := "form-control", ^.id := "port",
+                                        bind(s) := JoinState.componentCandidate / ComponentCandidate.port)
+                                )
+                            ),
+                            <.div(^.className := "form-group row",
+                                <.button(
+                                    ^.className := "btn btn-primary",
+                                    "Add component",
+                                    ^.onClick --> addNetworkComponent(s, g)
+                                )
+                            ),
+                            <.hr(),
+                            <.div(^.className := "form-group mt-1",
+                                <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
+                                <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goJoinProgress(s), "Join")
                             )
+                            //                                                                                                        </form>
                         )
-                    ),
-                    <.hr(),
-                    <.div(^.className := "form-group row",
-                        <.label(^.`for` := "componentType", ^.className := "col-sm-2 col-form-label", "Component type"),
-                        <.div(^.className := "col-sm-10", renderComponentType(s),
-                            //                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentType",
-                            //                                bind(s) := JoinState.componentCandidate / ComponentCandidate.componentType
-                            //                            )
-                        )
-                    ),
-                    <.div(^.className := "form-group row",
-                        <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "Component name"),
-                        <.div(^.className := "col-sm-10",
-                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentName",
-                                bind(s) := JoinState.componentCandidate / ComponentCandidate.name)
-                        )
-                    ),
-                    <.div(^.className := "form-group row",
-                        <.label(^.`for` := "port", ^.className := "col-sm-2 col-form-label", "Port"),
-                        <.div(^.className := "col-sm-10",
-                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "port",
-                                bind(s) := JoinState.componentCandidate / ComponentCandidate.port)
-                        )
-                    ),
-                    <.div(^.className := "form-group row",
-                        <.button(
-                            ^.className := "btn btn-primary",
-                            "Add component",
-                            ^.onClick --> addNetworkComponent(s)
-                        )
-                    ),
-                    <.hr(),
-                    <.div(^.className := "form-group mt-1",
-                        <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
-                        <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goJoinProgress(s), "Join")
                     )
-                    //                                                                                                        </form>
-                )
-            )
+                case _ => <.div()
+            }
     }
 
     def apply(): Unmounted[Unit, JoinState, Backend] = component()
