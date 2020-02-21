@@ -7,8 +7,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object ServiceNodeRemote {
 
     def getOrganisationFullName: Future[String] = {
@@ -47,24 +47,24 @@ object ServiceNodeRemote {
 
     def joinNetwork(joinRequest: JoinRequest): Future[Unit] = {
         val json = upickle.default.write(joinRequest)
-        Ajax.post("/join-network", json)
+        Ajax
+          .post("/join-network", json)
           .map(_ => ())
     }
 
-    def listContractPackages : Future[Array[String]] =  {
-        Ajax.get("/admin/list-contract-packages")
+    def listContractPackages: Future[Array[String]] = {
+        Ajax
+          .get("/admin/list-contract-packages")
           .map(_.responseText)
           .map(r => upickle.default.read[Array[String]](r))
     }
 
 
-
-
-//    def createContract(createContractRequest: CreateContractRequest): Future[Unit] = {
-//        val json = upickle.default.write(createContractRequest)
-//        Ajax.post("/admin/create-contract", json)
-//          .map(_ => ())
-//
-//    }
+    //    def createContract(createContractRequest: CreateContractRequest): Future[Unit] = {
+    //        val json = upickle.default.write(createContractRequest)
+    //        Ajax.post("/admin/create-contract", json)
+    //          .map(_ => ())
+    //
+    //    }
 
 }

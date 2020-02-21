@@ -12,13 +12,17 @@ import org.enterprisedlt.fabric.service.node.FieldBinder
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model.{JoinRequest, KnownHostRecord, Organization, OrganizationCertificates}
 import org.scalajs.dom.html.Div
-import org.scalajs.dom.raw.{File, FileReader}
+import org.scalajs.dom.raw.{Blob, File, FileReader}
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{Future, Promise}
 import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
+import scala.util.Try
+
 
 /**
-  * @author Maxim Fedin
-  */
+ * @author Maxim Fedin
+ */
 object AddOrganization {
 
     @Lenses case class AddOrganizationState(
@@ -60,57 +64,52 @@ object AddOrganization {
 
         private val KnownHosts = AddOrganizationState.joinRequest / JoinRequest.organization / Organization.knownHosts
 
-        def doJoinNetwork(addOrganizationState: AddOrganizationState): Callback = Callback {
-            val adminCertReader = new FileReader()
-            adminCertReader.onload = _ => {
-                val adminCertBytes: ByteBuffer = TypedArrayBuffer.wrap(adminCertReader.result.asInstanceOf[ArrayBuffer])
-                val adminCertB64 = Base64.getEncoder.encode(adminCertBytes)
-                val adminCert = StandardCharsets.UTF_8.decode(adminCertB64).toString
-                //
-                val caCertReader = new FileReader()
-                caCertReader.onload = _ => {
-                    val caCertBytes = TypedArrayBuffer.wrap(caCertReader.result.asInstanceOf[ArrayBuffer])
-                    val caCertB64 = Base64.getEncoder.encode(caCertBytes)
-                    val caCert =  StandardCharsets.UTF_8.decode(caCertB64).toString
-                    //
-                    val tlsCaCertReader = new FileReader()
-                    tlsCaCertReader.onload = _ => {
-                        val tlsCaCertBytes = TypedArrayBuffer.wrap(tlsCaCertReader.result.asInstanceOf[ArrayBuffer])
-                        val tlsCaCertB64 = Base64.getEncoder.encode(tlsCaCertBytes)
-                        val tlsCert = StandardCharsets.UTF_8.decode(tlsCaCertB64).toString
-                        //
-                        val request = addOrganizationState.joinRequest
-                          .copy(
-                              organizationCertificates = OrganizationCertificates(
-                                  caCerts = Array(caCert),
-                                  tlsCACerts = Array(tlsCert),
-                                  adminCerts = Array(adminCert)
-                              )
-                          )
-                        ServiceNodeRemote.joinNetwork(request)
-                    }
-                    tlsCaCertReader.readAsArrayBuffer(addOrganizationState.tlsCaCertFile)
-                }
-                caCertReader.readAsArrayBuffer(addOrganizationState.caCertFile)
-            }
-            adminCertReader.readAsArrayBuffer(addOrganizationState.adminCertFile)
+        def doJoinNetwork(addOrganizationState: AddOrganizationState): Callback = Callback.future {
+            for {
+                caCert <- readAsArrayBuffer(addOrganizationState.caCertFile).map(toByteBuffer).map(encodeToB64).map(asUTF8)
+                tlsCert <- readAsArrayBuffer(addOrganizationState.tlsCaCertFile).map(toByteBuffer).map(encodeToB64).map(asUTF8)
+                adminCert <- readAsArrayBuffer(addOrganizationState.adminCertFile).map(toByteBuffer).map(encodeToB64).map(asUTF8)
+                request = addOrganizationState.joinRequest
+                  .copy(
+                      organizationCertificates = OrganizationCertificates(
+                          caCerts = Array(caCert),
+                          tlsCACerts = Array(tlsCert),
+                          adminCerts = Array(adminCert)
+                      )
+                  )
+                response <- ServiceNodeRemote.joinNetwork(request)
+            } yield Callback(response)
         }
 
-        def addCaCertFile(event: ReactEventFromInput): CallbackTo[Unit] = {
-            val file: File = event.target.files(0)
+        private def readAsArrayBuffer(blob: Blob): Future[ArrayBuffer] = {
+            val promise = Promise[ArrayBuffer]()
+            val fileReader = new FileReader()
+            fileReader.onerror = _ => promise.failure(new Exception("Unable to read from blob"))
+            fileReader.onloadend = _ => promise.complete(Try(fileReader.result.asInstanceOf[ArrayBuffer]))
+            fileReader.readAsArrayBuffer(blob)
+            promise.future
+        }
+
+        private def toByteBuffer(ab: ArrayBuffer): ByteBuffer = TypedArrayBuffer.wrap(ab)
+
+        private def encodeToB64(bb: ByteBuffer): ByteBuffer = Base64.getEncoder.encode(bb)
+
+        private def asUTF8(bb: ByteBuffer): String = StandardCharsets.UTF_8.decode(bb).toString
+
+        private val addCaCertFile: ReactEventFromInput => Callback = processFileEvent { file =>
             $.modState(x => x.copy(caCertFileName = file.name, caCertFile = file))
         }
 
-        def addTlsCaCertFile(event: ReactEventFromInput): CallbackTo[Unit] = {
-            val file: File = event.target.files(0)
+        private val addTlsCaCertFile: ReactEventFromInput => Callback = processFileEvent { file =>
             $.modState(x => x.copy(tlsCaCertFileName = file.name, tlsCaCertFile = file))
         }
 
-        def addAdminCertFile(event: ReactEventFromInput): CallbackTo[Unit] = {
-            val file: File = event.target.files(0)
+        private val addAdminCertFile: ReactEventFromInput => Callback = processFileEvent { file =>
             $.modState(x => x.copy(adminCertFileName = file.name, adminCertFile = file))
         }
 
+        private def processFileEvent(f: File => Callback)(event: ReactEventFromInput): Callback =
+            Callback.sequenceOption(Option(event.target.files(0)).map(f))
 
         def deleteComponent(host: KnownHostRecord): CallbackTo[Unit] = {
             val state = KnownHosts.modify(_.filter(_.dnsName != host.dnsName))
