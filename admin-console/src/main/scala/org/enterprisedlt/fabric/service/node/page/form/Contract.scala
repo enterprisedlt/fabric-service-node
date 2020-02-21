@@ -1,18 +1,22 @@
 package org.enterprisedlt.fabric.service.node.page.form
 
+import cats.Functor
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.all.{VdomTagOf, className, id, option}
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, ScalaComponent}
+import monocle.Lens
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.model.CreateContractRequest
 import org.enterprisedlt.fabric.service.node.state.{GlobalStateAware, WithGlobalState}
 import org.scalajs.dom.html.{Div, Select}
 
+import scala.language.higherKinds
+
 /**
-  * @author Maxim Fedin
-  */
+ * @author Maxim Fedin
+ */
 object Contract {
 
 
@@ -46,20 +50,39 @@ object Contract {
 
 
         def renderContractPackagesList(s: ContractState, g: GlobalState): VdomTagOf[Select] = {
-            $.modState(
-                state => state.copy(
-                    state.request.copy(
-                        contractType = s.chosenPackage.split("-")(0),
-                        version = s.chosenPackage.split("-")(1)
-                    )
-                )
-            )
+//            $.modState(
+//                state => state.copy(
+//                    state.request.copy(
+//                        contractType = s.chosenPackage.split("-")(0),
+//                        version = s.chosenPackage.split("-")(1)
+//                    )
+//                )
+//            )
             <.select(className := "form-control",
                 id := "componentType",
-                bind(s) := ContractState.chosenPackage,
+                bind(s) := packageCustomLens,
                 contractPackagesOptions(s, g)
             )
         }
+
+        private val packageCustomLens =
+            new Lens[ContractState, String] {
+                override def get(s: ContractState): String = s.chosenPackage
+
+                override def set(b: String): ContractState => ContractState = { state =>
+                    state.copy(
+                        chosenPackage = b,
+                        request = state.request.copy(
+                            contractType = b.split("-")(0),
+                            version = b.split("-")(1)
+                        )
+                    )
+                }
+
+                override def modifyF[F[_]](f: String => F[String])(s: ContractState)(implicit evidence$1: Functor[F]): F[ContractState] = ???
+
+                override def modify(f: String => String): ContractState => ContractState = ???
+            }
 
         def contractPackagesOptions(s: ContractState, g: GlobalState): TagMod = {
             g.packages.map { name =>
