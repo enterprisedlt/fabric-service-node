@@ -13,8 +13,8 @@ import org.scalajs.dom.html.{Div, Select}
 import org.scalajs.dom.raw.{File, FileReader}
 
 /**
-  * @author Maxim Fedin
-  */
+ * @author Maxim Fedin
+ */
 object Join {
 
     @Lenses case class JoinState(
@@ -50,7 +50,7 @@ object Join {
       .build
 
 
-    class Backend(val $: BackendScope[Unit, JoinState]) extends FieldBinder[JoinState] with GlobalStateAware[AppState, JoinState]{
+    class Backend(val $: BackendScope[Unit, JoinState]) extends FieldBinder[JoinState] with GlobalStateAware[AppState, JoinState] {
 
         private val PeerNodes = JoinState.joinOptions / JoinOptions.network / NetworkConfig.peerNodes
         private val OsnNodes = JoinState.joinOptions / JoinOptions.network / NetworkConfig.orderingNodes
@@ -129,6 +129,30 @@ object Join {
             $.modState(x => x.copy(joinFileName = file.name, joinFile = file))
         }
 
+        def populateWithDefault(g: GlobalState): CallbackTo[Unit] = {
+            val defaultOSNList = Array("osn1", "osn2", "osn3")
+            val addDefaultOSNs =
+                OsnNodes.modify { x =>
+                    x ++ defaultOSNList.zipWithIndex.map { case (name, index) =>
+                        OSNConfig(
+                            name = s"$name.${g.orgFullName}",
+                            port = 7001 + index
+                        )
+                    }
+                }
+
+            val addDefaultPeer =
+                PeerNodes.modify { x =>
+                    x :+ PeerConfig(
+                        name = s"peer0.${g.orgFullName}",
+                        port = 7010,
+                        couchDB = null
+                    )
+                }
+
+            $.modState(addDefaultOSNs andThen addDefaultPeer)
+        }
+
         def render(s: JoinState): VdomTagOf[Div] =
             s.global match {
                 case g: GlobalState =>
@@ -150,6 +174,13 @@ object Join {
                             ),
                             <.hr(),
                             <.h5("Network settings"),
+                            <.div(^.className := "form-group row",
+                                <.button(
+                                    ^.className := "btn btn-primary",
+                                    "Add defaults",
+                                    ^.onClick --> populateWithDefault(g)
+                                )
+                            ),
                             <.div(^.className := "form-group row",
                                 <.table(^.className := "table table-hover table-sm",
                                     <.thead(

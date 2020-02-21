@@ -12,8 +12,8 @@ import org.enterprisedlt.fabric.service.node.state.{GlobalStateAware, WithGlobal
 import org.scalajs.dom.html.{Div, Select}
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object Boot {
 
     @Lenses case class BootstrapState(
@@ -111,6 +111,29 @@ object Boot {
             }.toTagMod
         }
 
+        def populateWithDefault(g: GlobalState): CallbackTo[Unit] = {
+            val defaultOSNList = Array("osn1", "osn2", "osn3")
+            val addDefaultOSNs =
+                OsnNodes.modify { x =>
+                    x ++ defaultOSNList.zipWithIndex.map { case (name, index) =>
+                        OSNConfig(
+                            name = s"$name.${g.orgFullName}",
+                            port = 7001 + index
+                        )
+                    }
+                }
+
+            val addDefaultPeer =
+                PeerNodes.modify { x =>
+                    x :+ PeerConfig(
+                        name = s"peer0.${g.orgFullName}",
+                        port = 7010,
+                        couchDB = null
+                    )
+                }
+
+            $.modState(addDefaultOSNs andThen addDefaultPeer)
+        }
 
         def render(s: BootstrapState): VdomTagOf[Div] =
             s.global match {
@@ -128,6 +151,13 @@ object Boot {
                                     <.input(^.`type` := "text", ^.`className` := "form-control",
                                         bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.networkName
                                     )
+                                )
+                            ),
+                            <.div(^.className := "form-group row",
+                                <.button(
+                                    ^.className := "btn btn-primary",
+                                    "Add defaults",
+                                    ^.onClick --> populateWithDefault(g)
                                 )
                             ),
                             <.div(^.className := "form-group row",
