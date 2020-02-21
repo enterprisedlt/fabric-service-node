@@ -46,6 +46,14 @@ object Contract {
 
 
         def renderContractPackagesList(s: ContractState, g: GlobalState): VdomTagOf[Select] = {
+            $.modState(
+                state => state.copy(
+                    state.request.copy(
+                        contractType = s.chosenPackage.split("-")(0),
+                        version = s.chosenPackage.split("-")(1)
+                    )
+                )
+            )
             <.select(className := "form-control",
                 id := "componentType",
                 bind(s) := ContractState.chosenPackage,
@@ -71,10 +79,18 @@ object Contract {
                             <.div(^.className := "col-sm-10", renderContractPackagesList(s, g))
                         ),
                         <.div(^.className := "form-group row",
-                            <.label(^.className := "col-sm-2 col-form-label", "Name"),
+                            <.label(^.className := "col-sm-2 col-form-label", "Contract Type"),
                             <.div(^.className := "col-sm-10",
                                 <.input(^.`type` := "text", ^.className := "form-control",
-                                    bind(s) := ContractState.request / CreateContractRequest.name
+                                    bind(s) := ContractState.request / CreateContractRequest.contractType
+                                )
+                            )
+                        ),
+                        <.div(^.className := "form-group row",
+                            <.label(^.className := "col-sm-2 col-form-label", "Version"),
+                            <.div(^.className := "col-sm-10",
+                                <.input(^.`type` := "text", ^.className := "form-control",
+                                    bind(s) := ContractState.request / CreateContractRequest.version
                                 )
                             )
                         ),
