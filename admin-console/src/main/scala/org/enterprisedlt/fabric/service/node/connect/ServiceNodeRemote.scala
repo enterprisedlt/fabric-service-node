@@ -51,4 +51,13 @@ object ServiceNodeRemote {
           .map(_ => ())
     }
 
+
+
+//    def createContract(createContractRequest: CreateContractRequest): Future[Unit] = {
+//        val json = upickle.default.write(createContractRequest)
+//        Ajax.post("/admin/create-contract", json)
+//          .map(_ => ())
+//
+//    }
+
 }
