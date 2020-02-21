@@ -4,7 +4,7 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
-import org.enterprisedlt.fabric.service.node.page.form.{AddOrganization,AddContract}
+import org.enterprisedlt.fabric.service.node.page.form.{AddOrganization,Contract}
 import org.enterprisedlt.fabric.service.node.state.{GlobalStateAware, WithGlobalState}
 import org.enterprisedlt.fabric.service.node.{AppState, Context, GlobalState, Initial}
 import org.scalajs.dom
@@ -69,7 +69,7 @@ object Dashboard {
                         ),
                         ("contracts", "Contracts",
                           <.div(^.className := "card-body aut-form-card",
-                              AddContract(),
+                              Contract(),
 
                           )
                         )

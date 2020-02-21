@@ -13,21 +13,21 @@ import org.scalajs.dom.html.{Div, Select}
 /**
   * @author Maxim Fedin
   */
-object AddContract {
+object Contract {
 
 
-    @Lenses case class AddContractState(
+    @Lenses case class ContractState(
         request: CreateContractRequest,
         chosenPackage: String,
         global: AppState
-    ) extends WithGlobalState[AppState, AddContractState] {
-        override def withGlobalState(g: AppState): AddContractState = this.copy(global = g)
+    ) extends WithGlobalState[AppState, ContractState] {
+        override def withGlobalState(g: AppState): ContractState = this.copy(global = g)
     }
 
 
-    object AddContractState {
-        val Defaults: AddContractState = {
-            AddContractState(
+    object ContractState {
+        val Defaults: ContractState = {
+            ContractState(
                 CreateContractRequest.Defaults,
                 "",
                 Initial)
@@ -35,32 +35,32 @@ object AddContract {
     }
 
 
-    private val component = ScalaComponent.builder[Unit]("AddContractForm")
-      .initialState(AddContractState.Defaults)
+    private val component = ScalaComponent.builder[Unit]("ContractForm")
+      .initialState(ContractState.Defaults)
       .renderBackend[Backend]
       .componentDidMount($ => Context.State.connect($.backend))
       .build
 
 
-    class Backend(val $: BackendScope[Unit, AddContractState]) extends FieldBinder[AddContractState] with GlobalStateAware[AppState, AddContractState] {
+    class Backend(val $: BackendScope[Unit, ContractState]) extends FieldBinder[ContractState] with GlobalStateAware[AppState, ContractState] {
 
 
-        def renderContractPackagesList(s: AddContractState, g: GlobalState): VdomTagOf[Select] = {
+        def renderContractPackagesList(s: ContractState, g: GlobalState): VdomTagOf[Select] = {
             <.select(className := "form-control",
                 id := "componentType",
-                bind(s) := AddContractState.chosenPackage,
+                bind(s) := ContractState.chosenPackage,
                 contractPackagesOptions(s, g)
             )
         }
 
-        def contractPackagesOptions(s: AddContractState, g: GlobalState): TagMod = {
+        def contractPackagesOptions(s: ContractState, g: GlobalState): TagMod = {
             g.packages.map { name =>
                 option((className := "selected"), name)
             }.toTagMod
         }
 
 
-        def render(s: AddContractState): VdomTagOf[Div] =
+        def render(s: ContractState): VdomTagOf[Div] =
             s.global match {
                 case g: GlobalState =>
                     <.div(
@@ -74,7 +74,7 @@ object AddContract {
                             <.label(^.className := "col-sm-2 col-form-label", "Name"),
                             <.div(^.className := "col-sm-10",
                                 <.input(^.`type` := "text", ^.className := "form-control",
-                                    bind(s) := AddContractState.request / CreateContractRequest.name
+                                    bind(s) := ContractState.request / CreateContractRequest.name
                                 )
                             )
                         ),
@@ -87,5 +87,5 @@ object AddContract {
     }
 
 
-    def apply(): Unmounted[Unit, AddContractState, Backend] = component()
+    def apply(): Unmounted[Unit, ContractState, Backend] = component()
 }
