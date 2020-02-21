@@ -137,7 +137,7 @@ object AddOrganization {
                 <.span(<.br()),
                 <.h5("Certificates"),
                 <.div(^.className := "form-group row",
-                    <.label(^.className := "col-sm-2 col-form-label", "Ca Cert:"),
+                    <.label(^.className := "col-sm-2 col-form-label", "CA certificate:"),
                     <.div(^.className := "input-group col-sm-10",
                         <.div(^.`class` := "custom-file",
                             <.input(^.`type` := "file", ^.`class` := "custom-file-input", ^.id := "caCerts", ^.onChange ==> addCaCertFile),
@@ -146,7 +146,7 @@ object AddOrganization {
                     )
                 ),
                 <.div(^.className := "form-group row",
-                    <.label(^.className := "col-sm-2 col-form-label", "TLS Ca Cert:"),
+                    <.label(^.className := "col-sm-2 col-form-label", "TLS CA certificate:"),
                     <.div(^.className := "input-group col-sm-10",
                         <.div(^.`class` := "custom-file",
                             <.input(^.`type` := "file", ^.`class` := "custom-file-input", ^.id := "tlsCACerts", ^.onChange ==> addTlsCaCertFile),
@@ -155,7 +155,7 @@ object AddOrganization {
                     )
                 ),
                 <.div(^.className := "form-group row",
-                    <.label(^.className := "col-sm-2 col-form-label", "Admin cert:"),
+                    <.label(^.className := "col-sm-2 col-form-label", "Admin certificate:"),
                     <.div(^.className := "input-group col-sm-10",
                         <.div(^.`class` := "custom-file",
                             <.input(^.`type` := "file", ^.`class` := "custom-file-input", ^.id := "adminCerts", ^.onChange ==> addAdminCertFile),
@@ -166,14 +166,14 @@ object AddOrganization {
                 <.hr(),
                 <.h5("Organization Info"),
                 <.div(^.className := "form-group row",
-                    <.label(^.className := "col-sm-2 col-form-label", "Organization msp Id"),
+                    <.label(^.className := "col-sm-2 col-form-label", "MSP ID"),
                     <.div(^.className := "col-sm-10",
                         <.input(^.`type` := "text", ^.className := "form-control",
                             bind(s) := AddOrganizationState.joinRequest / JoinRequest.organization / Organization.mspId)
                     )
                 ),
                 <.div(^.className := "form-group row",
-                    <.label(^.className := "col-sm-2 col-form-label", "Organization name"),
+                    <.label(^.className := "col-sm-2 col-form-label", "Name"),
                     <.div(^.className := "col-sm-10",
                         <.input(^.`type` := "text", ^.className := "form-control",
                             bind(s) := AddOrganizationState.joinRequest / JoinRequest.organization / Organization.name)
