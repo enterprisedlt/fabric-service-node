@@ -197,11 +197,7 @@ object Join {
                             <.hr(),
                             <.div(^.className := "form-group row",
                                 <.label(^.`for` := "componentType", ^.className := "col-sm-2 col-form-label", "Component type"),
-                                <.div(^.className := "col-sm-10", renderComponentType(s),
-                                    //                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentType",
-                                    //                                bind(s) := JoinState.componentCandidate / ComponentCandidate.componentType
-                                    //                            )
-                                )
+                                <.div(^.className := "col-sm-10", renderComponentType(s))
                             ),
                             <.div(^.className := "form-group row",
                                 <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "Component name"),

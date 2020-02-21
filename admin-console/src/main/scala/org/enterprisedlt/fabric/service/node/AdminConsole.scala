@@ -31,12 +31,12 @@ object AdminConsole {
             <.div(
                 s.global match {
                     case Initial => loadingScreen
-                    case GlobalState(InitMode, _) => Init()
-                    case GlobalState(BootstrapMode, _) => Boot()
-                    case GlobalState(JoinMode, _) => Join()
-                    case GlobalState(BootstrapInProgress, _) => BootProgress()
-                    case GlobalState(JoinInProgress, _) => JoinProgress()
-                    case GlobalState(ReadyForUse, _) => Dashboard()
+                    case GlobalState(InitMode, _, _) => Init()
+                    case GlobalState(BootstrapMode, _, _) => Boot()
+                    case GlobalState(JoinMode, _, _) => Join()
+                    case GlobalState(BootstrapInProgress, _, _) => BootProgress()
+                    case GlobalState(JoinInProgress, _, _) => JoinProgress()
+                    case GlobalState(ReadyForUse, _, _) => Dashboard()
                 }
             )
     }

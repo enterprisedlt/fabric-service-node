@@ -195,19 +195,24 @@ class RestEndpoint(
 
                     case "/admin/list-contract-packages" =>
                         logger.info("Listing contract packages...")
+                        val chaincodePath = new File(s"/opt/profile/chain-code/").getAbsoluteFile
+                        if (!chaincodePath.exists()) chaincodePath.mkdirs()
+                        //
                         Try {
-                            new File(s"/opt/profile/chain-code/")
+                            chaincodePath
                               .listFiles()
                               .filter(_.getName.endsWith(".tgz"))
-                              .map { file => file.getName
-                              }
+                              .map(file => file.getName)
+                              .map(name => name.substring(0, name.length - 4))
                         }.toEither match {
                             case Right(contracts) =>
                                 logger.info(s"The list of packages is: ${contracts.mkString(" ")}")
                                 response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                                response.getWriter.println(contracts)
+                                response.getWriter.println(Util.codec.toJson(contracts))
                                 response.setStatus(HttpServletResponse.SC_OK)
-                            case Left(err) => response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                            case Left(err) =>
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                logger.error("Got error", err)
                                 response.getWriter.println(err.getMessage)
                                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                         }
@@ -288,6 +293,7 @@ class RestEndpoint(
                         val end = System.currentTimeMillis() - start
                         logger.info(s"Joined ($end ms)")
                         response.setStatus(HttpServletResponse.SC_OK)
+
 
                     case "/admin/create-contract" =>
                         logger.info("Creating contract ...")

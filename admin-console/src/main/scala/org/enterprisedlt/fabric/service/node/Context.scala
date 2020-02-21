@@ -26,11 +26,14 @@ object Context {
                     ReadyForUse
             }
             ServiceNodeRemote.getOrganisationFullName.map { orgFullName =>
-                State.update { _ =>
-                    GlobalState(
-                        mode = stateMode,
-                        orgFullName = orgFullName
-                    )
+                ServiceNodeRemote.listContractPackages.map { packages =>
+                    State.update { _ =>
+                        GlobalState(
+                            mode = stateMode,
+                            orgFullName = orgFullName,
+                            packages = packages
+                        )
+                    }
                 }
             }
         }
@@ -51,7 +54,8 @@ case object Initial extends AppState
 
 case class GlobalState(
     mode: AppMode,
-    orgFullName: String
+    orgFullName: String,
+    packages: Array[String]
 ) extends AppState
 
 sealed trait AppMode
