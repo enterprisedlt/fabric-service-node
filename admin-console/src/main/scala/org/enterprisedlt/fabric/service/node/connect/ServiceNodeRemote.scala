@@ -51,6 +51,13 @@ object ServiceNodeRemote {
           .map(_ => ())
     }
 
+    def listContractPackages : Future[Array[String]] =  {
+        Ajax.get("/admin/list-contract-packages")
+          .map(_.responseText)
+          .map(r => upickle.default.read[Array[String]](r))
+    }
+
+
 
 
 //    def createContract(createContractRequest: CreateContractRequest): Future[Unit] = {

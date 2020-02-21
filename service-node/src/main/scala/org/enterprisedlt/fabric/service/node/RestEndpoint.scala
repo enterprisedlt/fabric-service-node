@@ -22,8 +22,8 @@ import org.slf4j.LoggerFactory
 import scala.util.Try
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 class RestEndpoint(
     bindPort: Int,
     externalAddress: Option[ExternalAddress],
@@ -192,6 +192,26 @@ class RestEndpoint(
                         response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                         response.getWriter.println(result)
                         response.setStatus(HttpServletResponse.SC_OK)
+
+                    case "/admin/list-contract-packages" =>
+                        logger.info("Listing contract packages...")
+                        Try {
+                            new File(s"/opt/profile/chain-code/")
+                              .listFiles()
+                              .filter(_.getName.endsWith(".tgz"))
+                              .map { file => file.getName
+                              }
+                        }.toEither match {
+                            case Right(contracts) =>
+                                logger.info(s"The list of packages is: ${contracts.mkString(" ")}")
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.getWriter.println(contracts)
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(err) => response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                response.getWriter.println(err.getMessage)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
+
 
 
                     // unknown GET path
