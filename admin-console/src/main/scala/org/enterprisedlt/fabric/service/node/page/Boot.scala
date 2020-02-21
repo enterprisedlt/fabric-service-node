@@ -8,7 +8,7 @@ import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.state.{GlobalStateAware, WithGlobalState}
+import org.enterprisedlt.fabric.service.node.state.GlobalStateAware
 import org.scalajs.dom.html.{Div, Select}
 
 /**
@@ -18,11 +18,8 @@ object Boot {
 
     @Lenses case class BootstrapState(
         bootstrapOptions: BootstrapOptions,
-        componentCandidate: ComponentCandidate,
-        global: AppState
-    ) extends WithGlobalState[AppState, BootstrapState] {
-        override def withGlobalState(g: AppState): BootstrapState = this.copy(global = g)
-    }
+        componentCandidate: ComponentCandidate
+    )
 
     object BootstrapState {
         val ComponentTypes = Seq("orderer", "peer")
@@ -33,8 +30,7 @@ object Boot {
                     name = "",
                     port = 0,
                     componentType = ComponentTypes.head
-                ),
-                global = Initial
+                )
             )
     }
 
@@ -135,8 +131,8 @@ object Boot {
             $.modState(addDefaultOSNs andThen addDefaultPeer)
         }
 
-        def render(s: BootstrapState): VdomTagOf[Div] =
-            s.global match {
+        def renderWithGlobal(s: BootstrapState, global: AppState): VdomTagOf[Div] =
+            global match {
                 case g: GlobalState =>
                     <.div(^.className := "card aut-form-card",
                         <.div(^.className := "card-header text-white bg-primary",

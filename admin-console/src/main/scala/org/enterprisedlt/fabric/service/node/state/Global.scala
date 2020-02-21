@@ -1,6 +1,8 @@
 package org.enterprisedlt.fabric.service.node.state
 
+import japgolly.scalajs.react.vdom.html_<^.VdomTagOf
 import japgolly.scalajs.react.{BackendScope, Callback}
+import org.scalajs.dom.html.Div
 
 import scala.collection.mutable
 
@@ -8,17 +10,25 @@ import scala.collection.mutable
  * @author Alexey Polubelov
  */
 
-trait WithGlobalState[GS, X] {
-    self: X =>
-    def withGlobalState(global: GS): X
-}
+//trait WithGlobalState[GS, X] {
+//    self: X =>
+//    def withGlobalState(global: GS): X
+//}
 
-trait GlobalStateAware[GS, S <: WithGlobalState[GS, S]] {
+trait GlobalStateAware[GS, S] {
     def $: BackendScope[_, S]
 
     private lazy val updater = $.withEffectsImpure
+    private var gs: GS = _
 
-    def onGlobalStateUpdate(g: GS): Unit = updater.modState(_.withGlobalState(g))
+    def onGlobalStateUpdate(g: GS): Unit = {
+        gs = g
+        updater.forceUpdate
+    }
+
+    def render(s: S): VdomTagOf[Div] = renderWithGlobal(s, gs)
+
+    def renderWithGlobal(s: S, g: GS): VdomTagOf[Div]
 }
 
 class GlobalStateManager[GS](

@@ -4,9 +4,9 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
-import org.enterprisedlt.fabric.service.node.page.form.{AddOrganization,Contract}
-import org.enterprisedlt.fabric.service.node.state.{GlobalStateAware, WithGlobalState}
-import org.enterprisedlt.fabric.service.node.{AppState, Context, GlobalState, Initial}
+import org.enterprisedlt.fabric.service.node.page.form.{AddOrganization, Contract}
+import org.enterprisedlt.fabric.service.node.state.GlobalStateAware
+import org.enterprisedlt.fabric.service.node.{AppState, Context, GlobalState}
 import org.scalajs.dom
 import org.scalajs.dom.html.Div
 import org.scalajs.dom.raw.{Blob, HTMLLinkElement, URL}
@@ -19,11 +19,7 @@ import scala.scalajs.js
  */
 object Dashboard {
 
-    case class State(
-        global: AppState = Initial
-    ) extends WithGlobalState[AppState, State] {
-        override def withGlobalState(global: AppState): State = this.copy(global = global)
-    }
+    case class State()
 
     private val component = ScalaComponent.builder[Unit]("Dashboard")
       .initialState(State())
@@ -39,7 +35,7 @@ object Dashboard {
             }
         }
 
-        def render(s: State): VdomTagOf[Div] = s.global match {
+        def renderWithGlobal(s: State, global: AppState): VdomTagOf[Div] = global match {
             case g: GlobalState =>
                 <.div(
                     renderTabs(

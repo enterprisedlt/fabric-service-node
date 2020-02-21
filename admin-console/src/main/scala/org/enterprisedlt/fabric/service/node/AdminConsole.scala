@@ -3,7 +3,7 @@ package org.enterprisedlt.fabric.service.node
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, ScalaComponent}
 import org.enterprisedlt.fabric.service.node.page._
-import org.enterprisedlt.fabric.service.node.state.{GlobalStateAware, WithGlobalState}
+import org.enterprisedlt.fabric.service.node.state.GlobalStateAware
 import org.scalajs.dom
 import org.scalajs.dom.html.Div
 
@@ -14,22 +14,18 @@ import scala.scalajs.js.annotation.JSExport
  */
 object AdminConsole {
 
-    case class State(
-        global: AppState
-    ) extends WithGlobalState[AppState, State] {
-        override def withGlobalState(global: AppState): State = this.copy(global = global)
-    }
+    case class State()
 
     private val rootComponent = ScalaComponent.builder[Unit]("Main")
-      .initialState(State(Initial))
+      .initialState(State())
       .renderBackend[MainBackend]
       .componentDidMount($ => Context.State.connect($.backend))
       .build
 
     class MainBackend(val $: BackendScope[Unit, State]) extends GlobalStateAware[AppState, State] {
-        def render(s: State): VdomTagOf[Div] =
+        def renderWithGlobal(s: State, global: AppState): VdomTagOf[Div] =
             <.div(
-                s.global match {
+                global match {
                     case Initial => loadingScreen
                     case GlobalState(InitMode, _, _) => Init()
                     case GlobalState(BootstrapMode, _, _) => Boot()

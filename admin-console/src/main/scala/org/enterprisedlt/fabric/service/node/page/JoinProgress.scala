@@ -4,8 +4,8 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ScalaComponent}
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
-import org.enterprisedlt.fabric.service.node.model.{StateUpdate, Status}
 import org.enterprisedlt.fabric.service.node.model.Status.JoinProgressStatus
+import org.enterprisedlt.fabric.service.node.model.{StateUpdate, Status}
 import org.enterprisedlt.fabric.service.node.{Context, ReadyForUse}
 import org.scalajs.dom.html.Div
 
@@ -13,8 +13,8 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object JoinProgress {
 
     case class State(
@@ -70,7 +70,8 @@ object JoinProgress {
                                 ProgressItem(
                                     isInProgress = false,
                                     text = msg
-                                )),
+                                )
+                            ),
                             readyToUse = true
                         )
                     )

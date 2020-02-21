@@ -9,7 +9,7 @@ import monocle.Lens
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.model.CreateContractRequest
-import org.enterprisedlt.fabric.service.node.state.{GlobalStateAware, WithGlobalState}
+import org.enterprisedlt.fabric.service.node.state.GlobalStateAware
 import org.scalajs.dom.html.{Div, Select}
 
 import scala.language.higherKinds
@@ -22,19 +22,15 @@ object Contract {
 
     @Lenses case class ContractState(
         request: CreateContractRequest,
-        chosenPackage: String,
-        global: AppState
-    ) extends WithGlobalState[AppState, ContractState] {
-        override def withGlobalState(g: AppState): ContractState = this.copy(global = g)
-    }
+        chosenPackage: String
+    )
 
 
     object ContractState {
         val Defaults: ContractState = {
             ContractState(
-                CreateContractRequest.Defaults,
-                "",
-                Initial)
+                CreateContractRequest.Defaults, ""
+            )
         }
     }
 
@@ -50,14 +46,14 @@ object Contract {
 
 
         def renderContractPackagesList(s: ContractState, g: GlobalState): VdomTagOf[Select] = {
-//            $.modState(
-//                state => state.copy(
-//                    state.request.copy(
-//                        contractType = s.chosenPackage.split("-")(0),
-//                        version = s.chosenPackage.split("-")(1)
-//                    )
-//                )
-//            )
+            //            $.modState(
+            //                state => state.copy(
+            //                    state.request.copy(
+            //                        contractType = s.chosenPackage.split("-")(0),
+            //                        version = s.chosenPackage.split("-")(1)
+            //                    )
+            //                )
+            //            )
             <.select(className := "form-control",
                 id := "componentType",
                 bind(s) := packageCustomLens,
@@ -90,39 +86,37 @@ object Contract {
             }.toTagMod
         }
 
-
-        def render(s: ContractState): VdomTagOf[Div] =
-            s.global match {
-                case g: GlobalState =>
-                    <.div(
-                        <.h4("Add contract"),
-                        <.span(<.br()),
-                        <.div(^.className := "form-group row",
-                            <.label(^.`for` := "contractPackages", ^.className := "col-sm-2 col-form-label", "Contract packages"),
-                            <.div(^.className := "col-sm-10", renderContractPackagesList(s, g))
-                        ),
-                        <.div(^.className := "form-group row",
-                            <.label(^.className := "col-sm-2 col-form-label", "Contract Type"),
-                            <.div(^.className := "col-sm-10",
-                                <.input(^.`type` := "text", ^.className := "form-control",
-                                    bind(s) := ContractState.request / CreateContractRequest.contractType
-                                )
+        def renderWithGlobal(s: ContractState, global: AppState): VdomTagOf[Div] = global match {
+            case g: GlobalState =>
+                <.div(
+                    <.h4("Add contract"),
+                    <.span(<.br()),
+                    <.div(^.className := "form-group row",
+                        <.label(^.`for` := "contractPackages", ^.className := "col-sm-2 col-form-label", "Contract packages"),
+                        <.div(^.className := "col-sm-10", renderContractPackagesList(s, g))
+                    ),
+                    <.div(^.className := "form-group row",
+                        <.label(^.className := "col-sm-2 col-form-label", "Contract Type"),
+                        <.div(^.className := "col-sm-10",
+                            <.input(^.`type` := "text", ^.className := "form-control",
+                                bind(s) := ContractState.request / CreateContractRequest.contractType
                             )
-                        ),
-                        <.div(^.className := "form-group row",
-                            <.label(^.className := "col-sm-2 col-form-label", "Version"),
-                            <.div(^.className := "col-sm-10",
-                                <.input(^.`type` := "text", ^.className := "form-control",
-                                    bind(s) := ContractState.request / CreateContractRequest.version
-                                )
+                        )
+                    ),
+                    <.div(^.className := "form-group row",
+                        <.label(^.className := "col-sm-2 col-form-label", "Version"),
+                        <.div(^.className := "col-sm-10",
+                            <.input(^.`type` := "text", ^.className := "form-control",
+                                bind(s) := ContractState.request / CreateContractRequest.version
                             )
-                        ),
+                        )
+                    ),
 
 
-                    )
-                case _ => <.div()
+                )
+            case _ => <.div()
 
-            }
+        }
     }
 
 
