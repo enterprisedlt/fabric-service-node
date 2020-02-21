@@ -206,3 +206,38 @@ object KnownHostRecord {
 object OrganizationCertificates {
     implicit val rw: RW[OrganizationCertificates] = macroRW
 }
+
+
+@Lenses case class CreateContractRequest(
+    name: String,
+    version: String,
+    contractType: String,
+    channelName: String,
+    parties: Array[ContractParticipant],
+    initArgs: Array[String]
+)
+
+object CreateContractRequest {
+
+    val Defaults: CreateContractRequest = CreateContractRequest(
+        name = "",
+        version = "",
+        contractType = "",
+        channelName = "",
+        parties = Array.empty[ContractParticipant],
+        initArgs = Array.empty[String]
+    )
+
+    implicit val rw: RW[CreateContractRequest] = macroRW
+
+}
+
+
+@Lenses case class ContractParticipant(
+    mspId: String,
+    role: String
+)
+
+object ContractParticipant {
+    implicit val rw: RW[ContractParticipant] = macroRW
+}
