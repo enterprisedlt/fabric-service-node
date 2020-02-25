@@ -16,10 +16,11 @@ trait FieldBinder[S] {
 
     def bind(v: S): Bind = new Bind(v)
 
-    private def mapInputTo[X](l: Lens[S, X])(converter: String => Option[X])(event: ReactEventFromInput): Callback = {
+    private def mapInputTo[X](l: Lens[S, X])(converter: AsX[X])(event: ReactEventFromInput): Callback = {
         val v: String = event.target.value
         // try convert, if not simply ignore
-        converter(v)
+        converter
+          .option(v)
           .map { x =>
               $.modState(l.set(x))
           }
@@ -27,6 +28,7 @@ trait FieldBinder[S] {
     }
 
     import scala.language.higherKinds
+
     implicit class ComposeLens[A, B](self: Lens[A, B]) {
 
         def /[D](other: Lens[B, D]): Lens[A, D] =
@@ -45,20 +47,23 @@ trait FieldBinder[S] {
             }
     }
 
-    //
-    implicit val String2String: String => Option[String] = x => Option(x)
-    implicit val String2Int: String => Option[Int] = x => Try(x.toInt).toOption
-
-
     class Bind(s: S) {
 
-        def :=[X](l: Lens[S, X])(implicit converter: String => Option[X]): TagMod = {
+        def :=[X](l: Lens[S, X])(implicit converter: AsX[X]): TagMod = {
             Seq(
                 ^.onChange ==> mapInputTo(l)(converter),
                 ^.value := l.get(s).toString
             ).toTagMod
         }
     }
+
+    //
+    trait AsX[X] {
+        def option(v: String): Option[X]
+    }
+
+    implicit val String2String: AsX[String] = (v: String) => Option(v)
+    implicit val String2Int: AsX[Int] = (v: String) => Try(v.toInt).toOption
 
 }
 
