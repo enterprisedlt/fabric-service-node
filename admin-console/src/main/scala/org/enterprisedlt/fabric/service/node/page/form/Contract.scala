@@ -66,9 +66,7 @@ object Contract {
                         )
                     )
                 }
-
                 override def modifyF[F[_]](f: String => F[String])(s: ContractState)(implicit evidence$1: Functor[F]): F[ContractState] = ???
-
                 override def modify(f: String => String): ContractState => ContractState = ???
             }
 
@@ -103,6 +101,23 @@ object Contract {
                             )
                         )
                     ),
+                    <.div(^.className := "form-group row",
+                        <.label(^.className := "col-sm-2 col-form-label", "Name"),
+                        <.div(^.className := "col-sm-10",
+                            <.input(^.`type` := "text", ^.className := "form-control",
+                                bind(s) := ContractState.request / CreateContractRequest.name
+                            )
+                        )
+                    ),
+                    <.div(^.className := "form-group row",
+                        <.label(^.className := "col-sm-2 col-form-label", "Channel type"),
+                        <.div(^.className := "col-sm-10",
+                            <.input(^.`type` := "text", ^.className := "form-control",
+                                bind(s) := ContractState.request / CreateContractRequest.channelName
+                            )
+                        )
+                    ),
+
 
 
                 )
