@@ -12,15 +12,12 @@ import org.scalajs.dom.html.Div
  */
 object Init {
 
-    case class State()
-
     private val component = ScalaComponent.builder[Unit]("Initial")
-      .initialState(State())
       .renderBackend[Backend]
       .componentWillMount($ => Context.State.connect($.backend))
       .build
 
-    class Backend(val $: BackendScope[Unit, State]) extends GlobalStateAware[AppState, State] {
+    class Backend(val $: BackendScope[Unit, Unit]) extends GlobalStateAware[AppState, Unit] {
 
         def goBootstrap: Callback = Callback {
             Context.switchModeTo(BootstrapMode)
@@ -30,7 +27,7 @@ object Init {
             Context.switchModeTo(JoinMode)
         }
 
-        def renderWithGlobal(s: State, global: AppState): VdomTagOf[Div] = global match {
+        def renderWithGlobal(s: Unit, global: AppState): VdomTagOf[Div] = global match {
             case g: GlobalState =>
                 <.div(
                     <.div(^.className := "card aut-form-card",
@@ -59,5 +56,5 @@ object Init {
 
     }
 
-    def apply(): Unmounted[Unit, State, Backend] = component()
+    def apply(): Unmounted[Unit, Unit, Backend] = component()
 }

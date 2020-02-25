@@ -14,16 +14,13 @@ import scala.scalajs.js.annotation.JSExport
  */
 object AdminConsole {
 
-    case class State()
-
     private val rootComponent = ScalaComponent.builder[Unit]("Main")
-      .initialState(State())
       .renderBackend[MainBackend]
       .componentDidMount($ => Context.State.connect($.backend))
       .build
 
-    class MainBackend(val $: BackendScope[Unit, State]) extends GlobalStateAware[AppState, State] {
-        def renderWithGlobal(s: State, global: AppState): VdomTagOf[Div] =
+    class MainBackend(val $: BackendScope[Unit, Unit]) extends GlobalStateAware[AppState, Unit] {
+        def renderWithGlobal(s: Unit, global: AppState): VdomTagOf[Div] =
             <.div(
                 global match {
                     case Initial => loadingScreen

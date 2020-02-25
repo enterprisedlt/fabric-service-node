@@ -19,15 +19,12 @@ import scala.scalajs.js
  */
 object Dashboard {
 
-    case class State()
-
     private val component = ScalaComponent.builder[Unit]("Dashboard")
-      .initialState(State())
       .renderBackend[Backend]
       .componentDidMount($ => Context.State.connect($.backend))
       .build
 
-    class Backend(val $: BackendScope[Unit, State]) extends GlobalStateAware[AppState, State] {
+    class Backend(val $: BackendScope[Unit, Unit]) extends GlobalStateAware[AppState, Unit] {
 
         def createInvite: Callback = Callback {
             ServiceNodeRemote.createInvite.map { invite =>
@@ -35,7 +32,7 @@ object Dashboard {
             }
         }
 
-        def renderWithGlobal(s: State, global: AppState): VdomTagOf[Div] = global match {
+        def renderWithGlobal(s: Unit, global: AppState): VdomTagOf[Div] = global match {
             case g: GlobalState =>
                 <.div(
                     renderTabs(
@@ -123,7 +120,7 @@ object Dashboard {
         }
     }
 
-    def apply(): Unmounted[Unit, State, Backend] = component()
+    def apply(): Unmounted[Unit, Unit, Backend] = component()
 
     object data {
         def toggle: VdomAttr[Any] = VdomAttr("data-toggle")

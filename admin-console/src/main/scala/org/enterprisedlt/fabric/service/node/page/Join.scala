@@ -132,7 +132,7 @@ object Join {
                     x ++ defaultOSNList.zipWithIndex.map { case (name, index) =>
                         OSNConfig(
                             name = s"$name.${g.orgFullName}",
-                            port = 7001 + index
+                            port = 6001 + index
                         )
                     }
                 }
@@ -141,7 +141,7 @@ object Join {
                 PeerNodes.modify { x =>
                     x :+ PeerConfig(
                         name = s"peer0.${g.orgFullName}",
-                        port = 7010,
+                        port = 6010,
                         couchDB = null
                     )
                 }
