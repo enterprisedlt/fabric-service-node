@@ -24,6 +24,7 @@ object Contract {
         request: CreateContractRequest,
         chosenPackage: String,
         participantCandidate: ContractParticipant,
+        initArgsCandidate: String
     )
 
 
@@ -31,7 +32,8 @@ object Contract {
         val Defaults: ContractState = {
             ContractState(
                 CreateContractRequest.Defaults, "",
-                ContractParticipant("", "")
+                ContractParticipant("", ""),
+                ""
             )
         }
     }
@@ -53,6 +55,7 @@ object Contract {
 
         private val ContractParticipantState = ContractState.request / CreateContractRequest.parties
 
+        private val InitArgsState = ContractState.request / CreateContractRequest.initArgs
 
 
         def renderContractPackagesList(s: ContractState, g: GlobalState): VdomTagOf[Select] = {
@@ -89,22 +92,41 @@ object Contract {
         }
 
 
-        def deleteComponent(participant: ContractParticipant): CallbackTo[Unit] = {
+        def deletePartyComponent(participant: ContractParticipant): CallbackTo[Unit] = {
             val state = ContractParticipantState.modify(_.filter(_.mspId != participant.mspId))
             $.modState(state)
         }
 
         def addParticipantComponent(contractState: ContractState): CallbackTo[Unit] = {
             $.modState(
-                addComponent(contractState) andThen ContractState.participantCandidate.set(ContractState.Defaults.participantCandidate)
+                addComponentParticipant(contractState) andThen ContractState.participantCandidate.set(ContractState.Defaults.participantCandidate)
             )
         }
 
-        private def addComponent(contractState: ContractState): ContractState => ContractState = {
+        private def addComponentParticipant(contractState: ContractState): ContractState => ContractState = {
             val componentCandidate = contractState.participantCandidate
             ContractParticipantState.modify(_ :+ componentCandidate)
         }
 
+
+        private def deleteInitArgsComponent(arg: String): CallbackTo[Unit] = {
+            val state = InitArgsState.modify(_.filter(_ != arg))
+            $.modState(state)
+        }
+
+        private def addInitArgsComponent(contractState: ContractState): CallbackTo[Unit] = {
+            $.modState(
+                addComponentInitArgs(contractState) andThen ContractState.initArgsCandidate.set(ContractState.Defaults.initArgsCandidate)
+            )
+
+        }
+
+
+
+        private def addComponentInitArgs(contractState: ContractState): ContractState => ContractState = {
+            val componentCandidate = contractState.participantCandidate
+            ContractParticipantState.modify(_ :+ componentCandidate)
+        }
 
         def renderWithGlobal(s: ContractState, global: AppState): VdomTagOf[Div] = global match {
             case g: GlobalState =>
@@ -147,34 +169,34 @@ object Contract {
                             )
                         )
                     ),
-
-
                     <.div(^.className := "form-group row",
-                        <.table(^.className := "table table-hover table-sm",
-                            <.thead(
-                                <.tr(
-                                    <.th(^.scope := "col", "#"),
-                                    <.th(^.scope := "col", "MSP ID"),
-                                    <.th(^.scope := "col", "role"),
-                                    <.th(^.scope := "col", "Actions"),
-                                )
-                            ),
-                            <.tbody(
-                                s.request.parties.zipWithIndex.map { case (party, index) =>
+                        <.label(^.className := "col-sm-2 col-form-label", "Parties"),
+                        <.div(^.className := "col-sm-10",
+                            <.table(^.className := "table table-hover table-sm",^.id :="parties",
+                                <.thead(
                                     <.tr(
-                                        <.td(^.scope := "row", s"${index + 1}"),
-                                        <.td(party.mspId),
-                                        <.td(party.role),
-                                        <.td(
-                                            <.button(
-                                                ^.className := "btn btn-primary",
-                                                "Remove",
-                                                ^.onClick --> deleteComponent(party))
-                                        )
+                                        <.th(^.scope := "col", "#"),
+                                        <.th(^.scope := "col", "MSP ID"),
+                                        <.th(^.scope := "col", "role"),
+                                        <.th(^.scope := "col", "Actions"),
                                     )
-                                }.toTagMod
-                            )
-                        )
+                                ),
+                                <.tbody(
+                                    s.request.parties.zipWithIndex.map { case (party, index) =>
+                                        <.tr(
+                                            <.td(^.scope := "row", s"${index + 1}"),
+                                            <.td(party.mspId),
+                                            <.td(party.role),
+                                            <.td(
+                                                <.button(
+                                                    ^.className := "btn btn-primary",
+                                                    "Remove",
+                                                    ^.onClick --> deletePartyComponent(party))
+                                            )
+                                        )
+                                    }.toTagMod
+                                )
+                            ))
                     ),
                     <.div(^.className := "form-group row",
                         <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "MSP ID"),
@@ -196,6 +218,49 @@ object Contract {
                             ^.onClick --> addParticipantComponent(s),
                             "Add host")
                     ),
+
+
+                    <.div(^.className := "form-group row",
+                        <.label(^.className := "col-sm-2 col-form-label", "Init args"),
+                        <.div(^.className := "col-sm-10",
+                            <.table(^.className := "table table-hover table-sm",^.id :="initArgs",
+                                <.thead(
+                                    <.tr(
+                                        <.th(^.scope := "col", "#"),
+                                        <.th(^.scope := "col", "Arg")
+                                    )
+                                ),
+                                <.tbody(
+                                    s.request.initArgs.zipWithIndex.map { case (arg, index) =>
+                                        <.tr(
+                                            <.td(^.scope := "row", s"${index + 1}"),
+                                            <.td(arg),
+                                            <.td(
+                                                <.button(
+                                                    ^.className := "btn btn-primary",
+                                                    "Remove",
+                                                    ^.onClick --> deleteInitArgsComponent(arg)
+                                                )
+                                            )
+                                        )
+                                    }.toTagMod
+                                )
+                            ))
+                    ),
+
+                    <.div(^.className := "form-group row",
+                        <.label(^.`for` := "port", ^.className := "col-sm-2 col-form-label", "Arg"),
+                        <.div(^.className := "col-sm-10",
+                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "arg",
+                                bind(s) := ContractState.initArgsCandidate
+                            )
+                        )),
+                    <.div(^.className := "form-group row",
+                        <.button(
+                            ^.className := "btn btn-primary",
+                            ^.onClick --> addInitArgsComponent(s),
+                            "Add arg")
+                    )
 
 
                 )
