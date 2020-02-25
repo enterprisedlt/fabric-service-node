@@ -138,10 +138,10 @@ object Contract {
             case g: GlobalState =>
                 <.div(
                     <.h4("Add contract"),
-                    <.div(^.float.right, ^.verticalAlign.`text-top`,
+                    <.div(^.className := "form-group row",
+                        <.div(^.float.right, ^.verticalAlign.`text-top`,
                         <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> doCreateContract(s), "Add contract")
-                    ),
-                    <.span(<.br()),
+                    )),
                     <.div(^.className := "form-group row",
                         <.label(^.`for` := "contractPackages", ^.className := "col-sm-2 col-form-label", "Contract packages"),
                         <.div(^.className := "col-sm-10", renderContractPackagesList(s, g))
@@ -163,7 +163,7 @@ object Contract {
                         )
                     ),
                     <.div(^.className := "form-group row",
-                        <.label(^.className := "col-sm-2 col-form-label", "Name"),
+                        <.label(^.className := "col-sm-2 col-form-label", "Contract name"),
                         <.div(^.className := "col-sm-10",
                             <.input(^.`type` := "text", ^.className := "form-control",
                                 bind(s) := ContractState.request / CreateContractRequest.name
@@ -171,7 +171,7 @@ object Contract {
                         )
                     ),
                     <.div(^.className := "form-group row",
-                        <.label(^.className := "col-sm-2 col-form-label", "Channel type"),
+                        <.label(^.className := "col-sm-2 col-form-label", "Channel name"),
                         <.div(^.className := "col-sm-10",
                             <.input(^.`type` := "text", ^.className := "form-control",
                                 bind(s) := ContractState.request / CreateContractRequest.channelName
