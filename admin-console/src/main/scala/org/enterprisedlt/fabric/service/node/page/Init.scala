@@ -17,7 +17,7 @@ object Init {
     private val component = ScalaComponent.builder[Unit]("Initial")
       .initialState(State())
       .renderBackend[Backend]
-      .componentWillMount($ => Context.State.connect($))
+      .componentWillMount($ => Context.State.connect($.backend))
       .build
 
     class Backend(val $: BackendScope[Unit, State]) extends GlobalStateAware[AppState, State] {
