@@ -11,11 +11,6 @@ import scala.collection.mutable
  * @author Alexey Polubelov
  */
 
-//trait WithGlobalState[GS, X] {
-//    self: X =>
-//    def withGlobalState(global: GS): X
-//}
-
 trait GlobalStateAware[GS, S] {
     def $: BackendScope[_, S]
 
@@ -49,6 +44,10 @@ class GlobalStateManager[GS](
         f(current_)
     }
 
+    def unsubscribe(f: GS => Unit): Unit = {
+        subscribers -= f
+    }
+
     def update(f: GS => GS): Unit = {
         current_ = f(current_)
         if (!paused) {
@@ -67,5 +66,6 @@ class GlobalStateManager[GS](
     }
 
     def connect[T <: GlobalStateAware[GS, _]](x: T): Callback = Callback(subscribe(x.onGlobalStateUpdate))
+    def disconnect[T <: GlobalStateAware[GS, _]](x: T): Callback = Callback(unsubscribe(x.onGlobalStateUpdate))
 }
 
