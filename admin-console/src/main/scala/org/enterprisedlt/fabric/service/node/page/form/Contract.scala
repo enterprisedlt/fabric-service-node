@@ -4,32 +4,34 @@ import cats.Functor
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.all.{VdomTagOf, className, id, option}
 import japgolly.scalajs.react.vdom.html_<^._
-import japgolly.scalajs.react.{BackendScope, ScalaComponent}
+import japgolly.scalajs.react.{BackendScope, CallbackTo, ScalaComponent}
 import monocle.Lens
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
-import org.enterprisedlt.fabric.service.node.model.CreateContractRequest
+import org.enterprisedlt.fabric.service.node.model.{ContractParticipant, CreateContractRequest}
 import org.enterprisedlt.fabric.service.node.state.GlobalStateAware
 import org.scalajs.dom.html.{Div, Select}
 
 import scala.language.higherKinds
 
 /**
- * @author Maxim Fedin
- */
+  * @author Maxim Fedin
+  */
 object Contract {
 
 
     @Lenses case class ContractState(
         request: CreateContractRequest,
-        chosenPackage: String
+        chosenPackage: String,
+        participantCandidate: ContractParticipant,
     )
 
 
     object ContractState {
         val Defaults: ContractState = {
             ContractState(
-                CreateContractRequest.Defaults, ""
+                CreateContractRequest.Defaults, "",
+                ContractParticipant("", "")
             )
         }
     }
@@ -41,21 +43,29 @@ object Contract {
       .componentDidMount($ => Context.State.connect($.backend))
       .build
 
+    //    def init($: Lifecycle.ComponentDidMount[Unit, ContractState, Backend]): Callback = {
+    //        Context.State.connect($.backend)
+    //        ServiceNodeRemote.listContractPackages
+    //    }
 
     class Backend(val $: BackendScope[Unit, ContractState]) extends FieldBinder[ContractState] with GlobalStateAware[AppState, ContractState] {
+
+
+        private val ContractParticipantState = ContractState.request / CreateContractRequest.parties
+
 
 
         def renderContractPackagesList(s: ContractState, g: GlobalState): VdomTagOf[Select] = {
             <.select(className := "form-control",
                 id := "componentType",
-                bind(s) := packageCustomLens,
+                bind(s) := packageCustomLens(g),
                 contractPackagesOptions(s, g)
             )
         }
 
-        private val packageCustomLens =
+        private def packageCustomLens(g: GlobalState) =
             new Lens[ContractState, String] {
-                override def get(s: ContractState): String = s.chosenPackage
+                override def get(s: ContractState): String = Option(s.chosenPackage).filter(_.nonEmpty).orElse(g.packages.headOption).getOrElse("")
 
                 override def set(b: String): ContractState => ContractState = { state =>
                     state.copy(
@@ -66,7 +76,9 @@ object Contract {
                         )
                     )
                 }
+
                 override def modifyF[F[_]](f: String => F[String])(s: ContractState)(implicit evidence$1: Functor[F]): F[ContractState] = ???
+
                 override def modify(f: String => String): ContractState => ContractState = ???
             }
 
@@ -75,6 +87,24 @@ object Contract {
                 option((className := "selected").when(s.chosenPackage == name), name)
             }.toTagMod
         }
+
+
+        def deleteComponent(participant: ContractParticipant): CallbackTo[Unit] = {
+            val state = ContractParticipantState.modify(_.filter(_.mspId != participant.mspId))
+            $.modState(state)
+        }
+
+        def addParticipantComponent(contractState: ContractState): CallbackTo[Unit] = {
+            $.modState(
+                addComponent(contractState) andThen ContractState.participantCandidate.set(ContractState.Defaults.participantCandidate)
+            )
+        }
+
+        private def addComponent(contractState: ContractState): ContractState => ContractState = {
+            val componentCandidate = contractState.participantCandidate
+            ContractParticipantState.modify(_ :+ componentCandidate)
+        }
+
 
         def renderWithGlobal(s: ContractState, global: AppState): VdomTagOf[Div] = global match {
             case g: GlobalState =>
@@ -118,6 +148,54 @@ object Contract {
                         )
                     ),
 
+
+                    <.div(^.className := "form-group row",
+                        <.table(^.className := "table table-hover table-sm",
+                            <.thead(
+                                <.tr(
+                                    <.th(^.scope := "col", "#"),
+                                    <.th(^.scope := "col", "MSP ID"),
+                                    <.th(^.scope := "col", "role"),
+                                    <.th(^.scope := "col", "Actions"),
+                                )
+                            ),
+                            <.tbody(
+                                s.request.parties.zipWithIndex.map { case (party, index) =>
+                                    <.tr(
+                                        <.td(^.scope := "row", s"${index + 1}"),
+                                        <.td(party.mspId),
+                                        <.td(party.role),
+                                        <.td(
+                                            <.button(
+                                                ^.className := "btn btn-primary",
+                                                "Remove",
+                                                ^.onClick --> deleteComponent(party))
+                                        )
+                                    )
+                                }.toTagMod
+                            )
+                        )
+                    ),
+                    <.div(^.className := "form-group row",
+                        <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "MSP ID"),
+                        <.div(^.className := "col-sm-10",
+                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "mspid",
+                                bind(s) := ContractState.participantCandidate / ContractParticipant.mspId
+                            )
+                        )),
+                    <.div(^.className := "form-group row",
+                        <.label(^.`for` := "port", ^.className := "col-sm-2 col-form-label", "Role"),
+                        <.div(^.className := "col-sm-10",
+                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "role",
+                                bind(s) := ContractState.participantCandidate / ContractParticipant.role
+                            )
+                        )),
+                    <.div(^.className := "form-group row",
+                        <.button(
+                            ^.className := "btn btn-primary",
+                            ^.onClick --> addParticipantComponent(s),
+                            "Add host")
+                    ),
 
 
                 )
