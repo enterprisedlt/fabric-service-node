@@ -1,7 +1,7 @@
 package org.enterprisedlt.fabric.service.node
 
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
-import org.enterprisedlt.fabric.service.node.model.Status
+import org.enterprisedlt.fabric.service.node.model.{Organization, Status}
 import org.enterprisedlt.fabric.service.node.state.GlobalStateManager
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -27,12 +27,15 @@ object Context {
             }
             ServiceNodeRemote.getOrganisationFullName.map { orgFullName =>
                 ServiceNodeRemote.listContractPackages.map { packages =>
-                    State.update { _ =>
-                        GlobalState(
-                            mode = stateMode,
-                            orgFullName = orgFullName,
-                            packages = packages
-                        )
+                    ServiceNodeRemote.listOrganizations.map { organizations =>
+                        State.update { _ =>
+                            GlobalState(
+                                mode = stateMode,
+                                orgFullName = orgFullName,
+                                packages = packages,
+                                organizations = organizations
+                            )
+                        }
                     }
                 }
             }
@@ -55,7 +58,8 @@ case object Initial extends AppState
 case class GlobalState(
     mode: AppMode,
     orgFullName: String,
-    packages: Array[String]
+    packages: Array[String],
+    organizations: Array[Organization]
 ) extends AppState
 
 sealed trait AppMode

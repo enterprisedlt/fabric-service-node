@@ -1,14 +1,14 @@
 package org.enterprisedlt.fabric.service.node.connect
 
-import org.enterprisedlt.fabric.service.node.model.{BootstrapOptions, CreateContractRequest, FabricServiceState, JoinOptions, JoinRequest}
+import org.enterprisedlt.fabric.service.node.model._
 import org.scalajs.dom.ext.Ajax
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 object ServiceNodeRemote {
 
     def getOrganisationFullName: Future[String] = {
@@ -60,11 +60,18 @@ object ServiceNodeRemote {
     }
 
 
-        def createContract(createContractRequest: CreateContractRequest): Future[Unit] = {
-            val json = upickle.default.write(createContractRequest)
-            Ajax.post("/admin/create-contract", json)
-              .map(_ => ())
+    def createContract(createContractRequest: CreateContractRequest): Future[Unit] = {
+        val json = upickle.default.write(createContractRequest)
+        Ajax.post("/admin/create-contract", json)
+          .map(_ => ())
 
-        }
+    }
 
+
+    def listOrganizations: Future[Array[Organization]] = {
+        Ajax
+          .get("/service/list-organizations")
+          .map(_.responseText)
+          .map(r => upickle.default.read[Array[Organization]](r))
+    }
 }
