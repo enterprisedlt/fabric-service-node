@@ -3,6 +3,7 @@ package org.enterprisedlt.fabric.service.node.state
 import japgolly.scalajs.react.vdom.html_<^.VdomTagOf
 import japgolly.scalajs.react.{BackendScope, Callback}
 import org.scalajs.dom.html.Div
+import japgolly.scalajs.react.vdom.html_<^._
 
 import scala.collection.mutable
 
@@ -26,7 +27,12 @@ trait GlobalStateAware[GS, S] {
         updater.forceUpdate
     }
 
-    def render(s: S): VdomTagOf[Div] = renderWithGlobal(s, gs)
+    def render(s: S): VdomTagOf[Div] = {
+        gs match {
+            case null => <.div()
+            case g => renderWithGlobal(s, g)
+        }
+    }
 
     def renderWithGlobal(s: S, g: GS): VdomTagOf[Div]
 }

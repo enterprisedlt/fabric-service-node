@@ -136,6 +136,9 @@ object Boot {
                 case g: GlobalState =>
                     <.div(^.className := "card aut-form-card",
                         <.div(^.className := "card-header text-white bg-primary",
+                            <.div(^.float.right,
+                                <.h5(g.orgFullName)
+                            ),
                             <.h1("Bootstrap new network")
                         ),
                         <.div(^.className := "card-body aut-form-card",

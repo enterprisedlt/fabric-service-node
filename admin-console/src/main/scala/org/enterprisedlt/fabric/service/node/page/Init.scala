@@ -35,10 +35,10 @@ object Init {
                 <.div(
                     <.div(^.className := "card aut-form-card",
                         <.div(^.className := "card-header text-white bg-primary",
-                            <.h1("Initialize fabric service"),
                             <.div(^.float.right,
                                 <.h5(g.orgFullName)
-                            )
+                            ),
+                            <.h1("Initialize fabric service")
                         ),
                         <.div(^.className := "card-body",
                             <.h3("Fabric service is not initialized yet, you can:"),

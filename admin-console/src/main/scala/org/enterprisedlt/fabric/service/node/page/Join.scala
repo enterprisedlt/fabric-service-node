@@ -153,6 +153,9 @@ object Join {
             case g: GlobalState =>
                 <.div(^.className := "card aut-form-card",
                     <.div(^.className := "card-header text-white bg-primary",
+                        <.div(^.float.right,
+                            <.h5(g.orgFullName)
+                        ),
                         <.h1("Join to new network")
                     ),
                     <.hr(),
