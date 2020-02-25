@@ -46,14 +46,6 @@ object Contract {
 
 
         def renderContractPackagesList(s: ContractState, g: GlobalState): VdomTagOf[Select] = {
-            //            $.modState(
-            //                state => state.copy(
-            //                    state.request.copy(
-            //                        contractType = s.chosenPackage.split("-")(0),
-            //                        version = s.chosenPackage.split("-")(1)
-            //                    )
-            //                )
-            //            )
             <.select(className := "form-control",
                 id := "componentType",
                 bind(s) := packageCustomLens,
@@ -82,7 +74,7 @@ object Contract {
 
         def contractPackagesOptions(s: ContractState, g: GlobalState): TagMod = {
             g.packages.map { name =>
-                option((className := "selected"), name)
+                option((className := "selected").when(s.chosenPackage == name), name)
             }.toTagMod
         }
 
