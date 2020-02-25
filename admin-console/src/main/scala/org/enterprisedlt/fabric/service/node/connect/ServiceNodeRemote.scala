@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node.connect
 
-import org.enterprisedlt.fabric.service.node.model.{BootstrapOptions, FabricServiceState, JoinOptions, JoinRequest}
+import org.enterprisedlt.fabric.service.node.model.{BootstrapOptions, CreateContractRequest, FabricServiceState, JoinOptions, JoinRequest}
 import org.scalajs.dom.ext.Ajax
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -60,11 +60,11 @@ object ServiceNodeRemote {
     }
 
 
-    //    def createContract(createContractRequest: CreateContractRequest): Future[Unit] = {
-    //        val json = upickle.default.write(createContractRequest)
-    //        Ajax.post("/admin/create-contract", json)
-    //          .map(_ => ())
-    //
-    //    }
+        def createContract(createContractRequest: CreateContractRequest): Future[Unit] = {
+            val json = upickle.default.write(createContractRequest)
+            Ajax.post("/admin/create-contract", json)
+              .map(_ => ())
+
+        }
 
 }

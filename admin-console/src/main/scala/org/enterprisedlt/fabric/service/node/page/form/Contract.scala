@@ -4,10 +4,11 @@ import cats.Functor
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.all.{VdomTagOf, className, id, option}
 import japgolly.scalajs.react.vdom.html_<^._
-import japgolly.scalajs.react.{BackendScope, CallbackTo, ScalaComponent}
+import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ScalaComponent}
 import monocle.Lens
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
+import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model.{ContractParticipant, CreateContractRequest}
 import org.enterprisedlt.fabric.service.node.state.GlobalStateAware
 import org.scalajs.dom.html.{Div, Select}
@@ -58,6 +59,12 @@ object Contract {
         private val InitArgsState = ContractState.request / CreateContractRequest.initArgs
 
 
+
+        def doCreateContract(s: ContractState): Callback = Callback {
+            ServiceNodeRemote.createContract(s.request)
+        }
+
+
         def renderContractPackagesList(s: ContractState, g: GlobalState): VdomTagOf[Select] = {
             <.select(className := "form-control",
                 id := "componentType",
@@ -99,11 +106,11 @@ object Contract {
 
         def addParticipantComponent(contractState: ContractState): CallbackTo[Unit] = {
             $.modState(
-                addComponentParticipant(contractState) andThen ContractState.participantCandidate.set(ContractState.Defaults.participantCandidate)
+                addParticipant(contractState) andThen ContractState.participantCandidate.set(ContractState.Defaults.participantCandidate)
             )
         }
 
-        private def addComponentParticipant(contractState: ContractState): ContractState => ContractState = {
+        private def addParticipant(contractState: ContractState): ContractState => ContractState = {
             val componentCandidate = contractState.participantCandidate
             ContractParticipantState.modify(_ :+ componentCandidate)
         }
@@ -116,22 +123,24 @@ object Contract {
 
         private def addInitArgsComponent(contractState: ContractState): CallbackTo[Unit] = {
             $.modState(
-                addComponentInitArgs(contractState) andThen ContractState.initArgsCandidate.set(ContractState.Defaults.initArgsCandidate)
+                addInitArgs(contractState) andThen ContractState.initArgsCandidate.set(ContractState.Defaults.initArgsCandidate)
             )
 
         }
 
-
-
-        private def addComponentInitArgs(contractState: ContractState): ContractState => ContractState = {
-            val componentCandidate = contractState.participantCandidate
-            ContractParticipantState.modify(_ :+ componentCandidate)
+        private def addInitArgs(contractState: ContractState): ContractState => ContractState = {
+            val initArgsCandidate = contractState.initArgsCandidate
+            InitArgsState.modify(_ :+ initArgsCandidate)
         }
+
 
         def renderWithGlobal(s: ContractState, global: AppState): VdomTagOf[Div] = global match {
             case g: GlobalState =>
                 <.div(
                     <.h4("Add contract"),
+                    <.div(^.float.right, ^.verticalAlign.`text-top`,
+                        <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> doCreateContract(s), "Add contract")
+                    ),
                     <.span(<.br()),
                     <.div(^.className := "form-group row",
                         <.label(^.`for` := "contractPackages", ^.className := "col-sm-2 col-form-label", "Contract packages"),
@@ -247,7 +256,6 @@ object Contract {
                                 )
                             ))
                     ),
-
                     <.div(^.className := "form-group row",
                         <.label(^.`for` := "port", ^.className := "col-sm-2 col-form-label", "Arg"),
                         <.div(^.className := "col-sm-10",
