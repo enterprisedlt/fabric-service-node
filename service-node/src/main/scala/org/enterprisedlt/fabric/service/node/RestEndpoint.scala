@@ -293,14 +293,14 @@ class RestEndpoint(
                     case "/admin/create-contract" =>
                         logger.info("Creating contract ...")
                         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
-                        val createContrReq = Util.codec.fromJson(request.getReader, classOf[CreateContractRequest])
-                        logger.info(s"createContractRequest =  $createContrReq")
+                        val contractRequest = Util.codec.fromJson(request.getReader, classOf[CreateContractRequest])
+                        logger.info(s"createContractRequest =  $contractRequest")
                         globalState
                           .toRight("Node is not initialized yet")
                           .flatMap { state =>
-                              logger.info(s"[ $organizationFullName ] - Preparing ${createContrReq.name} chain code ...")
-                              val filesBaseName = s"${createContrReq.contractType}-${createContrReq.version}"
-                              val chainCodeName = s"${createContrReq.name}-${createContrReq.version}"
+                              logger.info(s"[ $organizationFullName ] - Preparing ${contractRequest.name} chain code ...")
+                              val filesBaseName = s"${contractRequest.contractType}-${contractRequest.version}"
+                              val chainCodeName = s"${contractRequest.name}-${contractRequest.version}"
                               val deploymentDescriptor = Util.codec.fromJson(new FileReader(s"/opt/profile/chain-code/$filesBaseName.json"), classOf[ContractDeploymentDescriptor])
                               val path = s"/opt/profile/chain-code/$filesBaseName.tgz"
                               for {
@@ -309,44 +309,48 @@ class RestEndpoint(
                                   _ <- {
                                       logger.info(s"[ $organizationFullName ] - Installing $chainCodeName chain code ...")
                                       state.networkManager.installChainCode(
-                                          createContrReq.channelName,
-                                          createContrReq.name,
-                                          createContrReq.contractType,
-                                          createContrReq.version,
-                                          createContrReq.lang,
+                                          contractRequest.channelName,
+                                          contractRequest.name,
+                                          contractRequest.contractType,
+                                          contractRequest.version,
+                                          contractRequest.lang,
                                           chainCodePkg)
                                   }
                                   _ <- {
                                       logger.info(s"[ $organizationFullName ] - Instantiating $chainCodeName chain code ...")
                                       val endorsementPolicy = Util.policyAnyOf(
                                           deploymentDescriptor.endorsement
-                                            .map(r => createContrReq.parties.find(_.role == r).map(_.mspId).get)
+                                            .map(r => contractRequest.parties.find(_.role == r).map(_.mspId).get)
                                       )
                                       val collections = deploymentDescriptor.collections.map { cd =>
                                           PrivateCollectionConfiguration(
                                               name = cd.name,
                                               memberIds = cd.members.map(m =>
-                                                  createContrReq.parties.find(_.role == m).map(_.mspId).get
+                                                  contractRequest.parties.find(_.role == m).map(_.mspId).get
                                               )
                                           )
                                       }
                                       state.networkManager.instantiateChainCode(
-                                          createContrReq.channelName,
-                                          createContrReq.name,
-                                          createContrReq.version,
+                                          contractRequest.channelName,
+                                          contractRequest.name,
+                                          contractRequest.version,
                                           endorsementPolicy = Option(endorsementPolicy),
                                           collectionConfig = Option(Util.createCollectionsConfig(collections)),
-                                          arguments = createContrReq.initArgs
+                                          arguments = contractRequest.initArgs
                                       )
                                   }
                                   response <- {
                                       logger.info(s"Invoking 'createContract' method...")
-                                      val contract = CreateContract(createContrReq.contractType,
-                                          createContrReq.name,
-                                          createContrReq.version,
-                                          createContrReq.parties.map(_.mspId)
+                                      val contract = CreateContract(contractRequest.contractType,
+                                          contractRequest.name,
+                                          contractRequest.version,
+                                          contractRequest.parties.map(_.mspId)
                                       )
-                                      state.networkManager.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "createContract", Util.codec.toJson(contract))
+                                      state.networkManager.invokeChainCode(
+                                          ServiceChannelName,
+                                          ServiceChainCodeName,
+                                          "createContract",
+                                          Util.codec.toJson(contract))
                                   }
                                   result <- Try(response.get()).toEither.left.map(_.getMessage)
                               } yield result

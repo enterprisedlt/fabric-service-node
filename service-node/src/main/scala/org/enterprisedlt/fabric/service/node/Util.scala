@@ -33,6 +33,7 @@ import org.hyperledger.fabric.sdk.{ChaincodeCollectionConfiguration, ChaincodeEn
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 /**
   * @author Alexey Polubelov
@@ -267,7 +268,7 @@ object Util {
 
     def parsePeriod(periodString: String): Period = Period.parse(periodString)
 
-    def getCCLangType(lang: String): Type = Type.values().find(_.toString.contentEquals(lang.toUpperCase)).getOrElse(Type.JAVA)
+    def getCCLangType(lang: String): Type = Try(Type.valueOf(lang.toUpperCase)).toOption.getOrElse(Type.JAVA)
 }
 
 case class PrivateCollectionConfiguration(

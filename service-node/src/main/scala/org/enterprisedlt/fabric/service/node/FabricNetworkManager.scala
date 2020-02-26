@@ -49,7 +49,6 @@ class FabricNetworkManager(
     private val osnByName = TrieMap(bootstrapOsn.name -> bootstrapOsn)
     // ---------------------------------------------------------------------------------------------------------------
     private lazy val systemChannel: Channel = connectToSystemChannel
-
     //
     //
     //
