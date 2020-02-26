@@ -13,8 +13,8 @@ import org.enterprisedlt.fabric.service.node.proto._
 import org.slf4j.LoggerFactory
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object Bootstrap {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -101,7 +101,13 @@ object Bootstrap {
         val chainCodePkg = new BufferedInputStream(new FileInputStream(ServiceChainCodePath))
 
         logger.info(s"[ $organizationFullName ] - Installing service chain code ...")
-        network.installChainCode(ServiceChannelName, ServiceChainCodeName, "1.0.0", chainCodePkg)
+        network.installChainCode(
+            ServiceChannelName,
+            ServiceChainCodeName,
+            ServiceChainCodeType,
+            "1.0.0",
+            "java",
+            chainCodePkg)
 
         //
         state.set(FabricServiceState(FabricServiceState.BootstrapInitializingServiceChainCode))
@@ -139,6 +145,6 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Bootstrap done.")
         state.set(FabricServiceState(FabricServiceState.Ready))
-        GlobalState(network, processManager,bootstrapOptions.network,bootstrapOptions.networkName)
+        GlobalState(network, processManager, bootstrapOptions.network, bootstrapOptions.networkName)
     }
 }

@@ -99,6 +99,7 @@ case class CreateContract(
 case class CreateContractRequest(
     name: String,
     version: String,
+    lang: String,
     contractType: String,
     channelName: String,
     parties: Array[ContractParticipant],

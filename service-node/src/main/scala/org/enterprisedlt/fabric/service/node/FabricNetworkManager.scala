@@ -14,6 +14,7 @@ import org.hyperledger.fabric.protos.common.Configtx
 import org.hyperledger.fabric.protos.common.Configtx.ConfigUpdate
 import org.hyperledger.fabric.protos.common.MspPrincipal.MSPRole
 import org.hyperledger.fabric.protos.ext.orderer.etcdraft.Configuration.Consenter
+import org.hyperledger.fabric.sdk.TransactionRequest.Type
 import org.hyperledger.fabric.sdk.helper.Config
 import org.hyperledger.fabric.sdk.security.CryptoSuite
 import org.hyperledger.fabric.sdk.{BlockEvent, ChannelConfiguration, Peer, _}
@@ -48,6 +49,7 @@ class FabricNetworkManager(
     private val osnByName = TrieMap(bootstrapOsn.name -> bootstrapOsn)
     // ---------------------------------------------------------------------------------------------------------------
     private lazy val systemChannel: Channel = connectToSystemChannel
+
     //
     //
     //
@@ -70,6 +72,12 @@ class FabricNetworkManager(
     //=========================================================================
     def fetchLatestChannelBlock(channelName: String): Either[String, Block] = {
         getChannel(channelName).map(fetchConfigBlock)
+    }
+
+
+    //=========================================================================
+    def fetchChannelBlockByNum(channelName: String, numBlock: Long): Either[String, Block] = {
+        getChannel(channelName).map(_.queryBlockByNumber(numBlock)).map(_.getBlock)
     }
 
     //=========================================================================
@@ -109,24 +117,36 @@ class FabricNetworkManager(
           }
 
     //=========================================================================
-    def installChainCode(channelName: String,
+    def installChainCode(
+        channelName: String,
         chainCodeName: String,
+        contractType: String,
         version: String,
+        lang: String,
         chainCodeTarGzStream: InputStream
     ): Either[String, util.Collection[ProposalResponse]] = {
         getChannel(channelName)
           .map { channel =>
               val installProposal = fabricClient.newInstallProposalRequest()
               val chaincodeID = ChaincodeID.newBuilder()
-                    .setName(chainCodeName)
-                    .setVersion(version)
-                    .build
+                .setName(chainCodeName)
+                .setVersion(version)
+                .build
+
 
               installProposal.setChaincodeID(chaincodeID)
               installProposal.setChaincodeVersion(version)
-              installProposal.setChaincodeLanguage(TransactionRequest.Type.JAVA) // TODO
-              installProposal.setProposalWaitTime(TimeUnit.MINUTES.toMillis(5)) // TODO
+
+              val ccLang: Type = Util.getCCLangType(lang)
+              ccLang match {
+                  case Type.GO_LANG =>
+                      installProposal.setChaincodeLanguage(ccLang)
+                      installProposal.setChaincodePath(contractType)
+                  case _ => installProposal.setChaincodeLanguage(ccLang)
+              }
               installProposal.setChaincodeInputStream(chainCodeTarGzStream)
+              logger.debug(s"installing ${Util.getCCLangType(lang).toString} $chainCodeName chaincode with $version ")
+              installProposal.setProposalWaitTime(TimeUnit.MINUTES.toMillis(5)) // TODO
               //TODO: will install to all known peers in channel, but probably this has to be configurable thru parameters
               fabricClient.sendInstallProposal(installProposal, channel.getPeers)
               // TODO: the results from peers has to be handled?

@@ -28,6 +28,7 @@ import org.hyperledger.fabric.protos.common.MspPrincipal.{MSPPrincipal, MSPRole}
 import org.hyperledger.fabric.protos.common.Policies.{SignaturePolicy, SignaturePolicyEnvelope}
 import org.hyperledger.fabric.protos.ext.orderer.Configuration.ConsensusType
 import org.hyperledger.fabric.protos.ext.orderer.etcdraft.Configuration.ConfigMetadata
+import org.hyperledger.fabric.sdk.TransactionRequest.Type
 import org.hyperledger.fabric.sdk.{ChaincodeCollectionConfiguration, ChaincodeEndorsementPolicy}
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -265,6 +266,8 @@ object Util {
     def futureDate(shift: Period): Date = Date.from(LocalDate.now().plus(shift).atStartOfDay(ZoneOffset.UTC).toInstant)
 
     def parsePeriod(periodString: String): Period = Period.parse(periodString)
+
+    def getCCLangType(lang: String): Type = Type.values().find(_.toString.contentEquals(lang.toUpperCase)).getOrElse(Type.JAVA)
 }
 
 case class PrivateCollectionConfiguration(

@@ -70,7 +70,13 @@ class NetworkMonitor(
 
             logger.info(s"[ $organizationFullName ] - Installing service chain code ...")
             val chainCodeVersion = s"${version.chainCodeVersion}.${version.networkVersion}"
-            network.installChainCode(ServiceChannelName, ServiceChainCodeName, chainCodeVersion, chainCodePkg)
+            network.installChainCode(
+                ServiceChannelName,
+                ServiceChainCodeName,
+                ServiceChainCodeType,
+                chainCodeVersion,
+                "java",
+                chainCodePkg)
 
             // fetch current network version
             logger.info(s"[ $organizationFullName ] - Warming up service chain code ...")
