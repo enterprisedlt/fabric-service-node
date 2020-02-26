@@ -1,5 +1,6 @@
 package org.enterprisedlt.fabric.service.node
 
+import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model.{Organization, Status}
 import org.enterprisedlt.fabric.service.node.state.GlobalStateManager
@@ -68,7 +69,7 @@ sealed trait AppState
 
 case object Initial extends AppState
 
-case class GlobalState(
+@Lenses case class GlobalState(
     mode: AppMode,
     orgFullName: String,
     packages: Array[String],

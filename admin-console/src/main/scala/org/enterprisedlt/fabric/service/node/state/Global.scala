@@ -1,11 +1,11 @@
 package org.enterprisedlt.fabric.service.node.state
 
-import japgolly.scalajs.react.vdom.html_<^.VdomTagOf
+import japgolly.scalajs.react.vdom.html_<^.{VdomTagOf, _}
 import japgolly.scalajs.react.{BackendScope, Callback}
+import monocle.Lens
 import org.scalajs.dom.html.Div
-import japgolly.scalajs.react.vdom.html_<^._
 
-import scala.collection.mutable
+import scala.collection.{IterableLike, mutable}
 import scala.reflect.ClassTag
 
 /**
@@ -35,6 +35,26 @@ trait GlobalStateAware[GS, S] {
     }
 
     def renderWithGlobal(s: S, g: GS): VdomTagOf[Div]
+
+    private val AlwaysTrue: Any => Boolean = _ => true
+
+    implicit class LensesLinks[B, Y](dst: Lens[B, Y]) {
+        def <=[A, X]
+        (src: Lens[A, X])
+          (mapping: X => Y)
+          (conditionX: X => Boolean = AlwaysTrue)
+          (conditionY: Y => Boolean = AlwaysTrue)
+        : (B, A) => B = { (s, g) =>
+            val x = src.get(g)
+            val y = dst.get(s)
+            if (conditionX(x) && conditionY(y)) dst.set(mapping(x))(s)
+            else s
+        }
+    }
+
+    implicit def CFs2CF[X, Y]: Seq[(X, Y) => X] => (X, Y) => X = fs => { (s, gs) =>
+        fs.foldRight(s) { case (f, c) => f(c, gs) }
+    }
 }
 
 class GlobalStateManager[GS](

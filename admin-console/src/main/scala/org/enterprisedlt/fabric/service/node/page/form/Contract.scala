@@ -10,14 +10,14 @@ import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model.{ContractParticipant, CreateContractRequest}
-import org.enterprisedlt.fabric.service.node.state.GlobalStateAware
+import org.enterprisedlt.fabric.service.node.state.{ApplyFor, GlobalStateAware}
 import org.scalajs.dom.html.{Div, Select}
 
 import scala.language.higherKinds
 
 /**
-  * @author Maxim Fedin
-  */
+ * @author Maxim Fedin
+ */
 object Contract {
 
 
@@ -50,26 +50,12 @@ object Contract {
 
     class Backend(val $: BackendScope[Unit, ContractState]) extends FieldBinder[ContractState] with GlobalStateAware[AppState, ContractState] {
 
-
-        override def onGlobalStateUpdate(s: AppState): Unit =
-            s match {
-                case gs: GlobalState =>
-                    $.withEffectsImpure.modState(
-                        setIfEmpty(ContractState.chosenOrganization)(gs.organizations.head.name)(x => x.trim.isEmpty && gs.organizations.headOption.isDefined)
-                    )
-
-                case _ => super.onGlobalStateUpdate(s)
-            }
-
-
-        def setIfEmpty[X, V](l: Lens[X, V])(v: => V)(isEmpty: V => Boolean): X => X = { x =>
-            if (isEmpty(l.get(x))) {
-                l.set(v)(x)
-            } else {
-                x
-            }
-        }
-
+        override def connectLocal: ConnectFunction = ApplyFor(
+            Seq(
+                (ContractState.chosenPackage <= GlobalState.packages) (_.head)(_.nonEmpty)(_.trim.isEmpty),
+                (ContractState.chosenOrganization <= GlobalState.organizations) (_.head.name)(_.nonEmpty)(_.trim.isEmpty)
+            )
+        )
 
         private val ContractParticipantState = ContractState.request / CreateContractRequest.parties
 
