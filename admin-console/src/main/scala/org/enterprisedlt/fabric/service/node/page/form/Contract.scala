@@ -2,8 +2,8 @@ package org.enterprisedlt.fabric.service.node.page.form
 
 import cats.Functor
 import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react.vdom.all.{VdomTagOf, className, id, option}
-import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.vdom.all.{className, id, option}
+import japgolly.scalajs.react.vdom.html_<^.{VdomTagOf, _}
 import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ScalaComponent}
 import monocle.Lens
 import monocle.macros.Lenses
@@ -24,6 +24,7 @@ object Contract {
     @Lenses case class ContractState(
         request: CreateContractRequest,
         chosenPackage: String,
+        chosenOrganization: String,
         participantCandidate: ContractParticipant,
         initArgsCandidate: String
     )
@@ -32,7 +33,7 @@ object Contract {
     object ContractState {
         val Defaults: ContractState = {
             ContractState(
-                CreateContractRequest.Defaults, "",
+                CreateContractRequest.Defaults, "", "",
                 ContractParticipant("", ""),
                 ""
             )
@@ -59,11 +60,24 @@ object Contract {
         private val InitArgsState = ContractState.request / CreateContractRequest.initArgs
 
 
-
         def doCreateContract(s: ContractState): Callback = Callback {
             ServiceNodeRemote.createContract(s.request)
         }
 
+
+        def renderContractOrganizationList(s: ContractState, g: GlobalState): VdomTagOf[Select] = {
+            <.select(className := "form-control",
+                id := "componentType",
+                bind(s) := ContractState.chosenOrganization,
+                contractOrganizationOptions(s, g)
+            )
+        }
+
+        def contractOrganizationOptions(s: ContractState, g: GlobalState): TagMod = {
+            g.organizations.map { organization =>
+                option((className := "selected").when(s.chosenOrganization == organization.mspId), organization.mspId)
+            }.toTagMod
+        }
 
         def renderContractPackagesList(s: ContractState, g: GlobalState): VdomTagOf[Select] = {
             <.select(className := "form-control",
@@ -140,8 +154,8 @@ object Contract {
                     <.h4("Add contract"),
                     <.div(^.className := "form-group row",
                         <.div(^.float.right, ^.verticalAlign.`text-top`,
-                        <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> doCreateContract(s), "Add contract")
-                    )),
+                            <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> doCreateContract(s), "Add contract")
+                        )),
                     <.div(^.className := "form-group row",
                         <.label(^.`for` := "contractPackages", ^.className := "col-sm-2 col-form-label", "Contract packages"),
                         <.div(^.className := "col-sm-10", renderContractPackagesList(s, g))
@@ -181,7 +195,7 @@ object Contract {
                     <.div(^.className := "form-group row",
                         <.label(^.className := "col-sm-2 col-form-label", "Parties"),
                         <.div(^.className := "col-sm-10",
-                            <.table(^.className := "table table-hover table-sm",^.id :="parties",
+                            <.table(^.className := "table table-hover table-sm", ^.id := "parties",
                                 <.thead(
                                     <.tr(
                                         <.th(^.scope := "col", "#"),
@@ -209,10 +223,8 @@ object Contract {
                     ),
                     <.div(^.className := "form-group row",
                         <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "MSP ID"),
-                        <.div(^.className := "col-sm-10",
-                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "mspid",
-                                bind(s) := ContractState.participantCandidate / ContractParticipant.mspId
-                            )
+                        <.div(^.className := "col-sm-10", renderContractOrganizationList(s, g)
+
                         )),
                     <.div(^.className := "form-group row",
                         <.label(^.`for` := "port", ^.className := "col-sm-2 col-form-label", "Role"),
@@ -232,7 +244,7 @@ object Contract {
                     <.div(^.className := "form-group row",
                         <.label(^.className := "col-sm-2 col-form-label", "Init args"),
                         <.div(^.className := "col-sm-10",
-                            <.table(^.className := "table table-hover table-sm",^.id :="initArgs",
+                            <.table(^.className := "table table-hover table-sm", ^.id := "initArgs",
                                 <.thead(
                                     <.tr(
                                         <.th(^.scope := "col", "#"),

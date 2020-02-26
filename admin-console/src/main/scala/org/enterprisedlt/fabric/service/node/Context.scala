@@ -23,6 +23,7 @@ object Context {
                 case sm if sm >= Status.BootProgressStatus.BootstrapStarted && sm <= Status.BootProgressStatus.BootstrapMaxValue =>
                     BootstrapInProgress
                 case sm if sm == Status.Ready =>
+                    Context.fetchUpdate
                     ReadyForUse
             }
             ServiceNodeRemote.getOrganisationFullName.map { orgFullName =>
