@@ -56,31 +56,42 @@ class RestEndpoint(
 
                     case "/service/list-organizations" =>
                         logger.info(s"ListOrganizations ...")
-                        val result =
-                            globalState
-                              .toRight("Node is not initialized yet")
-                              .flatMap { manager =>
-                                  manager.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listOrganizations")
-                                    .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
-                              }
-                              .merge
-                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                        response.getWriter.println(result)
-                        response.setStatus(HttpServletResponse.SC_OK)
+                        globalState
+                          .toRight("Node is not initialized yet")
+                          .flatMap { manager =>
+                              manager.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listOrganizations")
+                                .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
+                          }
+                        match {
+                            case Right(result) =>
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.getWriter.println(result)
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(error) =>
+                                logger.error(error)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+
+                        }
+
 
                     case "/service/list-collections" =>
                         logger.info(s"Collections ...")
-                        val result =
-                            globalState
-                              .toRight("Node is not initialized yet")
-                              .flatMap { state =>
-                                  state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listCollections")
-                                    .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
-                              }
-                              .merge
-                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                        response.getWriter.println(result)
-                        response.setStatus(HttpServletResponse.SC_OK)
+                        globalState
+                          .toRight("Node is not initialized yet")
+                          .flatMap { state =>
+                              state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listCollections")
+                                .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
+                          } match {
+                            case Right(result) =>
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.getWriter.println(result)
+                                response.setStatus(HttpServletResponse.SC_OK)
+
+                            case Left(error) =>
+                                logger.error(error)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
+
 
                     case "/admin/create-invite" =>
                         globalState
