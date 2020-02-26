@@ -52,8 +52,8 @@ object Contract {
 
         override def connectLocal: ConnectFunction = ApplyFor(
             Seq(
-                (ContractState.chosenPackage <= GlobalState.packages) (_.head)(_.nonEmpty)(_.trim.isEmpty),
-                (ContractState.chosenOrganization <= GlobalState.organizations) (_.head.name)(_.nonEmpty)(_.trim.isEmpty)
+                (ContractState.chosenPackage.when(_.trim.isEmpty) <~~ GlobalState.packages.when(_.nonEmpty)) (_.head),
+                (ContractState.chosenOrganization.when(_.trim.isEmpty) <~~ GlobalState.organizations.when(_.nonEmpty)) (_.head.name)
             )
         )
 

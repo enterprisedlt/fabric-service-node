@@ -5,7 +5,7 @@ import japgolly.scalajs.react.{BackendScope, Callback}
 import monocle.Lens
 import org.scalajs.dom.html.Div
 
-import scala.collection.{IterableLike, mutable}
+import scala.collection.mutable
 import scala.reflect.ClassTag
 
 /**
@@ -36,21 +36,46 @@ trait GlobalStateAware[GS, S] {
 
     def renderWithGlobal(s: S, g: GS): VdomTagOf[Div]
 
-    private val AlwaysTrue: Any => Boolean = _ => true
+
+    //
+    // utilities
+    //
 
     implicit class LensesLinks[B, Y](dst: Lens[B, Y]) {
-        def <=[A, X]
-        (src: Lens[A, X])
-          (mapping: X => Y)
-          (conditionX: X => Boolean = AlwaysTrue)
-          (conditionY: Y => Boolean = AlwaysTrue)
-        : (B, A) => B = { (s, g) =>
-            val x = src.get(g)
-            val y = dst.get(s)
-            if (conditionX(x) && conditionY(y)) dst.set(mapping(x))(s)
-            else s
+        // lens + lens
+        def <~~[A, X](src: Lens[A, X])(mapping: X => Y): (B, A) => B = (s, g) => dst.set(mapping(src.get(g)))(s)
+
+        // lens + (lens & condition)
+        def <~~[A, X](source: LensWithCondition[A, X])(mapping: X => Y): (B, A) => B = { (s, g) =>
+            val v = source.lens.get(g)
+            if (source.condition(v)) dst.set(mapping(v))(s) else s
         }
+
+        def when(condition: Y => Boolean): LensWithCondition[B, Y] = LensWithCondition(dst, condition)
+
     }
+
+    implicit class LensWithConditionLinks[B, Y](dest: LensWithCondition[B, Y]) {
+        // (lens & condition) + lens
+        def <~~[A, X](src: Lens[A, X])(mapping: X => Y): (B, A) => B = { (s, g) =>
+            val x = src.get(g)
+            val y = dest.lens.get(s)
+            if (dest.condition(y)) dest.lens.set(mapping(x))(s) else s
+        }
+
+        // (lens & condition) + lens
+        def <~~[A, X](source: LensWithCondition[A, X])(mapping: X => Y): (B, A) => B = { (s, g) =>
+            val x = source.lens.get(g)
+            val y = dest.lens.get(s)
+            if (source.condition(x) && dest.condition(y)) dest.lens.set(mapping(x))(s) else s
+        }
+
+    }
+
+    case class LensWithCondition[A, X](
+        lens: Lens[A, X],
+        condition: X => Boolean
+    )
 
     implicit def CFs2CF[X, Y]: Seq[(X, Y) => X] => (X, Y) => X = fs => { (s, gs) =>
         fs.foldRight(s) { case (f, c) => f(c, gs) }
