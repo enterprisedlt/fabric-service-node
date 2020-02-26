@@ -47,12 +47,28 @@ object Contract {
       .componentDidMount($ => Context.State.connect($.backend))
       .build
 
-    //    def init($: Lifecycle.ComponentDidMount[Unit, ContractState, Backend]): Callback = {
-    //        Context.State.connect($.backend)
-    //        ServiceNodeRemote.listContractPackages
-    //    }
 
     class Backend(val $: BackendScope[Unit, ContractState]) extends FieldBinder[ContractState] with GlobalStateAware[AppState, ContractState] {
+
+
+        override def onGlobalStateUpdate(s: AppState): Unit =
+            s match {
+                case gs: GlobalState =>
+                    $.withEffectsImpure.modState(
+                        setIfEmpty(ContractState.chosenOrganization)(gs.organizations.head.name)(x => x.trim.isEmpty && gs.organizations.headOption.isDefined))
+
+                case _ => super.onGlobalStateUpdate(s)
+
+            }
+
+
+        def setIfEmpty[X, V](l: Lens[X, V])(v: => V)(isEmpty: V => Boolean): X => X = { x =>
+            if (isEmpty(l.get(x))) {
+                l.set(v)(x)
+            } else {
+                x
+            }
+        }
 
 
         private val ContractParticipantState = ContractState.request / CreateContractRequest.parties
