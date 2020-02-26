@@ -70,7 +70,7 @@ object Contract {
         def renderContractOrganizationList(s: ContractState, g: GlobalState): VdomTagOf[Select] = {
             <.select(className := "form-control",
                 id := "componentType",
-                bind(s) := ContractState.chosenOrganization,
+                bind(s) := ContractState.participantCandidate / ContractParticipant.mspId,
                 contractOrganizationOptions(s, g)
             )
         }
