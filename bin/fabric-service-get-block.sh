@@ -17,7 +17,7 @@ curl -k -G --silent --show-error \
 --cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
 --request GET \
 --output "$4" \
-https://${SERVICE_URL}/admin/get-user-key \
+https://${SERVICE_URL}/service/get-block \
 -d channelName={$2:-"service"} \
 -d blockNumber={$3:-"0"}
 
