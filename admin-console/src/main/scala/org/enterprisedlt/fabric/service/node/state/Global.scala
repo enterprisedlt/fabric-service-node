@@ -6,12 +6,15 @@ import org.scalajs.dom.html.Div
 import japgolly.scalajs.react.vdom.html_<^._
 
 import scala.collection.mutable
+import scala.reflect.ClassTag
 
 /**
  * @author Alexey Polubelov
  */
 
 trait GlobalStateAware[GS, S] {
+    type ConnectFunction = (S, GS) => S
+
     def $: BackendScope[_, S]
 
     private lazy val updater = $.withEffectsImpure
@@ -19,8 +22,10 @@ trait GlobalStateAware[GS, S] {
 
     def onGlobalStateUpdate(g: GS): Unit = {
         gs = g
-        updater.forceUpdate
+        updater.modState(s => connectLocal(s, g))
     }
+
+    def connectLocal: ConnectFunction = (s, _) => s
 
     def render(s: S): VdomTagOf[Div] = {
         gs match {
@@ -66,6 +71,16 @@ class GlobalStateManager[GS](
     }
 
     def connect[T <: GlobalStateAware[GS, _]](x: T): Callback = Callback(subscribe(x.onGlobalStateUpdate))
+
     def disconnect[T <: GlobalStateAware[GS, _]](x: T): Callback = Callback(unsubscribe(x.onGlobalStateUpdate))
 }
 
+object ApplyFor {
+
+    def apply[GS, T <: GS : ClassTag, S](f: (S, T) => S): (S, GS) => S = { (s: S, gs: GS) =>
+        gs match {
+            case t: T => f(s, t)
+            case _ => s
+        }
+    }
+}
