@@ -24,7 +24,6 @@ object Contract {
     @Lenses case class ContractState(
         request: CreateContractRequest,
         chosenPackage: String,
-        chosenOrganization: String,
         participantCandidate: ContractParticipant,
         initArgsCandidate: String
     )
@@ -33,7 +32,7 @@ object Contract {
     object ContractState {
         val Defaults: ContractState = {
             ContractState(
-                CreateContractRequest.Defaults, "", "",
+                CreateContractRequest.Defaults, "",
                 ContractParticipant("", ""),
                 ""
             )
@@ -53,7 +52,7 @@ object Contract {
         override def connectLocal: ConnectFunction = ApplyFor(
             Seq(
                 (ContractState.chosenPackage.when(_.trim.isEmpty) <~~ GlobalState.packages.when(_.nonEmpty)) (_.head),
-                (ContractState.chosenOrganization.when(_.trim.isEmpty) <~~ GlobalState.organizations.when(_.nonEmpty)) (_.head.name)
+                ((ContractState.participantCandidate / ContractParticipant.mspId).when(_.trim.isEmpty) <~~ GlobalState.organizations.when(_.nonEmpty)) (_.head.name)
             )
         )
 
@@ -77,7 +76,7 @@ object Contract {
 
         def contractOrganizationOptions(s: ContractState, g: GlobalState): TagMod = {
             g.organizations.map { organization =>
-                option((className := "selected").when(s.chosenOrganization == organization.mspId), organization.mspId)
+                option((className := "selected").when(s.participantCandidate.mspId == organization.mspId), organization.mspId)
             }.toTagMod
         }
 
@@ -162,22 +161,22 @@ object Contract {
                         <.label(^.`for` := "contractPackages", ^.className := "col-sm-2 col-form-label", "Contract packages"),
                         <.div(^.className := "col-sm-10", renderContractPackagesList(s, g))
                     ),
-                    <.div(^.className := "form-group row",
-                        <.label(^.className := "col-sm-2 col-form-label", "Contract Type"),
-                        <.div(^.className := "col-sm-10",
-                            <.input(^.`type` := "text", ^.className := "form-control",
-                                bind(s) := ContractState.request / CreateContractRequest.contractType
-                            )
-                        )
-                    ),
-                    <.div(^.className := "form-group row",
-                        <.label(^.className := "col-sm-2 col-form-label", "Version"),
-                        <.div(^.className := "col-sm-10",
-                            <.input(^.`type` := "text", ^.className := "form-control",
-                                bind(s) := ContractState.request / CreateContractRequest.version
-                            )
-                        )
-                    ),
+//                    <.div(^.className := "form-group row",
+//                        <.label(^.className := "col-sm-2 col-form-label", "Contract Type"),
+//                        <.div(^.className := "col-sm-10",
+//                            <.input(^.`type` := "text", ^.className := "form-control",
+//                                bind(s) := ContractState.request / CreateContractRequest.contractType
+//                            )
+//                        )
+//                    ),
+//                    <.div(^.className := "form-group row",
+//                        <.label(^.className := "col-sm-2 col-form-label", "Version"),
+//                        <.div(^.className := "col-sm-10",
+//                            <.input(^.`type` := "text", ^.className := "form-control",
+//                                bind(s) := ContractState.request / CreateContractRequest.version
+//                            )
+//                        )
+//                    ),
                     <.div(^.className := "form-group row",
                         <.label(^.className := "col-sm-2 col-form-label", "Contract name"),
                         <.div(^.className := "col-sm-10",
