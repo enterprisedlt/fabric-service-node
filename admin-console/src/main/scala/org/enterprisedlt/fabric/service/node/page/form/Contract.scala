@@ -55,10 +55,10 @@ object Contract {
             s match {
                 case gs: GlobalState =>
                     $.withEffectsImpure.modState(
-                        setIfEmpty(ContractState.chosenOrganization)(gs.organizations.head.name)(x => x.trim.isEmpty && gs.organizations.headOption.isDefined))
+                        setIfEmpty(ContractState.chosenOrganization)(gs.organizations.head.name)(x => x.trim.isEmpty && gs.organizations.headOption.isDefined)
+                    )
 
                 case _ => super.onGlobalStateUpdate(s)
-
             }
 
 
