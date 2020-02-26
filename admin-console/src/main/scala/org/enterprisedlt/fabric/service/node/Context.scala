@@ -26,22 +26,34 @@ object Context {
                     ReadyForUse
             }
             ServiceNodeRemote.getOrganisationFullName.map { orgFullName =>
-                ServiceNodeRemote.listContractPackages.map { packages =>
-                    ServiceNodeRemote.listOrganizations.map { organizations =>
-                        State.update { _ =>
-                            GlobalState(
-                                mode = stateMode,
-                                orgFullName = orgFullName,
-                                packages = packages,
-                                organizations = organizations
-                            )
-                        }
-                    }
+                State.update { _ =>
+                    GlobalState(
+                        mode = stateMode,
+                        orgFullName = orgFullName,
+                        packages = Array.empty[String],
+                        organizations = Array.empty[Organization]
+                    )
                 }
             }
         }
     }
 
+
+    def fetchUpdate: Future[Unit] = {
+        for {
+            packages <- ServiceNodeRemote.listContractPackages
+            organizations <- ServiceNodeRemote.listOrganizations
+        } yield {
+            State.update {
+                case gs: GlobalState =>
+                    gs.copy(
+                        packages = packages,
+                        organizations = organizations
+                    )
+                case _ => throw new Exception
+            }
+        }
+    }
 
     def switchModeTo(mode: AppMode): Unit = {
         State.update {
