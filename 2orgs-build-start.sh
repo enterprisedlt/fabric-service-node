@@ -3,9 +3,9 @@
 #
 ./clean-docker.sh
 
-./build.sh
-
-./bin/fabric-service-generate-static-env.sh ./test
+#./build.sh
+#
+#./bin/fabric-service-generate-static-env.sh ./test
 
 # start ORG1
 ./fabric-service-start-dev.sh ./test/org1

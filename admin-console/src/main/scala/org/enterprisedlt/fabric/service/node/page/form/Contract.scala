@@ -238,7 +238,7 @@ object Contract {
                         <.button(
                             ^.className := "btn btn-primary",
                             ^.onClick --> addParticipantComponent(s),
-                            "Add host")
+                            "Add party")
                     ),
 
 
