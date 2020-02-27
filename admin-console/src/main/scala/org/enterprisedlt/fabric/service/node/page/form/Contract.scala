@@ -9,7 +9,7 @@ import monocle.Lens
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
-import org.enterprisedlt.fabric.service.node.model.{ContractJoinRequest, ContractParticipant, CreateContractRequest}
+import org.enterprisedlt.fabric.service.node.model.{Contract, ContractJoinRequest, ContractParticipant, CreateContractRequest}
 import org.enterprisedlt.fabric.service.node.state.{ApplyFor, GlobalStateAware}
 import org.scalajs.dom.html.{Div, Select}
 
@@ -57,6 +57,7 @@ object Contract {
         private val ChoosePackageLens =
             new Lens[ContractState, String] {
                 override def get(s: ContractState): String = s.chosenPackage
+
                 override def set(b: String): ContractState => ContractState = { state =>
                     state.copy(
                         chosenPackage = b,
@@ -124,9 +125,12 @@ object Contract {
             $.modState(state)
         }
 
-        def addParticipantComponent(contractState: ContractState): CallbackTo[Unit] = {
+        def addParticipantComponent(contractState: ContractState, globalState: GlobalState): CallbackTo[Unit] = {
+            val default = ContractParticipant(
+                globalState.organizations.head.mspId,
+                "")
             $.modState(
-                addParticipant(contractState) andThen ContractState.participantCandidate.set(ContractState.Defaults.participantCandidate)
+                addParticipant(contractState) andThen ContractState.participantCandidate.set(default)
             )
         }
 
@@ -154,8 +158,12 @@ object Contract {
         }
 
 
-        def joinContract(s: ContractState): Callback = Callback {
-            ServiceNodeRemote.contractJoin(s.joinContractRequest)
+        def joinContract(contract: Contract): Callback = Callback {
+            ServiceNodeRemote.contractJoin(
+                ContractJoinRequest(
+                    contract.name,
+                    contract.founder)
+            )
         }
 
         def renderWithGlobal(s: ContractState, global: AppState): VdomTagOf[Div] = global match {
@@ -189,7 +197,7 @@ object Contract {
                                         <.button(
                                             ^.className := "btn btn-primary",
                                             "Join contract",
-                                            ^.onClick --> joinContract(s)
+                                            ^.onClick --> joinContract(contract)
                                         )
                                     )
                                 )
@@ -265,7 +273,7 @@ object Contract {
                     <.div(^.className := "form-group row",
                         <.button(
                             ^.className := "btn btn-primary",
-                            ^.onClick --> addParticipantComponent(s),
+                            ^.onClick --> addParticipantComponent(s, g),
                             "Add party")
                     ),
 
