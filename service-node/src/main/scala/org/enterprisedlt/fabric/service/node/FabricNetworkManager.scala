@@ -119,7 +119,6 @@ class FabricNetworkManager(
     def installChainCode(
         channelName: String,
         chainCodeName: String,
-        contractType: String,
         version: String,
         lang: String,
         chainCodeTarGzStream: InputStream
@@ -140,7 +139,7 @@ class FabricNetworkManager(
               ccLang match {
                   case Type.GO_LANG =>
                       installProposal.setChaincodeLanguage(ccLang)
-                      installProposal.setChaincodePath(contractType)
+                      installProposal.setChaincodePath(chainCodeName)
                   case _ => installProposal.setChaincodeLanguage(ccLang)
               }
               installProposal.setChaincodeInputStream(chainCodeTarGzStream)

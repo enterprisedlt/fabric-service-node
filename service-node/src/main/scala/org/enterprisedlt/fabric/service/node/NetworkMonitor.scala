@@ -73,7 +73,6 @@ class NetworkMonitor(
             network.installChainCode(
                 ServiceChannelName,
                 ServiceChainCodeName,
-                ServiceChainCodeType,
                 chainCodeVersion,
                 "java",
                 chainCodePkg)

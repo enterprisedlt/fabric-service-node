@@ -104,7 +104,6 @@ object Bootstrap {
         network.installChainCode(
             ServiceChannelName,
             ServiceChainCodeName,
-            ServiceChainCodeType,
             "1.0.0",
             "java",
             chainCodePkg)

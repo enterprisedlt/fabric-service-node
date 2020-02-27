@@ -145,7 +145,6 @@ object Join {
         network.installChainCode(
             ServiceChannelName,
             ServiceChainCodeName,
-            ServiceChainCodeType,
             joinResponse.version,
             "java",
             chainCodePkg)
@@ -206,7 +205,6 @@ object Join {
             state.networkManager.installChainCode(
                 ServiceChannelName,
                 ServiceChainCodeName,
-                ServiceChainCodeType,
                 nextVersion,
                 "java",
                 chainCodePkg)

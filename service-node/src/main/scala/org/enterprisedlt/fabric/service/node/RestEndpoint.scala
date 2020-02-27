@@ -311,7 +311,6 @@ class RestEndpoint(
                                       state.networkManager.installChainCode(
                                           contractRequest.channelName,
                                           contractRequest.name,
-                                          contractRequest.contractType,
                                           contractRequest.version,
                                           contractRequest.lang,
                                           chainCodePkg)
@@ -392,7 +391,6 @@ class RestEndpoint(
                                       state.networkManager.installChainCode(
                                           ServiceChannelName,
                                           contractDetails.chainCodeName,
-                                          contractDetails.name,
                                           contractDetails.chainCodeVersion,
                                           "java",
                                           chainCodePkg)
