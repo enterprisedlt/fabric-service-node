@@ -24,7 +24,6 @@ object Contract {
         createContractRequest: CreateContractRequest,
         joinContractRequest: ContractJoinRequest,
         chosenPackage: String,
-        chosenLanguage: String,
         participantCandidate: ContractParticipant,
         initArgsCandidate: String
     )
@@ -35,7 +34,6 @@ object Contract {
             ContractState(
                 CreateContractRequest.Defaults,
                 ContractJoinRequest.Defaults,
-                "",
                 "",
                 ContractParticipant("", ""),
                 ""
@@ -80,7 +78,6 @@ object Contract {
 
         private val LangState = ContractState.createContractRequest / CreateContractRequest.lang
 
-        private val ChaincodeLanguages = Seq("java", "scala", "go", "node")
 
         override def connectLocal: ConnectFunction = ApplyFor(
             Seq(
@@ -127,8 +124,8 @@ object Contract {
         }
 
         def languageOptions(s: ContractState): TagMod = {
-            ChaincodeLanguages.map { language =>
-                option((className := "selected").when(ChaincodeLanguages.head == language), language)
+            CreateContractRequest.ChaincodeLanguages.map { language =>
+                option((className := "selected").when(s.createContractRequest.lang == language), language)
             }.toTagMod
         }
 

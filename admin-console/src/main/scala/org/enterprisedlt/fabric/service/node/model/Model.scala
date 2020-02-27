@@ -223,7 +223,7 @@ object CreateContractRequest {
     val Defaults: CreateContractRequest = CreateContractRequest(
         name = "",
         version = "",
-        lang = "",
+        lang = "java",
         contractType = "",
         channelName = "",
         parties = Array.empty[ContractParticipant],
@@ -231,6 +231,7 @@ object CreateContractRequest {
     )
 
     implicit val rw: RW[CreateContractRequest] = macroRW
+    val ChaincodeLanguages = Seq("java", "scala", "go", "node")
 
 }
 
