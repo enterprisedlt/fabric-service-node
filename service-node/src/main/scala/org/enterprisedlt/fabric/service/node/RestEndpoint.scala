@@ -382,41 +382,40 @@ class RestEndpoint(
                         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
                         val joinReq = Util.codec.fromJson(request.getReader, classOf[ContractJoinRequest])
                         logger.info(s"joinReq is $joinReq")
-                        globalState
-                          .toRight("Node is not initialized yet")
-                          .flatMap { state =>
-                              for {
-                                  queryResult <- {
-                                      state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getContract", joinReq.name, joinReq.founder)
-                                        .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getContract method in system chain-code"))
-                                  }
-                                  contractDetails <- {
-                                      logger.debug(s"queryResult is $queryResult")
-                                      Option(Util.codec.fromJson(queryResult, classOf[Contract])).filter(_ != null).toRight(s"Can't parse response from getContract")
-                                  }
-                                  file <- {
-                                      val path = s"/opt/profile/chain-code/${contractDetails.chainCodeName}-${contractDetails.chainCodeVersion}.tgz"
-                                      Option(new File(path)).filter(_.exists()).toRight(s"File  doesn't exist ")
-                                  }
-                                  _ <- {
-                                      val chainCodePkg = new BufferedInputStream(new FileInputStream(file))
-                                      logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
-                                      state.networkManager.installChainCode(ServiceChannelName, contractDetails.chainCodeName, contractDetails.chainCodeVersion, chainCodePkg)
-                                  }
-                              } yield {
-                                  state.networkManager.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
-                              } match {
-                                  case Right(invokeResult) =>
-                                      invokeResult.get()
-                                      response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
-                                      response.getWriter.println(invokeResult)
-                                      response.setStatus(HttpServletResponse.SC_OK)
-                                  case Left(err) =>
-                                      response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
-                                      response.getWriter.println(err)
-                                      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                              }
-                          }
+                        for {
+                            state <- globalState.toRight("Node is not initialized yet")
+                            queryResult <- {
+                                logger.info(s"Querying chaincode with getContract...")
+                                state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getContract", joinReq.name, joinReq.founder)
+                                  .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getContract method in system chain-code"))
+                            }
+                            contractDetails <- {
+                                logger.info(s"queryResult is $queryResult")
+                                Option(Util.codec.fromJson(queryResult, classOf[Contract])).filter(_ != null).toRight(s"Can't parse response from getContract")
+                            }
+                            file <- {
+                                val path = s"/opt/profile/chain-code/${contractDetails.chainCodeName}-${contractDetails.chainCodeVersion}.tgz"
+                                Option(new File(path)).filter(_.exists()).toRight(s"File  doesn't exist ")
+                            }
+                            _ <- {
+                                val chainCodePkg = new BufferedInputStream(new FileInputStream(file))
+                                logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
+                                state.networkManager.installChainCode(ServiceChannelName, contractDetails.chainCodeName, contractDetails.chainCodeVersion, chainCodePkg)
+                            }
+                        } yield {
+                            state.networkManager.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
+                        } match {
+                            case Right(invokeResult) =>
+                                invokeResult.get()
+                                logger.info(s"invokeResult is $invokeResult ...")
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                response.getWriter.println(invokeResult)
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(err) =>
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                response.getWriter.println(err)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
 
 
                     case "/service/send-message" =>
