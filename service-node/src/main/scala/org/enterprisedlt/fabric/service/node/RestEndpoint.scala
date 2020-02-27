@@ -402,19 +402,16 @@ class RestEndpoint(
                                 logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
                                 state.networkManager.installChainCode(ServiceChannelName, contractDetails.chainCodeName, contractDetails.chainCodeVersion, chainCodePkg)
                             }
-                        } yield {
-                            state.networkManager.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
-                        } match {
-                            case Right(invokeResult) =>
-                                invokeResult.get()
-                                logger.info(s"invokeResult is $invokeResult ...")
-                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
-                                response.getWriter.println(invokeResult)
-                                response.setStatus(HttpServletResponse.SC_OK)
-                            case Left(err) =>
+                            invokeResult <- state.networkManager.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
+                            invokeAwait <- Try(invokeResult.get()).toEither.left.map { err =>
                                 response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
                                 response.getWriter.println(err)
                                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                            }
+                        } yield {
+                            response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                            response.getWriter.println(invokeAwait)
+                            response.setStatus(HttpServletResponse.SC_OK)
                         }
 
 
