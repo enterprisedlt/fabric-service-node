@@ -382,11 +382,12 @@ class RestEndpoint(
                         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
                         val joinReq = Util.codec.fromJson(request.getReader, classOf[ContractJoinRequest])
                         logger.info(s"joinReq is $joinReq")
-                        for {
+                        val result = for {
                             state <- globalState.toRight("Node is not initialized yet")
+                            network = state.networkManager
                             queryResult <- {
                                 logger.info(s"Querying chaincode with getContract...")
-                                state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getContract", joinReq.name, joinReq.founder)
+                                network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getContract", joinReq.name, joinReq.founder)
                                   .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getContract method in system chain-code"))
                             }
                             contractDetails <- {
@@ -400,18 +401,21 @@ class RestEndpoint(
                             _ <- {
                                 val chainCodePkg = new BufferedInputStream(new FileInputStream(file))
                                 logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
-                                state.networkManager.installChainCode(ServiceChannelName, contractDetails.chainCodeName, contractDetails.chainCodeVersion, chainCodePkg)
+                                network.installChainCode(ServiceChannelName, contractDetails.chainCodeName, contractDetails.chainCodeVersion, chainCodePkg)
                             }
-                            invokeResult <- state.networkManager.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
-                            invokeAwait <- Try(invokeResult.get()).toEither.left.map { err =>
+                            invokeResultFuture <- network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
+                            invokeResult <- Try(invokeResultFuture.get()).toEither.left.map(_.getMessage)
+                        } yield invokeResult
+                        result match {
+                            case Right(invokeAwait) =>
+                                logger.info(s"invokeResult is $invokeAwait ...")
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                response.getWriter.println(invokeAwait)
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(err) =>
                                 response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
                                 response.getWriter.println(err)
                                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                            }
-                        } yield {
-                            response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
-                            response.getWriter.println(invokeAwait)
-                            response.setStatus(HttpServletResponse.SC_OK)
                         }
 
 
