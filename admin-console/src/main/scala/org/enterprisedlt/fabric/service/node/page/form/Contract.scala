@@ -198,7 +198,7 @@ object Contract {
                                             ^.className := "btn btn-primary",
                                             "Join contract",
                                             ^.onClick --> joinContract(contract)
-                                        )
+                                        ).when(contract.founder != g.mspId)
                                     )
                                 )
                             }.toTagMod

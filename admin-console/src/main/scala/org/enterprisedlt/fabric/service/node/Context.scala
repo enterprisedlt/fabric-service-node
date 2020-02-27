@@ -28,14 +28,17 @@ object Context {
                     ReadyForUse
             }
             ServiceNodeRemote.getOrganisationFullName.map { orgFullName =>
-                State.update { _ =>
-                    GlobalState(
-                        mode = stateMode,
-                        orgFullName = orgFullName,
-                        packages = Array.empty[String],
-                        organizations = Array.empty[Organization],
-                        contracts = Array.empty[Contract]
-                    )
+                ServiceNodeRemote.getOrganisationMspId.map { mspId =>
+                    State.update { _ =>
+                        GlobalState(
+                            mode = stateMode,
+                            orgFullName = orgFullName,
+                            mspId = mspId,
+                            packages = Array.empty[String],
+                            organizations = Array.empty[Organization],
+                            contracts = Array.empty[Contract]
+                        )
+                    }
                 }
             }
         }
@@ -75,6 +78,7 @@ case object Initial extends AppState
 @Lenses case class GlobalState(
     mode: AppMode,
     orgFullName: String,
+    mspId: String,
     packages: Array[String],
     organizations: Array[Organization],
     contracts: Array[Contract]

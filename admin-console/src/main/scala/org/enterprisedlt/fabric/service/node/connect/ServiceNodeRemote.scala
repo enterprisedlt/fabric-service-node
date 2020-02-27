@@ -18,6 +18,14 @@ object ServiceNodeRemote {
           .map(r => upickle.default.read[String](r))
     }
 
+    def getOrganisationMspId: Future[String] = {
+        Ajax
+          .get("/service/organization-msp-id")
+          .map(_.responseText)
+          .map(r => upickle.default.read[String](r))
+    }
+
+
     def getServiceState: Future[FabricServiceState] = {
         Ajax
           .get("/service/state")
