@@ -384,6 +384,7 @@ class RestEndpoint(
                                       logger.info(s"Invoking 'createContract' method...")
                                       val contract = CreateContract(
                                           contractRequest.name,
+                                          contractRequest.lang,
                                           contractRequest.contractType,
                                           contractRequest.version,
                                           contractRequest.parties.map(_.mspId)

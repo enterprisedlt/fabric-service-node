@@ -248,6 +248,7 @@ object ContractParticipant {
 
 @Lenses case class Contract(
     name: String,
+    lang: String,
     chainCodeName: String,
     chainCodeVersion: String,
     founder: String,

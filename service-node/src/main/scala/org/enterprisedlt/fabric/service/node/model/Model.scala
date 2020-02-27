@@ -92,6 +92,7 @@ case class ContractCollectionDescriptor(
 
 case class CreateContract(
     name: String,
+    lang: String,
     chainCodeName: String,
     chainCodeVersion: String,
     participants: Array[String]

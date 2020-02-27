@@ -10,6 +10,7 @@ import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model.{Contract, ContractJoinRequest, ContractParticipant, CreateContractRequest}
 import org.enterprisedlt.fabric.service.node.state.{ApplyFor, GlobalStateAware}
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
+import org.enterprisedlt.fabric.service.node.util.Util
 import org.scalajs.dom.html.{Div, Select}
 
 import scala.language.higherKinds
@@ -207,10 +208,11 @@ object Contract {
                                     <.td(^.scope := "row", s"${index + 1}"),
                                     <.td(contract.name),
                                     <.td(contract.chainCodeName),
+                                    <.td(contract.lang),
                                     <.td(contract.chainCodeVersion),
                                     <.td(contract.founder),
                                     <.td(contract.participants.mkString(" ")),
-                                    <.td(contract.timestamp),
+                                    <.td(Util.mkDate(contract.timestamp)),
                                     <.td(
                                         <.button(
                                             ^.className := "btn btn-primary",
