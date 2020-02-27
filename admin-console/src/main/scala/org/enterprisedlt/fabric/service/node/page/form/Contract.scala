@@ -9,7 +9,7 @@ import monocle.Lens
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
-import org.enterprisedlt.fabric.service.node.model.{ContractParticipant, CreateContractRequest}
+import org.enterprisedlt.fabric.service.node.model.{Contract, ContractParticipant, CreateContractRequest}
 import org.enterprisedlt.fabric.service.node.state.{ApplyFor, GlobalStateAware}
 import org.scalajs.dom.html.{Div, Select}
 
@@ -24,6 +24,7 @@ object Contract {
     @Lenses case class ContractState(
         request: CreateContractRequest,
         chosenPackage: String,
+        chosenContract: String,
         participantCandidate: ContractParticipant,
         initArgsCandidate: String
     )
@@ -33,6 +34,7 @@ object Contract {
         val Defaults: ContractState = {
             ContractState(
                 CreateContractRequest.Defaults,
+                "",
                 "",
                 ContractParticipant("", ""),
                 ""
@@ -88,6 +90,7 @@ object Contract {
                 contractPackagesOptions(s, g)
             )
         }
+
 
         private def packageCustomLens(g: GlobalState) =
             new Lens[ContractState, String] {
@@ -150,9 +153,47 @@ object Contract {
         }
 
 
+        def joinContract(contract: Contract): Callback = ???
+
         def renderWithGlobal(s: ContractState, global: AppState): VdomTagOf[Div] = global match {
             case g: GlobalState =>
                 <.div(
+                    <.h4("Contracts"),
+                    <.table(^.className := "table table-hover table-sm", ^.id := "initArgs",
+                        <.thead(
+                            <.tr(
+                                <.th(^.scope := "col", "#"),
+                                <.th(^.scope := "col", "Contract Name"),
+                                <.th(^.scope := "col", "Chaincode name"),
+                                <.th(^.scope := "col", "Chaincode version"),
+                                <.th(^.scope := "col", "Chaincode founder"),
+                                <.th(^.scope := "col", "Participants"),
+                                <.th(^.scope := "col", "Date of creation"),
+                                <.th(^.scope := "col", "Actions")
+                            )
+                        ),
+                        <.tbody(
+                            g.contracts.zipWithIndex.map { case (contract, index) =>
+                                <.tr(
+                                    <.td(^.scope := "row", s"${index + 1}"),
+                                    <.td(contract.name),
+                                    <.td(contract.chainCodeName),
+                                    <.td(contract.chainCodeVersion),
+                                    <.td(contract.founder),
+                                    <.td(contract.participants.mkString(" ")),
+                                    <.td(contract.timestamp),
+                                    <.td(
+                                        <.button(
+                                            ^.className := "btn btn-primary",
+                                            "Join contract",
+                                            ^.onClick --> joinContract(contract)
+                                        )
+                                    )
+                                )
+                            }.toTagMod
+                        )
+                    ),
+
                     <.h4("Add contract"),
                     <.div(^.className := "form-group row",
                         <.div(^.float.right, ^.verticalAlign.`text-top`,
@@ -226,7 +267,6 @@ object Contract {
                     <.div(^.className := "form-group row",
                         <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "MSP ID"),
                         <.div(^.className := "col-sm-10", renderContractOrganizationList(s, g)
-
                         )),
                     <.div(^.className := "form-group row",
                         <.label(^.`for` := "port", ^.className := "col-sm-2 col-form-label", "Role"),
