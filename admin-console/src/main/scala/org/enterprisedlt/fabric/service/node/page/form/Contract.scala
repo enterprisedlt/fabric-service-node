@@ -15,8 +15,8 @@ import org.scalajs.dom.html.{Div, Select}
 import scala.language.higherKinds
 
 /**
- * @author Maxim Fedin
- */
+  * @author Maxim Fedin
+  */
 object Contract {
 
 
@@ -24,7 +24,7 @@ object Contract {
         createContractRequest: CreateContractRequest,
         joinContractRequest: ContractJoinRequest,
         chosenPackage: String,
-        chosenContract: String,
+        chosenLanguage: String,
         participantCandidate: ContractParticipant,
         initArgsCandidate: String
     )
@@ -77,6 +77,11 @@ object Contract {
 
         private val InitArgsState = ContractState.createContractRequest / CreateContractRequest.initArgs
 
+
+        private val LangState = ContractState.createContractRequest / CreateContractRequest.lang
+
+        private val ChaincodeLanguages = Seq("java", "scala", "go", "node")
+
         override def connectLocal: ConnectFunction = ApplyFor(
             Seq(
                 (ChoosePackageLens.when(_.trim.isEmpty) <~~ GlobalState.packages.when(_.nonEmpty)) (_.head),
@@ -112,6 +117,20 @@ object Contract {
             )
         }
 
+        def renderLanguageOptions(s: ContractState): VdomTagOf[Select] = {
+            <.select(className := "form-control",
+                id := "componentType",
+                bind(s) := LangState,
+                languageOptions(s)
+            )
+
+        }
+
+        def languageOptions(s: ContractState): TagMod = {
+            ChaincodeLanguages.map { language =>
+                option((className := "selected").when(ChaincodeLanguages.head == language), language)
+            }.toTagMod
+        }
 
         def contractPackagesOptions(s: ContractState, g: GlobalState): TagMod = {
             g.packages.map { name =>
@@ -166,6 +185,7 @@ object Contract {
             )
         }
 
+
         def renderWithGlobal(s: ContractState, global: AppState): VdomTagOf[Div] = global match {
             case g: GlobalState =>
                 <.div(
@@ -176,6 +196,7 @@ object Contract {
                                 <.th(^.scope := "col", "#"),
                                 <.th(^.scope := "col", "Contract Name"),
                                 <.th(^.scope := "col", "Chaincode name"),
+                                <.th(^.scope := "col", "Chaincode language"),
                                 <.th(^.scope := "col", "Chaincode version"),
                                 <.th(^.scope := "col", "Chaincode founder"),
                                 <.th(^.scope := "col", "Participants"),
@@ -213,6 +234,10 @@ object Contract {
                     <.div(^.className := "form-group row",
                         <.label(^.`for` := "contractPackages", ^.className := "col-sm-2 col-form-label", "Contract packages"),
                         <.div(^.className := "col-sm-10", renderContractPackagesList(s, g))
+                    ),
+                    <.div(^.className := "form-group row",
+                        <.label(^.className := "col-sm-2 col-form-label", "Contract language"),
+                        <.div(^.className := "col-sm-10", renderLanguageOptions(s))
                     ),
                     <.div(^.className := "form-group row",
                         <.label(^.className := "col-sm-2 col-form-label", "Contract name"),

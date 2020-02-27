@@ -211,6 +211,7 @@ object OrganizationCertificates {
 @Lenses case class CreateContractRequest(
     name: String,
     version: String,
+    lang: String,
     contractType: String,
     channelName: String,
     parties: Array[ContractParticipant],
@@ -222,6 +223,7 @@ object CreateContractRequest {
     val Defaults: CreateContractRequest = CreateContractRequest(
         name = "",
         version = "",
+        lang = "",
         contractType = "",
         channelName = "",
         parties = Array.empty[ContractParticipant],

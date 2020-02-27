@@ -331,12 +331,11 @@ class RestEndpoint(
                         logger.info(s"Joined ($end ms)")
                         response.setStatus(HttpServletResponse.SC_OK)
 
-
                     case "/admin/create-contract" =>
                         logger.info("Creating contract ...")
                         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
-                        val createContractRequest = Util.codec.fromJson(request.getReader, classOf[CreateContractRequest])
-                        logger.info(s"createContractRequest =  $createContractRequest")
+                        val contractRequest = Util.codec.fromJson(request.getReader, classOf[CreateContractRequest])
+                        logger.info(s"createContractRequest =  $contractRequest")
                         globalState
                           .toRight("Node is not initialized yet")
                           .flatMap { state =>
