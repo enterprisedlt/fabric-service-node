@@ -7,7 +7,7 @@ import java.util.concurrent.{CompletableFuture, TimeUnit}
 
 import com.google.protobuf.ByteString
 import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, OrganizationConfig, PeerConfig}
-import org.enterprisedlt.fabric.service.node.model.JoinRequest
+import org.enterprisedlt.fabric.service.node.model.{CCLanguage, JoinRequest}
 import org.enterprisedlt.fabric.service.node.proto._
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
 import org.hyperledger.fabric.protos.common.Configtx
@@ -72,6 +72,12 @@ class FabricNetworkManager(
         getChannel(channelName).map(fetchConfigBlock)
     }
 
+
+    //=========================================================================
+    def fetchChannelBlockByNum(channelName: String, numBlock: Long): Either[String, Block] = {
+        getChannel(channelName).map(_.queryBlockByNumber(numBlock)).map(_.getBlock)
+    }
+
     //=========================================================================
     def fetchLatestSystemBlock: Block = {
         fetchConfigBlock(systemChannel)
@@ -109,27 +115,47 @@ class FabricNetworkManager(
           }
 
     //=========================================================================
-    def installChainCode(channelName: String,
+    def installChainCode(
+        channelName: String,
         chainCodeName: String,
         version: String,
+        lang: String,
         chainCodeTarGzStream: InputStream
     ): Either[String, util.Collection[ProposalResponse]] = {
         getChannel(channelName)
-          .map { channel =>
+          .flatMap { channel =>
               val installProposal = fabricClient.newInstallProposalRequest()
               val chaincodeID = ChaincodeID.newBuilder()
-                    .setName(chainCodeName)
-                    .setVersion(version)
-                    .build
+                .setName(chainCodeName)
+                .setVersion(version)
+                .build
 
               installProposal.setChaincodeID(chaincodeID)
               installProposal.setChaincodeVersion(version)
-              installProposal.setChaincodeLanguage(TransactionRequest.Type.JAVA) // TODO
-              installProposal.setProposalWaitTime(TimeUnit.MINUTES.toMillis(5)) // TODO
-              installProposal.setChaincodeInputStream(chainCodeTarGzStream)
-              //TODO: will install to all known peers in channel, but probably this has to be configurable thru parameters
-              fabricClient.sendInstallProposal(installProposal, channel.getPeers)
-              // TODO: the results from peers has to be handled?
+
+              val ccLangSet = lang match {
+                  case CCLanguage.GoLang(goType) =>
+                      installProposal.setChaincodeLanguage(goType)
+                      installProposal.setChaincodePath(chainCodeName)
+                      Right(())
+
+                  case CCLanguage.JVM(jvmType) =>
+                      installProposal.setChaincodeLanguage(jvmType)
+                      Right(())
+
+                  case CCLanguage.NodeJS(nodeType) =>
+                      installProposal.setChaincodeLanguage(nodeType)
+                      Right(())
+
+                  case _ => Left(s"Wrong cc lang type")
+              }
+              ccLangSet.map { _ =>
+                  installProposal.setChaincodeInputStream(chainCodeTarGzStream)
+                  logger.debug(s"installing $chainCodeName chaincode with $version ")
+                  installProposal.setProposalWaitTime(TimeUnit.MINUTES.toMillis(5)) // TODO
+                  //TODO: will install to all known peers in channel, but probably this has to be configurable thru parameters
+                  fabricClient.sendInstallProposal(installProposal, channel.getPeers)
+              }
           }
     }
 
@@ -138,13 +164,14 @@ class FabricNetworkManager(
         channelName: String,
         chainCodeName: String,
         version: String,
+        lang: String,
         endorsementPolicy: Option[ChaincodeEndorsementPolicy] = None,
         collectionConfig: Option[ChaincodeCollectionConfiguration] = None,
         arguments: Array[String] = Array.empty
     ): Either[String, BlockEvent#TransactionEvent] = {
         getChannel(channelName)
           .flatMap { channel =>
-              val instantiateProposalRequest = fabricClient.newInstantiationProposalRequest
+              val instantiateProposalRequest: InstantiateProposalRequest = fabricClient.newInstantiationProposalRequest
               val chaincodeID =
                   ChaincodeID.newBuilder()
                     .setName(chainCodeName)
@@ -152,7 +179,21 @@ class FabricNetworkManager(
                     .build
               instantiateProposalRequest.setChaincodeID(chaincodeID)
               instantiateProposalRequest.setChaincodeVersion(version)
-              instantiateProposalRequest.setChaincodeLanguage(TransactionRequest.Type.JAVA) // TODO
+              val ccLangSet = lang match {
+                  case CCLanguage.GoLang(goType) =>
+                      instantiateProposalRequest.setChaincodeLanguage(goType)
+                      Right(())
+
+                  case CCLanguage.JVM(jvmType) =>
+                      instantiateProposalRequest.setChaincodeLanguage(jvmType)
+                      Right(())
+
+                  case CCLanguage.NodeJS(nodeType) =>
+                      instantiateProposalRequest.setChaincodeLanguage(nodeType)
+                      Right(())
+
+                  case _ => Left(s"Wrong cc lang type")
+              }
               instantiateProposalRequest.setProposalWaitTime(TimeUnit.MINUTES.toMillis(5)) // TODO
 
               instantiateProposalRequest.setFcn("init")

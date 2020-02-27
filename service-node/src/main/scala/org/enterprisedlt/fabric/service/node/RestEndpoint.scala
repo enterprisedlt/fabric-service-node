@@ -162,6 +162,27 @@ class RestEndpoint(
                               }
                           }
 
+                    case "/service/get-block" =>
+                        val channelName = request.getParameter("channelName")
+                        val blockNumber: Long = request.getParameter("blockNumber").toLong
+                        logger.info(s"Getting block number $blockNumber ...")
+                        globalState
+                          .toRight("Node is not initialized yet")
+                          .map { state =>
+                              state.networkManager.fetchChannelBlockByNum(channelName, blockNumber) match {
+                                  case Right(block) =>
+                                      val out = response.getOutputStream
+                                      block.writeTo(out)
+                                      response.setStatus(HttpServletResponse.SC_OK)
+                                      response.setContentType(ContentType.APPLICATION_OCTET_STREAM.getMimeType)
+                                      out.flush()
+                                  case Left(errorMsg) =>
+                                      response.getWriter.println(errorMsg)
+                                      response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                              }
+                          }
+
                     case "/service/list-messages" =>
                         logger.info(s"Querying messages for ${organizationConfig.name}...")
                         val result =
@@ -319,9 +340,9 @@ class RestEndpoint(
                         globalState
                           .toRight("Node is not initialized yet")
                           .flatMap { state =>
-                              logger.info(s"[ $organizationFullName ] - Preparing ${createContractRequest.name} chain code ...")
-                              val filesBaseName = s"${createContractRequest.contractType}-${createContractRequest.version}"
-                              val chainCodeName = s"${createContractRequest.name}-${createContractRequest.version}"
+                              logger.info(s"[ $organizationFullName ] - Preparing ${contractRequest.name} chain code ...")
+                              val filesBaseName = s"${contractRequest.contractType}-${contractRequest.version}"
+                              val chainCodeName = s"${contractRequest.name}-${contractRequest.version}"
                               val deploymentDescriptor = Util.codec.fromJson(new FileReader(s"/opt/profile/chain-code/$filesBaseName.json"), classOf[ContractDeploymentDescriptor])
                               val path = s"/opt/profile/chain-code/$filesBaseName.tgz"
                               for {
@@ -329,40 +350,50 @@ class RestEndpoint(
                                   chainCodePkg <- Option(new BufferedInputStream(new FileInputStream(file))).toRight(s"Can't prepare cc pkg stream")
                                   _ <- {
                                       logger.info(s"[ $organizationFullName ] - Installing $chainCodeName chain code ...")
-                                      state.networkManager.installChainCode(createContractRequest.channelName, createContractRequest.name, createContractRequest.version, chainCodePkg)
+                                      state.networkManager.installChainCode(
+                                          contractRequest.channelName,
+                                          contractRequest.name,
+                                          contractRequest.version,
+                                          contractRequest.lang,
+                                          chainCodePkg)
                                   }
                                   _ <- {
                                       logger.info(s"[ $organizationFullName ] - Instantiating $chainCodeName chain code ...")
                                       val endorsementPolicy = Util.policyAnyOf(
                                           deploymentDescriptor.endorsement
-                                            .map(r => createContractRequest.parties.find(_.role == r).map(_.mspId).get)
+                                            .map(r => contractRequest.parties.find(_.role == r).map(_.mspId).get)
                                       )
                                       val collections = deploymentDescriptor.collections.map { cd =>
                                           PrivateCollectionConfiguration(
                                               name = cd.name,
                                               memberIds = cd.members.map(m =>
-                                                  createContractRequest.parties.find(_.role == m).map(_.mspId).get
+                                                  contractRequest.parties.find(_.role == m).map(_.mspId).get
                                               )
                                           )
                                       }
                                       state.networkManager.instantiateChainCode(
-                                          createContractRequest.channelName,
-                                          createContractRequest.name,
-                                          createContractRequest.version,
+                                          contractRequest.channelName,
+                                          contractRequest.name,
+                                          contractRequest.version,
+                                          contractRequest.lang,
                                           endorsementPolicy = Option(endorsementPolicy),
                                           collectionConfig = Option(Util.createCollectionsConfig(collections)),
-                                          arguments = createContractRequest.initArgs
+                                          arguments = contractRequest.initArgs
                                       )
                                   }
                                   response <- {
                                       logger.info(s"Invoking 'createContract' method...")
                                       val contract = CreateContract(
-                                          createContractRequest.name,
-                                          createContractRequest.contractType,
-                                          createContractRequest.version,
-                                          createContractRequest.parties.map(_.mspId)
+                                          contractRequest.name,
+                                          contractRequest.contractType,
+                                          contractRequest.version,
+                                          contractRequest.parties.map(_.mspId)
                                       )
-                                      state.networkManager.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "createContract", Util.codec.toJson(contract))
+                                      state.networkManager.invokeChainCode(
+                                          ServiceChannelName,
+                                          ServiceChainCodeName,
+                                          "createContract",
+                                          Util.codec.toJson(contract))
                                   }
                                   result <- Try(response.get()).toEither.left.map(_.getMessage)
                               } yield result
@@ -401,7 +432,12 @@ class RestEndpoint(
                             _ <- {
                                 val chainCodePkg = new BufferedInputStream(new FileInputStream(file))
                                 logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
-                                network.installChainCode(ServiceChannelName, contractDetails.chainCodeName, contractDetails.chainCodeVersion, chainCodePkg)
+                                      network.installChainCode(
+                                          ServiceChannelName,
+                                          contractDetails.chainCodeName,
+                                          contractDetails.chainCodeVersion,
+                                          "java",
+                                          chainCodePkg)
                             }
                             invokeResultFuture <- network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
                             invokeResult <- Try(invokeResultFuture.get()).toEither.left.map(_.getMessage)
