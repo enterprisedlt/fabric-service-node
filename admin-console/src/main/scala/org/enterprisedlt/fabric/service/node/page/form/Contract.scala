@@ -32,7 +32,8 @@ object Contract {
     object ContractState {
         val Defaults: ContractState = {
             ContractState(
-                CreateContractRequest.Defaults, "",
+                CreateContractRequest.Defaults,
+                "",
                 ContractParticipant("", ""),
                 ""
             )
@@ -282,8 +283,6 @@ object Contract {
                             ^.onClick --> addInitArgsComponent(s),
                             "Add arg")
                     )
-
-
                 )
             case _ => <.div()
 
