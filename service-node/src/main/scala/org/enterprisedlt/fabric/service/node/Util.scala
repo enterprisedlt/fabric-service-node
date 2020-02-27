@@ -28,12 +28,10 @@ import org.hyperledger.fabric.protos.common.MspPrincipal.{MSPPrincipal, MSPRole}
 import org.hyperledger.fabric.protos.common.Policies.{SignaturePolicy, SignaturePolicyEnvelope}
 import org.hyperledger.fabric.protos.ext.orderer.Configuration.ConsensusType
 import org.hyperledger.fabric.protos.ext.orderer.etcdraft.Configuration.ConfigMetadata
-import org.hyperledger.fabric.sdk.TransactionRequest.Type
 import org.hyperledger.fabric.sdk.{ChaincodeCollectionConfiguration, ChaincodeEndorsementPolicy}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.JavaConverters._
-import scala.util.Try
 
 /**
   * @author Alexey Polubelov
@@ -268,7 +266,6 @@ object Util {
 
     def parsePeriod(periodString: String): Period = Period.parse(periodString)
 
-    def getCCLangType(lang: String): Type = Try(Type.valueOf(lang.toUpperCase)).toOption.getOrElse(Type.JAVA)
 }
 
 case class PrivateCollectionConfiguration(

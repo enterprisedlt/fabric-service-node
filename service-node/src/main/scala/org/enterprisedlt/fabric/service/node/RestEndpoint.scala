@@ -333,6 +333,7 @@ class RestEndpoint(
                                           contractRequest.channelName,
                                           contractRequest.name,
                                           contractRequest.version,
+                                          contractRequest.lang,
                                           endorsementPolicy = Option(endorsementPolicy),
                                           collectionConfig = Option(Util.createCollectionsConfig(collections)),
                                           arguments = contractRequest.initArgs

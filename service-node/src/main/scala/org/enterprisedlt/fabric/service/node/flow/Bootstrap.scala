@@ -131,7 +131,8 @@ object Bootstrap {
 
         network.instantiateChainCode(
             ServiceChannelName, ServiceChainCodeName,
-            "1.0.0", // {chainCodeVersion}.{networkVersion}
+            "1.0.0", // {chainCodeVersion}.{networkVersion},
+            "java",
             arguments = Array(
                 Util.codec.toJson(organization),
                 Util.codec.toJson(serviceVersion)
