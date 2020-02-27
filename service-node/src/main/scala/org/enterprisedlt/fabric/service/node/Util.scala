@@ -265,6 +265,7 @@ object Util {
     def futureDate(shift: Period): Date = Date.from(LocalDate.now().plus(shift).atStartOfDay(ZoneOffset.UTC).toInstant)
 
     def parsePeriod(periodString: String): Period = Period.parse(periodString)
+
 }
 
 case class PrivateCollectionConfiguration(

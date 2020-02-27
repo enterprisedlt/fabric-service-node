@@ -3,6 +3,7 @@ package org.enterprisedlt.fabric.service.node.model
 import java.util.{Map => JavaMap}
 
 import org.enterprisedlt.fabric.service.model.Organization
+import org.hyperledger.fabric.sdk.TransactionRequest.Type
 
 case class CreateChannelRequest(
     name: String
@@ -99,6 +100,7 @@ case class CreateContract(
 case class CreateContractRequest(
     name: String,
     version: String,
+    lang: String,
     contractType: String,
     channelName: String,
     parties: Array[ContractParticipant],
@@ -131,8 +133,30 @@ case class OrganizationCertificates(
 
 )
 
-
 case class OsnCertificates(
     clientTlsCert: String,
     serverTlsCert: String
 )
+
+object CCLanguage {
+
+    object GoLang {
+        def unapply(arg: String): Option[Type] = Option(arg).filter { name =>
+            name.equalsIgnoreCase("GO") || name.equalsIgnoreCase("GO_LANG")
+        }.map(_ => Type.GO_LANG)
+    }
+
+    object JVM {
+        def unapply(arg: String): Option[Type] = Option(arg).filter { name =>
+            name.equalsIgnoreCase("JAVA") || name.equalsIgnoreCase("SCALA")
+        }.map(_ => Type.JAVA)
+    }
+
+    object NodeJS {
+        def unapply(arg: String): Option[Type] = Option(arg).filter { name =>
+            name.equalsIgnoreCase("NODE")
+        }.map(_ => Type.NODE)
+    }
+
+}
+

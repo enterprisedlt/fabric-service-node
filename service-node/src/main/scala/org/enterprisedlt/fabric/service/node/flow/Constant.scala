@@ -8,5 +8,6 @@ object Constant {
     val SystemChannelName = "system-channel"
     val ServiceChannelName = "service"
     val ServiceChainCodeName = "service"
+    val ServiceChainCodeType = "service"
     val ServiceChainCodePath = "/opt/service/service-chain-code.tgz"
 }
