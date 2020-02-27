@@ -356,8 +356,9 @@ class RestEndpoint(
                                   }
                                   response <- {
                                       logger.info(s"Invoking 'createContract' method...")
-                                      val contract = CreateContract(createContractRequest.contractType,
+                                      val contract = CreateContract(
                                           createContractRequest.name,
+                                          createContractRequest.contractType,
                                           createContractRequest.version,
                                           createContractRequest.parties.map(_.mspId)
                                       )
