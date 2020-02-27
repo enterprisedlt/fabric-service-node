@@ -121,7 +121,7 @@ class FabricNetworkManager(
         version: String,
         lang: String,
         chainCodeTarGzStream: InputStream
-    ): Either[String, String] = {
+    ): Either[String, util.Collection[ProposalResponse]] = {
         getChannel(channelName)
           .flatMap { channel =>
               val installProposal = fabricClient.newInstallProposalRequest()
@@ -154,7 +154,7 @@ class FabricNetworkManager(
                   logger.debug(s"installing $chainCodeName chaincode with $version ")
                   installProposal.setProposalWaitTime(TimeUnit.MINUTES.toMillis(5)) // TODO
                   //TODO: will install to all known peers in channel, but probably this has to be configurable thru parameters
-                  fabricClient.sendInstallProposal(installProposal, channel.getPeers).asScala.head.getProposalResponse.getResponse.getMessage
+                  fabricClient.sendInstallProposal(installProposal, channel.getPeers)
               }
           }
     }
