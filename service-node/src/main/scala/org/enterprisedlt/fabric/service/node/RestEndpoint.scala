@@ -192,17 +192,23 @@ class RestEndpoint(
 
                     case "/service/list-contracts" =>
                         logger.info(s"Querying contracts for ${organizationConfig.name}...")
-                        val result =
-                            globalState
-                              .toRight("Node is not initialized yet")
-                              .flatMap { state =>
-                                  state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContracts")
-                                    .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
-                              }
-                              .merge
-                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                        response.getWriter.println(result)
-                        response.setStatus(HttpServletResponse.SC_OK)
+
+                        globalState
+                          .toRight("Node is not initialized yet")
+                          .flatMap { state =>
+                              state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContracts")
+                                .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
+                          } match {
+                            case Right(result) =>
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.getWriter.println(result)
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(errorMsg) =>
+                                response.getWriter.println(errorMsg)
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
+
 
                     case "/admin/list-contract-packages" =>
                         logger.info("Listing contract packages...")
