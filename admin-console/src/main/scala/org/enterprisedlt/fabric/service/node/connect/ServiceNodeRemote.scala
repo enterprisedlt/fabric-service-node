@@ -86,7 +86,7 @@ object ServiceNodeRemote {
 
     def contractJoin(contractJoinRequest: ContractJoinRequest): Future[String] = {
         val json = upickle.default.write(contractJoinRequest)
-        Ajax.post("/admin/create-contract", json)
+        Ajax.post("/admin/contract-join", json)
           .map(_.responseText)
     }
 
