@@ -9,20 +9,21 @@ import monocle.Lens
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
-import org.enterprisedlt.fabric.service.node.model.{Contract, ContractParticipant, CreateContractRequest}
+import org.enterprisedlt.fabric.service.node.model.{ContractJoinRequest, ContractParticipant, CreateContractRequest}
 import org.enterprisedlt.fabric.service.node.state.{ApplyFor, GlobalStateAware}
 import org.scalajs.dom.html.{Div, Select}
 
 import scala.language.higherKinds
 
 /**
- * @author Maxim Fedin
- */
+  * @author Maxim Fedin
+  */
 object Contract {
 
 
     @Lenses case class ContractState(
-        request: CreateContractRequest,
+        createContractRequest: CreateContractRequest,
+        joinContractRequest: ContractJoinRequest,
         chosenPackage: String,
         chosenContract: String,
         participantCandidate: ContractParticipant,
@@ -34,6 +35,7 @@ object Contract {
         val Defaults: ContractState = {
             ContractState(
                 CreateContractRequest.Defaults,
+                ContractJoinRequest.Defaults,
                 "",
                 "",
                 ContractParticipant("", ""),
@@ -59,13 +61,13 @@ object Contract {
             )
         )
 
-        private val ContractParticipantState = ContractState.request / CreateContractRequest.parties
+        private val ContractParticipantState = ContractState.createContractRequest / CreateContractRequest.parties
 
-        private val InitArgsState = ContractState.request / CreateContractRequest.initArgs
+        private val InitArgsState = ContractState.createContractRequest / CreateContractRequest.initArgs
 
 
         def doCreateContract(s: ContractState): Callback = Callback {
-            ServiceNodeRemote.createContract(s.request)
+            ServiceNodeRemote.createContract(s.createContractRequest)
         }
 
 
@@ -99,7 +101,7 @@ object Contract {
                 override def set(b: String): ContractState => ContractState = { state =>
                     state.copy(
                         chosenPackage = b,
-                        request = state.request.copy(
+                        createContractRequest = state.createContractRequest.copy(
                             contractType = b.split("-")(0),
                             version = b.split("-")(1)
                         )
@@ -153,7 +155,9 @@ object Contract {
         }
 
 
-        def joinContract(contract: Contract): Callback = ???
+        def joinContract(s: ContractState): Callback = Callback {
+            ServiceNodeRemote.contractJoin(s.joinContractRequest)
+        }
 
         def renderWithGlobal(s: ContractState, global: AppState): VdomTagOf[Div] = global match {
             case g: GlobalState =>
@@ -186,7 +190,7 @@ object Contract {
                                         <.button(
                                             ^.className := "btn btn-primary",
                                             "Join contract",
-                                            ^.onClick --> joinContract(contract)
+                                            ^.onClick --> joinContract(s)
                                         )
                                     )
                                 )
@@ -203,27 +207,11 @@ object Contract {
                         <.label(^.`for` := "contractPackages", ^.className := "col-sm-2 col-form-label", "Contract packages"),
                         <.div(^.className := "col-sm-10", renderContractPackagesList(s, g))
                     ),
-//                    <.div(^.className := "form-group row",
-//                        <.label(^.className := "col-sm-2 col-form-label", "Contract Type"),
-//                        <.div(^.className := "col-sm-10",
-//                            <.input(^.`type` := "text", ^.className := "form-control",
-//                                bind(s) := ContractState.request / CreateContractRequest.contractType
-//                            )
-//                        )
-//                    ),
-//                    <.div(^.className := "form-group row",
-//                        <.label(^.className := "col-sm-2 col-form-label", "Version"),
-//                        <.div(^.className := "col-sm-10",
-//                            <.input(^.`type` := "text", ^.className := "form-control",
-//                                bind(s) := ContractState.request / CreateContractRequest.version
-//                            )
-//                        )
-//                    ),
                     <.div(^.className := "form-group row",
                         <.label(^.className := "col-sm-2 col-form-label", "Contract name"),
                         <.div(^.className := "col-sm-10",
                             <.input(^.`type` := "text", ^.className := "form-control",
-                                bind(s) := ContractState.request / CreateContractRequest.name
+                                bind(s) := ContractState.createContractRequest / CreateContractRequest.name
                             )
                         )
                     ),
@@ -231,7 +219,7 @@ object Contract {
                         <.label(^.className := "col-sm-2 col-form-label", "Channel name"),
                         <.div(^.className := "col-sm-10",
                             <.input(^.`type` := "text", ^.className := "form-control",
-                                bind(s) := ContractState.request / CreateContractRequest.channelName
+                                bind(s) := ContractState.createContractRequest / CreateContractRequest.channelName
                             )
                         )
                     ),
@@ -248,7 +236,7 @@ object Contract {
                                     )
                                 ),
                                 <.tbody(
-                                    s.request.parties.zipWithIndex.map { case (party, index) =>
+                                    s.createContractRequest.parties.zipWithIndex.map { case (party, index) =>
                                         <.tr(
                                             <.td(^.scope := "row", s"${index + 1}"),
                                             <.td(party.mspId),
@@ -294,7 +282,7 @@ object Contract {
                                     )
                                 ),
                                 <.tbody(
-                                    s.request.initArgs.zipWithIndex.map { case (arg, index) =>
+                                    s.createContractRequest.initArgs.zipWithIndex.map { case (arg, index) =>
                                         <.tr(
                                             <.td(^.scope := "row", s"${index + 1}"),
                                             <.td(arg),

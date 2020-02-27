@@ -255,3 +255,19 @@ object ContractParticipant {
 object Contract {
     implicit val rw: RW[Contract] = macroRW
 }
+
+
+@Lenses case class ContractJoinRequest(
+    name: String,
+    founder: String
+)
+
+object ContractJoinRequest {
+
+    val Defaults: ContractJoinRequest = ContractJoinRequest(
+        name = "",
+        founder = ""
+    )
+
+    implicit val rw: RW[ContractJoinRequest] = macroRW
+}

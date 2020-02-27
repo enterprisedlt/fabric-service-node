@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node.connect
 
-import org.enterprisedlt.fabric.service.node.model._
+import org.enterprisedlt.fabric.service.node.model.{ContractJoinRequest, _}
 import org.scalajs.dom.ext.Ajax
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -82,4 +82,12 @@ object ServiceNodeRemote {
           .map(_.responseText)
           .map(r => upickle.default.read[Array[Contract]](r))
     }
+
+
+    def contractJoin(contractJoinRequest: ContractJoinRequest): Future[String] = {
+        val json = upickle.default.write(contractJoinRequest)
+        Ajax.post("/admin/create-contract", json)
+          .map(_.responseText)
+    }
+
 }
