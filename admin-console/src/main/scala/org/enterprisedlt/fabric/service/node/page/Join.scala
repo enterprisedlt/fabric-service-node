@@ -11,6 +11,7 @@ import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.state.GlobalStateAware
 import org.scalajs.dom.html.{Div, Select}
 import org.scalajs.dom.raw.{File, FileReader}
+import org.enterprisedlt.fabric.service.node.util.DataFunction._
 
 /**
  * @author Maxim Fedin

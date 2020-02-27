@@ -10,6 +10,7 @@ import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.state.GlobalStateAware
 import org.scalajs.dom.html.{Div, Select}
+import org.enterprisedlt.fabric.service.node.util.DataFunction._
 
 /**
  * @author Alexey Polubelov

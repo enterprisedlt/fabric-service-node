@@ -18,7 +18,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
 import scala.util.Try
-
+import org.enterprisedlt.fabric.service.node.util.DataFunction._
 
 /**
  * @author Maxim Fedin

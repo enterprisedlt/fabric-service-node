@@ -1,23 +1,22 @@
 package org.enterprisedlt.fabric.service.node.page.form
 
-import cats.Functor
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.all.{className, id, option}
 import japgolly.scalajs.react.vdom.html_<^.{VdomTagOf, _}
 import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ScalaComponent}
-import monocle.Lens
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model.{Contract, ContractJoinRequest, ContractParticipant, CreateContractRequest}
 import org.enterprisedlt.fabric.service.node.state.{ApplyFor, GlobalStateAware}
+import org.enterprisedlt.fabric.service.node.util.DataFunction._
 import org.scalajs.dom.html.{Div, Select}
 
 import scala.language.higherKinds
 
 /**
-  * @author Maxim Fedin
-  */
+ * @author Maxim Fedin
+ */
 object Contract {
 
 
@@ -55,22 +54,23 @@ object Contract {
     class Backend(val $: BackendScope[Unit, ContractState]) extends FieldBinder[ContractState] with GlobalStateAware[AppState, ContractState] {
 
         private val ChoosePackageLens =
-            new Lens[ContractState, String] {
+            new GetSetModifyFunctions[ContractState, String] {
                 override def get(s: ContractState): String = s.chosenPackage
 
                 override def set(b: String): ContractState => ContractState = { state =>
+                    val Array(ct, cv) = b.split("-")
                     state.copy(
                         chosenPackage = b,
                         createContractRequest = state.createContractRequest.copy(
-                            contractType = b.split("-")(0),
-                            version = b.split("-")(1)
+                            contractType = ct,
+                            version = cv
                         )
                     )
                 }
 
-                override def modifyF[F[_]](f: String => F[String])(s: ContractState)(implicit evidence$1: Functor[F]): F[ContractState] = ???
-
-                override def modify(f: String => String): ContractState => ContractState = ???
+                override def modify(mf: String => String): ContractState => ContractState = { state =>
+                    set(mf(state.chosenPackage))(state)
+                }
             }
 
         private val ContractParticipantState = ContractState.createContractRequest / CreateContractRequest.parties
