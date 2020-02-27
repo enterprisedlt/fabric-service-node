@@ -74,4 +74,12 @@ object ServiceNodeRemote {
           .map(_.responseText)
           .map(r => upickle.default.read[Array[Organization]](r))
     }
+
+
+    def listContracts: Future[Array[Contract]] = {
+        Ajax
+          .get("/service/list-contracts")
+          .map(_.responseText)
+          .map(r => upickle.default.read[Array[Contract]](r))
+    }
 }

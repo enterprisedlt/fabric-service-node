@@ -241,3 +241,17 @@ object CreateContractRequest {
 object ContractParticipant {
     implicit val rw: RW[ContractParticipant] = macroRW
 }
+
+
+@Lenses case class Contract(
+    name: String,
+    chainCodeName: String,
+    chainCodeVersion: String,
+    founder: String,
+    participants: Array[String],
+    timestamp: Long
+)
+
+object Contract {
+    implicit val rw: RW[Contract] = macroRW
+}

@@ -24,12 +24,12 @@ object AdminConsole {
             <.div(
                 global match {
                     case Initial => loadingScreen
-                    case GlobalState(InitMode, _, _, _) => Init()
-                    case GlobalState(BootstrapMode, _, _, _) => Boot()
-                    case GlobalState(JoinMode, _, _, _) => Join()
-                    case GlobalState(BootstrapInProgress, _, _, _) => BootProgress()
-                    case GlobalState(JoinInProgress, _, _, _) => JoinProgress()
-                    case GlobalState(ReadyForUse, _, _, _) => Dashboard()
+                    case GlobalState(InitMode, _, _, _,_) => Init()
+                    case GlobalState(BootstrapMode, _, _, _,_) => Boot()
+                    case GlobalState(JoinMode, _, _, _,_) => Join()
+                    case GlobalState(BootstrapInProgress, _, _, _,_) => BootProgress()
+                    case GlobalState(JoinInProgress, _, _, _,_) => JoinProgress()
+                    case GlobalState(ReadyForUse, _, _, _,_) => Dashboard()
                 }
             )
     }

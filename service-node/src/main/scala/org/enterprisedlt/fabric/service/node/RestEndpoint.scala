@@ -192,7 +192,6 @@ class RestEndpoint(
 
                     case "/service/list-contracts" =>
                         logger.info(s"Querying contracts for ${organizationConfig.name}...")
-
                         globalState
                           .toRight("Node is not initialized yet")
                           .flatMap { state =>

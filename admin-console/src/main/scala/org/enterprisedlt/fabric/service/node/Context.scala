@@ -2,7 +2,7 @@ package org.enterprisedlt.fabric.service.node
 
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
-import org.enterprisedlt.fabric.service.node.model.{Organization, Status}
+import org.enterprisedlt.fabric.service.node.model.{Contract, Organization, Status}
 import org.enterprisedlt.fabric.service.node.state.GlobalStateManager
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -33,7 +33,8 @@ object Context {
                         mode = stateMode,
                         orgFullName = orgFullName,
                         packages = Array.empty[String],
-                        organizations = Array.empty[Organization]
+                        organizations = Array.empty[Organization],
+                        contracts = Array.empty[Contract]
                     )
                 }
             }
@@ -45,12 +46,14 @@ object Context {
         for {
             packages <- ServiceNodeRemote.listContractPackages
             organizations <- ServiceNodeRemote.listOrganizations
+            contracts <- ServiceNodeRemote.listContracts
         } yield {
             State.update {
                 case gs: GlobalState =>
                     gs.copy(
                         packages = packages,
-                        organizations = organizations
+                        organizations = organizations,
+                        contracts = contracts
                     )
                 case _ => throw new Exception
             }
@@ -73,7 +76,8 @@ case object Initial extends AppState
     mode: AppMode,
     orgFullName: String,
     packages: Array[String],
-    organizations: Array[Organization]
+    organizations: Array[Organization],
+    contracts: Array[Contract]
 ) extends AppState
 
 sealed trait AppMode
