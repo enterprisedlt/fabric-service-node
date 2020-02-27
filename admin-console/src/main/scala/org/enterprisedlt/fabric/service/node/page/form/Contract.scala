@@ -54,16 +54,34 @@ object Contract {
 
     class Backend(val $: BackendScope[Unit, ContractState]) extends FieldBinder[ContractState] with GlobalStateAware[AppState, ContractState] {
 
-        override def connectLocal: ConnectFunction = ApplyFor(
-            Seq(
-                (ContractState.chosenPackage.when(_.trim.isEmpty) <~~ GlobalState.packages.when(_.nonEmpty)) (_.head),
-                ((ContractState.participantCandidate / ContractParticipant.mspId).when(_.trim.isEmpty) <~~ GlobalState.organizations.when(_.nonEmpty)) (_.head.name)
-            )
-        )
+        private val ChoosePackageLens =
+            new Lens[ContractState, String] {
+                override def get(s: ContractState): String = s.chosenPackage
+                override def set(b: String): ContractState => ContractState = { state =>
+                    state.copy(
+                        chosenPackage = b,
+                        createContractRequest = state.createContractRequest.copy(
+                            contractType = b.split("-")(0),
+                            version = b.split("-")(1)
+                        )
+                    )
+                }
+
+                override def modifyF[F[_]](f: String => F[String])(s: ContractState)(implicit evidence$1: Functor[F]): F[ContractState] = ???
+
+                override def modify(f: String => String): ContractState => ContractState = ???
+            }
 
         private val ContractParticipantState = ContractState.createContractRequest / CreateContractRequest.parties
 
         private val InitArgsState = ContractState.createContractRequest / CreateContractRequest.initArgs
+
+        override def connectLocal: ConnectFunction = ApplyFor(
+            Seq(
+                (ChoosePackageLens.when(_.trim.isEmpty) <~~ GlobalState.packages.when(_.nonEmpty)) (_.head),
+                ((ContractState.participantCandidate / ContractParticipant.mspId).when(_.trim.isEmpty) <~~ GlobalState.organizations.when(_.nonEmpty)) (_.head.name)
+            )
+        )
 
 
         def doCreateContract(s: ContractState): Callback = Callback {
@@ -88,30 +106,11 @@ object Contract {
         def renderContractPackagesList(s: ContractState, g: GlobalState): VdomTagOf[Select] = {
             <.select(className := "form-control",
                 id := "componentType",
-                bind(s) := packageCustomLens(g),
+                bind(s) := ChoosePackageLens,
                 contractPackagesOptions(s, g)
             )
         }
 
-
-        private def packageCustomLens(g: GlobalState) =
-            new Lens[ContractState, String] {
-                override def get(s: ContractState): String = Option(s.chosenPackage).filter(_.nonEmpty).orElse(g.packages.headOption).getOrElse("")
-
-                override def set(b: String): ContractState => ContractState = { state =>
-                    state.copy(
-                        chosenPackage = b,
-                        createContractRequest = state.createContractRequest.copy(
-                            contractType = b.split("-")(0),
-                            version = b.split("-")(1)
-                        )
-                    )
-                }
-
-                override def modifyF[F[_]](f: String => F[String])(s: ContractState)(implicit evidence$1: Functor[F]): F[ContractState] = ???
-
-                override def modify(f: String => String): ContractState => ContractState = ???
-            }
 
         def contractPackagesOptions(s: ContractState, g: GlobalState): TagMod = {
             g.packages.map { name =>
