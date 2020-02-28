@@ -25,8 +25,8 @@ import scala.util.Try
 
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 class FabricNetworkManager(
     organization: OrganizationConfig,
     bootstrapOsn: OSNConfig,
@@ -46,24 +46,31 @@ class FabricNetworkManager(
 
     private val peerByName = TrieMap.empty[String, PeerConfig]
     private val osnByName = TrieMap(bootstrapOsn.name -> bootstrapOsn)
+    private val channels = TrieMap.empty[String, Channel]
+
     // ---------------------------------------------------------------------------------------------------------------
     private lazy val systemChannel: Channel = connectToSystemChannel
     //
     //
     //
+    def getChannelNames: Array[String] = channels.keys.toArray
     //=========================================================================
     def createChannel(channelName: String, channelTx: Envelope): Either[String, String] = {
         val bootstrapOsnName = mkOSN(bootstrapOsn)
         val chCfg = new ChannelConfiguration(channelTx.toByteArray)
         val sign = fabricClient.getChannelConfigurationSignature(chCfg, admin)
-        Try(fabricClient.newChannel(channelName, bootstrapOsnName, chCfg, sign).getName)
-          .toEither.left.map(_.getMessage)
+        Try {
+            val channel = fabricClient.newChannel(channelName, bootstrapOsnName, chCfg, sign)
+            channels += channelName -> channel
+            channel.getName
+        }.toEither.left.map(_.getMessage)
     }
 
     //=========================================================================
     def defineChannel(channelName: String): Unit = {
         val bootstrapOsnName = mkOSN(bootstrapOsn)
         val channel = fabricClient.newChannel(channelName)
+        channels += channelName -> channel
         channel.addOrderer(bootstrapOsnName)
     }
 
