@@ -23,7 +23,7 @@ object Context {
             mspId <- ServiceNodeRemote.getOrganisationMspId
         } yield {
             State.update { _ =>
-                val (packages, channels, organizations, contracts) = states.getOrElse((Array.empty[String],Array.empty[String],  Array.empty[Organization], Array.empty[Contract]))
+                val (packages, channels, organizations, contracts) = states.getOrElse((Array.empty[String], Array.empty[String], Array.empty[Organization], Array.empty[Contract]))
                 GlobalState(
                     mode = stateMode,
                     orgFullName = orgFullName,
