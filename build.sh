@@ -17,12 +17,4 @@ pushd ./target/assembly/ || exit
 popd || exit
 
 # bundle admin console:
-pushd admin-console || exit
-    npm install
-    au build --env prod
-popd || exit
-
-mkdir ./target/assembly/admin-console
-cp ./admin-console/index.html ./target/assembly/admin-console/
-cp ./admin-console/favicon.ico ./target/assembly/admin-console/
-cp -r ./admin-console/scripts ./target/assembly/admin-console/scripts
+./build-webapp.sh

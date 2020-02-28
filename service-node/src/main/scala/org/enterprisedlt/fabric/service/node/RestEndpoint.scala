@@ -22,8 +22,8 @@ import org.slf4j.LoggerFactory
 import scala.util.Try
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 class RestEndpoint(
     bindPort: Int,
     externalAddress: Option[ExternalAddress],
@@ -56,31 +56,42 @@ class RestEndpoint(
 
                     case "/service/list-organizations" =>
                         logger.info(s"ListOrganizations ...")
-                        val result =
-                            globalState
-                              .toRight("Node is not initialized yet")
-                              .flatMap { manager =>
-                                  manager.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listOrganizations")
-                                    .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
-                              }
-                              .merge
-                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                        response.getWriter.println(result)
-                        response.setStatus(HttpServletResponse.SC_OK)
+                        val result = for {
+                            state <- globalState.toRight("Node is not initialized yet")
+                            network = state.networkManager
+                            organization <- network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listOrganizations")
+                            res <- organization.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
+                        } yield res
+                        result match {
+                            case Right(result) =>
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.getWriter.println(result)
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(error) =>
+                                logger.error(error)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+
+                        }
 
                     case "/service/list-collections" =>
-                        logger.info(s"Collections ...")
-                        val result =
-                            globalState
-                              .toRight("Node is not initialized yet")
-                              .flatMap { state =>
-                                  state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listCollections")
-                                    .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
-                              }
-                              .merge
-                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                        response.getWriter.println(result)
-                        response.setStatus(HttpServletResponse.SC_OK)
+                        logger.info(s"ListCollections ...")
+                        val result = for {
+                            state <- globalState.toRight("Node is not initialized yet")
+                            network = state.networkManager
+                            collection <- network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listCollections")
+                            res <- collection.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
+                        } yield res
+                          result match {
+                            case Right(result) =>
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.getWriter.println(result)
+                                response.setStatus(HttpServletResponse.SC_OK)
+
+                            case Left(error) =>
+                                logger.error(error)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
+
 
                     case "/admin/create-invite" =>
                         globalState
@@ -202,17 +213,47 @@ class RestEndpoint(
 
                     case "/service/list-contracts" =>
                         logger.info(s"Querying contracts for ${organizationConfig.name}...")
-                        val result =
-                            globalState
-                              .toRight("Node is not initialized yet")
-                              .flatMap { state =>
-                                  state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContracts")
-                                    .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
-                              }
-                              .merge
-                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                        response.getWriter.println(result)
-                        response.setStatus(HttpServletResponse.SC_OK)
+                        globalState
+                          .toRight("Node is not initialized yet")
+                          .flatMap { state =>
+                              state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContracts")
+                                .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
+                          } match {
+                            case Right(result) =>
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.getWriter.println(result)
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(errorMsg) =>
+                                response.getWriter.println(errorMsg)
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
+
+
+                    case "/admin/list-contract-packages" =>
+                        logger.info("Listing contract packages...")
+                        val chaincodePath = new File(s"/opt/profile/chain-code/").getAbsoluteFile
+                        if (!chaincodePath.exists()) chaincodePath.mkdirs()
+                        //
+                        Try {
+                            chaincodePath
+                              .listFiles()
+                              .filter(_.getName.endsWith(".tgz"))
+                              .map(file => file.getName)
+                              .map(name => name.substring(0, name.length - 4))
+                        }.toEither match {
+                            case Right(contracts) =>
+                                logger.info(s"The list of packages is: ${contracts.mkString(" ")}")
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.getWriter.println(Util.codec.toJson(contracts))
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(err) =>
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                logger.error("Got error", err)
+                                response.getWriter.println(err.getMessage)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
+
 
 
                     // unknown GET path
@@ -341,8 +382,10 @@ class RestEndpoint(
                                   }
                                   response <- {
                                       logger.info(s"Invoking 'createContract' method...")
-                                      val contract = CreateContract(contractRequest.contractType,
+                                      val contract = CreateContract(
                                           contractRequest.name,
+                                          contractRequest.lang,
+                                          contractRequest.contractType,
                                           contractRequest.version,
                                           contractRequest.parties.map(_.mspId)
                                       )
@@ -370,56 +413,56 @@ class RestEndpoint(
                         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
                         val joinReq = Util.codec.fromJson(request.getReader, classOf[ContractJoinRequest])
                         logger.info(s"joinReq is $joinReq")
-                        globalState
-                          .toRight("Node is not initialized yet")
-                          .flatMap { state =>
-                              for {
-                                  queryResult <- {
-                                      state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getContract", joinReq.name, joinReq.founder)
-                                        .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getContract method in system chain-code"))
-                                  }
-                                  contractDetails <- {
-                                      logger.debug(s"queryResult is $queryResult")
-                                      Option(Util.codec.fromJson(queryResult, classOf[Contract])).filter(_ != null).toRight(s"Can't parse response from getContract")
-                                  }
-                                  file <- {
-                                      val path = s"/opt/profile/chain-code/${contractDetails.chainCodeName}-${contractDetails.chainCodeVersion}.tgz"
-                                      Option(new File(path)).filter(_.exists()).toRight(s"File  doesn't exist ")
-                                  }
-                                  _ <- {
-                                      val chainCodePkg = new BufferedInputStream(new FileInputStream(file))
-                                      logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
-                                      state.networkManager.installChainCode(
+                        val result = for {
+                            state <- globalState.toRight("Node is not initialized yet")
+                            network = state.networkManager
+                            queryResult <- {
+                                logger.info(s"Querying chaincode with getContract...")
+                                network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getContract", joinReq.name, joinReq.founder)
+                                  .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getContract method in system chain-code"))
+                            }
+                            contractDetails <- {
+                                logger.info(s"queryResult is $queryResult")
+                                Option(Util.codec.fromJson(queryResult, classOf[Contract])).filter(_ != null).toRight(s"Can't parse response from getContract")
+                            }
+                            file <- {
+                                val path = s"/opt/profile/chain-code/${contractDetails.chainCodeName}-${contractDetails.chainCodeVersion}.tgz"
+                                Option(new File(path)).filter(_.exists()).toRight(s"File  doesn't exist ")
+                            }
+                            _ <- {
+                                val chainCodePkg = new BufferedInputStream(new FileInputStream(file))
+                                logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
+                                      network.installChainCode(
                                           ServiceChannelName,
                                           contractDetails.chainCodeName,
                                           contractDetails.chainCodeVersion,
                                           "java",
                                           chainCodePkg)
-                                  }
-                              } yield {
-                                  state.networkManager.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
-                              } match {
-                                  case Right(invokeResult) =>
-                                      invokeResult.get()
-                                      response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
-                                      response.getWriter.println(invokeResult)
-                                      response.setStatus(HttpServletResponse.SC_OK)
-                                  case Left(err) =>
-                                      response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
-                                      response.getWriter.println(err)
-                                      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                              }
-                          }
+                            }
+                            invokeResultFuture <- network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
+                            invokeResult <- Try(invokeResultFuture.get()).toEither.left.map(_.getMessage)
+                        } yield invokeResult
+                        result match {
+                            case Right(invokeAwait) =>
+                                logger.info(s"invokeResult is $invokeAwait ...")
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                response.getWriter.println(invokeAwait)
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(err) =>
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                response.getWriter.println(err)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
 
 
                     case "/service/send-message" =>
                         val message = Util.codec.fromJson(request.getReader, classOf[SendMessageRequest])
                         logger.info(s"Sending message to ${message.to} ...")
-                        globalState
-                          .toRight("Node is not initialized yet")
-                          .flatMap { state =>
-                              state.networkManager.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "putMessage", Util.codec.toJson(message))
-                          } match {
+                        val result = for {
+                            state <- globalState.toRight("Node is not initialized yet")
+                            res <- state.networkManager.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "putMessage", Util.codec.toJson(message))
+                        } yield res
+                        result match {
                             case Right(answer) =>
                                 answer.get()
                                 response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
