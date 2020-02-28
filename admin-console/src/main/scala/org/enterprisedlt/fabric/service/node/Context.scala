@@ -2,7 +2,7 @@ package org.enterprisedlt.fabric.service.node
 
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
-import org.enterprisedlt.fabric.service.node.model.{Contract, Organization, Status}
+import org.enterprisedlt.fabric.service.node.model.{Contract, FabricServiceState, Organization, Status}
 import org.enterprisedlt.fabric.service.node.state.GlobalStateManager
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -15,52 +15,45 @@ object Context {
     val State: GlobalStateManager[AppState] = new GlobalStateManager(Initial)
 
     def initialize: Future[Unit] = {
-        ServiceNodeRemote.getServiceState.map { state =>
-            val stateMode = state.stateCode match {
-                case sm if sm == Status.NotInitialized =>
-                    InitMode
-                case sm if sm >= Status.JoinProgressStatus.JoinStarted && sm <= Status.JoinProgressStatus.JoinMaxValue =>
-                    JoinInProgress
-                case sm if sm >= Status.BootProgressStatus.BootstrapStarted && sm <= Status.BootProgressStatus.BootstrapMaxValue =>
-                    BootstrapInProgress
-                case sm if sm == Status.Ready =>
-                    Context.fetchUpdate
-                    ReadyForUse
-            }
-            ServiceNodeRemote.getOrganisationFullName.map { orgFullName =>
-                ServiceNodeRemote.getOrganisationMspId.map { mspId =>
-                    State.update { _ =>
-                        GlobalState(
-                            mode = stateMode,
-                            orgFullName = orgFullName,
-                            mspId = mspId,
-                            packages = Array.empty[String],
-                            organizations = Array.empty[Organization],
-                            contracts = Array.empty[Contract]
-                        )
-                    }
-                }
+        for {
+            state <- ServiceNodeRemote.getServiceState
+            stateMode = getStateMode(state)
+            states: Option[(Array[String], Array[Organization], Array[Contract])] <- if (stateMode == ReadyForUse) updateState else Future.successful(None)
+            orgFullName <- ServiceNodeRemote.getOrganisationFullName
+            mspId <- ServiceNodeRemote.getOrganisationMspId
+        } yield {
+            State.update { _ =>
+                val (packages, organizations, contracts) = states.getOrElse((Array.empty[String], Array.empty[Organization], Array.empty[Contract]))
+                GlobalState(
+                    mode = stateMode,
+                    orgFullName = orgFullName,
+                    mspId = mspId,
+                    packages = packages,
+                    organizations = organizations,
+                    contracts = contracts
+                )
             }
         }
     }
 
+    def getStateMode(fabricServiceState: FabricServiceState): AppMode = fabricServiceState.stateCode match {
+        case sm if sm == Status.NotInitialized =>
+            InitMode
+        case sm if sm >= Status.JoinProgressStatus.JoinStarted && sm <= Status.JoinProgressStatus.JoinMaxValue =>
+            JoinInProgress
+        case sm if sm >= Status.BootProgressStatus.BootstrapStarted && sm <= Status.BootProgressStatus.BootstrapMaxValue =>
+            BootstrapInProgress
+        case sm if sm == Status.Ready =>
+            ReadyForUse
+    }
 
-    def fetchUpdate: Future[Unit] = {
+
+    def updateState: Future[Option[(Array[String], Array[Organization], Array[Contract])]] = {
         for {
             packages <- ServiceNodeRemote.listContractPackages
             organizations <- ServiceNodeRemote.listOrganizations
             contracts <- ServiceNodeRemote.listContracts
-        } yield {
-            State.update {
-                case gs: GlobalState =>
-                    gs.copy(
-                        packages = packages,
-                        organizations = organizations,
-                        contracts = contracts
-                    )
-                case _ => throw new Exception
-            }
-        }
+        } yield Some(packages, organizations, contracts)
     }
 
     def switchModeTo(mode: AppMode): Unit = {
