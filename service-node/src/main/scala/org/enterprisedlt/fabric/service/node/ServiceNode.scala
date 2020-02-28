@@ -52,9 +52,11 @@ object ServiceNode extends App {
         Country,
         CertificateDuration)
     private val cryptoManager = new FileBasedCryptoManager(organizationConfig, "/opt/profile/crypto")
+    private val stateManager = new PesistingStateManager()
     private val restEndpoint = new RestEndpoint(
         ServiceBindPort, ServiceExternalAddress, organizationConfig, cryptoManager,
         hostsManager = new HostsManager("/opt/profile/hosts", organizationConfig),
+        stateManager,
         ProfilePath, DockerSocket, serviceState
     )
     //TODO: make web app optional, based on configuration
@@ -64,7 +66,6 @@ object ServiceNode extends App {
             "/opt/profile/webapp",
             "/opt/service/admin-console"
         )
-
     setupShutdownHook()
     server.start()
     logger.info("Started.")
@@ -87,6 +88,10 @@ object ServiceNode extends App {
         Runtime.getRuntime.addShutdownHook(new Thread("shutdown-hook") {
             override def run(): Unit = {
                 logger.info("Shutting down...")
+                restEndpoint.persistsState() match {
+                    case Left(m) => logger.error(m)
+                    case _ => ()
+                }
                 server.stop()
                 logger.info("Shutdown complete.")
             }

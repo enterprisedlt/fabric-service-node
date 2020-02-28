@@ -3,7 +3,11 @@ package org.enterprisedlt.fabric.service.node.model
 import java.util.{Map => JavaMap}
 
 import org.enterprisedlt.fabric.service.model.Organization
+import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, OrganizationConfig, PeerConfig}
+import org.hyperledger.fabric.sdk.HFClient
 import org.hyperledger.fabric.sdk.TransactionRequest.Type
+
+import scala.collection.concurrent.TrieMap
 
 case class CreateChannelRequest(
     name: String
@@ -136,6 +140,12 @@ case class OrganizationCertificates(
 case class OsnCertificates(
     clientTlsCert: String,
     serverTlsCert: String
+)
+
+case class ComponentsState(
+    osns: java.util.Map[String, OSNConfig],
+    peers: java.util.Map[String, PeerConfig],
+    channels: Array[String]
 )
 
 object CCLanguage {

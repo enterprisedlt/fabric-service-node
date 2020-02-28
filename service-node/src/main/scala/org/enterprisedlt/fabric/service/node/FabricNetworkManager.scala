@@ -1,13 +1,13 @@
 package org.enterprisedlt.fabric.service.node
 
-import java.io.InputStream
+import java.io.{FileOutputStream, InputStream, PrintStream, PrintWriter}
 import java.util
 import java.util.Properties
 import java.util.concurrent.{CompletableFuture, TimeUnit}
 
 import com.google.protobuf.ByteString
 import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, OrganizationConfig, PeerConfig}
-import org.enterprisedlt.fabric.service.node.model.{CCLanguage, JoinRequest}
+import org.enterprisedlt.fabric.service.node.model.{CCLanguage, JoinRequest, ComponentsState}
 import org.enterprisedlt.fabric.service.node.proto._
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
 import org.hyperledger.fabric.protos.common.Configtx
@@ -48,13 +48,24 @@ class FabricNetworkManager(
     private val osnByName = TrieMap(bootstrapOsn.name -> bootstrapOsn)
     // ---------------------------------------------------------------------------------------------------------------
     private lazy val systemChannel: Channel = connectToSystemChannel
-    //
-    //
-    //
+
+    //=========================================================================
+    def getComponentsState(): Option[ComponentsState] = {
+        logger.debug(s"getting component's state")
+        val osns = osnByName.toMap.asJava
+        val peers = peerByName.toMap.asJava
+        val channels =
+        Option(ComponentsState(
+            osns,
+            peers,
+
+        ))
+    }
+
     //=========================================================================
     def createChannel(channelName: String, channelTx: Envelope): Either[String, String] = {
-        val bootstrapOsnName = mkOSN(bootstrapOsn)
-        val chCfg = new ChannelConfiguration(channelTx.toByteArray)
+        val bootstrapOsnName: Orderer = mkOSN(bootstrapOsn)
+        val chCfg: ChannelConfiguration = new ChannelConfiguration(channelTx.toByteArray)
         val sign = fabricClient.getChannelConfigurationSignature(chCfg, admin)
         Try(fabricClient.newChannel(channelName, bootstrapOsnName, chCfg, sign).getName)
           .toEither.left.map(_.getMessage)

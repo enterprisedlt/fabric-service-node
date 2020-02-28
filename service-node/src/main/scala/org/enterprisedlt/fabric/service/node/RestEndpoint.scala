@@ -30,11 +30,23 @@ class RestEndpoint(
     organizationConfig: OrganizationConfig,
     cryptoManager: CryptoManager,
     hostsManager: HostsManager,
+    stateManager: StateManager,
     profilePath: String,
     dockerSocket: String,
     state: AtomicReference[FabricServiceState]
 ) extends AbstractHandler {
     private val logger = LoggerFactory.getLogger(this.getClass)
+
+    def persistsState(): Either[String, Unit] = {
+        logger.debug(s"storing state")
+        globalState
+          .toRight("network isn't initialized")
+          .flatMap { manager =>
+              manager.networkManager.getComponentsState()
+                .toRight("can't get component's state")
+                .flatMap(s => stateManager.persistNetworkState(s))
+          }
+    }
 
     override def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {
         implicit val user: Option[User] = FabricAuthenticator.getFabricUser(request)
