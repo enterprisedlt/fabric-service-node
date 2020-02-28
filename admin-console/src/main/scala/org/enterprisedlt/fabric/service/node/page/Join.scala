@@ -46,12 +46,10 @@ object Join {
       .componentDidMount($ => Context.State.connect($.backend))
       .build
 
-
     class Backend(val $: BackendScope[Unit, JoinState]) extends FieldBinder[JoinState] with GlobalStateAware[AppState, JoinState] {
 
         private val PeerNodes = JoinState.joinOptions / JoinOptions.network / NetworkConfig.peerNodes
         private val OsnNodes = JoinState.joinOptions / JoinOptions.network / NetworkConfig.orderingNodes
-
 
         def goInit: Callback = Callback {
             Context.switchModeTo(InitMode)
@@ -146,7 +144,6 @@ object Join {
                         couchDB = null
                     )
                 }
-
             $.modState(addDefaultOSNs andThen addDefaultPeer)
         }
 
@@ -255,7 +252,6 @@ object Join {
                             <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
                             <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goJoinProgress(s), "Join")
                         )
-                        //                                                                                                        </form>
                     )
                 )
             case _ => <.div()

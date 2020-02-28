@@ -53,7 +53,6 @@ object Init {
 
             case _ => <.div()
         }
-
     }
 
     def apply(): Unmounted[Unit, Unit, Backend] = component()

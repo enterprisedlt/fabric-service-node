@@ -20,7 +20,6 @@ import scala.language.higherKinds
   */
 object Contract {
 
-
     @Lenses case class ContractState(
         createContractRequest: CreateContractRequest,
         joinContractRequest: ContractJoinRequest,
@@ -28,7 +27,6 @@ object Contract {
         participantCandidate: ContractParticipant,
         initArgsCandidate: String
     )
-
 
     object ContractState {
         val Defaults: ContractState = {
@@ -42,13 +40,11 @@ object Contract {
         }
     }
 
-
     private val component = ScalaComponent.builder[Unit]("ContractForm")
       .initialState(ContractState.Defaults)
       .renderBackend[Backend]
       .componentDidMount($ => Context.State.connect($.backend))
       .build
-
 
     class Backend(val $: BackendScope[Unit, ContractState]) extends FieldBinder[ContractState] with GlobalStateAware[AppState, ContractState] {
 
@@ -76,9 +72,7 @@ object Contract {
 
         private val InitArgsState = ContractState.createContractRequest / CreateContractRequest.initArgs
 
-
         private val LangState = ContractState.createContractRequest / CreateContractRequest.lang
-
 
         override def connectLocal: ConnectFunction = ApplyFor(
             Seq(
@@ -87,11 +81,9 @@ object Contract {
             )
         )
 
-
         def doCreateContract(s: ContractState): Callback = Callback {
             ServiceNodeRemote.createContract(s.createContractRequest)
         }
-
 
         def renderContractOrganizationList(s: ContractState, g: GlobalState): VdomTagOf[Select] = {
             <.select(className := "form-control",
@@ -174,7 +166,6 @@ object Contract {
             InitArgsState.modify(_ :+ initArgsCandidate)
         }
 
-
         def joinContract(contract: Contract): Callback = Callback {
             ServiceNodeRemote.contractJoin(
                 ContractJoinRequest(
@@ -182,7 +173,6 @@ object Contract {
                     contract.founder)
             )
         }
-
 
         def renderWithGlobal(s: ContractState, global: AppState): VdomTagOf[Div] = global match {
             case g: GlobalState =>
@@ -224,7 +214,6 @@ object Contract {
                             }.toTagMod
                         )
                     ),
-
                     <.h4("Add contract"),
                     <.div(^.className := "form-group row",
                         <.div(^.float.right, ^.verticalAlign.`text-top`,
@@ -300,8 +289,6 @@ object Contract {
                             ^.onClick --> addParticipantComponent(s, g),
                             "Add party")
                     ),
-
-
                     <.div(^.className := "form-group row",
                         <.label(^.className := "col-sm-2 col-form-label", "Init args"),
                         <.div(^.className := "col-sm-10",
@@ -347,7 +334,6 @@ object Contract {
 
         }
     }
-
 
     def apply(): Unmounted[Unit, ContractState, Backend] = component()
 }

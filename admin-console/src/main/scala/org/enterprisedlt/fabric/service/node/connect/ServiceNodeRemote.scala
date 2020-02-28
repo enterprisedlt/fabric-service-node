@@ -11,27 +11,21 @@ import scala.concurrent.Future
   */
 object ServiceNodeRemote {
 
-    def getOrganisationFullName: Future[String] = {
-        Ajax
-          .get("/service/organization-full-name")
-          .map(_.responseText)
-          .map(r => upickle.default.read[String](r))
-    }
+    def getOrganisationFullName: Future[String] = Ajax
+      .get("/service/organization-full-name")
+      .map(_.responseText)
+      .map(r => upickle.default.read[String](r))
 
-    def getOrganisationMspId: Future[String] = {
-        Ajax
-          .get("/service/organization-msp-id")
-          .map(_.responseText)
-          .map(r => upickle.default.read[String](r))
-    }
+    def getOrganisationMspId: Future[String] = Ajax
+      .get("/service/organization-msp-id")
+      .map(_.responseText)
+      .map(r => upickle.default.read[String](r))
 
 
-    def getServiceState: Future[FabricServiceState] = {
-        Ajax
-          .get("/service/state")
-          .map(_.responseText)
-          .map(r => upickle.default.read[FabricServiceState](r))
-    }
+    def getServiceState: Future[FabricServiceState] = Ajax
+      .get("/service/state")
+      .map(_.responseText)
+      .map(r => upickle.default.read[FabricServiceState](r))
 
     def executeBootstrap(bootstrapOptions: BootstrapOptions): Future[Unit] = {
         val json = upickle.default.write(bootstrapOptions)
@@ -47,11 +41,9 @@ object ServiceNodeRemote {
           .map { _ => () }
     }
 
-    def createInvite: Future[String] = {
-        Ajax
-          .get("/admin/create-invite")
-          .map(_.responseText)
-    }
+    def createInvite: Future[String] = Ajax
+      .get("/admin/create-invite")
+      .map(_.responseText)
 
     def joinNetwork(joinRequest: JoinRequest): Future[Unit] = {
         val json = upickle.default.write(joinRequest)
@@ -60,36 +52,29 @@ object ServiceNodeRemote {
           .map(_ => ())
     }
 
-    def listContractPackages: Future[Array[String]] = {
-        Ajax
-          .get("/admin/list-contract-packages")
-          .map(_.responseText)
-          .map(r => upickle.default.read[Array[String]](r))
-    }
+    def listContractPackages: Future[Array[String]] = Ajax
+      .get("/admin/list-contract-packages")
+      .map(_.responseText)
+      .map(r => upickle.default.read[Array[String]](r))
 
 
     def createContract(createContractRequest: CreateContractRequest): Future[Unit] = {
         val json = upickle.default.write(createContractRequest)
         Ajax.post("/admin/create-contract", json)
           .map(_ => ())
-
     }
 
 
-    def listOrganizations: Future[Array[Organization]] = {
-        Ajax
-          .get("/service/list-organizations")
-          .map(_.responseText)
-          .map(r => upickle.default.read[Array[Organization]](r))
-    }
+    def listOrganizations: Future[Array[Organization]] = Ajax
+      .get("/service/list-organizations")
+      .map(_.responseText)
+      .map(r => upickle.default.read[Array[Organization]](r))
 
 
-    def listContracts: Future[Array[Contract]] = {
-        Ajax
-          .get("/service/list-contracts")
-          .map(_.responseText)
-          .map(r => upickle.default.read[Array[Contract]](r))
-    }
+    def listContracts: Future[Array[Contract]] = Ajax
+      .get("/service/list-contracts")
+      .map(_.responseText)
+      .map(r => upickle.default.read[Array[Contract]](r))
 
 
     def contractJoin(contractJoinRequest: ContractJoinRequest): Future[String] = {
@@ -97,5 +82,4 @@ object ServiceNodeRemote {
         Ajax.post("/admin/contract-join", json)
           .map(_.responseText)
     }
-
 }

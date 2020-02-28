@@ -1,5 +1,6 @@
 package org.enterprisedlt.fabric.service.node.state
 
+import japgolly.scalajs.react.internal.Effect.Id
 import japgolly.scalajs.react.vdom.html_<^.{VdomTagOf, _}
 import japgolly.scalajs.react.{BackendScope, Callback}
 import org.scalajs.dom.html.Div
@@ -16,7 +17,7 @@ trait GlobalStateAware[GS, S] {
 
     def $: BackendScope[_, S]
 
-    private lazy val updater = $.withEffectsImpure
+    private lazy val updater: (BackendScope[_, S])#WithEffect[Id] = $.withEffectsImpure
     private var gs: GS = _
 
     def onGlobalStateUpdate(g: GS): Unit = {
@@ -34,11 +35,6 @@ trait GlobalStateAware[GS, S] {
     }
 
     def renderWithGlobal(s: S, g: GS): VdomTagOf[Div]
-
-
-    //
-    // utilities
-    //
 
     implicit def CFs2CF[X, Y]: Seq[(X, Y) => X] => (X, Y) => X = fs => { (s, gs) =>
         fs.foldRight(s) { case (f, c) => f(c, gs) }
@@ -72,7 +68,6 @@ class GlobalStateManager[GS](
         paused = true
     }
 
-    // for now unpause will always trigger "global state notification" even if there were no changes ...
     def unpause(): Unit = {
         paused = false
         subscribers.foreach(_ (current_))

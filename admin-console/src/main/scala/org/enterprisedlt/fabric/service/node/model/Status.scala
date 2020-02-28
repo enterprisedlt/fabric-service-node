@@ -4,6 +4,7 @@ package org.enterprisedlt.fabric.service.node.model
   * @author Maxim Fedin
   */
 object Status {
+
     val NotInitialized = 0
     val Ready = 100
 
@@ -18,7 +19,6 @@ object Status {
     }
 
 }
-
 
 object StateUpdate {
     val Interval = 500

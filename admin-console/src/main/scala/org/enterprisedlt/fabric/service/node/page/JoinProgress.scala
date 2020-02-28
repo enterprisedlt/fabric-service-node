@@ -27,7 +27,6 @@ object JoinProgress {
         text: String
     )
 
-
     private val JoinMessages = Array(
         "Starting join process",
         "Creating join request",

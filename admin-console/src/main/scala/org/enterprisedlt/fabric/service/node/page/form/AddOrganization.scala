@@ -11,6 +11,7 @@ import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node.FieldBinder
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model.{JoinRequest, KnownHostRecord, Organization, OrganizationCertificates}
+import org.enterprisedlt.fabric.service.node.util.DataFunction._
 import org.scalajs.dom.html.Div
 import org.scalajs.dom.raw.{Blob, File, FileReader}
 
@@ -18,11 +19,10 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
 import scala.scalajs.js.typedarray.{ArrayBuffer, TypedArrayBuffer}
 import scala.util.Try
-import org.enterprisedlt.fabric.service.node.util.DataFunction._
 
 /**
- * @author Maxim Fedin
- */
+  * @author Maxim Fedin
+  */
 object AddOrganization {
 
     @Lenses case class AddOrganizationState(
@@ -35,7 +35,6 @@ object AddOrganization {
         adminCertFileName: String,
         adminCertFile: File
     )
-
 
     object AddOrganizationState {
         val Defaults: AddOrganizationState = {

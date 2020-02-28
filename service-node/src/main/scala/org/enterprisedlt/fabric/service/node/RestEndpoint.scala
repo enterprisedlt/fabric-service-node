@@ -56,13 +56,13 @@ class RestEndpoint(
 
                     case "/service/list-organizations" =>
                         logger.info(s"ListOrganizations ...")
-                        globalState
-                          .toRight("Node is not initialized yet")
-                          .flatMap { manager =>
-                              manager.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listOrganizations")
-                                .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
-                          }
-                        match {
+                        val result = for {
+                            state <- globalState.toRight("Node is not initialized yet")
+                            network = state.networkManager
+                            organization <- network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listOrganizations")
+                            res <- organization.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
+                        } yield res
+                        result match {
                             case Right(result) =>
                                 response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                                 response.getWriter.println(result)
@@ -73,15 +73,15 @@ class RestEndpoint(
 
                         }
 
-
                     case "/service/list-collections" =>
-                        logger.info(s"Collections ...")
-                        globalState
-                          .toRight("Node is not initialized yet")
-                          .flatMap { state =>
-                              state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listCollections")
-                                .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results"))
-                          } match {
+                        logger.info(s"ListCollections ...")
+                        val result = for {
+                            state <- globalState.toRight("Node is not initialized yet")
+                            network = state.networkManager
+                            collection <- network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listCollections")
+                            res <- collection.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
+                        } yield res
+                          result match {
                             case Right(result) =>
                                 response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                                 response.getWriter.println(result)
@@ -458,11 +458,11 @@ class RestEndpoint(
                     case "/service/send-message" =>
                         val message = Util.codec.fromJson(request.getReader, classOf[SendMessageRequest])
                         logger.info(s"Sending message to ${message.to} ...")
-                        globalState
-                          .toRight("Node is not initialized yet")
-                          .flatMap { state =>
-                              state.networkManager.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "putMessage", Util.codec.toJson(message))
-                          } match {
+                        val result = for {
+                            state <- globalState.toRight("Node is not initialized yet")
+                            res <- state.networkManager.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "putMessage", Util.codec.toJson(message))
+                        } yield res
+                        result match {
                             case Right(answer) =>
                                 answer.get()
                                 response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
