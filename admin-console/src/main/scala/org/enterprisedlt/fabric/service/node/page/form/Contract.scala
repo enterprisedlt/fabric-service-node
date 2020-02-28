@@ -77,13 +77,29 @@ object Contract {
         override def connectLocal: ConnectFunction = ApplyFor(
             Seq(
                 (ChoosePackageLens.when(_.trim.isEmpty) <~~ GlobalState.packages.when(_.nonEmpty)) (_.head),
-                ((ContractState.participantCandidate / ContractParticipant.mspId).when(_.trim.isEmpty) <~~ GlobalState.organizations.when(_.nonEmpty)) (_.head.name)
+                ((ContractState.participantCandidate / ContractParticipant.mspId).when(_.trim.isEmpty) <~~ GlobalState.organizations.when(_.nonEmpty)) (_.head.name),
+                ((ContractState.createContractRequest / CreateContractRequest.channelName).when(_.trim.isEmpty) <~~ GlobalState.channels.when(_.nonEmpty)) (_.head)
             )
         )
 
         def doCreateContract(s: ContractState): Callback = Callback {
             ServiceNodeRemote.createContract(s.createContractRequest)
         }
+
+        def renderChannelNameList(s: ContractState, g: GlobalState): VdomTagOf[Select] = {
+            <.select(className := "form-control",
+                id := "componentType",
+                bind(s) := ContractState.createContractRequest / CreateContractRequest.channelName,
+                contractChannelNameOptions(s, g)
+            )
+        }
+
+        def contractChannelNameOptions(s: ContractState, g: GlobalState): TagMod = {
+            g.channels.map { channel =>
+                option((className := "selected").when(s.createContractRequest.channelName == channel), channel)
+            }.toTagMod
+        }
+
 
         def renderContractOrganizationList(s: ContractState, g: GlobalState): VdomTagOf[Select] = {
             <.select(className := "form-control",
@@ -237,11 +253,7 @@ object Contract {
                     ),
                     <.div(^.className := "form-group row",
                         <.label(^.className := "col-sm-2 col-form-label", "Channel name"),
-                        <.div(^.className := "col-sm-10",
-                            <.input(^.`type` := "text", ^.className := "form-control",
-                                bind(s) := ContractState.createContractRequest / CreateContractRequest.channelName
-                            )
-                        )
+                        <.div(^.className := "col-sm-10", renderChannelNameList(s, g))
                     ),
                     <.div(^.className := "form-group row",
                         <.label(^.className := "col-sm-2 col-form-label", "Parties"),

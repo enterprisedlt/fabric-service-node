@@ -18,16 +18,17 @@ object Context {
         for {
             state <- ServiceNodeRemote.getServiceState
             stateMode = getStateMode(state)
-            states: Option[(Array[String], Array[Organization], Array[Contract])] <- if (stateMode == ReadyForUse) updateState else Future.successful(None)
+            states: Option[(Array[String], Array[String], Array[Organization], Array[Contract])] <- if (stateMode == ReadyForUse) updateState else Future.successful(None)
             orgFullName <- ServiceNodeRemote.getOrganisationFullName
             mspId <- ServiceNodeRemote.getOrganisationMspId
         } yield {
             State.update { _ =>
-                val (packages, organizations, contracts) = states.getOrElse((Array.empty[String], Array.empty[Organization], Array.empty[Contract]))
+                val (packages, channels, organizations, contracts) = states.getOrElse((Array.empty[String], Array.empty[String], Array.empty[Organization], Array.empty[Contract]))
                 GlobalState(
                     mode = stateMode,
                     orgFullName = orgFullName,
                     mspId = mspId,
+                    channels = channels,
                     packages = packages,
                     organizations = organizations,
                     contracts = contracts
@@ -48,12 +49,13 @@ object Context {
     }
 
 
-    def updateState: Future[Option[(Array[String], Array[Organization], Array[Contract])]] = {
+    def updateState: Future[Option[(Array[String], Array[String], Array[Organization], Array[Contract])]] = {
         for {
             packages <- ServiceNodeRemote.listContractPackages
+            channels <- ServiceNodeRemote.listChannels
             organizations <- ServiceNodeRemote.listOrganizations
             contracts <- ServiceNodeRemote.listContracts
-        } yield Some(packages, organizations, contracts)
+        } yield Some(packages, channels, organizations, contracts)
     }
 
     def switchModeTo(mode: AppMode): Unit = {
@@ -72,6 +74,7 @@ case object Initial extends AppState
     mode: AppMode,
     orgFullName: String,
     mspId: String,
+    channels: Array[String],
     packages: Array[String],
     organizations: Array[Organization],
     contracts: Array[Contract]

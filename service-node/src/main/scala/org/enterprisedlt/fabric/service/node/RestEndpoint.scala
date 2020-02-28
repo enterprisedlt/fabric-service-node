@@ -54,6 +54,22 @@ class RestEndpoint(
                         response.getWriter.println(Util.codec.toJson(state.get()))
                         response.setStatus(HttpServletResponse.SC_OK)
 
+                    case "/service/list-channels" =>
+                        val result = for {
+                            state <- globalState.toRight("Node is not initialized yet")
+                            network = state.networkManager
+                            channels = network.getChannelNames
+                        } yield channels
+                        result match {
+                            case Right(result) =>
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.getWriter.println(Util.codec.toJson(result))
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(error) =>
+                                logger.error(error)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
+
                     case "/service/list-organizations" =>
                         logger.info(s"ListOrganizations ...")
                         val result = for {

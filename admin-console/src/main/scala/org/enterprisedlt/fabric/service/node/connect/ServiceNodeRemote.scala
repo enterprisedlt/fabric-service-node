@@ -76,6 +76,11 @@ object ServiceNodeRemote {
       .map(_.responseText)
       .map(r => upickle.default.read[Array[Contract]](r))
 
+    def listChannels: Future[Array[String]] = Ajax
+      .get("/service/list-channels")
+      .map(_.responseText)
+      .map(r => upickle.default.read[Array[String]](r))
+
 
     def contractJoin(contractJoinRequest: ContractJoinRequest): Future[String] = {
         val json = upickle.default.write(contractJoinRequest)
