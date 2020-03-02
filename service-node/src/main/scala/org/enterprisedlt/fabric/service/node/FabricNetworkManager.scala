@@ -46,6 +46,8 @@ class FabricNetworkManager(
 
     private val peerByName = TrieMap.empty[String, PeerConfig]
     private val osnByName = TrieMap(bootstrapOsn.name -> bootstrapOsn)
+    private val channels = TrieMap.empty[String, Channel]
+
     // ---------------------------------------------------------------------------------------------------------------
     private lazy val systemChannel: Channel = connectToSystemChannel
 
@@ -54,27 +56,39 @@ class FabricNetworkManager(
         logger.debug(s"getting component's state")
         val osns = osnByName.toMap.asJava
         val peers = peerByName.toMap.asJava
-        val channels =
+        val channels = getChannelNames
         Option(ComponentsState(
             osns,
             peers,
-
+            channels
         ))
     }
 
+
+    def redefineComponents(componentsState: ComponentsState): Unit = {
+
+    }
+
+    //
+    def getChannelNames: Array[String] = channels.keys.toArray
+
     //=========================================================================
     def createChannel(channelName: String, channelTx: Envelope): Either[String, String] = {
-        val bootstrapOsnName: Orderer = mkOSN(bootstrapOsn)
-        val chCfg: ChannelConfiguration = new ChannelConfiguration(channelTx.toByteArray)
+        val bootstrapOsnName = mkOSN(bootstrapOsn)
+        val chCfg = new ChannelConfiguration(channelTx.toByteArray)
         val sign = fabricClient.getChannelConfigurationSignature(chCfg, admin)
-        Try(fabricClient.newChannel(channelName, bootstrapOsnName, chCfg, sign).getName)
-          .toEither.left.map(_.getMessage)
+        Try {
+            val channel = fabricClient.newChannel(channelName, bootstrapOsnName, chCfg, sign)
+            channels += channelName -> channel
+            channel.getName
+        }.toEither.left.map(_.getMessage)
     }
 
     //=========================================================================
     def defineChannel(channelName: String): Unit = {
         val bootstrapOsnName = mkOSN(bootstrapOsn)
         val channel = fabricClient.newChannel(channelName)
+        channels += channelName -> channel
         channel.addOrderer(bootstrapOsnName)
     }
 

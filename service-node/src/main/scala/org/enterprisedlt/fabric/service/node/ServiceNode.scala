@@ -98,6 +98,10 @@ object ServiceNode extends App {
         })
     }
 
+    private  def loadPriviousState() = {
+        restEndpoint.
+    }
+
     private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: Handler, webAppResource: String, adminConsole: String): Server = {
         val server = new Server()
 

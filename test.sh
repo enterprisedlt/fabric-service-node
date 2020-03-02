@@ -5,6 +5,7 @@
 
 ./build-image.sh
 
+
 ./bin/fabric-service-generate-static-env.sh ./test
 
 ./bin/fabric-service-bootstrap-static-env.sh ./test

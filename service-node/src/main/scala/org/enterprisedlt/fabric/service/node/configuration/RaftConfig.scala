@@ -9,5 +9,4 @@ case class RaftConfig (
     heartbeatTick: Int,
     maxInflightBlocks: Int,
     snapshotIntervalSize: Int
-
 )

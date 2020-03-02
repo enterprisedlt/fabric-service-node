@@ -14,6 +14,7 @@ val BouncyCastleVersion = "1.60"
 val JettyVersion = "9.4.26.v20200117"
 val DockerApiVersion = "3.2.0-rc3" // "3.1.5"
 val GRPCVersion = "1.9.0"
+val MonocleVersion = "2.0.1"
 
 
 lazy val root = project.in(file("."))
@@ -23,7 +24,8 @@ lazy val root = project.in(file("."))
   .disablePlugins(AssemblyPlugin)
   .aggregate(
       service_node,
-      service_chain_code
+      service_chain_code,
+      admin_console
   )
 
 lazy val service_node = project.in(file("service-node"))
@@ -66,6 +68,48 @@ lazy val service_chain_code_service = project.in(file("./service-chain-code/serv
       assemblyJarName in assembly := "chaincode.jar"
   )
   .dependsOn(service_chain_code_model)
+
+val BundlePath = file("admin-console/bundle/js")
+lazy val admin_console = project.in(file("admin-console"))
+  .settings(
+      name := "admin-console",
+      scalacOptions ++= Seq("-P:scalajs:sjsDefinedByDefault"),
+      scalaJSUseMainModuleInitializer := true,
+      mainClass := Some("org.enterprisedlt.fabric.service.node.AdminConsole"),
+      libraryDependencies ++= Seq(
+          "org.scala-js" %%% "scalajs-dom" % "0.9.7",
+          "com.github.japgolly.scalajs-react" %%% "core" % "1.6.0",
+          "com.lihaoyi" %%% "upickle" % "0.9.5"
+      ) ++ Monocle,
+      jsDependencies ++= Seq(
+
+          "org.webjars.npm" % "react" % "16.7.0"
+            / "umd/react.development.js"
+            minified "umd/react.production.min.js"
+            commonJSName "React",
+
+          "org.webjars.npm" % "react-dom" % "16.7.0"
+            / "umd/react-dom.development.js"
+            minified "umd/react-dom.production.min.js"
+            dependsOn "umd/react.development.js"
+            commonJSName "ReactDOM",
+
+          "org.webjars.npm" % "react-dom" % "16.7.0"
+            / "umd/react-dom-server.browser.development.js"
+            minified "umd/react-dom-server.browser.production.min.js"
+            dependsOn "umd/react-dom.development.js"
+            commonJSName "ReactDOMServer"
+      ),
+      // Target files for Scala.js plugin
+      Compile / fastOptJS / artifactPath := BundlePath / "admin-console.js",
+      Compile / fullOptJS / artifactPath := BundlePath / "admin-console.js",
+      Compile / packageJSDependencies / artifactPath := BundlePath / "admin-console-deps.js",
+      Compile / packageMinifiedJSDependencies / artifactPath := BundlePath / "admin-console-deps.js",
+
+      addCompilerPlugin("org.scalamacros" %% "paradise" % "2.1.1" cross CrossVersion.full)
+  )
+  .disablePlugins(AssemblyPlugin)
+  .enablePlugins(ScalaJSPlugin)
 
 // ========================================================================
 //
@@ -148,4 +192,10 @@ lazy val DockerJava = Seq(
     "com.github.docker-java" % "docker-java-core" % DockerApiVersion,
     "com.github.docker-java" % "docker-java-transport-okhttp" % DockerApiVersion
 //      "docker-java-transport-netty" % DockerApiVersion
+)
+
+lazy val Monocle = Seq(
+    "com.github.julien-truffaut" %%  "monocle-core"  % MonocleVersion,
+    "com.github.julien-truffaut" %%  "monocle-macro" % MonocleVersion,
+    "com.github.julien-truffaut" %%  "monocle-law"   % MonocleVersion % "test"
 )

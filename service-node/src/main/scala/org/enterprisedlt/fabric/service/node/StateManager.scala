@@ -7,6 +7,10 @@ import org.enterprisedlt.fabric.service.node.model.ComponentsState
   */
 trait StateManager {
 
-    def persistNetworkState(state: ComponentsState): Either[String, Unit]
+    def marshalNetworkState(state: ComponentsState): Either[String, Unit]
+
+
+    def unmarshalNetworkState(): Either[String, ComponentsState]
+
 
 }

@@ -1,7 +1,1 @@
-
-# Dependencies
-node_modules
-
-# Compiled files
-/scripts
-/src/environment.js
+bundle/js
