@@ -13,7 +13,7 @@ import org.enterprisedlt.fabric.service.model.Contract
 import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
 import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
-import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
+import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join, RestoreState}
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.hyperledger.fabric.sdk.User
@@ -22,8 +22,8 @@ import org.slf4j.LoggerFactory
 import scala.util.Try
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 class RestEndpoint(
     bindPort: Int,
     externalAddress: Option[ExternalAddress],
@@ -35,20 +35,38 @@ class RestEndpoint(
     dockerSocket: String,
     state: AtomicReference[FabricServiceState]
 ) extends AbstractHandler {
+
     private val logger = LoggerFactory.getLogger(this.getClass)
 
     def persistsState(): Either[String, Unit] = {
-        logger.debug(s"storing state")
+        logger.debug(s"persisting state")
         globalState
           .toRight("network isn't initialized")
           .flatMap { manager =>
-              manager.networkManager.getComponentsState()
-                .toRight("can't get component's state")
-                .flatMap(s => stateManager.marshalNetworkState(s))
+              for {
+                  fabricComponentsState <- manager.networkManager.getComponentsState().toRight("can't get fabric components state")
+                  processState <- manager.processManager.getProcessState().toRight("can't get process manager state")
+                  stateToPersist = ServiceNodeState(fabricComponentsState,processState)
+                  s <- stateManager.marshalNetworkState(stateToPersist)
+              } yield s
           }
     }
 
-
+    def loadPreviousState(): Either[String, Unit] = {
+        logger.debug(s"restoring state")
+        stateManager.unmarshalNetworkState()
+          .map { s =>
+              init(RestoreState.restoreOrganizationState(
+                  organizationConfig,
+                  cryptoManager,
+                  s.fabricComponentsState,
+                  s.processManagerState,
+                  hostsManager,
+                  profilePath,
+                  dockerSocket,
+                  state))
+          }
+    }
 
     override def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {
         implicit val user: Option[User] = FabricAuthenticator.getFabricUser(request)
@@ -111,7 +129,7 @@ class RestEndpoint(
                             collection <- network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listCollections")
                             res <- collection.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
                         } yield res
-                          result match {
+                        result match {
                             case Right(result) =>
                                 response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                                 response.getWriter.println(result)
@@ -462,12 +480,12 @@ class RestEndpoint(
                             _ <- {
                                 val chainCodePkg = new BufferedInputStream(new FileInputStream(file))
                                 logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
-                                      network.installChainCode(
-                                          ServiceChannelName,
-                                          contractDetails.chainCodeName,
-                                          contractDetails.chainCodeVersion,
-                                          "java",
-                                          chainCodePkg)
+                                network.installChainCode(
+                                    ServiceChannelName,
+                                    contractDetails.chainCodeName,
+                                    contractDetails.chainCodeVersion,
+                                    "java",
+                                    chainCodePkg)
                             }
                             invokeResultFuture <- network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
                             invokeResult <- Try(invokeResultFuture.get()).toEither.left.map(_.getMessage)

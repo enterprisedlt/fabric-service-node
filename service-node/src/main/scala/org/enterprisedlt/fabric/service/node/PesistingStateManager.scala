@@ -4,7 +4,7 @@ import java.io.{File, FileOutputStream}
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 
-import org.enterprisedlt.fabric.service.node.model.ComponentsState
+import org.enterprisedlt.fabric.service.node.model.ServiceNodeState
 import org.slf4j.LoggerFactory
 
 import scala.util.Try
@@ -15,23 +15,25 @@ import scala.util.Try
 class PesistingStateManager extends StateManager {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
-    override def marshalNetworkState(state: ComponentsState): Either[String, Unit] = {
+    override def marshalNetworkState(state: ServiceNodeState): Either[String, Unit] = {
         logger.debug(s"persisting component's state")
         for {
-            content <- Try(Util.codec.toJson(state)).toEither.left.map(_.getMessage)
+            state <- Try(Util.codec.toJson(state)).toEither.left.map(_.getMessage)
             _ <- Try {
-                logger.debug(s"state is : $content")
-                storeStateToFile("state", content)
+                storeStateToFile("state", state)
             }.toEither.left.map(_.getMessage)
         } yield ()
     }
 
 
-    override def unmarshalNetworkState(): Either[String, ComponentsState] = {
+    override def unmarshalNetworkState(): Either[String, ServiceNodeState] = {
         logger.debug(s"getting state from file")
         for {
             stateJson <- readStateFromFile("state")
-            state <- Try(Util.codec.fromJson(stateJson,classOf[ComponentsState])).toEither.left.map(_.getMessage)
+            state <- Try {
+                logger.debug(s"during restoring parsted state $stateJson")
+                Util.codec.fromJson(stateJson, classOf[ServiceNodeState])
+            }.toEither.left.map(_.getMessage)
         } yield state
     }
 

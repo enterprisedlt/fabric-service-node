@@ -15,13 +15,14 @@ import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientImpl}
 import com.github.dockerjava.okhttp.OkHttpDockerCmdExecFactory
 import org.enterprisedlt.fabric.service.node.FabricProcessManager
 import org.enterprisedlt.fabric.service.node.configuration.{NetworkConfig, OrganizationConfig}
+import org.enterprisedlt.fabric.service.node.model.ProcessManagerState
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
 
 /**
-  * @author Andrew Pudovikov
-  */
+ * @author Andrew Pudovikov
+ */
 class DockerBasedProcessManager(
     hostHomePath: String,
     dockerSocket: String,
@@ -53,12 +54,23 @@ class DockerBasedProcessManager(
           .exec()
     }
     logger.info(s"Connecting myself ($containerName) to network $networkName ...")
-    docker.connectToNetworkCmd()
-      .withContainerId(containerName)
-      .withNetworkId(networkName)
-      .exec()
-    // =================================================================================================================
+    if (!docker.inspectContainerCmd(containerName).exec()
+      .getNetworkSettings.getNetworks.containsKey(networkName))
+        {
+            logger.info(s"Service node $containerName already connected to $networkName network ...")
+            docker.connectToNetworkCmd()
+              .withContainerId(containerName)
+              .withNetworkId(networkName)
+              .exec()
+        }
 
+    // =================================================================================================================
+    override def getProcessState(): Option[ProcessManagerState] = {
+        logger.debug(s"getting process manager's state")
+        Option(
+            ProcessManagerState(
+                networkName))
+    }
 
     //=========================================================================
     override def startOrderingNode(osnFullName: String): Either[String, String] = {
@@ -114,7 +126,7 @@ class DockerBasedProcessManager(
 
     //=============================================================================
     override def startPeerNode(peerFullName: String): Either[String, String] = {
-//        val peerFullName = s"$name.$organizationFullName"
+        //        val peerFullName = s"$name.$organizationFullName"
         logger.info(s"Starting $peerFullName ...")
         if (checkContainerExistence(peerFullName: String)) {
             stopAndRemoveContainer(peerFullName: String)

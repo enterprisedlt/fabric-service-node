@@ -21,6 +21,7 @@ fi
 #
 FIRST_ORG=`head -n 1 ${ORG_LIST_FILE}`
 pushd ${PROFILE_PATH}/${FIRST_ORG}
+    rm -f state/*
     fabric-service-start.sh .
     cat ./components.json |\
     jq '.block = {"maxMessageCount": 150, "absoluteMaxBytes": 103809024, "preferredMaxBytes": 524288, "batchTimeOut": "1s"}' |\

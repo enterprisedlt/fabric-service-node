@@ -143,11 +143,22 @@ case class OsnCertificates(
     serverTlsCert: String
 )
 
-case class ComponentsState(
+//-----------------------------------
+case class ServiceNodeState(
+    fabricComponentsState: FabricComponentsState,
+    processManagerState: ProcessManagerState
+)
+
+case class FabricComponentsState(
     osns: java.util.Map[String, OSNConfig],
     peers: java.util.Map[String, PeerConfig],
     channels: Array[String]
 )
+
+case class ProcessManagerState(
+    networkName: String
+)
+//------------------------------------
 
 object CCLanguage {
 

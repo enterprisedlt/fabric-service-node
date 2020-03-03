@@ -60,17 +60,17 @@ object ServiceNode extends App {
         ProfilePath, DockerSocket, serviceState
     )
     //TODO: make web app optional, based on configuration
+    loadPreviousState()
     private val server =
-        createServer(
-            ServiceBindPort, cryptoManager, restEndpoint,
-            "/opt/profile/webapp",
-            "/opt/service/admin-console"
+    createServer(
+              ServiceBindPort, cryptoManager, restEndpoint,
+    "/opt/profile/webapp",
+    "/opt/service/admin-console"
         )
     setupShutdownHook()
     server.start()
     logger.info("Started.")
     server.join()
-
 
     //=========================================================================
     // Utilities
@@ -98,8 +98,11 @@ object ServiceNode extends App {
         })
     }
 
-    private  def loadPriviousState() = {
-        restEndpoint.
+    private  def loadPreviousState(): Unit = {
+        restEndpoint.loadPreviousState() match {
+            case Left(e) => logger.error(e)
+            case Right(_) => logger.debug(s"state was restored successfully")
+        }
     }
 
     private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: Handler, webAppResource: String, adminConsole: String): Server = {

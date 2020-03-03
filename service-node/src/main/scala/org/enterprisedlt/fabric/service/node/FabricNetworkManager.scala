@@ -7,7 +7,7 @@ import java.util.concurrent.{CompletableFuture, TimeUnit}
 
 import com.google.protobuf.ByteString
 import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, OrganizationConfig, PeerConfig}
-import org.enterprisedlt.fabric.service.node.model.{CCLanguage, JoinRequest, ComponentsState}
+import org.enterprisedlt.fabric.service.node.model.{CCLanguage, JoinRequest, FabricComponentsState}
 import org.enterprisedlt.fabric.service.node.proto._
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
 import org.hyperledger.fabric.protos.common.Configtx
@@ -52,12 +52,12 @@ class FabricNetworkManager(
     private lazy val systemChannel: Channel = connectToSystemChannel
 
     //=========================================================================
-    def getComponentsState(): Option[ComponentsState] = {
+    def getComponentsState(): Option[FabricComponentsState] = {
         logger.debug(s"getting component's state")
         val osns = osnByName.toMap.asJava
         val peers = peerByName.toMap.asJava
         val channels = getChannelNames
-        Option(ComponentsState(
+        Option(FabricComponentsState(
             osns,
             peers,
             channels
@@ -65,7 +65,7 @@ class FabricNetworkManager(
     }
 
 
-    def redefineComponents(componentsState: ComponentsState): Unit = {
+    def redefineComponents(componentsState: FabricComponentsState): Unit = {
 
     }
 
@@ -90,6 +90,25 @@ class FabricNetworkManager(
         val channel = fabricClient.newChannel(channelName)
         channels += channelName -> channel
         channel.addOrderer(bootstrapOsnName)
+    }
+
+    //=========================================================================
+    def restoreChannelWithComponents(channelName: String, osnsConfig: Array[OSNConfig], peerConfigs: Array[PeerConfig]): Either[String, Channel] = {
+        val channel = fabricClient.newChannel(channelName)
+        channels += channelName -> channel
+        Try {
+            osnsConfig.foreach { osnsConfig =>
+                val osn = mkOSN(osnsConfig)
+                channel.addOrderer(osn)
+                defineOsn(osnsConfig)
+            }
+            peerConfigs.foreach { peerConfig =>
+                val peer = mkPeer(peerConfig)
+                channel.addPeer(peer)
+                definePeer(peerConfig)
+            }
+            channel.initialize()
+        }.toEither.left.map(_.getMessage)
     }
 
     //=========================================================================
@@ -477,7 +496,7 @@ class FabricNetworkManager(
     private def getCryptoSuite: CryptoSuite = CryptoSuite.Factory.getCryptoSuite()
 
     //=========================================================================
-    private def getHFClient(user: User): HFClient = {
+    def getHFClient(user: User): HFClient = {
         val client = HFClient.createNewInstance()
         client.setCryptoSuite(getCryptoSuite)
         client.setUserContext(user)
@@ -491,7 +510,7 @@ class FabricNetworkManager(
           .map(_.initialize())
 
     //=========================================================================
-    private def mkPeer(config: PeerConfig): Peer = {
+    def mkPeer(config: PeerConfig): Peer = {
         val properties = new Properties()
         properties.put("pemFile", defaultPeerTLSPath(config.name))
         fabricClient.newPeer(config.name, s"grpcs://${config.name}:${config.port}", properties)
