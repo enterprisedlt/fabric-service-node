@@ -376,7 +376,7 @@ class RestEndpoint(
                                       logger.info(s"[ $organizationFullName ] - Instantiating $chainCodeName chain code ...")
                                       val endorsementPolicy = Util.policyAnyOf(
                                           deploymentDescriptor.endorsement
-                                            .map(r => contractRequest.parties.find(_.role == r).map(_.mspId).get)
+                                            .flatMap(r => contractRequest.parties.filter(_.role == r).map(_.mspId))
                                       )
                                       val collections = deploymentDescriptor.collections.map { cd =>
                                           PrivateCollectionConfiguration(
