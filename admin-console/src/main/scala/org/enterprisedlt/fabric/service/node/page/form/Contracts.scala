@@ -18,7 +18,7 @@ import scala.language.higherKinds
 /**
   * @author Maxim Fedin
   */
-object Contract {
+object Contracts {
 
     @Lenses case class ContractState(
         createContractRequest: CreateContractRequest,
