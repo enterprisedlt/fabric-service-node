@@ -215,7 +215,7 @@ object Join {
             val nextCollections = calculateCollectionsConfiguration(orgCodes)
             logger.info(s"Next collections: ${nextCollections.map(_.name).mkString("[", ",", "]")}")
             logger.info(s"Upgrading version of service to $nextVersion ...")
-            state.networkManager.upgradeChainCode(ServiceChannelName, ServiceChainCodeName, nextVersion,
+            state.networkManager.upgradeChainCode(ServiceChannelName, ServiceChainCodeName, nextVersion,"JAVA",
                 endorsementPolicy = Option(policyForCCUpgrade),
                 collectionConfig = Option(Util.createCollectionsConfig(nextCollections)),
                 arguments = Array(

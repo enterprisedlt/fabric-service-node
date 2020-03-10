@@ -9,7 +9,7 @@ import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.apache.http.entity.ContentType
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
-import org.enterprisedlt.fabric.service.model.Contract
+import org.enterprisedlt.fabric.service.model.{Contract}
 import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
 import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
@@ -22,8 +22,8 @@ import org.slf4j.LoggerFactory
 import scala.util.Try
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 class RestEndpoint(
     bindPort: Int,
     externalAddress: Option[ExternalAddress],
@@ -97,7 +97,7 @@ class RestEndpoint(
                             collection <- network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listCollections")
                             res <- collection.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
                         } yield res
-                          result match {
+                        result match {
                             case Right(result) =>
                                 response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                                 response.getWriter.println(result)
@@ -347,6 +347,82 @@ class RestEndpoint(
                         logger.info(s"Joined ($end ms)")
                         response.setStatus(HttpServletResponse.SC_OK)
 
+                    case "/admin/upgrade-contract" =>
+                        logger.info("Upgrading contract ...")
+                        val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
+                        val upgradeContractRequest = Util.codec.fromJson(request.getReader, classOf[UpgradeContractRequest])
+                        globalState
+                          .toRight("Node is not initialized yet")
+                          .flatMap { state =>
+                              logger.info(s"[ $organizationFullName ] - Preparing ${upgradeContractRequest.name} chain code ...")
+                              val filesBaseName = s"${upgradeContractRequest.contractType}-${upgradeContractRequest.version}"
+                              val chainCodeName = s"${upgradeContractRequest.name}-${upgradeContractRequest.version}"
+                              val deploymentDescriptor = Util.codec.fromJson(new FileReader(s"/opt/profile/chain-code/$filesBaseName.json"), classOf[ContractDeploymentDescriptor])
+                              val path = s"/opt/profile/chain-code/$filesBaseName.tgz"
+                              for {
+                                  file <- Option(new File(path)).filter(_.exists()).toRight(s"File $filesBaseName.tgz doesn't exist")
+                                  chainCodePkg <- Option(new BufferedInputStream(new FileInputStream(file))).toRight(s"Can't prepare cc pkg stream")
+                                  _ <- {
+                                      logger.info(s"[ $organizationFullName ] - Installing $chainCodeName chain code ...")
+                                      state.networkManager.installChainCode(
+                                          upgradeContractRequest.channelName,
+                                          upgradeContractRequest.name,
+                                          upgradeContractRequest.version,
+                                          upgradeContractRequest.lang,
+                                          chainCodePkg)
+                                  }
+                                  _ <- {
+                                      logger.info(s"[ $organizationFullName ] - Upgrading $chainCodeName chain code up to ${upgradeContractRequest.version}...")
+                                      val endorsementPolicy = Util.policyAnyOf(
+                                          deploymentDescriptor.endorsement
+                                            .flatMap(r => upgradeContractRequest.parties.filter(_.role == r).map(_.mspId))
+                                      )
+                                      val collections = deploymentDescriptor.collections.map { cd =>
+                                          PrivateCollectionConfiguration(
+                                              name = cd.name,
+                                              memberIds = cd.members.map(m =>
+                                                  upgradeContractRequest.parties.find(_.role == m).map(_.mspId).get
+                                              )
+                                          )
+                                      }
+                                      state.networkManager.upgradeChainCode(
+                                          upgradeContractRequest.channelName,
+                                          upgradeContractRequest.name,
+                                          upgradeContractRequest.version,
+                                          upgradeContractRequest.lang,
+                                          endorsementPolicy = Option(endorsementPolicy),
+                                          collectionConfig = Option(Util.createCollectionsConfig(collections)),
+                                          arguments = upgradeContractRequest.initArgs
+                                      )
+                                  }
+                                  response <- {
+                                      logger.info(s"Invoking 'createContract' method...")
+                                      val contract = UpgradeContract(
+                                          upgradeContractRequest.name,
+                                          upgradeContractRequest.lang,
+                                          upgradeContractRequest.contractType,
+                                          upgradeContractRequest.version,
+                                          upgradeContractRequest.parties.map(_.mspId)
+                                      )
+                                      state.networkManager.invokeChainCode(
+                                          ServiceChannelName,
+                                          ServiceChainCodeName,
+                                          "upgradeContract",
+                                          Util.codec.toJson(contract))
+                                  }
+                                  result <- Try(response.get()).toEither.left.map(_.getMessage)
+                              } yield result
+                          } match {
+                            case Right(answer) =>
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                response.getWriter.println(answer)
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(err) =>
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                response.getWriter.println(err)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
+
                     case "/admin/create-contract" =>
                         logger.info("Creating contract ...")
                         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
@@ -448,12 +524,12 @@ class RestEndpoint(
                             _ <- {
                                 val chainCodePkg = new BufferedInputStream(new FileInputStream(file))
                                 logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
-                                      network.installChainCode(
-                                          ServiceChannelName,
-                                          contractDetails.chainCodeName,
-                                          contractDetails.chainCodeVersion,
-                                          "java",
-                                          chainCodePkg)
+                                network.installChainCode(
+                                    ServiceChannelName,
+                                    contractDetails.chainCodeName,
+                                    contractDetails.chainCodeVersion,
+                                    "java",
+                                    chainCodePkg)
                             }
                             invokeResultFuture <- network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
                             invokeResult <- Try(invokeResultFuture.get()).toEither.left.map(_.getMessage)

@@ -2,9 +2,10 @@ package org.enterprisedlt.fabric.service.operations
 
 import org.enterprisedlt.fabric.contract.OperationContext
 import org.enterprisedlt.fabric.service.Main
-import org.enterprisedlt.fabric.service.model.{CollectionsHelper, Contract, Organization}
+import org.enterprisedlt.fabric.service.model.{CollectionsHelper, Contract, Organization, UpgradeContract}
 import org.enterprisedlt.spec.{ContractOperation, ContractResult}
 import org.enterprisedlt.spec._
+
 import scala.util.Try
 
 
@@ -33,6 +34,31 @@ trait ContractOperations {
                               OperationContext.privateStore(
                                   CollectionsHelper.collectionNameFor(founderOrg, participant))
                                 .put(contract.name, contract.copy(founder = founderOrg.name,
+                                    timestamp = OperationContext.transaction.timestamp.getEpochSecond))
+                          }
+                    }
+              }
+
+          }
+
+    @ContractOperation(OperationType.Invoke)
+    def upgradeContract(upgradeContract: UpgradeContract): ContractResult[Unit] =
+        getOwnOrganization
+          .flatMap { founderOrg =>
+              for {
+                  _ <- Option(upgradeContract.name).filter(_.nonEmpty).toRight("Contract name must be non empty")
+                  _ <- Option(upgradeContract.chainCodeName).filter(_.nonEmpty).toRight("Chaincode name must be non empty")
+                  _ <- Option(upgradeContract.chainCodeVersion).filter(_.nonEmpty).toRight("Chaincode version must be non empty")
+                  participantsList <- Option(upgradeContract.participants).filter(_.nonEmpty).toRight("Participants list must be non empty")
+              } yield {
+                  participantsList
+                    .filter(e => e != founderOrg.name)
+                    .foreach { orgFromList =>
+                        OperationContext.store.get[Organization](orgFromList)
+                          .map { participant =>
+                              OperationContext.privateStore(
+                                  CollectionsHelper.collectionNameFor(founderOrg, participant))
+                                .put[UpgradeContract](upgradeContract.name, upgradeContract.copy(founder = founderOrg.name,
                                     timestamp = OperationContext.transaction.timestamp.getEpochSecond))
                           }
                     }

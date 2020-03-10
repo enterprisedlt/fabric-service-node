@@ -199,7 +199,7 @@ class FabricNetworkManager(
                       instantiateProposalRequest.setChaincodeLanguage(nodeType)
                       Right(())
 
-                  case _ => Left(s"Wrong cc lang type")
+                  case _ => Left("Wrong cc lang type")
               }
               instantiateProposalRequest.setProposalWaitTime(TimeUnit.MINUTES.toMillis(5)) // TODO
 
@@ -243,11 +243,11 @@ class FabricNetworkManager(
         channelName: String,
         ccName: String,
         version: String,
+        lang: String,
         endorsementPolicy: Option[ChaincodeEndorsementPolicy] = None,
         collectionConfig: Option[ChaincodeCollectionConfiguration] = None,
         arguments: Array[String] = Array.empty
-    )(implicit timeout: OperationTimeout = OperationTimeout(5, TimeUnit.MINUTES))
-    : Unit = {
+    )(implicit timeout: OperationTimeout = OperationTimeout(5, TimeUnit.MINUTES)): Either[String, BlockEvent#TransactionEvent] = {
         getChannel(channelName)
           .flatMap { channel =>
               val upgradeProposalRequest = fabricClient.newUpgradeProposalRequest
@@ -259,7 +259,22 @@ class FabricNetworkManager(
               upgradeProposalRequest.setChaincodeID(chaincodeID)
               upgradeProposalRequest.setChaincodeVersion(version)
 
-              upgradeProposalRequest.setChaincodeLanguage(TransactionRequest.Type.JAVA) // TODO
+              lang match {
+                  case CCLanguage.GoLang(goType) =>
+                      upgradeProposalRequest.setChaincodeLanguage(goType)
+
+
+                  case CCLanguage.JVM(jvmType) =>
+                      upgradeProposalRequest.setChaincodeLanguage(jvmType)
+
+
+                  case CCLanguage.NodeJS(nodeType) =>
+                      upgradeProposalRequest.setChaincodeLanguage(nodeType)
+
+
+                  case _ => logger.error("Wrong cc lang type")
+              }
+
               upgradeProposalRequest.setProposalWaitTime(timeout.milliseconds)
 
               upgradeProposalRequest.setFcn("init")

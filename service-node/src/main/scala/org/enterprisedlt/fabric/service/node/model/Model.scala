@@ -98,7 +98,25 @@ case class CreateContract(
     participants: Array[String]
 )
 
+case class UpgradeContract(
+    name: String,
+    lang: String,
+    chainCodeName: String,
+    chainCodeVersion: String,
+    participants: Array[String]
+)
+
 case class CreateContractRequest(
+    name: String,
+    version: String,
+    lang: String,
+    contractType: String,
+    channelName: String,
+    parties: Array[ContractParticipant],
+    initArgs: Array[String]
+)
+
+case class UpgradeContractRequest(
     name: String,
     version: String,
     lang: String,
