@@ -7,15 +7,15 @@ import java.util.concurrent.atomic.AtomicReference
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, OrganizationsOrdering, ServiceVersion}
 import org.enterprisedlt.fabric.service.node._
-import org.enterprisedlt.fabric.service.node.configuration.{ JoinOptions, OSNConfig, OrganizationConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{JoinOptions, OSNConfig, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
 import org.slf4j.LoggerFactory
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object Join {
 
     private val logger = LoggerFactory.getLogger(this.getClass)
@@ -85,7 +85,7 @@ object Join {
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
         val admin = cryptoManager.loadDefaultAdmin
-        val network = new FabricNetworkManager(organizationConfig, OSNConfig(joinResponse.osnHost,joinResponse.osnPort), admin)
+        val network = new FabricNetworkManager(organizationConfig, OSNConfig(joinResponse.osnHost, joinResponse.osnPort), admin)
         network.defineChannel(ServiceChannelName)
 
         state.set(FabricServiceState(FabricServiceState.JoinConnectingToNetwork))
@@ -182,7 +182,12 @@ object Join {
 
         for {
             // join new org to service channel
-            _ <- state.networkManager.joinToChannel(ServiceChannelName, joinRequest)
+            _ <- state.networkManager.joinToChannel(
+                AddOrgToChannelRequest(
+                    joinRequest.organization.mspId,
+                    ServiceChannelName,
+                    joinRequest.organizationCertificates
+                ))
 
             // fetch current network version
             chainCodeVersion <- state.networkManager
@@ -215,7 +220,7 @@ object Join {
             val nextCollections = calculateCollectionsConfiguration(orgCodes)
             logger.info(s"Next collections: ${nextCollections.map(_.name).mkString("[", ",", "]")}")
             logger.info(s"Upgrading version of service to $nextVersion ...")
-            state.networkManager.upgradeChainCode(ServiceChannelName, ServiceChainCodeName, nextVersion,"JAVA",
+            state.networkManager.upgradeChainCode(ServiceChannelName, ServiceChainCodeName, nextVersion, "JAVA",
                 endorsementPolicy = Option(policyForCCUpgrade),
                 collectionConfig = Option(Util.createCollectionsConfig(nextCollections)),
                 arguments = Array(

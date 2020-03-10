@@ -9,7 +9,7 @@ import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.apache.http.entity.ContentType
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
-import org.enterprisedlt.fabric.service.model.{Contract}
+import org.enterprisedlt.fabric.service.model.Contract
 import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
 import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
@@ -329,6 +329,24 @@ class RestEndpoint(
                                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                         }
 
+                    case "/admin/add-to-channel" =>
+                        globalState
+                          .toRight("Node is not initialized yet")
+                          .map { state =>
+                              val addToChannelRequest = Util.codec.fromJson(request.getReader, classOf[AddOrgToChannelRequest])
+                              logger.info(s"Add org to channel ${addToChannelRequest.mspId} ...")
+                              state.networkManager.joinToChannel(addToChannelRequest) match {
+                                  case Right(()) =>
+                                      response.getWriter.println(s"org ${addToChannelRequest.mspId} has been added to channel ${addToChannelRequest.channelName}")
+                                      response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                      response.setStatus(HttpServletResponse.SC_OK)
+                                  case Left(errorMsg) =>
+                                      response.getWriter.println(errorMsg)
+                                      response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                              }
+                          }
+
                     case "/admin/request-join" =>
                         logger.info("Requesting to joining network ...")
                         val start = System.currentTimeMillis()
@@ -347,10 +365,10 @@ class RestEndpoint(
                         logger.info(s"Joined ($end ms)")
                         response.setStatus(HttpServletResponse.SC_OK)
 
-                    case "/admin/upgrade-contract" =>
-                        logger.info("Upgrading contract ...")
+                    case "/admin/contract-upgrade" =>
                         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
                         val upgradeContractRequest = Util.codec.fromJson(request.getReader, classOf[UpgradeContractRequest])
+                        logger.info(s"Upgrading contract ${upgradeContractRequest.contractType}...")
                         globalState
                           .toRight("Node is not initialized yet")
                           .flatMap { state =>

@@ -7,7 +7,7 @@ import java.util.concurrent.{CompletableFuture, TimeUnit}
 
 import com.google.protobuf.ByteString
 import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, OrganizationConfig, PeerConfig}
-import org.enterprisedlt.fabric.service.node.model.{CCLanguage, JoinRequest}
+import org.enterprisedlt.fabric.service.node.model.{AddOrgToChannelRequest, CCLanguage, JoinRequest}
 import org.enterprisedlt.fabric.service.node.proto._
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
 import org.hyperledger.fabric.protos.common.Configtx
@@ -406,19 +406,19 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def joinToChannel(channelName: String, joinRequest: JoinRequest): Either[String, Unit] = {
-        getChannel(channelName)
+    def joinToChannel(addOrgToChannelRequest: AddOrgToChannelRequest): Either[String, Unit] = {
+        getChannel(addOrgToChannelRequest.channelName)
           .map { channel =>
               val organizationDefinition = OrganizationDefinition(
-                  mspId = joinRequest.organization.mspId,
+                  mspId = addOrgToChannelRequest.mspId,
                   policies = PoliciesDefinition(
-                      admins = SignedByOneOf(MemberClassifier(joinRequest.organization.mspId, MSPRole.MSPRoleType.ADMIN)),
-                      writers = SignedByOneOf(MemberClassifier(joinRequest.organization.mspId, MSPRole.MSPRoleType.MEMBER)),
-                      readers = SignedByOneOf(MemberClassifier(joinRequest.organization.mspId, MSPRole.MSPRoleType.MEMBER))
+                      admins = SignedByOneOf(MemberClassifier(addOrgToChannelRequest.mspId, MSPRole.MSPRoleType.ADMIN)),
+                      writers = SignedByOneOf(MemberClassifier(addOrgToChannelRequest.mspId, MSPRole.MSPRoleType.MEMBER)),
+                      readers = SignedByOneOf(MemberClassifier(addOrgToChannelRequest.mspId, MSPRole.MSPRoleType.MEMBER))
                   ),
-                  caCerts = joinRequest.organizationCertificates.caCerts.map(Util.base64Decode).toSeq,
-                  tlsCACerts = joinRequest.organizationCertificates.tlsCACerts.map(Util.base64Decode).toSeq,
-                  adminCerts = joinRequest.organizationCertificates.adminCerts.map(Util.base64Decode).toSeq
+                  caCerts = addOrgToChannelRequest.organizationCertificates.caCerts.map(Util.base64Decode).toSeq,
+                  tlsCACerts = addOrgToChannelRequest.organizationCertificates.tlsCACerts.map(Util.base64Decode).toSeq,
+                  adminCerts = addOrgToChannelRequest.organizationCertificates.adminCerts.map(Util.base64Decode).toSeq
               )
               val orderingOrganizationGroup = FabricBlock.newOrderingOrganizationGroup(organizationDefinition)
               logger.info("Adding application org...")

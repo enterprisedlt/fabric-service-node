@@ -52,6 +52,12 @@ case class JoinRequest(
     organizationCertificates: OrganizationCertificates,
 )
 
+case class AddOrgToChannelRequest(
+    mspId: String,
+    channelName: String,
+    organizationCertificates: OrganizationCertificates
+)
+
 case class JoinResponse(
     genesis: String,
     version: String,
