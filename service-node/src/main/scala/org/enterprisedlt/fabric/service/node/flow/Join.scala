@@ -183,11 +183,12 @@ object Join {
         for {
             // join new org to service channel
             _ <- state.networkManager.joinToChannel(
-                AddOrgToChannelRequest(
-                    joinRequest.organization.mspId,
-                    ServiceChannelName,
-                    joinRequest.organizationCertificates
-                ))
+                ServiceChannelName,
+                joinRequest.organization.mspId,
+                joinRequest.organizationCertificates.caCerts,
+                joinRequest.organizationCertificates.tlsCACerts,
+                joinRequest.organizationCertificates.adminCerts
+            )
 
             // fetch current network version
             chainCodeVersion <- state.networkManager

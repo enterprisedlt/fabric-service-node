@@ -16,7 +16,7 @@ import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumNam
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
-import org.hyperledger.fabric.sdk.User
+import org.hyperledger.fabric.sdk.{User}
 import org.slf4j.LoggerFactory
 
 import scala.util.Try
@@ -158,25 +158,28 @@ class RestEndpoint(
                     case "/admin/create-channel" =>
                         val channelName = request.getParameter("channel")
                         logger.info(s"Creating new channel $channelName ...")
-                        globalState
-                          .toRight("Node is not initialized yet")
-                          .map { state =>
-                              state.networkManager.createChannel(
+                        (
+                          for {
+                              state <- globalState.toRight("Node is not initialized yet")
+                              _ <- state.networkManager.createChannel(
                                   channelName,
                                   FabricChannel.CreateChannel(channelName,
                                       DefaultConsortiumName,
                                       organizationConfig.name
-                                  )) match {
-                                  case Right(chName) =>
-                                      response.getWriter.println(s"$chName has been created")
-                                      response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                                      response.setStatus(HttpServletResponse.SC_OK)
-                                  case Left(errorMsg) =>
-                                      response.getWriter.println(errorMsg)
-                                      response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                                      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                              }
-                          }
+                                  ))
+                              result <- state.networkManager.addPeerToChannel(channelName, state.network.peerNodes.head.name)
+                          } yield result
+                          ) match {
+                            case Right(chName) =>
+                                response.getWriter.println(s"$chName has been created")
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(errorMsg) =>
+                                response.getWriter.println(errorMsg)
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
+
 
                     case "/service/get-block" =>
                         val channelName = request.getParameter("channelName")
@@ -335,7 +338,12 @@ class RestEndpoint(
                           .map { state =>
                               val addToChannelRequest = Util.codec.fromJson(request.getReader, classOf[AddOrgToChannelRequest])
                               logger.info(s"Add org to channel ${addToChannelRequest.mspId} ...")
-                              state.networkManager.joinToChannel(addToChannelRequest) match {
+                              state.networkManager.joinToChannel(
+                                  addToChannelRequest.channelName,
+                                  addToChannelRequest.mspId,
+                                  addToChannelRequest.organizationCertificates.caCerts,
+                                  addToChannelRequest.organizationCertificates.tlsCACerts,
+                                  addToChannelRequest.organizationCertificates.adminCerts) match {
                                   case Right(()) =>
                                       response.getWriter.println(s"org ${addToChannelRequest.mspId} has been added to channel ${addToChannelRequest.channelName}")
                                       response.setContentType(ContentType.APPLICATION_JSON.getMimeType)

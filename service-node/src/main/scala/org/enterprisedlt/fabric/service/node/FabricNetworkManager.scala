@@ -406,19 +406,25 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def joinToChannel(addOrgToChannelRequest: AddOrgToChannelRequest): Either[String, Unit] = {
-        getChannel(addOrgToChannelRequest.channelName)
+    def joinToChannel(
+        channelName: String,
+        mspId: String,
+        caCerts: Array[String],
+        tlsCACerts: Array[String],
+        adminCerts: Array[String]
+    ): Either[String, Unit] = {
+        getChannel(channelName)
           .map { channel =>
               val organizationDefinition = OrganizationDefinition(
-                  mspId = addOrgToChannelRequest.mspId,
+                  mspId,
                   policies = PoliciesDefinition(
-                      admins = SignedByOneOf(MemberClassifier(addOrgToChannelRequest.mspId, MSPRole.MSPRoleType.ADMIN)),
-                      writers = SignedByOneOf(MemberClassifier(addOrgToChannelRequest.mspId, MSPRole.MSPRoleType.MEMBER)),
-                      readers = SignedByOneOf(MemberClassifier(addOrgToChannelRequest.mspId, MSPRole.MSPRoleType.MEMBER))
+                      admins = SignedByOneOf(MemberClassifier(mspId, MSPRole.MSPRoleType.ADMIN)),
+                      writers = SignedByOneOf(MemberClassifier(mspId, MSPRole.MSPRoleType.MEMBER)),
+                      readers = SignedByOneOf(MemberClassifier(mspId, MSPRole.MSPRoleType.MEMBER))
                   ),
-                  caCerts = addOrgToChannelRequest.organizationCertificates.caCerts.map(Util.base64Decode).toSeq,
-                  tlsCACerts = addOrgToChannelRequest.organizationCertificates.tlsCACerts.map(Util.base64Decode).toSeq,
-                  adminCerts = addOrgToChannelRequest.organizationCertificates.adminCerts.map(Util.base64Decode).toSeq
+                  caCerts = caCerts.map(Util.base64Decode).toSeq,
+                  tlsCACerts = tlsCACerts.map(Util.base64Decode).toSeq,
+                  adminCerts = adminCerts.map(Util.base64Decode).toSeq
               )
               val orderingOrganizationGroup = FabricBlock.newOrderingOrganizationGroup(organizationDefinition)
               logger.info("Adding application org...")
