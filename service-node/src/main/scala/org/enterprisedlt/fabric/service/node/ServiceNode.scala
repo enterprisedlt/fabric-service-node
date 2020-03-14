@@ -13,16 +13,16 @@ import org.eclipse.jetty.util.ssl.SslContextFactory
 import org.eclipse.jetty.websocket.server.WebSocketHandler
 import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory
 import org.enterprisedlt.fabric.service.node.auth.{FabricAuthenticator, Role}
-import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
+import org.enterprisedlt.fabric.service.node.configuration.{DockerConfig, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
 import org.enterprisedlt.fabric.service.node.model.FabricServiceState
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.slf4j.LoggerFactory
 
 /**
-  * @author Alexey Polubelov
-  * @author Andrew Pudovikov
-  */
+ * @author Alexey Polubelov
+ * @author Andrew Pudovikov
+ */
 object ServiceNode extends App {
     private val Environment = System.getenv()
     private val LogLevel = Option(Environment.get("LOG_LEVEL")).filter(_.trim.nonEmpty).getOrElse("INFO")
@@ -30,6 +30,8 @@ object ServiceNode extends App {
     private val ServiceExternalAddress = Option(Environment.get("SERVICE_EXTERNAL_ADDRESS")).filter(_.trim.nonEmpty).map(parseExternalAddress(_, ServiceBindPort))
     private val ProfilePath = Option(Environment.get("PROFILE_PATH")).getOrElse(throw new Exception("Mandatory environment variable missing PROFILE_PATH!"))
     private val DockerSocket = Option(Environment.get("DOCKER_SOCKET")).getOrElse(throw new Exception("Mandatory environment variable missing DOCKER_SOCKET!"))
+    private val LogFileSize = Option(Environment.get("LOG_FILE_SIZE")).filter(_.trim.nonEmpty).getOrElse("10m")
+    private val LogMaxFiles = Option(Environment.get("LOG_MAX_FILES")).filter(_.trim.nonEmpty).getOrElse("3")
     // Org variables
     private val OrgName = Option(Environment.get("ORG")).getOrElse(throw new Exception("Mandatory environment variable missing ORG!"))
     private val Domain = Option(Environment.get("DOMAIN")).getOrElse(throw new Exception("Mandatory environment variable missing DOMAIN!"))
@@ -51,11 +53,15 @@ object ServiceNode extends App {
         State,
         Country,
         CertificateDuration)
+    private val processConfig: DockerConfig = DockerConfig(
+        DockerSocket,
+        LogFileSize,
+        LogMaxFiles)
     private val cryptoManager = new FileBasedCryptoManager(organizationConfig, "/opt/profile/crypto")
     private val restEndpoint = new RestEndpoint(
         ServiceBindPort, ServiceExternalAddress, organizationConfig, cryptoManager,
         hostsManager = new HostsManager("/opt/profile/hosts", organizationConfig),
-        ProfilePath, DockerSocket, serviceState
+        ProfilePath, processConfig, serviceState
     )
     //TODO: make web app optional, based on configuration
     private val server =
@@ -199,4 +205,4 @@ object ServiceNode extends App {
 case class ExternalAddress(
     host: String,
     port: Int
-  )
+)

@@ -7,15 +7,15 @@ import java.util.concurrent.atomic.AtomicReference
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, OrganizationsOrdering, ServiceVersion}
 import org.enterprisedlt.fabric.service.node._
-import org.enterprisedlt.fabric.service.node.configuration.{ JoinOptions, OSNConfig, OrganizationConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{DockerConfig, JoinOptions, OSNConfig, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
 import org.slf4j.LoggerFactory
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object Join {
 
     private val logger = LoggerFactory.getLogger(this.getClass)
@@ -26,7 +26,7 @@ object Join {
         externalAddress: Option[ExternalAddress],
         hostsManager: HostsManager,
         profilePath: String,
-        dockerSocket: String,
+        processConfig: DockerConfig,
         state: AtomicReference[FabricServiceState]
     ): GlobalState = {
         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
@@ -34,10 +34,10 @@ object Join {
         logger.info(s"[ $organizationFullName ] - Starting process manager ...")
         val processManager = new DockerBasedProcessManager(
             profilePath,
-            dockerSocket,
             organizationConfig,
             joinOptions.invite.networkName,
-            joinOptions.network
+            joinOptions.network,
+            processConfig
         )
         logger.info(s"[ $organizationFullName ] - Generating crypto material...")
         cryptoManager.createOrgCrypto(joinOptions.network, organizationFullName)
@@ -85,7 +85,7 @@ object Join {
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
         val admin = cryptoManager.loadDefaultAdmin
-        val network = new FabricNetworkManager(organizationConfig, OSNConfig(joinResponse.osnHost,joinResponse.osnPort), admin)
+        val network = new FabricNetworkManager(organizationConfig, OSNConfig(joinResponse.osnHost, joinResponse.osnPort), admin)
         network.defineChannel(ServiceChannelName)
 
         state.set(FabricServiceState(FabricServiceState.JoinConnectingToNetwork))
