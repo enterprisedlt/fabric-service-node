@@ -21,16 +21,16 @@ serviceID=`docker run -d \
  -e "SERVICE_BIND_PORT=${SERVICE_BIND_PORT}" \
  -e "SERVICE_EXTERNAL_ADDRESS=${SERVICE_EXTERNAL_ADDRESS}" \
  -e "DOCKER_SOCKET=unix:///host/var/run/docker.sock" \
- -e "LOG_FILE_SIZE=10m" \
- -e "LOG_MAX_FILES=3" \
+ -e "LOG_FILE_SIZE=100m" \
+ -e "LOG_MAX_FILES=5" \
  -p ${SERVICE_BIND_PORT}:${SERVICE_BIND_PORT} \
  --volume=${PROFILE_PATH}/hosts:/etc/hosts \
  --volume=${PROFILE_PATH}:/opt/profile \
  --volume=/var/run/:/host/var/run/ \
  --name service.${ORG}.${DOMAIN} \
  --log-driver json-file \
- --log-opt max-size=10m \
- --log-opt max-file=3 \
+ --log-opt max-size=100m \
+ --log-opt max-file=5 \
  enterprisedlt/fabric-service-node`
 echo "Service ID: ${serviceID}"
 

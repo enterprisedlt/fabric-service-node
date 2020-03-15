@@ -30,8 +30,8 @@ object ServiceNode extends App {
     private val ServiceExternalAddress = Option(Environment.get("SERVICE_EXTERNAL_ADDRESS")).filter(_.trim.nonEmpty).map(parseExternalAddress(_, ServiceBindPort))
     private val ProfilePath = Option(Environment.get("PROFILE_PATH")).getOrElse(throw new Exception("Mandatory environment variable missing PROFILE_PATH!"))
     private val DockerSocket = Option(Environment.get("DOCKER_SOCKET")).getOrElse(throw new Exception("Mandatory environment variable missing DOCKER_SOCKET!"))
-    private val LogFileSize = Option(Environment.get("LOG_FILE_SIZE")).filter(_.trim.nonEmpty).getOrElse("10m")
-    private val LogMaxFiles = Option(Environment.get("LOG_MAX_FILES")).filter(_.trim.nonEmpty).getOrElse("3")
+    private val LogFileSize = Option(Environment.get("LOG_FILE_SIZE")).filter(_.trim.nonEmpty).getOrElse("100m")
+    private val LogMaxFiles = Option(Environment.get("LOG_MAX_FILES")).filter(_.trim.nonEmpty).getOrElse("5")
     // Org variables
     private val OrgName = Option(Environment.get("ORG")).getOrElse(throw new Exception("Mandatory environment variable missing ORG!"))
     private val Domain = Option(Environment.get("DOMAIN")).getOrElse(throw new Exception("Mandatory environment variable missing DOMAIN!"))
