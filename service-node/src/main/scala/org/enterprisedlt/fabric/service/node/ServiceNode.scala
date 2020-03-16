@@ -30,6 +30,7 @@ object ServiceNode extends App {
     private val ServiceExternalAddress = Option(Environment.get("SERVICE_EXTERNAL_ADDRESS")).filter(_.trim.nonEmpty).map(parseExternalAddress(_, ServiceBindPort))
     private val ProfilePath = Option(Environment.get("PROFILE_PATH")).getOrElse(throw new Exception("Mandatory environment variable missing PROFILE_PATH!"))
     private val DockerSocket = Option(Environment.get("DOCKER_SOCKET")).getOrElse(throw new Exception("Mandatory environment variable missing DOCKER_SOCKET!"))
+    private val StateFilePath = Option(Environment.get("STATE_FILE_PATH")).filter(_.trim.nonEmpty).getOrElse("/opt/service/state/state.json")
     // Org variables
     private val OrgName = Option(Environment.get("ORG")).getOrElse(throw new Exception("Mandatory environment variable missing ORG!"))
     private val Domain = Option(Environment.get("DOMAIN")).getOrElse(throw new Exception("Mandatory environment variable missing DOMAIN!"))
@@ -52,7 +53,7 @@ object ServiceNode extends App {
         Country,
         CertificateDuration)
     private val cryptoManager = new FileBasedCryptoManager(organizationConfig, "/opt/profile/crypto")
-    private val stateManager = new PesistingStateManager()
+    private val stateManager = new PesistingStateManager(StateFilePath)
     private val restEndpoint = new RestEndpoint(
         ServiceBindPort, ServiceExternalAddress, organizationConfig, cryptoManager,
         hostsManager = new HostsManager("/opt/profile/hosts", organizationConfig),
@@ -88,7 +89,7 @@ object ServiceNode extends App {
         Runtime.getRuntime.addShutdownHook(new Thread("shutdown-hook") {
             override def run(): Unit = {
                 logger.info("Shutting down...")
-                restEndpoint.persistsState() match {
+                restEndpoint.persistsState(StateFilePath: String) match {
                     case Left(m) => logger.error(m)
                     case _ => ()
                 }

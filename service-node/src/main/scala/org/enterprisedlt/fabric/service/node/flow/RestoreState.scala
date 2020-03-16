@@ -43,7 +43,7 @@ object RestoreState {
             processManagerState.networkName,
             networkConfig
         )
-
+        val existComponents = processManager.verifyContainersExistence()
         val network = new FabricNetworkManager(organizationConfig, fabricComponentsState.osns.entrySet().iterator().next().getValue, admin)
 
         state.set(FabricServiceState(FabricServiceState.DefiningFabricComponents))
@@ -51,12 +51,14 @@ object RestoreState {
 
 
         logger.debug(s"[ $organizationFullName ] - Defining peers ...")
-        val peerConfigs = fabricComponentsState.peers.asScala.values.toArray
-        val osnConfigs = fabricComponentsState.osns.asScala.values.toArray
-        peerConfigs.foreach(e => network.definePeer(e))
+        existComponents.peerNodes.foreach(e => network.definePeer(e))
         logger.debug(s"[ $organizationFullName ] - Defining channels ...")
         fabricComponentsState.channels.foreach { channelConfig =>
-            network.restoreChannelWithComponents(channelConfig,osnConfigs, peerConfigs)
+            network.restoreChannelWithComponents(
+                channelConfig,
+                existComponents.orderingNodes,
+                existComponents.peerNodes
+            )
         }
 
         network

@@ -38,7 +38,7 @@ class RestEndpoint(
 
     private val logger = LoggerFactory.getLogger(this.getClass)
 
-    def persistsState(): Either[String, Unit] = {
+    def persistsState(stateFilePath: String): Either[String, Unit] = {
         logger.debug(s"persisting state")
         globalState
           .toRight("network isn't initialized")
@@ -46,7 +46,7 @@ class RestEndpoint(
               for {
                   fabricComponentsState <- manager.networkManager.getComponentsState().toRight("can't get fabric components state")
                   processState <- manager.processManager.getProcessState().toRight("can't get process manager state")
-                  stateToPersist = ServiceNodeState(fabricComponentsState,processState)
+                  stateToPersist = ServiceNodeState(fabricComponentsState, processState)
                   s <- stateManager.marshalNetworkState(stateToPersist)
               } yield s
           }
@@ -55,7 +55,7 @@ class RestEndpoint(
     def loadPreviousState(): Either[String, Unit] = {
         logger.debug(s"restoring state")
         stateManager.unmarshalNetworkState()
-          .map { s =>
+          .map { s: ServiceNodeState =>
               init(RestoreState.restoreOrganizationState(
                   organizationConfig,
                   cryptoManager,

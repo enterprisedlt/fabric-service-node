@@ -44,7 +44,7 @@ class DockerBasedProcessManager(
 
     // =================================================================================================================
     logger.info(s"Initializing ${this.getClass.getSimpleName} ...")
-    val containerName = s"service.$organizationFullName"
+    private val containerName = s"service.$organizationFullName"
     logger.info(s"Checking network ...")
     if (docker.listNetworksCmd().withNameFilter(networkName).exec().isEmpty) {
         logger.info(s"Network $networkName does not exist, creating ...")
@@ -55,14 +55,13 @@ class DockerBasedProcessManager(
     }
     logger.info(s"Connecting myself ($containerName) to network $networkName ...")
     if (!docker.inspectContainerCmd(containerName).exec()
-      .getNetworkSettings.getNetworks.containsKey(networkName))
-        {
-            logger.info(s"Service node $containerName already connected to $networkName network ...")
-            docker.connectToNetworkCmd()
-              .withContainerId(containerName)
-              .withNetworkId(networkName)
-              .exec()
-        }
+      .getNetworkSettings.getNetworks.containsKey(networkName)) {
+        logger.info(s"Service node $containerName already connected to $networkName network ...")
+        docker.connectToNetworkCmd()
+          .withContainerId(containerName)
+          .withNetworkId(networkName)
+          .exec()
+    }
 
     // =================================================================================================================
     override def getProcessState(): Option[ProcessManagerState] = {
@@ -297,6 +296,13 @@ class DockerBasedProcessManager(
         stopAndRemoveContainer(containerName)
     }
 
+
+    def verifyContainersExistence(): NetworkConfig = {
+        NetworkConfig(
+            networkConfig.orderingNodes.filter(peer => checkContainerExistence(peer.name)),
+            networkConfig.peerNodes.filter(osn => checkContainerExistence(osn.name))
+        )
+    }
 
     // =================================================================================================================
     private def checkContainerExistence(name: String): Boolean = {
