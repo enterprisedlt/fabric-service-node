@@ -15,7 +15,7 @@ curl -k --silent --show-error \
 --key ${PROFILE_PATH}/crypto/users/admin/admin.key \
 --cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
 --request POST \
---data-binary "@$2" https://${SERVICE_URL}/admin/create-contract
+--data-binary "@$2" https://${SERVICE_URL}/admin/contract-upgrade
 
 if [[ "$?" -ne 0 ]]; then
   echo "Failed to upgrade contract!"
