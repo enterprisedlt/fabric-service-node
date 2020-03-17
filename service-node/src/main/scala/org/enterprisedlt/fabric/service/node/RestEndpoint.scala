@@ -450,7 +450,7 @@ class RestEndpoint(
                                 logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
                                       network.installChainCode(
                                           ServiceChannelName,
-                                          contractDetails.chainCodeName,
+                                          contractDetails.name,
                                           contractDetails.chainCodeVersion,
                                           "java",
                                           chainCodePkg)
