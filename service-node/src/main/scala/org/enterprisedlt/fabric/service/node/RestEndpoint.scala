@@ -2,6 +2,7 @@ package org.enterprisedlt.fabric.service.node
 
 import java.io.{BufferedInputStream, File, FileInputStream, FileReader}
 import java.nio.charset.StandardCharsets
+import java.time.Instant
 import java.util
 import java.util.concurrent.atomic.AtomicReference
 
@@ -398,12 +399,14 @@ class RestEndpoint(
                                   }
                                   response <- {
                                       logger.info(s"Invoking 'createContract' method...")
-                                      val contract = CreateContract(
+                                      val contract = Contract(
                                           contractRequest.name,
                                           contractRequest.lang,
                                           contractRequest.contractType,
                                           contractRequest.version,
-                                          contractRequest.parties.map(_.mspId)
+                                          organizationConfig.name,
+                                          contractRequest.parties.map(_.mspId),
+                                          Instant.now.toEpochMilli
                                       )
                                       state.networkManager.invokeChainCode(
                                           ServiceChannelName,
@@ -450,7 +453,7 @@ class RestEndpoint(
                                 logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
                                       network.installChainCode(
                                           ServiceChannelName,
-                                          contractDetails.chainCodeName,
+                                          contractDetails.name,
                                           contractDetails.chainCodeVersion,
                                           "java",
                                           chainCodePkg)
