@@ -13,6 +13,8 @@ import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
 import org.slf4j.LoggerFactory
 
+import scala.util.Try
+
 /**
  * @author Alexey Polubelov
  */
@@ -182,14 +184,19 @@ object Join {
 
         for {
             // join new org to service channel
+            caCerts <- Try(joinRequest.organizationCertificates.caCerts.map(Util.base64Decode).toIterable)
+              .toEither.left.map(_.getMessage)
+            tlsCACerts <- Try(joinRequest.organizationCertificates.tlsCACerts.map(Util.base64Decode).toIterable)
+              .toEither.left.map(_.getMessage)
+            adminCerts <- Try(joinRequest.organizationCertificates.adminCerts.map(Util.base64Decode).toIterable)
+              .toEither.left.map(_.getMessage)
             _ <- state.networkManager.joinToChannel(
                 ServiceChannelName,
                 joinRequest.organization.mspId,
-                joinRequest.organizationCertificates.caCerts,
-                joinRequest.organizationCertificates.tlsCACerts,
-                joinRequest.organizationCertificates.adminCerts
+                caCerts,
+                tlsCACerts,
+                adminCerts
             )
-
             // fetch current network version
             chainCodeVersion <- state.networkManager
               .queryChainCode(ServiceChannelName, ServiceChainCodeName, "getServiceVersion")

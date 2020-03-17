@@ -16,7 +16,7 @@ import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumNam
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
-import org.hyperledger.fabric.sdk.{User}
+import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
 
 import scala.util.Try
@@ -336,23 +336,33 @@ class RestEndpoint(
                         globalState
                           .toRight("Node is not initialized yet")
                           .map { state =>
-                              val addToChannelRequest = Util.codec.fromJson(request.getReader, classOf[AddOrgToChannelRequest])
-                              logger.info(s"Add org to channel ${addToChannelRequest.mspId} ...")
-                              state.networkManager.joinToChannel(
-                                  addToChannelRequest.channelName,
-                                  addToChannelRequest.mspId,
-                                  addToChannelRequest.organizationCertificates.caCerts,
-                                  addToChannelRequest.organizationCertificates.tlsCACerts,
-                                  addToChannelRequest.organizationCertificates.adminCerts) match {
-                                  case Right(()) =>
-                                      response.getWriter.println(s"org ${addToChannelRequest.mspId} has been added to channel ${addToChannelRequest.channelName}")
-                                      response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                                      response.setStatus(HttpServletResponse.SC_OK)
-                                  case Left(errorMsg) =>
-                                      response.getWriter.println(errorMsg)
-                                      response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                                      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                              }
+                            for {
+                                addToChannelRequest <- Try(Util.codec.fromJson(request.getReader, classOf[AddOrgToChannelRequest]))
+                                  .toEither.left.map(_.getMessage)
+                                caCerts <- Try(addToChannelRequest.organizationCertificates.caCerts.map(Util.base64Decode).toIterable)
+                                    .toEither.left.map(_.getMessage)
+                                tlsCACerts <- Try(addToChannelRequest.organizationCertificates.tlsCACerts.map(Util.base64Decode).toIterable)
+                                  .toEither.left.map(_.getMessage)
+                                adminCerts <- Try(addToChannelRequest.organizationCertificates.adminCerts.map(Util.base64Decode).toIterable)
+                                  .toEither.left.map(_.getMessage)
+                            } yield {
+                                logger.info(s"Adding org to channel ${addToChannelRequest.mspId} ...")
+                                state.networkManager.joinToChannel(
+                                    addToChannelRequest.channelName,
+                                    addToChannelRequest.mspId,
+                                    caCerts,
+                                    tlsCACerts,
+                                    adminCerts) match {
+                                    case Right(()) =>
+                                        response.getWriter.println(s"org ${addToChannelRequest.mspId} has been added to channel ${addToChannelRequest.channelName}")
+                                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                        response.setStatus(HttpServletResponse.SC_OK)
+                                    case Left(errorMsg) =>
+                                        response.getWriter.println(errorMsg)
+                                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                                }
+                            }
                           }
 
                     case "/admin/request-join" =>
