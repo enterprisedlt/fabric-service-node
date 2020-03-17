@@ -31,7 +31,7 @@ class RestEndpoint(
     cryptoManager: CryptoManager,
     hostsManager: HostsManager,
     profilePath: String,
-    dockerSocket: String,
+    processConfig: DockerConfig,
     state: AtomicReference[FabricServiceState]
 ) extends AbstractHandler {
     private val logger = LoggerFactory.getLogger(this.getClass)
@@ -293,7 +293,7 @@ class RestEndpoint(
                                 hostsManager,
                                 externalAddress,
                                 profilePath,
-                                dockerSocket,
+                                processConfig,
                                 state)
                             )
                             val end = System.currentTimeMillis() - start
@@ -340,7 +340,7 @@ class RestEndpoint(
                             externalAddress,
                             hostsManager,
                             profilePath,
-                            dockerSocket,
+                            processConfig,
                             state)
                         )
                         val end = System.currentTimeMillis() - start
