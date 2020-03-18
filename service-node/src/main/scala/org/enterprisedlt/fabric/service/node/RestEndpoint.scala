@@ -10,12 +10,12 @@ import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.apache.http.entity.ContentType
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
-import org.enterprisedlt.fabric.service.model.Contract
+import org.enterprisedlt.fabric.service.model.{Contract, UpgradeContract}
 import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
 import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
-import org.enterprisedlt.fabric.service.node.model._
+import org.enterprisedlt.fabric.service.node.model.{AddOrgToChannelRequest, CallContractRequest, ContractDeploymentDescriptor, ContractJoinRequest, CreateContractRequest, DeleteMessageRequest, FabricServiceState, GetMessageRequest, Invite, JoinRequest, SendMessageRequest, UpgradeContractRequest}
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
@@ -439,7 +439,9 @@ class RestEndpoint(
                                           upgradeContractRequest.lang,
                                           upgradeContractRequest.contractType,
                                           upgradeContractRequest.version,
-                                          upgradeContractRequest.parties.map(_.mspId)
+                                          organizationConfig.name,
+                                          upgradeContractRequest.parties.map(_.mspId),
+                                          Instant.now.toEpochMilli
                                       )
                                       state.networkManager.invokeChainCode(
                                           ServiceChannelName,
