@@ -56,6 +56,12 @@ case class JoinRequest(
     organizationCertificates: OrganizationCertificates,
 )
 
+case class AddOrgToChannelRequest(
+    mspId: String,
+    channelName: String,
+    organizationCertificates: OrganizationCertificates
+)
+
 case class JoinResponse(
     genesis: String,
     version: String,
@@ -94,15 +100,17 @@ case class ContractCollectionDescriptor(
     members: Array[String]
 )
 
-case class CreateContract(
+case class CreateContractRequest(
     name: String,
+    version: String,
     lang: String,
-    chainCodeName: String,
-    chainCodeVersion: String,
-    participants: Array[String]
+    contractType: String,
+    channelName: String,
+    parties: Array[ContractParticipant],
+    initArgs: Array[String]
 )
 
-case class CreateContractRequest(
+case class UpgradeContractRequest(
     name: String,
     version: String,
     lang: String,

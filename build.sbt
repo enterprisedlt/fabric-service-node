@@ -15,7 +15,6 @@ val JettyVersion = "9.4.27.v20200227"
 val DockerApiVersion = "3.2.0-rc4" // "3.1.5"
 val GRPCVersion = "1.9.0"
 val MonocleVersion = "2.0.1"
-val IgniteVersion = "2.8.0"
 
 
 lazy val root = project.in(file("."))
@@ -36,7 +35,7 @@ lazy val service_node = project.in(file("service-node"))
       assemblySettings,
       libraryDependencies ++=
         FabricChainCodeClient ++
-          Jetty ++ DockerJava ++ Ignite,
+          Jetty ++ DockerJava,
       mainClass in assembly := Some("org.enterprisedlt.fabric.service.node.ServiceNode"),
       assemblyJarName in assembly := "service-node.jar"
   )
@@ -199,8 +198,4 @@ lazy val Monocle = Seq(
     "com.github.julien-truffaut" %%  "monocle-core"  % MonocleVersion,
     "com.github.julien-truffaut" %%  "monocle-macro" % MonocleVersion,
     "com.github.julien-truffaut" %%  "monocle-law"   % MonocleVersion % "test"
-)
-
-lazy val Ignite = Seq(
-    "org.apache.ignite" %  "ignite-core"  % IgniteVersion,
 )

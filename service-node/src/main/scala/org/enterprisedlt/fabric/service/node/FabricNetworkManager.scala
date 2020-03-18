@@ -7,6 +7,7 @@ import java.util.concurrent.{CompletableFuture, TimeUnit}
 
 import com.google.protobuf.ByteString
 import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, OrganizationConfig, PeerConfig}
+import org.enterprisedlt.fabric.service.node.model.{AddOrgToChannelRequest, CCLanguage, JoinRequest}
 import org.enterprisedlt.fabric.service.node.model.{CCLanguage, JoinRequest, FabricComponentsState}
 import org.enterprisedlt.fabric.service.node.proto._
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
@@ -191,7 +192,7 @@ class FabricNetworkManager(
                       installProposal.setChaincodeLanguage(nodeType)
                       Right(())
 
-                  case _ => Left(s"Wrong cc lang type")
+                  case _ => Left(s"Unsupported $lang as cc lang type")
               }
               ccLangSet.map { _ =>
                   installProposal.setChaincodeInputStream(chainCodeTarGzStream)
@@ -236,40 +237,42 @@ class FabricNetworkManager(
                       instantiateProposalRequest.setChaincodeLanguage(nodeType)
                       Right(())
 
-                  case _ => Left(s"Wrong cc lang type")
+                  case _ => Left(s"Unsupported $lang as cc lang type")
               }
-              instantiateProposalRequest.setProposalWaitTime(TimeUnit.MINUTES.toMillis(5)) // TODO
+              ccLangSet.flatMap { _ =>
+                  instantiateProposalRequest.setProposalWaitTime(TimeUnit.MINUTES.toMillis(5)) // TODO
 
-              instantiateProposalRequest.setFcn("init")
-              instantiateProposalRequest.setArgs(arguments: _*)
+                  instantiateProposalRequest.setFcn("init")
+                  instantiateProposalRequest.setArgs(arguments: _*)
 
-              instantiateProposalRequest.setChaincodeEndorsementPolicy(endorsementPolicy.getOrElse(new ChaincodeEndorsementPolicy))
-              collectionConfig.foreach { collections =>
-                  instantiateProposalRequest.setChaincodeCollectionConfiguration(collections)
-              }
+                  instantiateProposalRequest.setChaincodeEndorsementPolicy(endorsementPolicy.getOrElse(new ChaincodeEndorsementPolicy))
+                  collectionConfig.foreach { collections =>
+                      instantiateProposalRequest.setChaincodeCollectionConfiguration(collections)
+                  }
 
-              //TODO: will trigger instantiate on all known peers in channel, but probably this has to be configurable thru parameters
-              val responses = channel.sendInstantiationProposal(instantiateProposalRequest, channel.getPeers()).asScala
+                  //TODO: will trigger instantiate on all known peers in channel, but probably this has to be configurable thru parameters
+                  val responses = channel.sendInstantiationProposal(instantiateProposalRequest, channel.getPeers()).asScala
 
-              val byStatus = responses.groupBy { response => response.getStatus }
-              val successful = byStatus.getOrElse(ChaincodeResponse.Status.SUCCESS, List.empty)
-              val failed = byStatus.getOrElse(ChaincodeResponse.Status.FAILURE, List.empty)
-              logger.debug(s"Received ${responses.size} transaction proposal responses. Successful: ${successful.size}. Failed: ${failed.size}")
-              if (failed.nonEmpty) {
-                  val errors =
-                      failed
-                        .map(errorResponse => s"Proposal failed on [${errorResponse.getPeer.getName}] : ${errorResponse.getMessage}")
-                        .mkString("\n")
-                  logger.error(errors)
-                  Left(errors)
-              } else {
-                  logger.debug("Successfully received transaction proposal responses.")
-                  val toSend = responses.asJavaCollection
-                  logger.debug("Sending transaction to osn...")
-                  val te = channel
-                    .sendTransaction(toSend, admin)
-                    .get(5, TimeUnit.MINUTES)
-                  Right(te)
+                  val byStatus = responses.groupBy { response => response.getStatus }
+                  val successful = byStatus.getOrElse(ChaincodeResponse.Status.SUCCESS, List.empty)
+                  val failed = byStatus.getOrElse(ChaincodeResponse.Status.FAILURE, List.empty)
+                  logger.debug(s"Received ${responses.size} transaction proposal responses. Successful: ${successful.size}. Failed: ${failed.size}")
+                  if (failed.nonEmpty) {
+                      val errors =
+                          failed
+                            .map(errorResponse => s"Proposal failed on [${errorResponse.getPeer.getName}] : ${errorResponse.getMessage}")
+                            .mkString("\n")
+                      logger.error(errors)
+                      Left(errors)
+                  } else {
+                      logger.debug("Successfully received transaction proposal responses.")
+                      val toSend = responses.asJavaCollection
+                      logger.debug("Sending transaction to osn...")
+                      val te = channel
+                        .sendTransaction(toSend, admin)
+                        .get(5, TimeUnit.MINUTES)
+                      Right(te)
+                  }
               }
           }
     }
@@ -280,11 +283,11 @@ class FabricNetworkManager(
         channelName: String,
         ccName: String,
         version: String,
+        lang: String,
         endorsementPolicy: Option[ChaincodeEndorsementPolicy] = None,
         collectionConfig: Option[ChaincodeCollectionConfiguration] = None,
         arguments: Array[String] = Array.empty
-    )(implicit timeout: OperationTimeout = OperationTimeout(5, TimeUnit.MINUTES))
-    : Unit = {
+    )(implicit timeout: OperationTimeout = OperationTimeout(5, TimeUnit.MINUTES)): Either[String, BlockEvent#TransactionEvent] = {
         getChannel(channelName)
           .flatMap { channel =>
               val upgradeProposalRequest = fabricClient.newUpgradeProposalRequest
@@ -296,7 +299,22 @@ class FabricNetworkManager(
               upgradeProposalRequest.setChaincodeID(chaincodeID)
               upgradeProposalRequest.setChaincodeVersion(version)
 
-              upgradeProposalRequest.setChaincodeLanguage(TransactionRequest.Type.JAVA) // TODO
+              lang match {
+                  case CCLanguage.GoLang(goType) =>
+                      upgradeProposalRequest.setChaincodeLanguage(goType)
+
+
+                  case CCLanguage.JVM(jvmType) =>
+                      upgradeProposalRequest.setChaincodeLanguage(jvmType)
+
+
+                  case CCLanguage.NodeJS(nodeType) =>
+                      upgradeProposalRequest.setChaincodeLanguage(nodeType)
+
+
+                  case _ => logger.error("Unsupported cc lang type")
+              }
+
               upgradeProposalRequest.setProposalWaitTime(timeout.milliseconds)
 
               upgradeProposalRequest.setFcn("init")
@@ -428,19 +446,25 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def joinToChannel(channelName: String, joinRequest: JoinRequest): Either[String, Unit] = {
+    def joinToChannel(
+        channelName: String,
+        mspId: String,
+        caCerts: Iterable[ByteString],
+        tlsCACerts: Iterable[ByteString],
+        adminCerts: Iterable[ByteString]
+    ): Either[String, Unit] = {
         getChannel(channelName)
           .map { channel =>
               val organizationDefinition = OrganizationDefinition(
-                  mspId = joinRequest.organization.mspId,
+                  mspId,
                   policies = PoliciesDefinition(
-                      admins = SignedByOneOf(MemberClassifier(joinRequest.organization.mspId, MSPRole.MSPRoleType.ADMIN)),
-                      writers = SignedByOneOf(MemberClassifier(joinRequest.organization.mspId, MSPRole.MSPRoleType.MEMBER)),
-                      readers = SignedByOneOf(MemberClassifier(joinRequest.organization.mspId, MSPRole.MSPRoleType.MEMBER))
+                      admins = SignedByOneOf(MemberClassifier(mspId, MSPRole.MSPRoleType.ADMIN)),
+                      writers = SignedByOneOf(MemberClassifier(mspId, MSPRole.MSPRoleType.MEMBER)),
+                      readers = SignedByOneOf(MemberClassifier(mspId, MSPRole.MSPRoleType.MEMBER))
                   ),
-                  caCerts = joinRequest.organizationCertificates.caCerts.map(Util.base64Decode).toSeq,
-                  tlsCACerts = joinRequest.organizationCertificates.tlsCACerts.map(Util.base64Decode).toSeq,
-                  adminCerts = joinRequest.organizationCertificates.adminCerts.map(Util.base64Decode).toSeq
+                  caCerts = caCerts,
+                  tlsCACerts = tlsCACerts,
+                  adminCerts = adminCerts
               )
               val orderingOrganizationGroup = FabricBlock.newOrderingOrganizationGroup(organizationDefinition)
               logger.info("Adding application org...")
@@ -496,7 +520,7 @@ class FabricNetworkManager(
     private def getCryptoSuite: CryptoSuite = CryptoSuite.Factory.getCryptoSuite()
 
     //=========================================================================
-    def getHFClient(user: User): HFClient = {
+    private def getHFClient(user: User): HFClient = {
         val client = HFClient.createNewInstance()
         client.setCryptoSuite(getCryptoSuite)
         client.setUserContext(user)
@@ -510,7 +534,7 @@ class FabricNetworkManager(
           .map(_.initialize())
 
     //=========================================================================
-    def mkPeer(config: PeerConfig): Peer = {
+    private def mkPeer(config: PeerConfig): Peer = {
         val properties = new Properties()
         properties.put("pemFile", defaultPeerTLSPath(config.name))
         fabricClient.newPeer(config.name, s"grpcs://${config.name}:${config.port}", properties)

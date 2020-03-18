@@ -175,7 +175,7 @@ class DockerBasedProcessManager(
                         "CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key",
                         "CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt",
                         s"CORE_PEER_ID=$peerFullName",
-                        s"CORE_PEER_ADDRESS=0.0.0.0:${peerConfig.port}",
+                        s"CORE_PEER_ADDRESS=$peerFullName:${peerConfig.port}",
                         s"CORE_PEER_LISTENADDRESS=0.0.0.0:${peerConfig.port}",
                         "CORE_CHAINCODE_JAVA_RUNTIME=enterprisedlt/fabric-jar-env",
                         s"CORE_PEER_GOSSIP_BOOTSTRAP=$peerFullName:${peerConfig.port}",
