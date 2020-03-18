@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, ServiceVersion}
 import org.enterprisedlt.fabric.service.node._
-import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, OrganizationConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, DockerConfig, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model.FabricServiceState
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
@@ -25,7 +25,7 @@ object Bootstrap {
         hostsManager: HostsManager,
         externalAddress: Option[ExternalAddress],
         profilePath: String,
-        dockerSocket: String,
+        processConfig: DockerConfig,
         state: AtomicReference[FabricServiceState]
     ): GlobalState = {
         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
@@ -33,10 +33,10 @@ object Bootstrap {
         logger.info(s"[ $organizationFullName ] - Starting process manager ...")
         val processManager = new DockerBasedProcessManager(
             profilePath,
-            dockerSocket,
             organizationConfig,
             bootstrapOptions.networkName,
-            bootstrapOptions.network
+            bootstrapOptions.network,
+            processConfig: DockerConfig
         )
         //
         logger.info(s"[ $organizationFullName ] - Generating crypto material...")

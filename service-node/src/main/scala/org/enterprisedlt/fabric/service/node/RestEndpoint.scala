@@ -2,6 +2,7 @@ package org.enterprisedlt.fabric.service.node
 
 import java.io.{BufferedInputStream, File, FileInputStream, FileReader}
 import java.nio.charset.StandardCharsets
+import java.time.Instant
 import java.util
 import java.util.concurrent.atomic.AtomicReference
 
@@ -22,8 +23,8 @@ import org.slf4j.LoggerFactory
 import scala.util.Try
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 class RestEndpoint(
     bindPort: Int,
     externalAddress: Option[ExternalAddress],
@@ -31,7 +32,7 @@ class RestEndpoint(
     cryptoManager: CryptoManager,
     hostsManager: HostsManager,
     profilePath: String,
-    dockerSocket: String,
+    processConfig: DockerConfig,
     state: AtomicReference[FabricServiceState]
 ) extends AbstractHandler {
     private val logger = LoggerFactory.getLogger(this.getClass)
@@ -296,7 +297,7 @@ class RestEndpoint(
                                 hostsManager,
                                 externalAddress,
                                 profilePath,
-                                dockerSocket,
+                                processConfig,
                                 state)
                             )
                             val end = System.currentTimeMillis() - start
@@ -376,7 +377,7 @@ class RestEndpoint(
                             externalAddress,
                             hostsManager,
                             profilePath,
-                            dockerSocket,
+                            processConfig,
                             state)
                         )
                         val end = System.currentTimeMillis() - start
@@ -510,12 +511,14 @@ class RestEndpoint(
                                   }
                                   response <- {
                                       logger.info(s"Invoking 'createContract' method...")
-                                      val contract = CreateContract(
+                                      val contract = Contract(
                                           contractRequest.name,
                                           contractRequest.lang,
                                           contractRequest.contractType,
                                           contractRequest.version,
-                                          contractRequest.parties.map(_.mspId)
+                                          organizationConfig.name,
+                                          contractRequest.parties.map(_.mspId),
+                                          Instant.now.toEpochMilli
                                       )
                                       state.networkManager.invokeChainCode(
                                           ServiceChannelName,
@@ -560,12 +563,12 @@ class RestEndpoint(
                             _ <- {
                                 val chainCodePkg = new BufferedInputStream(new FileInputStream(file))
                                 logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
-                                network.installChainCode(
-                                    ServiceChannelName,
-                                    contractDetails.chainCodeName,
-                                    contractDetails.chainCodeVersion,
-                                    "java",
-                                    chainCodePkg)
+                                      network.installChainCode(
+                                          ServiceChannelName,
+                                          contractDetails.name,
+                                          contractDetails.chainCodeVersion,
+                                          "java",
+                                          chainCodePkg)
                             }
                             invokeResultFuture <- network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
                             invokeResult <- Try(invokeResultFuture.get()).toEither.left.map(_.getMessage)
