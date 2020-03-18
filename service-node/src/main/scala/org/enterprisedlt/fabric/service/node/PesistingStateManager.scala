@@ -21,9 +21,7 @@ class PesistingStateManager(
         logger.debug(s"persisting component's state")
         for {
             state <- Try(Util.codec.toJson(state)).toEither.left.map(_.getMessage)
-            _ <- Try {
-                storeStateToFile(stateFilePath, state)
-            }.toEither.left.map(_.getMessage)
+            _ <- Try(storeStateToFile(stateFilePath, state)).toEither.left.map(_.getMessage)
         } yield ()
     }
 
@@ -54,7 +52,7 @@ class PesistingStateManager(
         if (!parent.exists()) {
             parent.mkdirs()
         }
-        val out = new FileOutputStream(parent)
+        val out = new FileOutputStream(stateFilePath)
         try {
             logger.debug(s"Saving state to file $stateFilePath")
             val s = state.getBytes(StandardCharsets.UTF_8)

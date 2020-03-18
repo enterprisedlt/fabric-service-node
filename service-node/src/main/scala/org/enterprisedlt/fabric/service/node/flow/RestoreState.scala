@@ -60,7 +60,6 @@ object RestoreState {
                 existComponents.peerNodes
             )
         }
-
         network
           .queryChainCode(ServiceChannelName, ServiceChainCodeName, "getServiceVersion")
           .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("Empty result"))
