@@ -3,7 +3,7 @@ package org.enterprisedlt.fabric.service.node.flow
 import java.util.concurrent.atomic.AtomicReference
 
 import org.enterprisedlt.fabric.service.model.ServiceVersion
-import org.enterprisedlt.fabric.service.node.configuration.{NetworkConfig, OrganizationConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{DockerConfig, NetworkConfig, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.model.{FabricComponentsState, FabricServiceState, ProcessManagerState}
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
@@ -25,7 +25,7 @@ object RestoreState {
         processManagerState: ProcessManagerState,
         hostsManager: HostsManager,
         profilePath: String,
-        dockerSocket: String,
+        processConfig: DockerConfig,
         state: AtomicReference[FabricServiceState]
     ): GlobalState = {
         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
@@ -38,10 +38,10 @@ object RestoreState {
         )
         val processManager = new DockerBasedProcessManager(
             profilePath,
-            dockerSocket,
             organizationConfig,
             processManagerState.networkName,
-            networkConfig
+            networkConfig,
+            processConfig
         )
         val existComponents = processManager.verifyContainersExistence()
         val network = new FabricNetworkManager(organizationConfig, fabricComponentsState.osns.entrySet().iterator().next().getValue, admin)
@@ -75,7 +75,5 @@ object RestoreState {
                 state.set(FabricServiceState(FabricServiceState.Ready))
                 GlobalState(network, processManager, networkConfig, processManagerState.networkName)
         }
-
     }
-
 }

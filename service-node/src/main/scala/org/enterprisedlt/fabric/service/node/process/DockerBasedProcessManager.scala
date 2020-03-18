@@ -9,11 +9,13 @@ import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback
 import com.github.dockerjava.api.command.DockerCmdExecFactory
 import com.github.dockerjava.api.exception.NotFoundException
+import com.github.dockerjava.api.model.LogConfig.LoggingType
 import com.github.dockerjava.api.model.Ports.Binding
 import com.github.dockerjava.api.model._
 import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientImpl}
 import com.github.dockerjava.okhttp.OkHttpDockerCmdExecFactory
 import org.enterprisedlt.fabric.service.node.FabricProcessManager
+import org.enterprisedlt.fabric.service.node.configuration.{DockerConfig, NetworkConfig, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.configuration.{NetworkConfig, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.model.ProcessManagerState
 import org.slf4j.LoggerFactory
@@ -21,19 +23,19 @@ import org.slf4j.LoggerFactory
 import scala.collection.JavaConverters._
 
 /**
- * @author Andrew Pudovikov
- */
+  * @author Andrew Pudovikov
+  */
 class DockerBasedProcessManager(
     hostHomePath: String,
-    dockerSocket: String,
     organizationConfig: OrganizationConfig,
     networkName: String,
     networkConfig: NetworkConfig,
+    processConfig: DockerConfig,
     LogWindow: Int = 1500
 ) extends FabricProcessManager {
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
-    private val dockerConfig = new DefaultDockerClientConfig.Builder().withDockerHost(dockerSocket).build
+    private val dockerConfig = new DefaultDockerClientConfig.Builder().withDockerHost(processConfig.dockerSocket).build
     private val execFactory: DockerCmdExecFactory = new OkHttpDockerCmdExecFactory
     private val docker: DockerClient = DockerClientImpl.getInstance(dockerConfig).withDockerCmdExecFactory(execFactory)
     private val DefaultLabels =
@@ -41,10 +43,10 @@ class DockerBasedProcessManager(
             "com.docker.compose.project" -> networkName,
             "com.docker.compose.service" -> organizationFullName
         ).asJava
-
+    private val logConfig = makeDockerLogConfig(processConfig)
     // =================================================================================================================
     logger.info(s"Initializing ${this.getClass.getSimpleName} ...")
-    private val containerName = s"service.$organizationFullName"
+    val containerName = s"service.$organizationFullName"
     logger.info(s"Checking network ...")
     if (docker.listNetworksCmd().withNameFilter(networkName).exec().isEmpty) {
         logger.info(s"Network $networkName does not exist, creating ...")
@@ -92,6 +94,7 @@ class DockerBasedProcessManager(
                     new PortBinding(new Binding("0.0.0.0", osnConfig.port.toString), new ExposedPort(osnConfig.port, InternetProtocol.TCP))
                 )
                 .withNetworkMode(networkName)
+                .withLogConfig(logConfig)
 
               val osnContainerId: String = docker.createContainerCmd("hyperledger/fabric-orderer")
                 .withName(osnFullName)
@@ -156,7 +159,7 @@ class DockerBasedProcessManager(
                     new PortBinding(new Binding("0.0.0.0", peerConfig.port.toString), new ExposedPort(peerConfig.port, InternetProtocol.TCP))
                 )
                 .withNetworkMode(networkName)
-
+                .withLogConfig(logConfig)
 
               val peerContainerId: String = docker.createContainerCmd("hyperledger/fabric-peer")
                 .withName(peerFullName)
@@ -206,6 +209,7 @@ class DockerBasedProcessManager(
               new PortBinding(new Binding("0.0.0.0", port.toString), new ExposedPort(5984, InternetProtocol.TCP))
           )
           .withNetworkMode(networkName)
+          .withLogConfig(logConfig)
 
         val couchDBContainerId: String = docker.createContainerCmd("hyperledger/fabric-couchdb")
           .withName(couchDBFullName)
@@ -296,6 +300,15 @@ class DockerBasedProcessManager(
         stopAndRemoveContainer(containerName)
     }
 
+
+    // =================================================================================================================
+    private def makeDockerLogConfig(processConfig: DockerConfig): LogConfig = {
+        val jsonLogConfig = Map(
+            "max-size" -> processConfig.logFileSize,
+            "max-file" -> processConfig.logMaxFiles
+        ).asJava
+        new LogConfig(LoggingType.JSON_FILE, jsonLogConfig)
+    }
 
     def verifyContainersExistence(): NetworkConfig = {
         NetworkConfig(
