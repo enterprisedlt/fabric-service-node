@@ -333,7 +333,7 @@ class RestEndpoint(
                                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                         }
 
-                    case "/admin/add-to-channel" =>
+                    case "/admin/add-to-channel" => {
                         for {
                             state <- globalState.toRight("Node is not initialized yet")
                             addToChannelRequest <- Try(Util.codec.fromJson(request.getReader, classOf[AddOrgToChannelRequest]))
@@ -344,7 +344,7 @@ class RestEndpoint(
                               .toEither.left.map(_.getMessage)
                             adminCerts <- Try(addToChannelRequest.organizationCertificates.adminCerts.map(Util.base64Decode).toIterable)
                               .toEither.left.map(_.getMessage)
-                            joinResult = {
+                            _ = {
                                 logger.info(s"Adding org to channel ${addToChannelRequest.mspId} ...")
                                 state.networkManager.joinToChannel(
                                     addToChannelRequest.channelName,
@@ -353,16 +353,18 @@ class RestEndpoint(
                                     tlsCACerts,
                                     adminCerts)
                             }
-                        } yield joinResult match {
-                            case Right(()) =>
-                                response.getWriter.println(s"org ${addToChannelRequest.mspId} has been added to channel ${addToChannelRequest.channelName}")
-                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                                response.setStatus(HttpServletResponse.SC_OK)
-                            case Left(errorMsg) =>
-                                response.getWriter.println(errorMsg)
-                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                        }
+                        } yield s"org ${addToChannelRequest.mspId} has been added to channel ${addToChannelRequest.channelName}"
+                    } match {
+                        case Right(r) =>
+                            response.getWriter.println(r)
+                            response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                            response.setStatus(HttpServletResponse.SC_OK)
+                        case Left(errorMsg) =>
+                            response.getWriter.println(errorMsg)
+                            response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                    }
+
 
                     case "/admin/request-join" =>
                         logger.info("Requesting to joining network ...")
