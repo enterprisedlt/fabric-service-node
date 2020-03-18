@@ -37,15 +37,15 @@ popd
 #
 # Join others
 #
-#OTHERS=`tail -n +2 ${ORG_LIST_FILE}`
-#for ORG in ${OTHERS}
-#do
-#    pushd ${PROFILE_PATH}/${ORG}
-#        fabric-service-start.sh .
-#
-#        cp ../shared/invite.json ./invite.json
-#        jq '.invite = input' ./components.json ./invite.json > ./join.json
-#
-#        fabric-service-join.sh . ./join.json
-#    popd
-#done
+OTHERS=`tail -n +2 ${ORG_LIST_FILE}`
+for ORG in ${OTHERS}
+do
+    pushd ${PROFILE_PATH}/${ORG}
+        fabric-service-start.sh .
+
+        cp ../shared/invite.json ./invite.json
+        jq '.invite = input' ./components.json ./invite.json > ./join.json
+
+        fabric-service-join.sh . ./join.json
+    popd
+done
