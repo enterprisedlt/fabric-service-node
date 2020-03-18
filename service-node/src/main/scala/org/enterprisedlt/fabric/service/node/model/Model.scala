@@ -96,22 +96,6 @@ case class ContractCollectionDescriptor(
     members: Array[String]
 )
 
-//case class CreateContract(
-//    name: String,
-//    lang: String,
-//    chainCodeName: String,
-//    chainCodeVersion: String,
-//    participants: Array[String]
-//)
-
-//case class UpgradeContract(
-//    name: String,
-//    lang: String,
-//    chainCodeName: String,
-//    chainCodeVersion: String,
-//    participants: Array[String]
-//)
-
 case class CreateContractRequest(
     name: String,
     version: String,

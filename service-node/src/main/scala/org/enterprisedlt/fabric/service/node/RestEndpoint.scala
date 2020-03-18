@@ -23,8 +23,8 @@ import org.slf4j.LoggerFactory
 import scala.util.Try
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 class RestEndpoint(
     bindPort: Int,
     externalAddress: Option[ExternalAddress],
@@ -334,37 +334,35 @@ class RestEndpoint(
                         }
 
                     case "/admin/add-to-channel" =>
-                        globalState
-                          .toRight("Node is not initialized yet")
-                          .map { state =>
-                            for {
-                                addToChannelRequest <- Try(Util.codec.fromJson(request.getReader, classOf[AddOrgToChannelRequest]))
-                                  .toEither.left.map(_.getMessage)
-                                caCerts <- Try(addToChannelRequest.organizationCertificates.caCerts.map(Util.base64Decode).toIterable)
-                                    .toEither.left.map(_.getMessage)
-                                tlsCACerts <- Try(addToChannelRequest.organizationCertificates.tlsCACerts.map(Util.base64Decode).toIterable)
-                                  .toEither.left.map(_.getMessage)
-                                adminCerts <- Try(addToChannelRequest.organizationCertificates.adminCerts.map(Util.base64Decode).toIterable)
-                                  .toEither.left.map(_.getMessage)
-                            } yield {
+                        for {
+                            state <- globalState.toRight("Node is not initialized yet")
+                            addToChannelRequest <- Try(Util.codec.fromJson(request.getReader, classOf[AddOrgToChannelRequest]))
+                              .toEither.left.map(_.getMessage)
+                            caCerts <- Try(addToChannelRequest.organizationCertificates.caCerts.map(Util.base64Decode).toIterable)
+                              .toEither.left.map(_.getMessage)
+                            tlsCACerts <- Try(addToChannelRequest.organizationCertificates.tlsCACerts.map(Util.base64Decode).toIterable)
+                              .toEither.left.map(_.getMessage)
+                            adminCerts <- Try(addToChannelRequest.organizationCertificates.adminCerts.map(Util.base64Decode).toIterable)
+                              .toEither.left.map(_.getMessage)
+                            joinResult = {
                                 logger.info(s"Adding org to channel ${addToChannelRequest.mspId} ...")
                                 state.networkManager.joinToChannel(
                                     addToChannelRequest.channelName,
                                     addToChannelRequest.mspId,
                                     caCerts,
                                     tlsCACerts,
-                                    adminCerts) match {
-                                    case Right(()) =>
-                                        response.getWriter.println(s"org ${addToChannelRequest.mspId} has been added to channel ${addToChannelRequest.channelName}")
-                                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                                        response.setStatus(HttpServletResponse.SC_OK)
-                                    case Left(errorMsg) =>
-                                        response.getWriter.println(errorMsg)
-                                        response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                                        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                                }
+                                    adminCerts)
                             }
-                          }
+                        } yield joinResult match {
+                            case Right(()) =>
+                                response.getWriter.println(s"org ${addToChannelRequest.mspId} has been added to channel ${addToChannelRequest.channelName}")
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(errorMsg) =>
+                                response.getWriter.println(errorMsg)
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
 
                     case "/admin/request-join" =>
                         logger.info("Requesting to joining network ...")
@@ -565,12 +563,12 @@ class RestEndpoint(
                             _ <- {
                                 val chainCodePkg = new BufferedInputStream(new FileInputStream(file))
                                 logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
-                                      network.installChainCode(
-                                          ServiceChannelName,
-                                          contractDetails.name,
-                                          contractDetails.chainCodeVersion,
-                                          "java",
-                                          chainCodePkg)
+                                network.installChainCode(
+                                    ServiceChannelName,
+                                    contractDetails.name,
+                                    contractDetails.chainCodeVersion,
+                                    "java",
+                                    chainCodePkg)
                             }
                             invokeResultFuture <- network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
                             invokeResult <- Try(invokeResultFuture.get()).toEither.left.map(_.getMessage)
