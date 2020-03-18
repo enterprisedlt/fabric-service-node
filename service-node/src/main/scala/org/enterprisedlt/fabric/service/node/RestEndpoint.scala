@@ -10,12 +10,12 @@ import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.apache.http.entity.ContentType
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
-import org.enterprisedlt.fabric.service.model.Contract
+import org.enterprisedlt.fabric.service.model.{Contract, UpgradeContract}
 import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
 import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
-import org.enterprisedlt.fabric.service.node.model._
+import org.enterprisedlt.fabric.service.node.model.{AddOrgToChannelRequest, CallContractRequest, ContractDeploymentDescriptor, ContractJoinRequest, CreateContractRequest, DeleteMessageRequest, FabricServiceState, GetMessageRequest, Invite, JoinRequest, SendMessageRequest, UpgradeContractRequest}
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
@@ -23,8 +23,8 @@ import org.slf4j.LoggerFactory
 import scala.util.Try
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 class RestEndpoint(
     bindPort: Int,
     externalAddress: Option[ExternalAddress],
@@ -98,7 +98,7 @@ class RestEndpoint(
                             collection <- network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listCollections")
                             res <- collection.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
                         } yield res
-                          result match {
+                        result match {
                             case Right(result) =>
                                 response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                                 response.getWriter.println(result)
@@ -159,25 +159,28 @@ class RestEndpoint(
                     case "/admin/create-channel" =>
                         val channelName = request.getParameter("channel")
                         logger.info(s"Creating new channel $channelName ...")
-                        globalState
-                          .toRight("Node is not initialized yet")
-                          .map { state =>
-                              state.networkManager.createChannel(
+                        (
+                          for {
+                              state <- globalState.toRight("Node is not initialized yet")
+                              _ <- state.networkManager.createChannel(
                                   channelName,
                                   FabricChannel.CreateChannel(channelName,
                                       DefaultConsortiumName,
                                       organizationConfig.name
-                                  )) match {
-                                  case Right(chName) =>
-                                      response.getWriter.println(s"$chName has been created")
-                                      response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                                      response.setStatus(HttpServletResponse.SC_OK)
-                                  case Left(errorMsg) =>
-                                      response.getWriter.println(errorMsg)
-                                      response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
-                                      response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                              }
-                          }
+                                  ))
+                              result <- state.networkManager.addPeerToChannel(channelName, state.network.peerNodes.head.name)
+                          } yield result
+                          ) match {
+                            case Right(chName) =>
+                                response.getWriter.println(s"$chName has been created")
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(errorMsg) =>
+                                response.getWriter.println(errorMsg)
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
+
 
                     case "/service/get-block" =>
                         val channelName = request.getParameter("channelName")
@@ -330,6 +333,39 @@ class RestEndpoint(
                                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                         }
 
+                    case "/admin/add-to-channel" => {
+                        for {
+                            state <- globalState.toRight("Node is not initialized yet")
+                            addToChannelRequest <- Try(Util.codec.fromJson(request.getReader, classOf[AddOrgToChannelRequest]))
+                              .toEither.left.map(_.getMessage)
+                            caCerts <- Try(addToChannelRequest.organizationCertificates.caCerts.map(Util.base64Decode).toIterable)
+                              .toEither.left.map(_.getMessage)
+                            tlsCACerts <- Try(addToChannelRequest.organizationCertificates.tlsCACerts.map(Util.base64Decode).toIterable)
+                              .toEither.left.map(_.getMessage)
+                            adminCerts <- Try(addToChannelRequest.organizationCertificates.adminCerts.map(Util.base64Decode).toIterable)
+                              .toEither.left.map(_.getMessage)
+                            _ = {
+                                logger.info(s"Adding org to channel ${addToChannelRequest.mspId} ...")
+                                state.networkManager.joinToChannel(
+                                    addToChannelRequest.channelName,
+                                    addToChannelRequest.mspId,
+                                    caCerts,
+                                    tlsCACerts,
+                                    adminCerts)
+                            }
+                        } yield s"org ${addToChannelRequest.mspId} has been added to channel ${addToChannelRequest.channelName}"
+                    } match {
+                        case Right(r) =>
+                            response.getWriter.println(r)
+                            response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                            response.setStatus(HttpServletResponse.SC_OK)
+                        case Left(errorMsg) =>
+                            response.getWriter.println(errorMsg)
+                            response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                    }
+
+
                     case "/admin/request-join" =>
                         logger.info("Requesting to joining network ...")
                         val start = System.currentTimeMillis()
@@ -347,6 +383,84 @@ class RestEndpoint(
                         val end = System.currentTimeMillis() - start
                         logger.info(s"Joined ($end ms)")
                         response.setStatus(HttpServletResponse.SC_OK)
+
+                    case "/admin/contract-upgrade" =>
+                        val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
+                        val upgradeContractRequest = Util.codec.fromJson(request.getReader, classOf[UpgradeContractRequest])
+                        logger.info(s"Upgrading contract ${upgradeContractRequest.contractType}...")
+                        globalState
+                          .toRight("Node is not initialized yet")
+                          .flatMap { state =>
+                              logger.info(s"[ $organizationFullName ] - Preparing ${upgradeContractRequest.name} chain code ...")
+                              val filesBaseName = s"${upgradeContractRequest.contractType}-${upgradeContractRequest.version}"
+                              val chainCodeName = s"${upgradeContractRequest.name}-${upgradeContractRequest.version}"
+                              val deploymentDescriptor = Util.codec.fromJson(new FileReader(s"/opt/profile/chain-code/$filesBaseName.json"), classOf[ContractDeploymentDescriptor])
+                              val path = s"/opt/profile/chain-code/$filesBaseName.tgz"
+                              for {
+                                  file <- Option(new File(path)).filter(_.exists()).toRight(s"File $filesBaseName.tgz doesn't exist")
+                                  chainCodePkg <- Option(new BufferedInputStream(new FileInputStream(file))).toRight(s"Can't prepare cc pkg stream")
+                                  _ <- {
+                                      logger.info(s"[ $organizationFullName ] - Installing $chainCodeName chain code ...")
+                                      state.networkManager.installChainCode(
+                                          upgradeContractRequest.channelName,
+                                          upgradeContractRequest.name,
+                                          upgradeContractRequest.version,
+                                          upgradeContractRequest.lang,
+                                          chainCodePkg)
+                                  }
+                                  _ <- {
+                                      logger.info(s"[ $organizationFullName ] - Upgrading $chainCodeName chain code up to ${upgradeContractRequest.version}...")
+                                      val endorsementPolicy = Util.policyAnyOf(
+                                          deploymentDescriptor.endorsement
+                                            .flatMap(r => upgradeContractRequest.parties.filter(_.role == r).map(_.mspId))
+                                      )
+                                      val collections = deploymentDescriptor.collections.map { cd =>
+                                          PrivateCollectionConfiguration(
+                                              name = cd.name,
+                                              memberIds = cd.members.map(m =>
+                                                  upgradeContractRequest.parties.find(_.role == m).map(_.mspId).get
+                                              )
+                                          )
+                                      }
+                                      state.networkManager.upgradeChainCode(
+                                          upgradeContractRequest.channelName,
+                                          upgradeContractRequest.name,
+                                          upgradeContractRequest.version,
+                                          upgradeContractRequest.lang,
+                                          endorsementPolicy = Option(endorsementPolicy),
+                                          collectionConfig = Option(Util.createCollectionsConfig(collections)),
+                                          arguments = upgradeContractRequest.initArgs
+                                      )
+                                  }
+                                  response <- {
+                                      logger.info(s"Invoking 'createContract' method...")
+                                      val contract = UpgradeContract(
+                                          upgradeContractRequest.name,
+                                          upgradeContractRequest.lang,
+                                          upgradeContractRequest.contractType,
+                                          upgradeContractRequest.version,
+                                          organizationConfig.name,
+                                          upgradeContractRequest.parties.map(_.mspId),
+                                          Instant.now.toEpochMilli
+                                      )
+                                      state.networkManager.invokeChainCode(
+                                          ServiceChannelName,
+                                          ServiceChainCodeName,
+                                          "upgradeContract",
+                                          Util.codec.toJson(contract))
+                                  }
+                                  result <- Try(response.get()).toEither.left.map(_.getMessage)
+                              } yield result
+                          } match {
+                            case Right(answer) =>
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                response.getWriter.println(answer)
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(err) =>
+                                response.setContentType(ContentType.TEXT_PLAIN.getMimeType)
+                                response.getWriter.println(err)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
 
                     case "/admin/create-contract" =>
                         logger.info("Creating contract ...")
@@ -451,12 +565,12 @@ class RestEndpoint(
                             _ <- {
                                 val chainCodePkg = new BufferedInputStream(new FileInputStream(file))
                                 logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
-                                      network.installChainCode(
-                                          ServiceChannelName,
-                                          contractDetails.name,
-                                          contractDetails.chainCodeVersion,
-                                          "java",
-                                          chainCodePkg)
+                                network.installChainCode(
+                                    ServiceChannelName,
+                                    contractDetails.name,
+                                    contractDetails.chainCodeVersion,
+                                    "java",
+                                    chainCodePkg)
                             }
                             invokeResultFuture <- network.invokeChainCode(ServiceChannelName, ServiceChainCodeName, "delContract", joinReq.name, joinReq.founder)
                             invokeResult <- Try(invokeResultFuture.get()).toEither.left.map(_.getMessage)

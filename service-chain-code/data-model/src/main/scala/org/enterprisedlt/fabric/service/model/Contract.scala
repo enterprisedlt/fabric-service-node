@@ -9,3 +9,12 @@ case class Contract(
     participants: Array[String],
     timestamp: Long
 )
+case class UpgradeContract(
+    name: String,
+    lang: String,
+    chainCodeName: String,
+    chainCodeVersion: String,
+    founder: String,
+    participants: Array[String],
+    timestamp: Long
+)

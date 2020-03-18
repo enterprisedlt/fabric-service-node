@@ -13,6 +13,8 @@ import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
 import org.slf4j.LoggerFactory
 
+import scala.util.Try
+
 /**
  * @author Alexey Polubelov
  */
@@ -182,8 +184,19 @@ object Join {
 
         for {
             // join new org to service channel
-            _ <- state.networkManager.joinToChannel(ServiceChannelName, joinRequest)
-
+            caCerts <- Try(joinRequest.organizationCertificates.caCerts.map(Util.base64Decode).toIterable)
+              .toEither.left.map(_.getMessage)
+            tlsCACerts <- Try(joinRequest.organizationCertificates.tlsCACerts.map(Util.base64Decode).toIterable)
+              .toEither.left.map(_.getMessage)
+            adminCerts <- Try(joinRequest.organizationCertificates.adminCerts.map(Util.base64Decode).toIterable)
+              .toEither.left.map(_.getMessage)
+            _ <- state.networkManager.joinToChannel(
+                ServiceChannelName,
+                joinRequest.organization.mspId,
+                caCerts,
+                tlsCACerts,
+                adminCerts
+            )
             // fetch current network version
             chainCodeVersion <- state.networkManager
               .queryChainCode(ServiceChannelName, ServiceChainCodeName, "getServiceVersion")
@@ -215,7 +228,7 @@ object Join {
             val nextCollections = calculateCollectionsConfiguration(orgCodes)
             logger.info(s"Next collections: ${nextCollections.map(_.name).mkString("[", ",", "]")}")
             logger.info(s"Upgrading version of service to $nextVersion ...")
-            state.networkManager.upgradeChainCode(ServiceChannelName, ServiceChainCodeName, nextVersion,
+            state.networkManager.upgradeChainCode(ServiceChannelName, ServiceChainCodeName, nextVersion, "JAVA",
                 endorsementPolicy = Option(policyForCCUpgrade),
                 collectionConfig = Option(Util.createCollectionsConfig(nextCollections)),
                 arguments = Array(
