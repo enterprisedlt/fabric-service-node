@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback
-import com.github.dockerjava.api.command.DockerCmdExecFactory
+import com.github.dockerjava.api.command.{DockerCmdExecFactory, InspectContainerResponse}
 import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.model.LogConfig.LoggingType
 import com.github.dockerjava.api.model.Ports.Binding
@@ -310,11 +310,11 @@ class DockerBasedProcessManager(
         new LogConfig(LoggingType.JSON_FILE, jsonLogConfig)
     }
 
-    def verifyContainersExistence(): NetworkConfig = {
-        NetworkConfig(
-            networkConfig.orderingNodes.filter(peer => checkContainerExistence(peer.name)),
-            networkConfig.peerNodes.filter(osn => checkContainerExistence(osn.name))
-        )
+    def checkContainersRunningForRestore(): Either[String, Unit] = {
+        for {
+            _ <- Either.cond(networkConfig.orderingNodes.forall(o => checkContainerRunning(o.name)),(),"Error during osn processes check")
+            - <- Either.cond(networkConfig.peerNodes.forall(p => checkContainerRunning(p.name)),(),"Error during peer processes check")
+        } yield ()
     }
 
     // =================================================================================================================
@@ -323,7 +323,18 @@ class DockerBasedProcessManager(
             docker.inspectContainerCmd(name).exec()
             true
         } catch {
-            case e: NotFoundException => false
+            case _: NotFoundException => false
+            case other: Throwable => throw other
+        }
+    }
+
+    // =================================================================================================================
+    private def checkContainerRunning(name: String): Boolean = {
+        try {
+            val c = docker.inspectContainerCmd(name).exec()
+            if (c.getState.getStatus == "running") true else false
+        } catch {
+            case _: NotFoundException => false
             case other: Throwable => throw other
         }
     }

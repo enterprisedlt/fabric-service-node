@@ -21,6 +21,7 @@ serviceID=`docker run -d \
  -e "SERVICE_BIND_PORT=${SERVICE_BIND_PORT}" \
  -e "SERVICE_EXTERNAL_ADDRESS=${SERVICE_EXTERNAL_ADDRESS}" \
  -e "DOCKER_SOCKET=unix:///host/var/run/docker.sock" \
+ -e "STATE_FILE_PATH=/opt/profile/state/state.json" \
  -e "LOG_FILE_SIZE=100m" \
  -e "LOG_MAX_FILES=5" \
  -p ${SERVICE_BIND_PORT}:${SERVICE_BIND_PORT} \

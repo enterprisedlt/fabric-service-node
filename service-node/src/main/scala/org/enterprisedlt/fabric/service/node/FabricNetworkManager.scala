@@ -1,14 +1,13 @@
 package org.enterprisedlt.fabric.service.node
 
-import java.io.{FileOutputStream, InputStream, PrintStream, PrintWriter}
+import java.io.InputStream
 import java.util
 import java.util.Properties
 import java.util.concurrent.{CompletableFuture, TimeUnit}
 
 import com.google.protobuf.ByteString
 import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, OrganizationConfig, PeerConfig}
-import org.enterprisedlt.fabric.service.node.model.{AddOrgToChannelRequest, CCLanguage, JoinRequest}
-import org.enterprisedlt.fabric.service.node.model.{CCLanguage, JoinRequest, FabricComponentsState}
+import org.enterprisedlt.fabric.service.node.model.{CCLanguage, FabricComponentsState, JoinRequest}
 import org.enterprisedlt.fabric.service.node.proto._
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
 import org.hyperledger.fabric.protos.common.Configtx
@@ -94,7 +93,7 @@ class FabricNetworkManager(
     }
 
     //=========================================================================
-    def restoreChannelWithComponents(channelName: String, osnsConfig: Array[OSNConfig], peerConfigs: Array[PeerConfig]): Either[String, Channel] = {
+    def restoreChannelWithComponents(channelName: String, osnsConfig: Array[OSNConfig], peerConfigs: Array[PeerConfig]): Either[String, Unit] = {
         val channel = fabricClient.newChannel(channelName)
         channels += channelName -> channel
         Try {
@@ -109,6 +108,7 @@ class FabricNetworkManager(
                 definePeer(peerConfig)
             }
             channel.initialize()
+            ()
         }.toEither.left.map(_.getMessage)
     }
 

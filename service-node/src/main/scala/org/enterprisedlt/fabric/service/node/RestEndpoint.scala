@@ -15,9 +15,7 @@ import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
 import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join, RestoreState}
-import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
-import org.enterprisedlt.fabric.service.node.model.{AddOrgToChannelRequest, CallContractRequest, ContractDeploymentDescriptor, ContractJoinRequest, CreateContractRequest, DeleteMessageRequest, FabricServiceState, GetMessageRequest, Invite, JoinRequest, SendMessageRequest, UpgradeContractRequest}
+import org.enterprisedlt.fabric.service.node.model.{AddOrgToChannelRequest, CallContractRequest, ContractDeploymentDescriptor, ContractJoinRequest, CreateContractRequest, DeleteMessageRequest, FabricServiceState, GetMessageRequest, Invite, JoinRequest, SendMessageRequest, UpgradeContractRequest, _}
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
@@ -59,7 +57,7 @@ class RestEndpoint(
         logger.debug(s"restoring state")
         stateManager.unmarshalNetworkState()
           .map { s: ServiceNodeState =>
-              init(RestoreState.restoreOrganizationState(
+              RestoreState.restoreOrganizationState(
                   organizationConfig,
                   cryptoManager,
                   s.fabricComponentsState,
@@ -67,7 +65,10 @@ class RestEndpoint(
                   hostsManager,
                   profilePath,
                   processConfig,
-                  state))
+                  state) match {
+                  case Right(s) => init(s)
+                  case Left(e) => logger.error(s"Error during restoring state: $e")
+              }
           }
     }
 
@@ -202,11 +203,11 @@ class RestEndpoint(
                                       DefaultConsortiumName,
                                       organizationConfig.name
                                   ))
-                              result <- state.networkManager.addPeerToChannel(channelName, state.network.peerNodes.head.name)
-                          } yield result
+                              _ <- state.networkManager.addPeerToChannel(channelName, state.network.peerNodes.head.name)
+                          } yield ()
                           ) match {
-                            case Right(chName) =>
-                                response.getWriter.println(s"$chName has been created")
+                            case Right(()) =>
+                                response.getWriter.println(s"$channelName has been created")
                                 response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                                 response.setStatus(HttpServletResponse.SC_OK)
                             case Left(errorMsg) =>
