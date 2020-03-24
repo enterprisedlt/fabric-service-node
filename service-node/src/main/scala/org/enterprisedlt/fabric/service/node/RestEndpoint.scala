@@ -417,8 +417,8 @@ class RestEndpoint(
                                       val collections = deploymentDescriptor.collections.map { cd =>
                                           PrivateCollectionConfiguration(
                                               name = cd.name,
-                                              memberIds = cd.members.map(m =>
-                                                  upgradeContractRequest.parties.find(_.role == m).map(_.mspId).get
+                                              memberIds = cd.members.flatMap(m =>
+                                                  upgradeContractRequest.parties.filter(_.role == m).map(_.mspId)
                                               )
                                           )
                                       }
@@ -496,8 +496,8 @@ class RestEndpoint(
                                       val collections = deploymentDescriptor.collections.map { cd =>
                                           PrivateCollectionConfiguration(
                                               name = cd.name,
-                                              memberIds = cd.members.map(m =>
-                                                  contractRequest.parties.find(_.role == m).map(_.mspId).get
+                                              memberIds = cd.members.flatMap(m =>
+                                                  contractRequest.parties.filter(_.role == m).map(_.mspId)
                                               )
                                           )
                                       }
