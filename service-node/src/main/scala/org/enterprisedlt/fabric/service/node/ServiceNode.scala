@@ -16,6 +16,7 @@ import org.enterprisedlt.fabric.service.node.auth.{FabricAuthenticator, Role}
 import org.enterprisedlt.fabric.service.node.configuration.{DockerConfig, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
 import org.enterprisedlt.fabric.service.node.model.FabricServiceState
+import org.enterprisedlt.fabric.service.node.rest.JsonRestEndpoint
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.slf4j.LoggerFactory
 
@@ -99,7 +100,7 @@ object ServiceNode extends App {
         })
     }
 
-    private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: Handler, webAppResource: String, adminConsole: String): Server = {
+    private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: AnyRef, webAppResource: String, adminConsole: String): Server = {
         val server = new Server()
 
         val connector = createTLSConnector(bindPort, server, cryptography)
@@ -120,7 +121,12 @@ object ServiceNode extends App {
 
         //
         val endpointContext = new ContextHandler("/")
-        endpointContext.setHandler(endpoint)
+        endpointContext.setHandler(
+            new JsonRestEndpoint(
+                Util.createCodec,
+                endpoint
+            )
+        )
 
         // add serving for web app:
         Util.mkDirs(webAppResource)

@@ -20,6 +20,7 @@ import org.apache.http.util.EntityUtils
 import org.bouncycastle.asn1.ASN1ObjectIdentifier
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x500.style.{BCStyle, IETFUtils}
+import org.enterprisedlt.fabric.service.node.rest.JsonServerCodec
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope, Payload}
 import org.hyperledger.fabric.protos.common.Configtx
@@ -172,6 +173,7 @@ object Util {
     //=========================================================================
     def codec: Gson = (new GsonBuilder).create()
 
+    def createCodec: () => JsonServerCodec = () => new JsonServerCodec(codec)
     //=========================================================================
     def setupLogging(logLevel: String): Unit = {
         LoggerFactory
