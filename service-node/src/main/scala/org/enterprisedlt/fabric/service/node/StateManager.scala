@@ -1,15 +1,14 @@
 package org.enterprisedlt.fabric.service.node
 
-import org.enterprisedlt.fabric.service.node.model.ServiceNodeState
+import org.enterprisedlt.fabric.service.node.model.RestoredState
 
 /**
-  * @author
-  */
+ * @author
+ */
 trait StateManager {
 
-    def marshalNetworkState(state: ServiceNodeState): Either[String, Unit]
+    def storeState(): Either[String, Unit]
 
-
-    def unmarshalNetworkState(): Either[String, ServiceNodeState]
+    def restoreState(): Either[String, RestoredState]
 
 }

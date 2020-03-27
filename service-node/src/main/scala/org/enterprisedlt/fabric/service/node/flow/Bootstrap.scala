@@ -4,10 +4,11 @@ import java.io.{BufferedInputStream, FileInputStream}
 import java.util.concurrent.atomic.AtomicReference
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, ServiceVersion}
+import org.enterprisedlt.fabric.service.node.ServiceNode.StateFilePath
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, DockerConfig, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
-import org.enterprisedlt.fabric.service.node.model.FabricServiceState
+import org.enterprisedlt.fabric.service.node.model.{FabricServiceState, GlobalState}
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
 import org.enterprisedlt.fabric.service.node.proto._
 import org.slf4j.LoggerFactory
@@ -26,6 +27,7 @@ object Bootstrap {
         externalAddress: Option[ExternalAddress],
         profilePath: String,
         processConfig: DockerConfig,
+        stateFilePath: String,
         state: AtomicReference[FabricServiceState]
     ): GlobalState = {
         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
@@ -34,10 +36,10 @@ object Bootstrap {
         val processManager = new DockerBasedProcessManager(
             profilePath,
             organizationConfig,
-            bootstrapOptions.networkName,
-            bootstrapOptions.network,
-            processConfig: DockerConfig
+            processConfig
         )
+        processManager.setNetworkName(bootstrapOptions.networkName)
+        processManager.setNetworkConfig(bootstrapOptions.network)
         //
         logger.info(s"[ $organizationFullName ] - Generating crypto material...")
         cryptography.createOrgCrypto(bootstrapOptions.network, organizationFullName)
@@ -63,36 +65,45 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
         val admin = cryptography.loadDefaultAdmin
-        val network = new FabricNetworkManager(organizationConfig, bootstrapOptions.network.orderingNodes.head, admin)
+        val networkManager = new FabricNetworkManager(organizationConfig, admin)
         //
-        bootstrapOptions.network.orderingNodes.tail.foreach { osnConfig =>
-            network.defineOsn(osnConfig)
+        val stateManager = new FilePersistingStateManager(
+            stateFilePath,
+            processManager,
+            networkManager,
+            organizationConfig,
+            hostsManager,
+            state
+        )
+
+        bootstrapOptions.network.orderingNodes.foreach { osnConfig =>
+            networkManager.defineOsn(osnConfig)
         }
 
         logger.info(s"[ $organizationFullName ] - Starting peer nodes ...")
         state.set(FabricServiceState(FabricServiceState.BootstrapStartingPeers))
         bootstrapOptions.network.peerNodes.foreach { peerConfig =>
             processManager.startPeerNode(peerConfig.name)
-            network.definePeer(peerConfig)
+            networkManager.definePeer(peerConfig)
         }
 
         //
         logger.info(s"[ $organizationFullName ] - Creating channel ...")
         state.set(FabricServiceState(FabricServiceState.BootstrapCreatingServiceChannel))
-        network.createChannel(ServiceChannelName, FabricChannel.CreateChannel(ServiceChannelName, DefaultConsortiumName, organizationConfig.name))
+        networkManager.createChannel(ServiceChannelName, FabricChannel.CreateChannel(ServiceChannelName, DefaultConsortiumName, organizationConfig.name))
 
         //
         logger.info(s"[ $organizationFullName ] - Adding peers to channel ...")
         state.set(FabricServiceState(FabricServiceState.BootstrapAddingPeersToChannel))
         bootstrapOptions.network.peerNodes.foreach { peerConfig =>
-            network.addPeerToChannel(ServiceChannelName, peerConfig.name)
+            networkManager.addPeerToChannel(ServiceChannelName, peerConfig.name)
         }
 
         //
         logger.info(s"[ $organizationFullName ] - Updating anchors for channel ...")
         state.set(FabricServiceState(FabricServiceState.BootstrapUpdatingAnchors))
         bootstrapOptions.network.peerNodes.foreach { peerConfig =>
-            network.addAnchorsToChannel(ServiceChannelName, peerConfig.name)
+            networkManager.addAnchorsToChannel(ServiceChannelName, peerConfig.name)
         }
 
         //
@@ -101,7 +112,7 @@ object Bootstrap {
         val chainCodePkg = new BufferedInputStream(new FileInputStream(ServiceChainCodePath))
 
         logger.info(s"[ $organizationFullName ] - Installing service chain code ...")
-        network.installChainCode(
+        networkManager.installChainCode(
             ServiceChannelName,
             ServiceChainCodeName,
             "1.0.0",
@@ -129,7 +140,7 @@ object Bootstrap {
                 networkVersion = "0"
             )
 
-        network.instantiateChainCode(
+        networkManager.instantiateChainCode(
             ServiceChannelName, ServiceChainCodeName,
             "1.0.0", // {chainCodeVersion}.{networkVersion},
             "java",
@@ -140,11 +151,17 @@ object Bootstrap {
         )
 
         state.set(FabricServiceState(FabricServiceState.BootstrapSettingUpBlockListener))
-        network.setupBlockListener(ServiceChannelName, new NetworkMonitor(organizationConfig, bootstrapOptions.network, network, processManager, hostsManager, serviceVersion))
+        networkManager.setupBlockListener(ServiceChannelName, new NetworkMonitor(organizationConfig, bootstrapOptions.network, networkManager, processManager, hostsManager, serviceVersion))
 
         //
         logger.info(s"[ $organizationFullName ] - Bootstrap done.")
         state.set(FabricServiceState(FabricServiceState.Ready))
-        GlobalState(network, processManager, bootstrapOptions.network, bootstrapOptions.networkName)
+        GlobalState(
+            networkManager,
+            processManager,
+            stateManager,
+            bootstrapOptions.network,
+            bootstrapOptions.networkName
+        )
     }
 }

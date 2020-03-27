@@ -2,12 +2,13 @@ package org.enterprisedlt.fabric.service.node.process
 
 import java.io.Closeable
 import java.nio.charset.StandardCharsets
+import java.{io, util}
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicReference
 
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback
-import com.github.dockerjava.api.command.{DockerCmdExecFactory, InspectContainerResponse}
+import com.github.dockerjava.api.command.DockerCmdExecFactory
 import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.model.LogConfig.LoggingType
 import com.github.dockerjava.api.model.Ports.Binding
@@ -15,21 +16,19 @@ import com.github.dockerjava.api.model._
 import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientImpl}
 import com.github.dockerjava.okhttp.OkHttpDockerCmdExecFactory
 import org.enterprisedlt.fabric.service.node.FabricProcessManager
-import org.enterprisedlt.fabric.service.node.configuration.{DockerConfig, NetworkConfig, OrganizationConfig}
-import org.enterprisedlt.fabric.service.node.configuration.{NetworkConfig, OrganizationConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{DockerConfig, NetworkConfig, OSNConfig, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.model.ProcessManagerState
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 /**
-  * @author Andrew Pudovikov
-  */
+ * @author Andrew Pudovikov
+ */
 class DockerBasedProcessManager(
     hostHomePath: String,
     organizationConfig: OrganizationConfig,
-    networkName: String,
-    networkConfig: NetworkConfig,
     processConfig: DockerConfig,
     LogWindow: Int = 1500
 ) extends FabricProcessManager {
@@ -38,39 +37,65 @@ class DockerBasedProcessManager(
     private val dockerConfig = new DefaultDockerClientConfig.Builder().withDockerHost(processConfig.dockerSocket).build
     private val execFactory: DockerCmdExecFactory = new OkHttpDockerCmdExecFactory
     private val docker: DockerClient = DockerClientImpl.getInstance(dockerConfig).withDockerCmdExecFactory(execFactory)
-    private val DefaultLabels =
-        Map(
-            "com.docker.compose.project" -> networkName,
-            "com.docker.compose.service" -> organizationFullName
-        ).asJava
     private val logConfig = makeDockerLogConfig(processConfig)
+    private val containerName = s"service.$organizationFullName"
     // =================================================================================================================
-    logger.info(s"Initializing ${this.getClass.getSimpleName} ...")
-    val containerName = s"service.$organizationFullName"
-    logger.info(s"Checking network ...")
-    if (docker.listNetworksCmd().withNameFilter(networkName).exec().isEmpty) {
-        logger.info(s"Network $networkName does not exist, creating ...")
-        docker.createNetworkCmd()
-          .withName(networkName)
-          .withDriver("bridge")
-          .exec()
+    private var networkName: String = null
+    private var networkConfig: NetworkConfig = null
+    private var DefaultLabels: util.Map[String, String] = null
+    // =================================================================================================================
+
+    def setNetworkName(network: String): Unit = {
+        if (!network.isEmpty) {
+            logger.info(s"Checking network ...")
+            if (docker.listNetworksCmd().withNameFilter(network).exec().isEmpty) {
+                logger.info(s"Network $networkName does not exist, creating ...")
+                docker.createNetworkCmd()
+                  .withName(network)
+                  .withDriver("bridge")
+                  .exec()
+            }
+            logger.info(s"Connecting myself ($containerName) to network $networkName ...")
+            if (!docker.inspectContainerCmd(containerName).exec()
+              .getNetworkSettings.getNetworks.containsKey(networkName)) {
+                logger.info(s"Service node $containerName already connected to $networkName network ...")
+                docker.connectToNetworkCmd()
+                  .withContainerId(containerName)
+                  .withNetworkId(network)
+                  .exec()
+            }
+            networkName = network
+            DefaultLabels = Map(
+                "com.docker.compose.project" -> networkName,
+                "com.docker.compose.service" -> organizationFullName
+            ).asJava
+        }
     }
-    logger.info(s"Connecting myself ($containerName) to network $networkName ...")
-    if (!docker.inspectContainerCmd(containerName).exec()
-      .getNetworkSettings.getNetworks.containsKey(networkName)) {
-        logger.info(s"Service node $containerName already connected to $networkName network ...")
-        docker.connectToNetworkCmd()
-          .withContainerId(containerName)
-          .withNetworkId(networkName)
-          .exec()
+
+    def setNetworkConfig(config: NetworkConfig): Unit = {
+        if (config.orderingNodes.nonEmpty && config.peerNodes.nonEmpty) networkConfig = config
     }
 
     // =================================================================================================================
-    override def getProcessState(): Option[ProcessManagerState] = {
-        logger.debug(s"getting process manager's state")
-        Option(
-            ProcessManagerState(
-                networkName))
+    override def getState(): Option[String] = {
+        Option(networkName)
+    }
+
+
+    override def defineNetwork(networkName: String, networkConfig: NetworkConfig): Either[String, Unit] = {
+        for {
+            _ <- Either.cond(
+                !networkName.isEmpty,
+                setNetworkName(networkName),
+                "Something wrong with networkName"
+            )
+            _ <- Either.cond(
+                !networkConfig.orderingNodes.nonEmpty && !networkConfig.peerNodes.nonEmpty,
+                setNetworkConfig(networkConfig),
+                "Something wrong with networkConfig"
+            )
+            _ <- checkContainersRunningForRestore()
+        } yield ()
     }
 
     //=========================================================================
@@ -79,51 +104,50 @@ class DockerBasedProcessManager(
         if (checkContainerExistence(osnFullName: String)) {
             stopAndRemoveContainer(osnFullName: String)
         }
-        networkConfig.orderingNodes
-          .find(_.name == osnFullName)
-          .toRight(s"There is no configuration for $osnFullName")
-          .map { osnConfig =>
-              val configHost = new HostConfig()
-                .withBinds(
-                    new Bind(s"$hostHomePath/hosts", new Volume("/etc/hosts")),
-                    new Bind(s"$hostHomePath/artifacts/genesis.block", new Volume("/var/hyperledger/orderer/orderer.genesis.block")),
-                    new Bind(s"$hostHomePath/crypto/orderers/$osnFullName/msp", new Volume("/var/hyperledger/orderer/msp")),
-                    new Bind(s"$hostHomePath/crypto/orderers/$osnFullName/tls", new Volume("/var/hyperledger/orderer/tls"))
-                )
-                .withPortBindings(
-                    new PortBinding(new Binding("0.0.0.0", osnConfig.port.toString), new ExposedPort(osnConfig.port, InternetProtocol.TCP))
-                )
-                .withNetworkMode(networkName)
-                .withLogConfig(logConfig)
+        for {
+            osnConfig <- networkConfig.orderingNodes.find(_.name == osnFullName).toRight(s"There is no configuration for $osnFullName")
+            configHost = new HostConfig()
+              .withBinds(
+                  new Bind(s"$hostHomePath/hosts", new Volume("/etc/hosts")),
+                  new Bind(s"$hostHomePath/artifacts/genesis.block", new Volume("/var/hyperledger/orderer/orderer.genesis.block")),
+                  new Bind(s"$hostHomePath/crypto/orderers/$osnFullName/msp", new Volume("/var/hyperledger/orderer/msp")),
+                  new Bind(s"$hostHomePath/crypto/orderers/$osnFullName/tls", new Volume("/var/hyperledger/orderer/tls"))
+              )
+              .withPortBindings(
+                  new PortBinding(new Binding("0.0.0.0", osnConfig.port.toString), new ExposedPort(osnConfig.port, InternetProtocol.TCP))
+              )
+              .withNetworkMode(networkName)
+              .withLogConfig(logConfig)
+            osnContainerId = docker.createContainerCmd("hyperledger/fabric-orderer")
+              .withName(osnFullName)
+              .withEnv(
+                  "FABRIC_LOGGING_SPEC=INFO",
+                  "ORDERER_GENERAL_LISTENADDRESS=0.0.0.0",
+                  s"ORDERER_GENERAL_LISTENPORT=${osnConfig.port}",
+                  "ORDERER_GENERAL_GENESISMETHOD=file",
+                  "ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block",
+                  s"ORDERER_GENERAL_LOCALMSPID=${organizationConfig.name}",
+                  "ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp",
+                  "ORDERER_GENERAL_TLS_ENABLED=true",
+                  "ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key",
+                  "ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt",
+                  "ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]",
+                  "ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt",
+                  "ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key",
+                  "ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]"
+              )
+              .withWorkingDir("/opt/gopath/src/github.com/hyperledger/fabric")
+              .withCmd("orderer")
+              .withExposedPorts(new ExposedPort(osnConfig.port, InternetProtocol.TCP))
+              .withHostConfig(configHost)
+              .withLabels(DefaultLabels)
+              .exec().getId
+            _ <- Try {
+                docker.startContainerCmd(osnContainerId).exec
+                logger.info(s"OSN $osnFullName started, ID: $osnContainerId")
+            }.toEither.left.map(_.getMessage)
+        } yield osnContainerId
 
-              val osnContainerId: String = docker.createContainerCmd("hyperledger/fabric-orderer")
-                .withName(osnFullName)
-                .withEnv(
-                    "FABRIC_LOGGING_SPEC=INFO",
-                    "ORDERER_GENERAL_LISTENADDRESS=0.0.0.0",
-                    s"ORDERER_GENERAL_LISTENPORT=${osnConfig.port}",
-                    "ORDERER_GENERAL_GENESISMETHOD=file",
-                    "ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block",
-                    s"ORDERER_GENERAL_LOCALMSPID=${organizationConfig.name}",
-                    "ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp",
-                    "ORDERER_GENERAL_TLS_ENABLED=true",
-                    "ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key",
-                    "ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt",
-                    "ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]",
-                    "ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt",
-                    "ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key",
-                    "ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]"
-                )
-                .withWorkingDir("/opt/gopath/src/github.com/hyperledger/fabric")
-                .withCmd("orderer")
-                .withExposedPorts(new ExposedPort(osnConfig.port, InternetProtocol.TCP))
-                .withHostConfig(configHost)
-                .withLabels(DefaultLabels)
-                .exec().getId
-              docker.startContainerCmd(osnContainerId).exec
-              logger.info(s"OSN $osnFullName started, ID: $osnContainerId")
-              osnContainerId
-          }
     }
 
     //=============================================================================
@@ -312,8 +336,8 @@ class DockerBasedProcessManager(
 
     def checkContainersRunningForRestore(): Either[String, Unit] = {
         for {
-            _ <- Either.cond(networkConfig.orderingNodes.forall(o => checkContainerRunning(o.name)),(),"Error during osn processes check")
-            - <- Either.cond(networkConfig.peerNodes.forall(p => checkContainerRunning(p.name)),(),"Error during peer processes check")
+            _ <- Either.cond(networkConfig.orderingNodes.forall(o => checkContainerRunning(o.name)), (), "Error during osn processes check")
+            - <- Either.cond(networkConfig.peerNodes.forall(p => checkContainerRunning(p.name)), (), "Error during peer processes check")
         } yield ()
     }
 

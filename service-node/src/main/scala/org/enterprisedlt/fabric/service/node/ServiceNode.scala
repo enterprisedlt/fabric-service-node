@@ -59,12 +59,13 @@ object ServiceNode extends App {
         LogFileSize,
         LogMaxFiles)
     private val cryptoManager = new FileBasedCryptoManager(organizationConfig, "/opt/profile/crypto")
-    private val stateManager = new PesistingStateManager(StateFilePath)
     private val restEndpoint = new RestEndpoint(
         ServiceBindPort, ServiceExternalAddress, organizationConfig, cryptoManager,
         hostsManager = new HostsManager("/opt/profile/hosts", organizationConfig),
-        stateManager,
-        ProfilePath, processConfig, serviceState
+        StateFilePath,
+        ProfilePath,
+        processConfig,
+        serviceState
     )
     //TODO: make web app optional, based on configuration
     loadPreviousState()
@@ -96,7 +97,7 @@ object ServiceNode extends App {
         Runtime.getRuntime.addShutdownHook(new Thread("shutdown-hook") {
             override def run(): Unit = {
                 logger.info("Shutting down...")
-                restEndpoint.persistsState(StateFilePath: String) match {
+                restEndpoint.storeState() match {
                     case Left(m) => logger.error(m)
                     case _ => ()
                 }
@@ -107,7 +108,7 @@ object ServiceNode extends App {
     }
 
     private  def loadPreviousState(): Unit = {
-        restEndpoint.loadPreviousState() match {
+        restEndpoint.restoreState() match {
             case Left(e) => logger.error(e)
             case Right(_) => logger.debug(s"state was restored successfully")
         }

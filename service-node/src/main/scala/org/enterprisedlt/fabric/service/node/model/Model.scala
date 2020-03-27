@@ -3,11 +3,8 @@ package org.enterprisedlt.fabric.service.node.model
 import java.util.{Map => JavaMap}
 
 import org.enterprisedlt.fabric.service.model.Organization
-import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, OrganizationConfig, PeerConfig}
-import org.hyperledger.fabric.sdk.HFClient
+import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, PeerConfig}
 import org.hyperledger.fabric.sdk.TransactionRequest.Type
-
-import scala.collection.concurrent.TrieMap
 
 case class CreateChannelRequest(
     name: String
