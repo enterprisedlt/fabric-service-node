@@ -11,7 +11,7 @@ val FabricChainCodeClientVersion = "1.4.3.200-RC6"
 val FabricChainCodeScalaVersion = "1.4.0.200-RC4"
 
 val BouncyCastleVersion = "1.60"
-val JettyVersion = "9.4.26.v20200117"
+val JettyVersion = "9.4.27.v20200227"
 val DockerApiVersion = "3.2.0-rc4" // "3.1.5"
 val GRPCVersion = "1.9.0"
 val MonocleVersion = "2.0.1"

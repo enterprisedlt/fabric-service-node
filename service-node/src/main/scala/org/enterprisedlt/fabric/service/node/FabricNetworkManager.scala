@@ -7,7 +7,7 @@ import java.util.concurrent.{CompletableFuture, TimeUnit}
 
 import com.google.protobuf.ByteString
 import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, OrganizationConfig, PeerConfig}
-import org.enterprisedlt.fabric.service.node.model.{AddOrgToChannelRequest, CCLanguage, JoinRequest}
+import org.enterprisedlt.fabric.service.node.model.{CCLanguage, FabricComponentsState, JoinRequest}
 import org.enterprisedlt.fabric.service.node.proto._
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
 import org.hyperledger.fabric.protos.common.Configtx
@@ -29,7 +29,6 @@ import scala.util.Try
  */
 class FabricNetworkManager(
     organization: OrganizationConfig,
-    bootstrapOsn: OSNConfig,
     admin: User
 ) {
     type TransactionEvent = BlockEvent#TransactionEvent
@@ -41,24 +40,43 @@ class FabricNetworkManager(
     // time out for OSN response (default 10 Second):
     System.setProperty(Config.ORDERER_WAIT_TIME, TimeUnit.MINUTES.toMillis(1).toString)
     // ---------------------------------------------------------------------------------------------------------------
+//    private var bootstrapOsn: OSNConfig = null
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val fabricClient = getHFClient(admin)
 
     private val peerByName = TrieMap.empty[String, PeerConfig]
-    private val osnByName = TrieMap(bootstrapOsn.name -> bootstrapOsn)
+    private val osnByName = TrieMap.empty[String, OSNConfig]
     private val channels = TrieMap.empty[String, Channel]
+    //    private val osnByName = TrieMap(bootstrapOsn.name -> bootstrapOsn)
 
     // ---------------------------------------------------------------------------------------------------------------
     private lazy val systemChannel: Channel = connectToSystemChannel
 
-    //
-    //
+    //=========================================================================
+    def getState(): Option[FabricComponentsState] = {
+        logger.debug(s"getting component's state")
+        val osns = osnByName.toMap.asJava
+        val peers = peerByName.toMap.asJava
+        val channels = getChannelNames
+        Option(FabricComponentsState(
+            osns,
+            peers,
+            channels
+        ))
+    }
+
+//    def setBootstrapOsn(osnConfig: OSNConfig): Unit = {
+//        if (osnConfig.port != null && osnConfig.name != null) {
+//            bootstrapOsn = osnConfig
+//        }
+//    }
+
     //
     def getChannelNames: Array[String] = channels.keys.toArray
 
     //=========================================================================
     def createChannel(channelName: String, channelTx: Envelope): Either[String, String] = {
-        val bootstrapOsnName = mkOSN(bootstrapOsn)
+        val bootstrapOsnName = mkOSN(osnByName.values.head)
         val chCfg = new ChannelConfiguration(channelTx.toByteArray)
         val sign = fabricClient.getChannelConfigurationSignature(chCfg, admin)
         Try {
@@ -70,10 +88,30 @@ class FabricNetworkManager(
 
     //=========================================================================
     def defineChannel(channelName: String): Unit = {
-        val bootstrapOsnName = mkOSN(bootstrapOsn)
+        val bootstrapOsnName = mkOSN(osnByName.values.head)
         val channel = fabricClient.newChannel(channelName)
         channels += channelName -> channel
         channel.addOrderer(bootstrapOsnName)
+    }
+
+    //=========================================================================
+    def restoreChannelWithComponents(channelName: String, osnsConfig: Array[OSNConfig], peerConfigs: Array[PeerConfig]): Either[String, Unit] = {
+        val channel = fabricClient.newChannel(channelName)
+        channels += channelName -> channel
+        Try {
+            osnsConfig.foreach { osnsConfig =>
+                val osn = mkOSN(osnsConfig)
+                channel.addOrderer(osn)
+                defineOsn(osnsConfig)
+            }
+            peerConfigs.foreach { peerConfig =>
+                val peer = mkPeer(peerConfig)
+                channel.addPeer(peer)
+                definePeer(peerConfig)
+            }
+            channel.initialize()
+            ()
+        }.toEither.left.map(_.getMessage)
     }
 
     //=========================================================================
@@ -523,7 +561,7 @@ class FabricNetworkManager(
 
     //=========================================================================
     private def connectToSystemChannel: Channel = {
-        val bootstrapOsnName = mkOSN(bootstrapOsn)
+        val bootstrapOsnName = mkOSN(osnByName.values.head)
         val channel = fabricClient.newChannel("system-channel")
         channel.addOrderer(bootstrapOsnName)
         channel.initialize()

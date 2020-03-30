@@ -25,6 +25,9 @@ object FabricServiceState {
 
     val BootstrapMaxValue: Int = BootstrapSettingUpBlockListener
 
+    val RestoringState = 30
+    val DefiningProcessComponents= 31
+    val DefiningFabricComponents= 32
     //
     val JoinStarted = 50
     val JoinCreatingJoinRequest = 51

@@ -8,14 +8,15 @@ import java.util.concurrent.atomic.AtomicReference
 
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.apache.http.entity.ContentType
+import org.eclipse.jetty.http.MimeTypes
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
 import org.enterprisedlt.fabric.service.model.{Contract, UpgradeContract}
 import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
 import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
-import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
-import org.enterprisedlt.fabric.service.node.model.{AddOrgToChannelRequest, CallContractRequest, ContractDeploymentDescriptor, ContractJoinRequest, CreateContractRequest, DeleteMessageRequest, FabricServiceState, GetMessageRequest, Invite, JoinRequest, SendMessageRequest, UpgradeContractRequest}
+import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join, RestoreState}
+import org.enterprisedlt.fabric.service.node.model.{AddOrgToChannelRequest, CallContractRequest, ContractDeploymentDescriptor, ContractJoinRequest, CreateContractRequest, DeleteMessageRequest, FabricServiceState, GetMessageRequest, Invite, JoinRequest, SendMessageRequest, UpgradeContractRequest, _}
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
@@ -31,11 +32,37 @@ class RestEndpoint(
     organizationConfig: OrganizationConfig,
     cryptoManager: CryptoManager,
     hostsManager: HostsManager,
+    stateFilePath: String,
     profilePath: String,
     processConfig: DockerConfig,
     state: AtomicReference[FabricServiceState]
 ) extends AbstractHandler {
+
     private val logger = LoggerFactory.getLogger(this.getClass)
+
+    def storeState(): Either[String, Unit] = {
+        for {
+            state <- globalState.toRight("network isn't initialized")
+            s <- state.stateManager.storeState()
+        } yield s
+    }
+
+    def restoreState(): Either[String, Unit] = {
+        logger.debug(s"restoring state")
+        RestoreState.restoreOrganizationState(
+            stateFilePath,
+            organizationConfig,
+            cryptoManager,
+            hostsManager,
+            profilePath,
+            processConfig,
+            state) match {
+            case Right(s) => init(s)
+                Right(())
+            case Left(e) => logger.error(s"Error during restoring state: $e")
+                Left(s"Error during restoring state: $e")
+        }
+    }
 
     override def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {
         implicit val user: Option[User] = FabricAuthenticator.getFabricUser(request)
@@ -168,11 +195,11 @@ class RestEndpoint(
                                       DefaultConsortiumName,
                                       organizationConfig.name
                                   ))
-                              result <- state.networkManager.addPeerToChannel(channelName, state.network.peerNodes.head.name)
-                          } yield result
+                              _ <- state.networkManager.addPeerToChannel(channelName, state.network.peerNodes.head.name)
+                          } yield ()
                           ) match {
-                            case Right(chName) =>
-                                response.getWriter.println(s"$chName has been created")
+                            case Right(()) =>
+                                response.getWriter.println(s"$channelName has been created")
                                 response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                                 response.setStatus(HttpServletResponse.SC_OK)
                             case Left(errorMsg) =>
@@ -287,25 +314,39 @@ class RestEndpoint(
                     case "/admin/bootstrap" =>
                         logger.info(s"Bootstrapping organization ${organizationConfig.name}...")
                         val start = System.currentTimeMillis()
-                        try {
-                            val bootstrapOptions = Util.codec.fromJson(request.getReader, classOf[BootstrapOptions])
-                            state.set(FabricServiceState(FabricServiceState.BootstrapStarted))
-                            init(Bootstrap.bootstrapOrganization(
-                                organizationConfig,
-                                bootstrapOptions,
-                                cryptoManager,
-                                hostsManager,
-                                externalAddress,
-                                profilePath,
-                                processConfig,
-                                state)
-                            )
-                            val end = System.currentTimeMillis() - start
-                            logger.info(s"Bootstrap done ($end ms)")
-                            response.setStatus(HttpServletResponse.SC_OK)
-                        } catch {
-                            case ex: Exception =>
-                                logger.error("Bootstrap failed:", ex)
+                        (for {
+                            _ <- Try {
+                                val bootstrapOptions = Util.codec.fromJson(request.getReader, classOf[BootstrapOptions])
+                                state.set(FabricServiceState(FabricServiceState.BootstrapStarted))
+                                init(Bootstrap.bootstrapOrganization(
+                                    organizationConfig,
+                                    bootstrapOptions,
+                                    cryptoManager,
+                                    hostsManager,
+                                    externalAddress,
+                                    profilePath,
+                                    processConfig,
+                                    stateFilePath,
+                                    state
+                                ))
+                            }.toEither.left.map(_.getMessage)
+                            result = {
+                                val duration = System.currentTimeMillis() - start
+                                s"Bootstrap done ($duration ms)"
+                            }
+                            _ = (logger.info(result))
+                            gState <- globalState.toRight("Service node is not initialized yet")
+                            _ <- gState.stateManager.storeState()
+                        } yield result
+                          ) match {
+                            case Right(r) =>
+                                response.getWriter.println(r)
+                                response.setContentType(MimeTypes.Type.APPLICATION_JSON.toString)
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(e) =>
+                                logger.error("Bootstrap failed:", e)
+                                response.getWriter.println(e)
+                                response.setContentType(MimeTypes.Type.APPLICATION_JSON.toString)
                                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                         }
 
@@ -378,6 +419,7 @@ class RestEndpoint(
                             hostsManager,
                             profilePath,
                             processConfig,
+                            stateFilePath,
                             state)
                         )
                         val end = System.currentTimeMillis() - start
@@ -526,7 +568,8 @@ class RestEndpoint(
                                           ServiceChannelName,
                                           ServiceChainCodeName,
                                           "createContract",
-                                          Util.codec.toJson(contract))
+                                          Util.codec.toJson(contract)
+                                      )
                                   }
                                   result <- Try(response.get()).toEither.left.map(_.getMessage)
                               } yield result
@@ -712,9 +755,4 @@ class RestEndpoint(
 
 }
 
-case class GlobalState(
-    networkManager: FabricNetworkManager,
-    processManager: FabricProcessManager,
-    network: NetworkConfig,
-    networkName: String
-)
+

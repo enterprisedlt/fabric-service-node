@@ -29,6 +29,7 @@ object Join {
         hostsManager: HostsManager,
         profilePath: String,
         processConfig: DockerConfig,
+        stateFilePath: String,
         state: AtomicReference[FabricServiceState]
     ): GlobalState = {
         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
@@ -37,10 +38,10 @@ object Join {
         val processManager = new DockerBasedProcessManager(
             profilePath,
             organizationConfig,
-            joinOptions.invite.networkName,
-            joinOptions.network,
             processConfig
         )
+        processManager.setNetworkName(joinOptions.invite.networkName)
+        processManager.setNetworkConfig(joinOptions.network)
         logger.info(s"[ $organizationFullName ] - Generating crypto material...")
         cryptoManager.createOrgCrypto(joinOptions.network, organizationFullName)
         //
@@ -87,7 +88,16 @@ object Join {
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
         val admin = cryptoManager.loadDefaultAdmin
-        val network = new FabricNetworkManager(organizationConfig, OSNConfig(joinResponse.osnHost, joinResponse.osnPort), admin)
+        val network = new FabricNetworkManager(organizationConfig, admin)
+        val stateManager = new FilePersistingStateManager(
+            stateFilePath,
+            processManager,
+            network,
+            organizationConfig,
+            hostsManager,
+            state
+        )
+        network.defineOsn(OSNConfig(joinResponse.osnHost, joinResponse.osnPort))
         network.defineChannel(ServiceChannelName)
 
         state.set(FabricServiceState(FabricServiceState.JoinConnectingToNetwork))
@@ -165,7 +175,13 @@ object Join {
                 state.set(FabricServiceState(FabricServiceState.JoinSettingUpBlockListener))
                 network.setupBlockListener(ServiceChannelName, new NetworkMonitor(organizationConfig, joinOptions.network, network, processManager, hostsManager, serviceVersion))
                 state.set(FabricServiceState(FabricServiceState.Ready))
-                GlobalState(network, processManager, joinOptions.network, joinOptions.invite.networkName)
+                GlobalState(
+                    network,
+                    processManager,
+                    stateManager,
+                    joinOptions.network,
+                    joinOptions.invite.networkName
+                )
         }
     }
 

@@ -3,6 +3,7 @@ package org.enterprisedlt.fabric.service.node.model
 import java.util.{Map => JavaMap}
 
 import org.enterprisedlt.fabric.service.model.Organization
+import org.enterprisedlt.fabric.service.node.configuration.{OSNConfig, PeerConfig}
 import org.hyperledger.fabric.sdk.TransactionRequest.Type
 
 case class CreateChannelRequest(
@@ -146,6 +147,23 @@ case class OsnCertificates(
     clientTlsCert: String,
     serverTlsCert: String
 )
+
+//-----------------------------------
+case class ServiceNodeState(
+    fabricComponentsState: FabricComponentsState,
+    processManagerState: ProcessManagerState
+)
+
+case class FabricComponentsState(
+    osns: java.util.Map[String, OSNConfig],
+    peers: java.util.Map[String, PeerConfig],
+    channels: Array[String]
+)
+
+case class ProcessManagerState(
+    networkName: String
+)
+//------------------------------------
 
 object CCLanguage {
 

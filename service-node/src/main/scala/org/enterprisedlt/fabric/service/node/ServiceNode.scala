@@ -32,6 +32,7 @@ object ServiceNode extends App {
     private val DockerSocket = Option(Environment.get("DOCKER_SOCKET")).getOrElse(throw new Exception("Mandatory environment variable missing DOCKER_SOCKET!"))
     private val LogFileSize = Option(Environment.get("LOG_FILE_SIZE")).filter(_.trim.nonEmpty).getOrElse("100m")
     private val LogMaxFiles = Option(Environment.get("LOG_MAX_FILES")).filter(_.trim.nonEmpty).getOrElse("5")
+    private val StateFilePath = Option(Environment.get("STATE_FILE_PATH")).filter(_.trim.nonEmpty).getOrElse("/opt/service/state/state.json")
     // Org variables
     private val OrgName = Option(Environment.get("ORG")).getOrElse(throw new Exception("Mandatory environment variable missing ORG!"))
     private val Domain = Option(Environment.get("DOMAIN")).getOrElse(throw new Exception("Mandatory environment variable missing DOMAIN!"))
@@ -61,21 +62,24 @@ object ServiceNode extends App {
     private val restEndpoint = new RestEndpoint(
         ServiceBindPort, ServiceExternalAddress, organizationConfig, cryptoManager,
         hostsManager = new HostsManager("/opt/profile/hosts", organizationConfig),
-        ProfilePath, processConfig, serviceState
+        StateFilePath,
+        ProfilePath,
+        processConfig,
+        serviceState
     )
     //TODO: make web app optional, based on configuration
+    loadPreviousState()
     private val server =
-        createServer(
-            ServiceBindPort, cryptoManager, restEndpoint,
-            "/opt/profile/webapp",
-            "/opt/service/admin-console"
+    createServer(
+              ServiceBindPort, cryptoManager, restEndpoint,
+    "/opt/profile/webapp",
+    "/opt/service/admin-console"
         )
 
     setupShutdownHook()
     server.start()
     logger.info("Started.")
     server.join()
-
 
     //=========================================================================
     // Utilities
@@ -93,10 +97,21 @@ object ServiceNode extends App {
         Runtime.getRuntime.addShutdownHook(new Thread("shutdown-hook") {
             override def run(): Unit = {
                 logger.info("Shutting down...")
+                restEndpoint.storeState() match {
+                    case Left(m) => logger.error(m)
+                    case _ => ()
+                }
                 server.stop()
                 logger.info("Shutdown complete.")
             }
         })
+    }
+
+    private  def loadPreviousState(): Unit = {
+        restEndpoint.restoreState() match {
+            case Left(e) => logger.error(e)
+            case Right(_) => logger.debug(s"state was restored successfully")
+        }
     }
 
     private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: Handler, webAppResource: String, adminConsole: String): Server = {
