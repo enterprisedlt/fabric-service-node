@@ -20,6 +20,7 @@ import org.apache.http.util.EntityUtils
 import org.bouncycastle.asn1.ASN1ObjectIdentifier
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x500.style.{BCStyle, IETFUtils}
+import org.enterprisedlt.fabric.service.node.model.{AndExp, Expression, Member, OrExp}
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope, Payload}
 import org.hyperledger.fabric.protos.common.Configtx
@@ -34,22 +35,80 @@ import org.slf4j.{Logger, LoggerFactory}
 import scala.collection.JavaConverters._
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object Util {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
+    //=========================================================================]
+    def makeEndorsementPolicy(expression: Expression): ChaincodeEndorsementPolicy = {
+        val principals: List[(String, MSPPrincipal)] = collectIdentities(expression)
+        val calculatedPolicy: SignaturePolicy = makeSignaturePolicy(expression, principals)
+        val policyEvelope = makeSignaturePolicyEvelope(principals.map(_._2), calculatedPolicy)
+        makeChaincodeEndorsementPolicy(policyEvelope)
+    }
+
     //=========================================================================
-    def policyAnyOf(members: Iterable[String]): ChaincodeEndorsementPolicy = {
-        val signaturePolicy = signaturePolicyAnyMemberOf(members)
+    private def collectIdentities(expression: Expression, current: List[(String, MSPPrincipal)] = List.empty): List[(String, MSPPrincipal)] = {
+        expression match {
+            case Member(id) => current :+ (id, makeMSPPrincipal(id))
+            case OrExp(exps) => exps.flatMap(x => collectIdentities(x, current))
+            case AndExp(exps) => exps.flatMap(x => collectIdentities(x, current))
+        }
+    }
+
+    //=========================================================================
+    private def makeMSPPrincipal(memberName: String): MSPPrincipal = {
+        MSPPrincipal.newBuilder()
+          .setPrincipalClassification(MSPPrincipal.Classification.ROLE)
+          .setPrincipal(
+              MSPRole.newBuilder
+                .setRole(MSPRole.MSPRoleType.MEMBER)
+                .setMspIdentifier(memberName)
+                .build
+                .toByteString
+          ).build
+    }
+
+    //=========================================================================
+    private def makeSignaturePolicy(expression: Expression, memberList: List[(String, MSPPrincipal)]): SignaturePolicy = {
+        expression match {
+            case Member(name) =>
+                val index = memberList.indexOf((name, _))
+                SignaturePolicy.newBuilder.setSignedBy(index).build()
+
+            case OrExp(exps) =>
+                val rules = SignaturePolicy.NOutOf.newBuilder.setN(1)
+                exps.foreach(e => rules.addRules(makeSignaturePolicy(e, memberList)))
+                SignaturePolicy.newBuilder.setNOutOf(rules).build()
+
+            case AndExp(exps) =>
+                val rules = SignaturePolicy.NOutOf.newBuilder.setN(exps.length)
+                exps.foreach(e => rules.addRules(makeSignaturePolicy(e, memberList)))
+                SignaturePolicy.newBuilder.setNOutOf(rules).build()
+        }
+    }
+
+    //=========================================================================
+    private def makeSignaturePolicyEvelope(principals: Iterable[MSPPrincipal], rules: SignaturePolicy): SignaturePolicyEnvelope = {
+        SignaturePolicyEnvelope.newBuilder
+          .setVersion(0)
+          .addAllIdentities(principals.asJava)
+          .setRule(rules)
+          .build
+    }
+
+    //=========================================================================
+    private def makeChaincodeEndorsementPolicy(policy: SignaturePolicyEnvelope): ChaincodeEndorsementPolicy = {
         val result = new ChaincodeEndorsementPolicy()
-        result.fromBytes(signaturePolicy.toByteArray)
+        result.fromBytes(policy.toByteArray)
         result
     }
 
+    //=========================================================================
     def signaturePolicyAnyMemberOf(members: Iterable[String]): SignaturePolicyEnvelope = {
         val rules = SignaturePolicy.NOutOf.newBuilder.setN(1)
-        val identities = members.zipWithIndex.map { case (member, index) =>
+        val identities: Iterable[MSPPrincipal] = members.zipWithIndex.map { case (member, index) =>
             rules.addRules(SignaturePolicy.newBuilder.setSignedBy(index))
             MSPPrincipal.newBuilder()
               .setPrincipalClassification(MSPPrincipal.Classification.ROLE)
