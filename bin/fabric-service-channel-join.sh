@@ -8,17 +8,18 @@ fi
 
 . ${PROFILE_PATH}/settings
 
-echo "Adding org to channel ..."
+echo "Joining to channel $2..."
 
 SERVICE_URL="localhost:${SERVICE_BIND_PORT}"
-curl -k --silent --show-error \
+curl -k -G --silent --show-error \
 --key ${PROFILE_PATH}/crypto/users/admin/admin.key \
 --cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
---request POST \
---data-binary "@$2" https://${SERVICE_URL}/admin/add-to-channel
+--request GET \
+https://${SERVICE_URL}/admin/join-to-channel \
+-d channelName=$2 \
 
 if [[ "$?" -ne 0 ]]; then
-  echo "Failed to create contract!"
+  echo "Failed join to channel $2!"
   exit 1
 fi
 
