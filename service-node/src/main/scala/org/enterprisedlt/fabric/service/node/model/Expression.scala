@@ -6,11 +6,11 @@ package org.enterprisedlt.fabric.service.node.model
 sealed trait Expression
 
 case class OrExp(
-    value: List[Expression]
+    value: Array[Expression]
 ) extends Expression
 
 case class AndExp(
-    value: List[Expression]
+    value: Array[Expression]
 ) extends Expression
 
 case class Member(

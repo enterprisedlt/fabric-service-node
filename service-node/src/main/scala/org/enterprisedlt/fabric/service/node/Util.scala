@@ -43,14 +43,14 @@ object Util {
 
     //=========================================================================]
     def makeEndorsementPolicy(expression: Expression): ChaincodeEndorsementPolicy = {
-        val principals: List[(String, MSPPrincipal)] = collectIdentities(expression)
+        val principals: Array[(String, MSPPrincipal)] = collectIdentities(expression)
         val calculatedPolicy: SignaturePolicy = makeSignaturePolicy(expression, principals)
         val policyEvelope = makeSignaturePolicyEvelope(principals.map(_._2), calculatedPolicy)
         makeChaincodeEndorsementPolicy(policyEvelope)
     }
 
     //=========================================================================
-    private def collectIdentities(expression: Expression, current: List[(String, MSPPrincipal)] = List.empty): List[(String, MSPPrincipal)] = {
+    private def collectIdentities(expression: Expression, current: Array[(String, MSPPrincipal)] = Array.empty): Array[(String, MSPPrincipal)] = {
         expression match {
             case Member(id) => current :+ (id, makeMSPPrincipal(id))
             case OrExp(exps) => exps.flatMap(x => collectIdentities(x, current))
@@ -72,7 +72,7 @@ object Util {
     }
 
     //=========================================================================
-    private def makeSignaturePolicy(expression: Expression, memberList: List[(String, MSPPrincipal)]): SignaturePolicy = {
+    private def makeSignaturePolicy(expression: Expression, memberList: Array[(String, MSPPrincipal)]): SignaturePolicy = {
         expression match {
             case Member(name) =>
                 val index = memberList.indexWhere(_._1 == name)
