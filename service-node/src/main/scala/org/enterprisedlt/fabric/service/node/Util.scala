@@ -20,7 +20,8 @@ import org.apache.http.util.EntityUtils
 import org.bouncycastle.asn1.ASN1ObjectIdentifier
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x500.style.{BCStyle, IETFUtils}
-import org.enterprisedlt.fabric.service.node.model.{AndExp, Expression, Member, OrExp}
+import org.enterprisedlt.fabric.service.node.model.{AndExp, Expression, Member, OrExp, ServiceNodeTypeNameResolver}
+import org.enterprisedlt.general.gson._
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope, Payload}
 import org.hyperledger.fabric.protos.common.Configtx
@@ -74,7 +75,7 @@ object Util {
     private def makeSignaturePolicy(expression: Expression, memberList: List[(String, MSPPrincipal)]): SignaturePolicy = {
         expression match {
             case Member(name) =>
-                val index = memberList.indexOf((name, _))
+                val index = memberList.indexWhere(_._1 == name)
                 SignaturePolicy.newBuilder.setSignedBy(index).build()
 
             case OrExp(exps) =>
@@ -125,6 +126,14 @@ object Util {
           .addAllIdentities(identities.asJava)
           .setRule(SignaturePolicy.newBuilder.setNOutOf(rules))
           .build
+    }
+
+    //=========================================================================
+    def policyAnyOf(members: Iterable[String]): ChaincodeEndorsementPolicy = {
+        val signaturePolicy = signaturePolicyAnyMemberOf(members)
+        val result = new ChaincodeEndorsementPolicy()
+        result.fromBytes(signaturePolicy.toByteArray)
+        result
     }
 
     //=========================================================================
@@ -230,6 +239,11 @@ object Util {
 
     //=========================================================================
     def codec: Gson = (new GsonBuilder).create()
+
+    def typedCodec: Gson = new GsonBuilder()
+      .encodeTypes(typeFieldName = "type", typeNamesResolver = ServiceNodeTypeNameResolver)
+      .serializeNulls()
+      .create()
 
     //=========================================================================
     def setupLogging(logLevel: String): Unit = {
