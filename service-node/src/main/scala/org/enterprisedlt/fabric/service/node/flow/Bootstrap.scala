@@ -118,7 +118,7 @@ object Bootstrap {
                 memberNumber = 1,
                 knownHosts = externalAddress.map { address =>
                     bootstrapOptions.network.orderingNodes.map(osn => KnownHostRecord(address.host, osn.name)) ++
-                      bootstrapOptions.network.peerNodes.map(peer => KnownHostRecord(address.host, s"${peer.name}.$organizationFullName")) :+
+                      bootstrapOptions.network.peerNodes.map(peer => KnownHostRecord(address.host, peer.name)) :+
                       KnownHostRecord(address.host, s"service.$organizationFullName")
                 }
                   .getOrElse(Array.empty)
