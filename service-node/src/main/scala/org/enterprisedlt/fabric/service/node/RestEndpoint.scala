@@ -168,11 +168,11 @@ class RestEndpoint(
                                       DefaultConsortiumName,
                                       organizationConfig.name
                                   ))
-                              _ <- state.networkManager.addPeerToChannel(channelName, state.network.peerNodes.head.name)
-                          } yield ()
+                              result <- state.networkManager.addPeerToChannel(channelName, state.network.peerNodes.head.name)
+                          } yield result
                           ) match {
-                            case Right(()) =>
-                                response.getWriter.println(s"$channelName has been created")
+                            case Right(chName) =>
+                                response.getWriter.println(s"$chName has been created")
                                 response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                                 response.setStatus(HttpServletResponse.SC_OK)
                             case Left(errorMsg) =>
@@ -180,7 +180,6 @@ class RestEndpoint(
                                 response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                         }
-
 
                     case "/admin/join-to-channel" =>
                         val channelName = request.getParameter("channelName")
