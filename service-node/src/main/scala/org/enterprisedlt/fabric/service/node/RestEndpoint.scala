@@ -168,14 +168,10 @@ class RestEndpoint(
                                       DefaultConsortiumName,
                                       organizationConfig.name
                                   ))
-                              _ <- state.network.peerNodes.map(
-                                  peer => state.networkManager.addPeerToChannel(channelName, peer.name)
-                              ).foldRight(Right(Nil): Either[String, List[Peer]]) {
-                                  (e, p) => for (xs <- p.right; x <- e.right) yield x :: xs
-                              }
+                              _ <- state.networkManager.addPeerToChannel(channelName, state.network.peerNodes.head.name)
                           } yield ()
                           ) match {
-                            case Right(_) =>
+                            case Right(()) =>
                                 response.getWriter.println(s"$channelName has been created")
                                 response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                                 response.setStatus(HttpServletResponse.SC_OK)
