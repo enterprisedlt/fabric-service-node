@@ -5,8 +5,6 @@ import org.enterprisedlt.fabric.service.Main
 import org.enterprisedlt.fabric.service.model.{CollectionsHelper, Message, Organization}
 import org.enterprisedlt.spec.{ContractOperation, ContractResult, KeyValue, OperationType}
 
-import scala.util.Try
-
 
 /**
  * @author Andrew Pudovikov
@@ -32,18 +30,14 @@ trait MessagingOperations {
           }
 
     @ContractOperation(OperationType.Query)
-    def listMessages: ContractResult[Array[KeyValue[Message]]] = Try {
-        CollectionsHelper
-          .collectionsFromOrganizations(
-              OperationContext.store
-                .list[Organization]
-                .map(_.value.mspId))
-          .filter(e => e.endsWith(s"-${OperationContext.clientIdentity.mspId}") || e.startsWith(s"${OperationContext.clientIdentity.mspId}-"))
-          .map(OperationContext.privateStore)
-          .flatMap { store =>
-              store.list[Message]
-          }.toArray
-    }
+    def listMessages: ContractResult[Array[KeyValue[Message]]] =
+        this.listCollections.map { collections =>
+            collections.filter(e => e.endsWith(s"-${OperationContext.clientIdentity.mspId}") || e.startsWith(s"${OperationContext.clientIdentity.mspId}-"))
+              .map(OperationContext.privateStore)
+              .flatMap { store =>
+                  store.list[Message]
+              }
+        }
 
     @ContractOperation(OperationType.Query)
     def getMessage(messageKey: String, sender: String): ContractResult[Message] =
