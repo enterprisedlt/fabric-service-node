@@ -20,9 +20,10 @@ import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.slf4j.LoggerFactory
 
 /**
- * @author Alexey Polubelov
- * @author Andrew Pudovikov
- */
+  * @author Alexey Polubelov
+  * @author Andrew Pudovikov
+  * @author Maxim Fedin
+  */
 object ServiceNode extends App {
     private val Environment = System.getenv()
     private val LogLevel = Option(Environment.get("LOG_LEVEL")).filter(_.trim.nonEmpty).getOrElse("INFO")
@@ -35,6 +36,7 @@ object ServiceNode extends App {
     // Org variables
     private val OrgName = Option(Environment.get("ORG")).getOrElse(throw new Exception("Mandatory environment variable missing ORG!"))
     private val Domain = Option(Environment.get("DOMAIN")).getOrElse(throw new Exception("Mandatory environment variable missing DOMAIN!"))
+    private val AdminPassword = Option(Environment.get("ADMIN_PWD")).getOrElse(throw new Exception("Mandatory environment variable missing ADMIN_PWD!"))
     private val Location = Option(Environment.get("ORG_LOCATION")).filter(_.trim.nonEmpty).getOrElse("San Francisco")
     private val State = Option(Environment.get("ORG_STATE")).filter(_.trim.nonEmpty).getOrElse("California")
     private val Country = Option(Environment.get("ORG_COUNTRY")).filter(_.trim.nonEmpty).getOrElse("US")
@@ -57,7 +59,7 @@ object ServiceNode extends App {
         DockerSocket,
         LogFileSize,
         LogMaxFiles)
-    private val cryptoManager = new FileBasedCryptoManager(organizationConfig, "/opt/profile/crypto")
+    private val cryptoManager = new FileBasedCryptoManager(organizationConfig, "/opt/profile", AdminPassword)
     private val restEndpoint = new RestEndpoint(
         ServiceBindPort, ServiceExternalAddress, organizationConfig, cryptoManager,
         hostsManager = new HostsManager("/opt/profile/hosts", organizationConfig),
