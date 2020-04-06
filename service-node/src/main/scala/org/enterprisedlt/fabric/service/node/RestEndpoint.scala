@@ -17,7 +17,7 @@ import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumNam
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model.{AddOrgToChannelRequest, CallContractRequest, ContractDeploymentDescriptor, ContractJoinRequest, CreateContractRequest, DeleteMessageRequest, FabricServiceState, GetMessageRequest, Invite, JoinRequest, SendMessageRequest, UpgradeContractRequest}
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
-import org.hyperledger.fabric.sdk.User
+import org.hyperledger.fabric.sdk.{Peer, User}
 import org.slf4j.LoggerFactory
 
 import scala.util.Try
@@ -173,6 +173,30 @@ class RestEndpoint(
                           ) match {
                             case Right(chName) =>
                                 response.getWriter.println(s"$chName has been created")
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.setStatus(HttpServletResponse.SC_OK)
+                            case Left(errorMsg) =>
+                                response.getWriter.println(errorMsg)
+                                response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
+
+                    case "/admin/join-to-channel" =>
+                        val channelName = request.getParameter("channelName")
+                        logger.info(s"Joining to channel $channelName ...")
+                        (
+                          for {
+                              state <- globalState.toRight("Node is not initialized yet")
+                              _ = state.networkManager.defineChannel(channelName)
+                              _ <- state.network.peerNodes.map(
+                                  peer => state.networkManager.addPeerToChannel(channelName, peer.name)
+                              ).foldRight(Right(Nil): Either[String, List[Peer]]) {
+                                  (e, p) => for (xs <- p.right; x <- e.right) yield x :: xs
+                              }
+                          } yield ()
+                          ) match {
+                            case Right(_) =>
+                                response.getWriter.println(s"Sucessfully has been joined to channel $channelName")
                                 response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                                 response.setStatus(HttpServletResponse.SC_OK)
                             case Left(errorMsg) =>
