@@ -43,9 +43,13 @@ object Util {
 
     //=========================================================================]
     def makeEndorsementPolicy(expression: Expression, parties: Array[ContractParticipant]): ChaincodeEndorsementPolicy = {
+        logger.debug(s"originalExpression = ${Util.typedCodec.toJson(expression)}")
         val convertedExpression = convertToExpressionWithMspIds(expression, parties)
+        logger.debug(s"convertedExpression = ${Util.typedCodec.toJson(convertedExpression)}")
         val principalsList: Array[(String, MSPPrincipal)] = collectIdentities(convertedExpression)
-        val calculatedPolicy: SignaturePolicy = makeSignaturePolicy(convertedExpression, parties, principalsList)
+        logger.debug(s"principalsList = ${Util.typedCodec.toJson(principalsList)}")
+        val calculatedPolicy: SignaturePolicy = makeSignaturePolicy(convertedExpression, principalsList)
+        logger.debug(s"calculatedPolicy = ${Util.typedCodec.toJson(calculatedPolicy)}")
         val policyEvelope = makeSignaturePolicyEvelope(principalsList
           .map(_._2), calculatedPolicy)
         makeChaincodeEndorsementPolicy(policyEvelope)
@@ -63,7 +67,7 @@ object Util {
     //=========================================================================
     private def collectIdentities(expressionWithMspIds: Expression, current: Array[(String, MSPPrincipal)] = Array.empty): Array[(String, MSPPrincipal)] = {
         expressionWithMspIds match {
-            case Member(id) => current :+ (id, makeMSPPrincipal(id))
+            case Member(mspId) => current :+ (mspId, makeMSPPrincipal(mspId))
             case OrExp(exps) => exps.flatMap(x => collectIdentities(x, current))
             case AndExp(exps) => exps.flatMap(x => collectIdentities(x, current))
         }
@@ -87,7 +91,7 @@ object Util {
     }
 
     //=========================================================================
-    private def makeSignaturePolicy(expression: Expression, parties: Array[ContractParticipant], principalsList: Array[(String, MSPPrincipal)]): SignaturePolicy = {
+    private def makeSignaturePolicy(expression: Expression, principalsList: Array[(String, MSPPrincipal)]): SignaturePolicy = {
         expression match {
             case Member(name) =>
                 val index = principalsList.indexWhere(_._1 == name)
@@ -95,12 +99,12 @@ object Util {
 
             case OrExp(exps) =>
                 val rules = SignaturePolicy.NOutOf.newBuilder.setN(1)
-                exps.foreach(e => rules.addRules(makeSignaturePolicy(e, parties, principalsList)))
+                exps.foreach(e => rules.addRules(makeSignaturePolicy(e, principalsList)))
                 SignaturePolicy.newBuilder.setNOutOf(rules).build()
 
             case AndExp(exps) =>
                 val rules = SignaturePolicy.NOutOf.newBuilder.setN(exps.length)
-                exps.foreach(e => rules.addRules(makeSignaturePolicy(e, parties, principalsList)))
+                exps.foreach(e => rules.addRules(makeSignaturePolicy(e, principalsList)))
                 SignaturePolicy.newBuilder.setNOutOf(rules).build()
         }
     }
