@@ -5,6 +5,8 @@ package org.enterprisedlt.fabric.service.node.model
  */
 sealed trait Expression
 
+case object Majority extends Expression
+
 case class OrExp(
     value: Array[Expression]
 ) extends Expression
@@ -14,5 +16,5 @@ case class AndExp(
 ) extends Expression
 
 case class Member(
-    name: String
+    role: String
 ) extends Expression

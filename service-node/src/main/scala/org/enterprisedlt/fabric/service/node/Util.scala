@@ -20,7 +20,7 @@ import org.apache.http.util.EntityUtils
 import org.bouncycastle.asn1.ASN1ObjectIdentifier
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x500.style.{BCStyle, IETFUtils}
-import org.enterprisedlt.fabric.service.node.model.{AndExp, Expression, Member, OrExp, ServiceNodeTypeNameResolver}
+import org.enterprisedlt.fabric.service.node.model.{AndExp, ContractParticipant, Expression, Member, OrExp, ServiceNodeTypeNameResolver}
 import org.enterprisedlt.general.gson._
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope, Payload}
@@ -42,20 +42,35 @@ object Util {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
     //=========================================================================]
-    def makeEndorsementPolicy(expression: Expression): ChaincodeEndorsementPolicy = {
-        val principals: Array[(String, MSPPrincipal)] = collectIdentities(expression)
-        val calculatedPolicy: SignaturePolicy = makeSignaturePolicy(expression, principals)
-        val policyEvelope = makeSignaturePolicyEvelope(principals.map(_._2), calculatedPolicy)
+    def makeEndorsementPolicy(expression: Expression, parties: Array[ContractParticipant]): ChaincodeEndorsementPolicy = {
+        val convertedExpression = convertToExpressionWithMspIds(expression, parties)
+        val principalsList: Array[(String, MSPPrincipal)] = collectIdentities(convertedExpression)
+        val calculatedPolicy: SignaturePolicy = makeSignaturePolicy(convertedExpression, parties, principalsList)
+        val policyEvelope = makeSignaturePolicyEvelope(principalsList
+          .map(_._2), calculatedPolicy)
         makeChaincodeEndorsementPolicy(policyEvelope)
     }
 
+
+    def convertToExpressionWithMspIds(expressionWithRoles: Expression, parties: Array[ContractParticipant]): Expression = {
+        expressionWithRoles match {
+            case Member(role) => OrExp(convertRoleToMspId(role, parties).map(n => Member(n)))
+            case or: OrExp => OrExp(or.value.map(e => convertToExpressionWithMspIds(e, parties)))
+            case and: AndExp => AndExp(and.value.map(e => convertToExpressionWithMspIds(e, parties)))
+        }
+    }
+
     //=========================================================================
-    private def collectIdentities(expression: Expression, current: Array[(String, MSPPrincipal)] = Array.empty): Array[(String, MSPPrincipal)] = {
-        expression match {
+    private def collectIdentities(expressionWithMspIds: Expression, current: Array[(String, MSPPrincipal)] = Array.empty): Array[(String, MSPPrincipal)] = {
+        expressionWithMspIds match {
             case Member(id) => current :+ (id, makeMSPPrincipal(id))
             case OrExp(exps) => exps.flatMap(x => collectIdentities(x, current))
             case AndExp(exps) => exps.flatMap(x => collectIdentities(x, current))
         }
+    }
+
+    def convertRoleToMspId(role: String, parties: Array[ContractParticipant]): Array[String] = {
+        parties.filter(e => e.role == role).map(_.mspId)
     }
 
     //=========================================================================
@@ -72,20 +87,20 @@ object Util {
     }
 
     //=========================================================================
-    private def makeSignaturePolicy(expression: Expression, memberList: Array[(String, MSPPrincipal)]): SignaturePolicy = {
+    private def makeSignaturePolicy(expression: Expression, parties: Array[ContractParticipant], principalsList: Array[(String, MSPPrincipal)]): SignaturePolicy = {
         expression match {
             case Member(name) =>
-                val index = memberList.indexWhere(_._1 == name)
+                val index = principalsList.indexWhere(_._1 == name)
                 SignaturePolicy.newBuilder.setSignedBy(index).build()
 
             case OrExp(exps) =>
                 val rules = SignaturePolicy.NOutOf.newBuilder.setN(1)
-                exps.foreach(e => rules.addRules(makeSignaturePolicy(e, memberList)))
+                exps.foreach(e => rules.addRules(makeSignaturePolicy(e, parties, principalsList)))
                 SignaturePolicy.newBuilder.setNOutOf(rules).build()
 
             case AndExp(exps) =>
                 val rules = SignaturePolicy.NOutOf.newBuilder.setN(exps.length)
-                exps.foreach(e => rules.addRules(makeSignaturePolicy(e, memberList)))
+                exps.foreach(e => rules.addRules(makeSignaturePolicy(e, parties, principalsList)))
                 SignaturePolicy.newBuilder.setNOutOf(rules).build()
         }
     }
