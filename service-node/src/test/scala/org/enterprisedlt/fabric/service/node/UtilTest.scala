@@ -1,18 +1,22 @@
 package org.enterprisedlt.fabric.service.node
 
-import org.enterprisedlt.fabric.service.node.model.{AndExp, ContractParticipant, MajorityExpression, Member, NOutOfExtendedExpression, OrExp}
+import org.enterprisedlt.fabric.service.node.model.{AllExpression, AndExp, AnyExpression, BFTMajorityExpression, ContractParticipant, MajorityExpression, Member, NOutOfExtendedExpression, OrExp}
 import org.scalatest.FunSuite
 
 /**
  * @author Andrew Pudovikov
  */
 class UtilTest extends FunSuite {
-    private val partiesDomain: Array[ContractParticipant] = Array(
-        ContractParticipant("org1", "role1"),
-        ContractParticipant("org2", "role2"),
-        ContractParticipant("org3", "role1"),
-        ContractParticipant("org4", "role3"),
-    )
+
+    private val partiesDomain: Array[ContractParticipant] =
+        Array(
+            ContractParticipant("org1", "role1"),
+            ContractParticipant("org2", "role2"),
+            ContractParticipant("org3", "role1"),
+            ContractParticipant("org4", "role3"),
+            ContractParticipant("org5", "role1"),
+            ContractParticipant("org6", "role3")
+        )
 
 
     test("should calculate proper threshold for MAJORITY policy") {
@@ -50,12 +54,12 @@ class UtilTest extends FunSuite {
         val participantsForRole1 = Util.convertRoleToMspId("role1", partiesDomain)
         val participantsForRole2 = Util.convertRoleToMspId("role2", partiesDomain)
         val participantsForRole3 = Util.convertRoleToMspId("role3", partiesDomain)
-        assert(participantsForRole1 === Array("org1", "org3"))
+        assert(participantsForRole1 === Array("org1", "org3", "org5"))
         assert(participantsForRole2 === Array("org2"))
-        assert(participantsForRole3 === Array("org4"))
+        assert(participantsForRole3 === Array("org4", "org6"))
     }
 
-    test("should convert expression with roles to expression by mspids") {
+    test("should convert expression with roles to AndExp with OrExp expression by mspids") {
         val originalExpression = AndExp(
             Array(
                 Member("role1"),
@@ -67,12 +71,12 @@ class UtilTest extends FunSuite {
         val expressionToMatch = AndExp(
             Array(
                 OrExp(
-                    Array(Member("org1"), Member("org3"))
+                    Array(Member("org1"), Member("org3"), Member("org5"))
                 ),
                 OrExp(
                     Array(
                         OrExp(
-                            Array(Member("org4"))
+                            Array(Member("org4"), Member("org6"))
                         ),
                         OrExp(
                             Array(Member("org2"))
@@ -83,9 +87,35 @@ class UtilTest extends FunSuite {
         )
         val convertedExpression = Util.convertToExpressionWithMspIds(originalExpression, partiesDomain)
 
-        val stringifiedNeededExpression = Util.codec.toJson(expressionToMatch)
-        val stringifiedConvertedExpression = Util.codec.toJson(convertedExpression)
+        val stringifiedNeededExpression = Util.typedCodec.toJson(expressionToMatch)
+        val stringifiedConvertedExpression = Util.typedCodec.toJson(convertedExpression)
 
         assert(stringifiedNeededExpression == stringifiedConvertedExpression)
+    }
+
+
+    test("should convert abstract expressions like ANY/ALL/MAJORITY/BFT_MAJORITY into nOutOf expression") {
+        val anyExpression = AnyExpression
+        val allExpression = AllExpression
+        val bFTMajorityExpression = BFTMajorityExpression
+        val majorityExpression = MajorityExpression
+
+
+        val convertedAnyExpression = Util.convertToExpressionWithMspIds(anyExpression, partiesDomain)
+        val convertedAllExpression = Util.convertToExpressionWithMspIds(allExpression, partiesDomain)
+        val convertedBFTMajorityExpression = Util.convertToExpressionWithMspIds(bFTMajorityExpression, partiesDomain)
+        val convertedMajorityExpression = Util.convertToExpressionWithMspIds(majorityExpression, partiesDomain)
+
+        val partiesId = partiesDomain.map(_.mspId)
+
+        val anyExpressionToMatch = NOutOfExtendedExpression(1, partiesId)
+        val allExpressionToMatch = NOutOfExtendedExpression(6, partiesId)
+        val bFTMajorityExpressionToMatch = NOutOfExtendedExpression(4, partiesId)
+        val majorityExpressionToMatch = NOutOfExtendedExpression(4, partiesId)
+
+        assert(Util.typedCodec.toJson(convertedAnyExpression) == Util.typedCodec.toJson(anyExpressionToMatch))
+        assert(Util.typedCodec.toJson(convertedAllExpression) == Util.typedCodec.toJson(allExpressionToMatch))
+        assert(Util.typedCodec.toJson(convertedBFTMajorityExpression) == Util.typedCodec.toJson(bFTMajorityExpressionToMatch))
+        assert(Util.typedCodec.toJson(convertedMajorityExpression) == Util.typedCodec.toJson(majorityExpressionToMatch))
     }
 }

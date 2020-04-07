@@ -59,40 +59,40 @@ object Util {
     def convertToExpressionWithMspIds(expressionWithRoles: Expression, parties: Array[ContractParticipant]): Expression = {
         expressionWithRoles match {
             case Member(role) =>
-            OrExp(convertRoleToMspId(role, parties).map(n => Member(n)))
+                OrExp(convertRoleToMspId(role, parties).map(n => Member(n)))
 
             case or: OrExp =>
-            OrExp(or.value.map(e => convertToExpressionWithMspIds(e, parties)))
+                OrExp(or.value.map(e => convertToExpressionWithMspIds(e, parties)))
 
             case and: AndExp =>
-            AndExp(and.value.map(e => convertToExpressionWithMspIds(e, parties)))
+                AndExp(and.value.map(e => convertToExpressionWithMspIds(e, parties)))
 
             case nOutOf: NOutOf =>
-            NOutOfExtendedExpression(
+                NOutOfExtendedExpression(
                     nOutOf.threshold,
                     parties.map(_.mspId)
                 )
 
             case AllExpression =>
-            NOutOfExtendedExpression(
-                    bftThreshold(parties.length),
+                NOutOfExtendedExpression(
+                    parties.length,
                     parties.map(_.mspId)
                 )
 
             case MajorityExpression =>
-            NOutOfExtendedExpression(
+                NOutOfExtendedExpression(
                     bftThreshold(parties.length),
                     parties.map(_.mspId)
                 )
 
             case BFTMajorityExpression =>
-            NOutOfExtendedExpression(
+                NOutOfExtendedExpression(
                     bftThreshold(parties.length),
                     parties.map(_.mspId)
                 )
 
             case AnyExpression =>
-            NOutOfExtendedExpression(
+                NOutOfExtendedExpression(
                     1,
                     parties.map(_.mspId)
                 )
