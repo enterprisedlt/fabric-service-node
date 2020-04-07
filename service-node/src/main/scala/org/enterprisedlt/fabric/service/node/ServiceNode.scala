@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory
 object ServiceNode extends App {
     private val Environment = System.getenv()
     private val LogLevel = Option(Environment.get("LOG_LEVEL")).filter(_.trim.nonEmpty).getOrElse("INFO")
+    private val FabricComponentsLogLevel = Option(Environment.get("FABRIC_COMPONENTS_LOG_LEVEL")).filter(_.trim.nonEmpty).getOrElse("INFO")
     private val ServiceBindPort = Option(Environment.get("SERVICE_BIND_PORT")).map(_.toInt).getOrElse(throw new Exception("Mandatory environment variable missing SERVICE_BIND_PORT!"))
     private val ServiceExternalAddress = Option(Environment.get("SERVICE_EXTERNAL_ADDRESS")).filter(_.trim.nonEmpty).map(parseExternalAddress(_, ServiceBindPort))
     private val ProfilePath = Option(Environment.get("PROFILE_PATH")).getOrElse(throw new Exception("Mandatory environment variable missing PROFILE_PATH!"))
@@ -58,8 +59,10 @@ object ServiceNode extends App {
     private val processConfig: DockerConfig = DockerConfig(
         DockerSocket,
         LogFileSize,
-        LogMaxFiles)
-    private val cryptoManager = new FileBasedCryptoManager(organizationConfig, "/opt/profile/crypto", AdminPassword)
+        LogMaxFiles,
+        FabricComponentsLogLevel
+    )
+    private val cryptoManager = new FileBasedCryptoManager(organizationConfig, "/opt/profile/crypto",AdminPassword)
     private val restEndpoint = new RestEndpoint(
         ServiceBindPort, ServiceExternalAddress, organizationConfig, cryptoManager,
         hostsManager = new HostsManager("/opt/profile/hosts", organizationConfig),

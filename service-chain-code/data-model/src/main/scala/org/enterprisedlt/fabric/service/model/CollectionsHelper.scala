@@ -22,7 +22,7 @@ object CollectionsHelper {
     /**
       * Given collection of members will return a list of private collection names
       *
-      * @param organizations - collection of members
+      * @param organizations - collection of members, must be sorted by [[OrganizationsOrdering]]
       * @return - list of private collection names
       */
     def collectionsFromOrganizations(organizations: Iterable[String]): List[String] =

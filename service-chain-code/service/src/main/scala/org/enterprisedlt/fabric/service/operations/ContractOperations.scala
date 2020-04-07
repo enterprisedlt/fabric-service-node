@@ -3,10 +3,7 @@ package org.enterprisedlt.fabric.service.operations
 import org.enterprisedlt.fabric.contract.OperationContext
 import org.enterprisedlt.fabric.service.Main
 import org.enterprisedlt.fabric.service.model.{CollectionsHelper, Contract, Organization, UpgradeContract}
-import org.enterprisedlt.spec.{ContractOperation, ContractResult}
-import org.enterprisedlt.spec._
-
-import scala.util.Try
+import org.enterprisedlt.spec.{ContractOperation, ContractResult, _}
 
 
 /**
@@ -68,18 +65,14 @@ trait ContractOperations {
 
 
     @ContractOperation(OperationType.Query)
-    def listContracts: ContractResult[Array[Contract]] = Try {
-        CollectionsHelper
-          .collectionsFromOrganizations(
-              OperationContext.store
-                .list[Organization]
-                .map(_.value.mspId))
-          .filter(e => e.endsWith(s"-${OperationContext.clientIdentity.mspId}") || e.startsWith(s"${OperationContext.clientIdentity.mspId}-"))
-          .map(OperationContext.privateStore)
-          .flatMap { store =>
-              store.list[Contract].map(_.value)
-          }.toArray
-    }
+    def listContracts: ContractResult[Array[Contract]] =
+        this.listCollections.map { collections =>
+            collections.filter(e => e.endsWith(s"-${OperationContext.clientIdentity.mspId}") || e.startsWith(s"${OperationContext.clientIdentity.mspId}-"))
+              .map(OperationContext.privateStore)
+              .flatMap { store =>
+                  store.list[Contract].map(_.value)
+              }
+        }
 
 
     @ContractOperation(OperationType.Query)
