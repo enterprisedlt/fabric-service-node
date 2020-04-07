@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node
 
-import org.enterprisedlt.fabric.service.node.model.{AndExp, ContractParticipant, Member, OrExp}
+import org.enterprisedlt.fabric.service.node.model.{AndExp, ContractParticipant, MajorityExpression, Member, NOutOfExtendedExpression, OrExp}
 import org.scalatest.FunSuite
 
 /**
@@ -13,6 +13,38 @@ class UtilTest extends FunSuite {
         ContractParticipant("org3", "role1"),
         ContractParticipant("org4", "role3"),
     )
+
+
+    test("should calculate proper threshold for MAJORITY policy") {
+        val majorityThresholdFor1 = Util.moreThenHalfThreshold(1)
+        val majorityThresholdFor2 = Util.moreThenHalfThreshold(2)
+        val majorityThresholdFor3 = Util.moreThenHalfThreshold(3)
+        val majorityThresholdFor4 = Util.moreThenHalfThreshold(4)
+        val majorityThresholdFor5 = Util.moreThenHalfThreshold(5)
+        val majorityThresholdFor10 = Util.moreThenHalfThreshold(10)
+        assert(majorityThresholdFor1 == 1)
+        assert(majorityThresholdFor2 == 2)
+        assert(majorityThresholdFor3 == 2)
+        assert(majorityThresholdFor4 == 3)
+        assert(majorityThresholdFor5 == 3)
+        assert(majorityThresholdFor10 == 6)
+    }
+
+    test("should calculate proper threshold for BFT MAJORITY policy") {
+        val bftMajorityThresholdFor1 = Util.bftThreshold(1)
+        val bftMajorityThresholdFor2 = Util.bftThreshold(2)
+        val bftMajorityThresholdFor3 = Util.bftThreshold(3)
+        val bftMajorityThresholdFor4 = Util.bftThreshold(4)
+        val bftMajorityThresholdFor5 = Util.bftThreshold(5)
+        val bftMajorityThresholdFor10 = Util.bftThreshold(10)
+        assert(bftMajorityThresholdFor1 == 1)
+        assert(bftMajorityThresholdFor2 == 2)
+        assert(bftMajorityThresholdFor3 == 2)
+        assert(bftMajorityThresholdFor4 == 3)
+        assert(bftMajorityThresholdFor5 == 4)
+        assert(bftMajorityThresholdFor10 == 7)
+    }
+
 
     test("should unfold role to mspId array") {
         val participantsForRole1 = Util.convertRoleToMspId("role1", partiesDomain)

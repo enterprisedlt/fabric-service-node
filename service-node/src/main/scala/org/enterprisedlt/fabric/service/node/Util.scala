@@ -112,9 +112,9 @@ object Util {
         parties.filter(e => e.role == role).map(_.mspId)
     }
 
-    def bftThreshold(participantNumber: Int): Int = math.ceil(participantNumber * 2 / 3).toInt
+    def bftThreshold(participantQuantity: Int): Int = math.ceil(participantQuantity.toDouble * 2 / 3).toInt
 
-    def moreThenHalfThreshold(participantNumber: Int): Int = participantNumber / 2 + 1
+    def moreThenHalfThreshold(participantQuantity: Int): Int = participantQuantity / 2 + 1
 
     //=========================================================================
     private def makeMSPPrincipal(memberName: String): MSPPrincipal = {
