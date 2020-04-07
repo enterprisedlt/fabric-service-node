@@ -20,7 +20,7 @@ import org.apache.http.util.EntityUtils
 import org.bouncycastle.asn1.ASN1ObjectIdentifier
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x500.style.{BCStyle, IETFUtils}
-import org.enterprisedlt.fabric.service.node.model.{AndExp, ContractParticipant, Expression, Member, OrExp, ServiceNodeTypeNameResolver}
+import org.enterprisedlt.fabric.service.node.model.{AndExp, ContractParticipant, Expression, Majority, Member, NOutOf, NOutOfExtendedExpression, OrExp, ServiceNodeTypeNameResolver}
 import org.enterprisedlt.general.gson._
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope, Payload}
@@ -55,12 +55,24 @@ object Util {
         makeChaincodeEndorsementPolicy(policyEvelope)
     }
 
-
     def convertToExpressionWithMspIds(expressionWithRoles: Expression, parties: Array[ContractParticipant]): Expression = {
         expressionWithRoles match {
-            case Member(role) => OrExp(convertRoleToMspId(role, parties).map(n => Member(n)))
-            case or: OrExp => OrExp(or.value.map(e => convertToExpressionWithMspIds(e, parties)))
-            case and: AndExp => AndExp(and.value.map(e => convertToExpressionWithMspIds(e, parties)))
+            case Member(role) =>
+                OrExp(convertRoleToMspId(role, parties).map(n => Member(n)))
+            case or: OrExp =>
+                OrExp(or.value.map(e => convertToExpressionWithMspIds(e, parties)))
+            case and: AndExp =>
+                AndExp(and.value.map(e => convertToExpressionWithMspIds(e, parties)))
+            case nOutOf: NOutOf =>
+                NOutOfExtendedExpression(
+                    nOutOf.n,
+                    parties.map(_.mspId)
+                )
+            case Majority =>
+                NOutOfExtendedExpression(
+                    roundUpMajorityNumber(parties.length),
+                    parties.map(_.mspId)
+                )
         }
     }
 
@@ -70,12 +82,15 @@ object Util {
             case Member(mspId) => current :+ (mspId, makeMSPPrincipal(mspId))
             case OrExp(exps) => exps.flatMap(x => collectIdentities(x, current))
             case AndExp(exps) => exps.flatMap(x => collectIdentities(x, current))
+            case NOutOfExtendedExpression(_, exps) => exps.map(mspId => (mspId, makeMSPPrincipal(mspId)))
         }
     }
 
     def convertRoleToMspId(role: String, parties: Array[ContractParticipant]): Array[String] = {
         parties.filter(e => e.role == role).map(_.mspId)
     }
+
+    def roundUpMajorityNumber(participantNumber: Int): Int = math.ceil(participantNumber.toDouble).toInt
 
     //=========================================================================
     private def makeMSPPrincipal(memberName: String): MSPPrincipal = {
@@ -96,15 +111,17 @@ object Util {
             case Member(name) =>
                 val index = principalsList.indexWhere(_._1 == name)
                 SignaturePolicy.newBuilder.setSignedBy(index).build()
-
             case OrExp(exps) =>
                 val rules = SignaturePolicy.NOutOf.newBuilder.setN(1)
                 exps.foreach(e => rules.addRules(makeSignaturePolicy(e, principalsList)))
                 SignaturePolicy.newBuilder.setNOutOf(rules).build()
-
             case AndExp(exps) =>
                 val rules = SignaturePolicy.NOutOf.newBuilder.setN(exps.length)
                 exps.foreach(e => rules.addRules(makeSignaturePolicy(e, principalsList)))
+                SignaturePolicy.newBuilder.setNOutOf(rules).build()
+            case NOutOfExtendedExpression(n, p) =>
+                val rules = SignaturePolicy.NOutOf.newBuilder.setN(n)
+                for (i <- 0 to p.length) rules.addRules(SignaturePolicy.newBuilder.setSignedBy(i).build())
                 SignaturePolicy.newBuilder.setNOutOf(rules).build()
         }
     }
