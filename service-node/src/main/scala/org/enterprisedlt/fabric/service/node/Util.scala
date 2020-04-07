@@ -90,7 +90,9 @@ object Util {
         parties.filter(e => e.role == role).map(_.mspId)
     }
 
-    def roundUpMajorityNumber(participantNumber: Int): Int = math.ceil(participantNumber).toInt
+    def roundUpMajorityNumber(participantNumber: Int): Int = math.ceil(participantNumber * 2 / 3).toInt
+
+    def moreThenHalfNumber(participantNumber: Int): Int = participantNumber / 2 + 1
 
     //=========================================================================
     private def makeMSPPrincipal(memberName: String): MSPPrincipal = {
