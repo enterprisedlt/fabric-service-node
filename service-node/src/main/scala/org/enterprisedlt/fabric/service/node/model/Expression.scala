@@ -5,14 +5,17 @@ package org.enterprisedlt.fabric.service.node.model
  */
 sealed trait Expression
 
-case object Majority extends Expression
+case object AnyExpression extends Expression
+case object AllExpression extends Expression
+case object MajorityExpression extends Expression
+case object BFTMajorityExpression extends Expression
 
 case class NOutOf(
-    n: Int
+    threshold: Int
 ) extends Expression
 
 case class NOutOfExtendedExpression(
-    n: Int,
+    threshold: Int,
     principalsList: Array[String]
 ) extends Expression
 
