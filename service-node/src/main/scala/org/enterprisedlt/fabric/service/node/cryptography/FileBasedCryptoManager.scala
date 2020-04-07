@@ -52,7 +52,7 @@ class FileBasedCryptoManager(
     }
 
     adminPassword.map { password =>
-        logger.info(s"Getting user key for the admin...")
+        logger.info(s"Generating key storage for admin...")
         val key: KeyStore = getFabricUserKeyStore("admin", password)
         key.store(new FileOutputStream(s"$cryptoDir/users/admin/admin-${organizationConfig.name}.p12"), password.toCharArray)
     }
