@@ -36,7 +36,7 @@ object ServiceNode extends App {
     // Org variables
     private val OrgName = Option(Environment.get("ORG")).getOrElse(throw new Exception("Mandatory environment variable missing ORG!"))
     private val Domain = Option(Environment.get("DOMAIN")).getOrElse(throw new Exception("Mandatory environment variable missing DOMAIN!"))
-    private val AdminPassword = Option(Environment.get("ADMIN_PWD")).getOrElse(throw new Exception("Mandatory environment variable missing ADMIN_PWD!"))
+    private val AdminPassword = Option(Environment.get("PASSWORD")).filter(_.trim.nonEmpty)
     private val Location = Option(Environment.get("ORG_LOCATION")).filter(_.trim.nonEmpty).getOrElse("San Francisco")
     private val State = Option(Environment.get("ORG_STATE")).filter(_.trim.nonEmpty).getOrElse("California")
     private val Country = Option(Environment.get("ORG_COUNTRY")).filter(_.trim.nonEmpty).getOrElse("US")
@@ -59,7 +59,7 @@ object ServiceNode extends App {
         DockerSocket,
         LogFileSize,
         LogMaxFiles)
-    private val cryptoManager = new FileBasedCryptoManager(organizationConfig, "/opt/profile", AdminPassword)
+    private val cryptoManager = new FileBasedCryptoManager(organizationConfig, "/opt/profile/crypto", AdminPassword)
     private val restEndpoint = new RestEndpoint(
         ServiceBindPort, ServiceExternalAddress, organizationConfig, cryptoManager,
         hostsManager = new HostsManager("/opt/profile/hosts", organizationConfig),

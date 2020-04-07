@@ -24,12 +24,11 @@ import org.slf4j.LoggerFactory
   */
 class FileBasedCryptoManager(
     organizationConfig: OrganizationConfig,
-    rootDir: String,
-    adminPassword: String
+    cryptoDir: String,
+    adminPassword: Option[String]
 ) extends CryptoManager {
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val orgFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
-    private val cryptoDir = s"$rootDir/crypto"
     //
     // Initialization
     //
@@ -52,9 +51,11 @@ class FileBasedCryptoManager(
         )
     }
 
-    logger.info(s"Obtaining user key for admin ...")
-    val key: KeyStore = getFabricUserKeyStore("admin", adminPassword)
-    key.store(new FileOutputStream(s"$rootDir/admin-${organizationConfig.name}.p12"), adminPassword.toCharArray)
+    adminPassword.map { password =>
+        logger.info(s"Getting user key for the admin...")
+        val key: KeyStore = getFabricUserKeyStore("admin", password)
+        key.store(new FileOutputStream(s"$cryptoDir/users/admin/admin-${organizationConfig.name}.p12"), password.toCharArray)
+    }
 
     override def createOrgCrypto(network: NetworkConfig, orgFullName: String): Unit = {
         val components = network.orderingNodes.map(o => FabricComponent("orderers", o.name)) ++
