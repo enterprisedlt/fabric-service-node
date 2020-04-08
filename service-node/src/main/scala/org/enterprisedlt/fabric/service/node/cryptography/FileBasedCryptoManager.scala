@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node.cryptography
 
-import java.io.{File, FileReader}
+import java.io.{File, FileOutputStream, FileReader}
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths}
 import java.security.cert.X509Certificate
@@ -24,7 +24,8 @@ import org.slf4j.LoggerFactory
   */
 class FileBasedCryptoManager(
     organizationConfig: OrganizationConfig,
-    rootDir: String
+    cryptoDir: String,
+    adminPassword: Option[String]
 ) extends CryptoManager {
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val orgFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
@@ -33,10 +34,10 @@ class FileBasedCryptoManager(
     //
     val notBefore: Date = new Date()
     val notAfter: Date = Util.futureDate(Util.parsePeriod(organizationConfig.certificateDuration))
-    val orgCryptoMaterial: OrganizationCryptoMaterial = if (!new File(s"$rootDir/ca").exists()) {
+    val orgCryptoMaterial: OrganizationCryptoMaterial = if (!new File(s"$cryptoDir/ca").exists()) {
         logger.info(s"Generating crypto for $orgFullName...")
         val orgCryptoMaterial = FabricCryptoMaterial.generateOrgCrypto(
-            organizationConfig, orgFullName, rootDir,
+            organizationConfig, orgFullName, cryptoDir,
             notBefore, notAfter
         )
         logger.info(s"Generated crypto for $orgFullName.")
@@ -44,16 +45,22 @@ class FileBasedCryptoManager(
     } else {
         logger.info(s"Crypto for $orgFullName already exist.")
         OrganizationCryptoMaterial(
-            loadCertAndKey(s"$rootDir/ca/ca"),
-            loadCertAndKey(s"$rootDir/tlsca/tlsca"),
-            loadCertAndKey(s"$rootDir/users/admin/admin")
+            loadCertAndKey(s"$cryptoDir/ca/ca"),
+            loadCertAndKey(s"$cryptoDir/tlsca/tlsca"),
+            loadCertAndKey(s"$cryptoDir/users/admin/admin")
         )
+    }
+
+    adminPassword.map { password =>
+        logger.info(s"Generating key storage for admin...")
+        val key: KeyStore = getFabricUserKeyStore("admin", password)
+        key.store(new FileOutputStream(s"$cryptoDir/users/admin/admin-${organizationConfig.name}.p12"), password.toCharArray)
     }
 
     override def createOrgCrypto(network: NetworkConfig, orgFullName: String): Unit = {
         val components = network.orderingNodes.map(o => FabricComponent("orderers", o.name)) ++
           network.peerNodes.map(p => FabricComponent("peers", p.name, Option("peer")))
-        FabricCryptoMaterial.createOrgCrypto(organizationConfig, orgFullName, rootDir, orgCryptoMaterial, notBefore, notAfter, components)
+        FabricCryptoMaterial.createOrgCrypto(organizationConfig, orgFullName, cryptoDir, orgCryptoMaterial, notBefore, notAfter, components)
     }
 
     //=========================================================================
@@ -61,7 +68,7 @@ class FileBasedCryptoManager(
         loadUser(
             "admin",
             organizationConfig.name,
-            s"$rootDir/users/admin",
+            s"$cryptoDir/users/admin",
             AccountType.Fabric
         )
 
@@ -72,10 +79,10 @@ class FileBasedCryptoManager(
           .flatMap { cn =>
               cn.split("@") match {
                   case Array(name, organization) if organization == orgFullName =>
-                      findUser(s"$rootDir/users", name, AccountType.Fabric)
+                      findUser(s"$cryptoDir/users", name, AccountType.Fabric)
 
                   case Array(name, organization) if organization == s"service.$orgFullName" =>
-                      findUser(s"$rootDir/service/users", name, AccountType.Service)
+                      findUser(s"$cryptoDir/service/users", name, AccountType.Service)
 
                   case _ => Left(s"Invalid CN: $cn")
               }
@@ -98,7 +105,7 @@ class FileBasedCryptoManager(
         val keystore = KeyStore.getInstance("JKS")
         keystore.load(null)
         //
-        val path = s"$rootDir/service/tls"
+        val path = s"$cryptoDir/service/tls"
         val key = loadPrivateKeyFromFile(s"$path/server.key")
         val cert = loadCertificateFromFile(s"$path/server.crt")
         keystore.setKeyEntry("key", key, password.toCharArray, Array(cert))
@@ -109,8 +116,8 @@ class FileBasedCryptoManager(
     override def createServiceTrustStore(password: String): KeyStore = {
         val keystore = KeyStore.getInstance("JKS")
         keystore.load(null)
-        keystore.setCertificateEntry("ca", loadCertificateFromFile(s"$rootDir/ca/ca.crt")) // accept Fabric users
-        keystore.setCertificateEntry("service-ca", loadCertificateFromFile(s"$rootDir/service/ca/server.crt")) // accept Service users
+        keystore.setCertificateEntry("ca", loadCertificateFromFile(s"$cryptoDir/ca/ca.crt")) // accept Fabric users
+        keystore.setCertificateEntry("service-ca", loadCertificateFromFile(s"$cryptoDir/service/ca/server.crt")) // accept Service users
         keystore
     }
 
@@ -119,7 +126,7 @@ class FileBasedCryptoManager(
         val notBefore = new Date
         val notAfter = Util.futureDate(Util.parsePeriod(organizationConfig.certificateDuration))
         val orgConfig = organizationConfig
-        val caCert = loadCertAndKey(s"$rootDir/ca/ca")
+        val caCert = loadCertAndKey(s"$cryptoDir/ca/ca")
         val theCert = FabricCryptoMaterial.generateUserCert(
             userName = name,
             organization = orgFullName,
@@ -130,7 +137,7 @@ class FileBasedCryptoManager(
             notBefore = notBefore,
             notAfter = notAfter
         )
-        val userDir = s"$rootDir/users/$name"
+        val userDir = s"$cryptoDir/users/$name"
         Util.mkDirs(userDir)
         writeToPemFile(s"$userDir/$name.crt", theCert.certificate)
         writeToPemFile(s"$userDir/$name.key", theCert.key)
@@ -138,14 +145,14 @@ class FileBasedCryptoManager(
 
     //=========================================================================
     override def getFabricUserKeyStore(name: String, password: String): KeyStore = {
-        createP12KeyStoreFromPems(s"$rootDir/users/$name/$name", password)
+        createP12KeyStoreFromPems(s"$cryptoDir/users/$name/$name", password)
     }
 
     //=========================================================================
     override def createServiceUserKeyStore(name: String, password: String): KeyStore = {
         val notBefore = new Date
         val notAfter = Util.futureDate(Util.parsePeriod(organizationConfig.certificateDuration))
-        val path = s"$rootDir/service"
+        val path = s"$cryptoDir/service"
         val orgConfig = organizationConfig
         val serviceCACert = loadCertAndKey(s"$path/ca/server")
         val theCert = FabricCryptoMaterial.generateUserCert(
