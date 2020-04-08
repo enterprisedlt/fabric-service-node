@@ -18,7 +18,7 @@ curl -k --silent --show-error \
 --data-binary "@$2" https://${SERVICE_URL}/admin/add-to-channel
 
 if [[ "$?" -ne 0 ]]; then
-  echo "Failed to create contract!"
+  echo "Failed to add org to channel!"
   exit 1
 fi
 

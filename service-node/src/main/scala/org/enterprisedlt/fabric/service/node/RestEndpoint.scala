@@ -168,11 +168,15 @@ class RestEndpoint(
                                       DefaultConsortiumName,
                                       organizationConfig.name
                                   ))
-                              result <- state.networkManager.addPeerToChannel(channelName, state.network.peerNodes.head.name)
-                          } yield result
+                              _ <- state.network.peerNodes.map(
+                                  peer => state.networkManager.addPeerToChannel(channelName, peer.name)
+                              ).foldRight(Right(Nil): Either[String, List[Peer]]) {
+                                  (e, p) => for (xs <- p.right; x <- e.right) yield x :: xs
+                              }
+                          } yield ()
                           ) match {
-                            case Right(chName) =>
-                                response.getWriter.println(s"$chName has been created")
+                            case Right(_) =>
+                                response.getWriter.println(s"$channelName has been created")
                                 response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                                 response.setStatus(HttpServletResponse.SC_OK)
                             case Left(errorMsg) =>
@@ -204,7 +208,6 @@ class RestEndpoint(
                                 response.setContentType(ContentType.APPLICATION_JSON.getMimeType)
                                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
                         }
-
 
                     case "/service/get-block" =>
                         val channelName = request.getParameter("channelName")
