@@ -15,7 +15,7 @@ import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
 import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
-import org.enterprisedlt.fabric.service.node.model.{AddOrgToChannelRequest, AndExp, CallContractRequest, ContractDeploymentDescriptor, ContractJoinRequest, CreateContractRequest, DeleteMessageRequest, FabricServiceState, GetMessageRequest, Invite, JoinRequest, Member, OrExp, SendMessageRequest, UpgradeContractRequest}
+import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.hyperledger.fabric.sdk.User
 import org.slf4j.LoggerFactory
@@ -408,12 +408,12 @@ class RestEndpoint(
                                           upgradeContractRequest.lang,
                                           chainCodePkg)
                                   }
+                                  endorsementPolicy <- Util.makeEndorsementPolicy(
+                                      deploymentDescriptor.endorsement,
+                                      upgradeContractRequest.parties
+                                  )
                                   _ <- {
                                       logger.info(s"[ $organizationFullName ] - Upgrading $chainCodeName chain code up to ${upgradeContractRequest.version}...")
-                                      val endorsementPolicy = Util.makeEndorsementPolicy(
-                                          deploymentDescriptor.endorsement,
-                                          upgradeContractRequest.parties
-                                      )
                                       val collections = deploymentDescriptor.collections.map { cd =>
                                           PrivateCollectionConfiguration(
                                               name = cd.name,
@@ -474,7 +474,7 @@ class RestEndpoint(
                               val filesBaseName = s"${contractRequest.contractType}-${contractRequest.version}"
                               val chainCodeName = s"${contractRequest.name}-${contractRequest.version}"
                               val deploymentDescriptor = Util.typedCodec.fromJson(new FileReader(s"/opt/profile/chain-code/$filesBaseName.json"), classOf[ContractDeploymentDescriptor])
-                              logger.info(s"[ $organizationFullName ] - deploymentDescriptor = ${deploymentDescriptor}...")
+                              logger.info(s"[ $organizationFullName ] - deploymentDescriptor = $deploymentDescriptor...")
                               val path = s"/opt/profile/chain-code/$filesBaseName.tgz"
                               for {
                                   file <- Option(new File(path)).filter(_.exists()).toRight(s"File $filesBaseName.tgz doesn't exist")
@@ -488,12 +488,12 @@ class RestEndpoint(
                                           contractRequest.lang,
                                           chainCodePkg)
                                   }
+                                  endorsementPolicy <- Util.makeEndorsementPolicy(
+                                      deploymentDescriptor.endorsement,
+                                      contractRequest.parties
+                                  )
                                   _ <- {
                                       logger.info(s"[ $organizationFullName ] - Instantiating $chainCodeName chain code ...")
-                                      val endorsementPolicy = Util.makeEndorsementPolicy(
-                                          deploymentDescriptor.endorsement,
-                                          contractRequest.parties
-                                      )
                                       val collections = deploymentDescriptor.collections.map { cd =>
                                           PrivateCollectionConfiguration(
                                               name = cd.name,
