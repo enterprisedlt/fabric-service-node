@@ -48,132 +48,8 @@ object Util {
             r + (c.role -> (r.getOrElse(c.role, List.empty) :+ c.mspId))
         }
         EndorsementPolicyCompiler.compile(expression, roles(_))
-        //        logger.debug(s"originalExpression = ${Util.typedCodec.toJson(expression)}")
-        //        val convertedExpression = convertToExpressionWithMspIds(expression, parties)
-        //        logger.debug(s"convertedExpression = ${Util.typedCodec.toJson(convertedExpression)}")
-        //        val principalsList: Array[(String, MSPPrincipal)] = collectIdentities(convertedExpression)
-        //        logger.debug(s"principalsList = ${Util.typedCodec.toJson(principalsList)}")
-        //        val calculatedPolicy: SignaturePolicy = makeSignaturePolicy(convertedExpression, principalsList)
-        //        logger.debug(s"calculatedPolicy = ${Util.typedCodec.toJson(calculatedPolicy)}")
-        //        val policyEvelope = makeSignaturePolicyEvelope(principalsList
-        //          .map(_._2), calculatedPolicy)
-        //        makeChaincodeEndorsementPolicy(policyEvelope)
     }
 
-    //    //=========================================================================
-    //    def convertToExpressionWithMspIds(expressionWithRoles: Expression, parties: Array[ContractParticipant]): Expression = {
-    //        expressionWithRoles match {
-    //            case Member(role) =>
-    //                OrExp(convertRoleToMspId(role, parties).map(n => Member(n)))
-    //
-    //            case or: OrExp =>
-    //                OrExp(or.value.map(e => convertToExpressionWithMspIds(e, parties)))
-    //
-    //            case and: AndExp =>
-    //                AndExp(and.value.map(e => convertToExpressionWithMspIds(e, parties)))
-    //
-    //            case nOutOf: NOutOf =>
-    //                NOutOfExtendedExpression(
-    //                    nOutOf.threshold,
-    //                    parties.map(_.mspId)
-    //                )
-    //
-    //            case AllExpression =>
-    //                NOutOfExtendedExpression(
-    //                    parties.length,
-    //                    parties.map(_.mspId)
-    //                )
-    //
-    //            case MajorityExpression =>
-    //                NOutOfExtendedExpression(
-    //                    bftThreshold(parties.length),
-    //                    parties.map(_.mspId)
-    //                )
-    //
-    //            case BFTMajorityExpression =>
-    //                NOutOfExtendedExpression(
-    //                    bftThreshold(parties.length),
-    //                    parties.map(_.mspId)
-    //                )
-    //
-    //            case AnyExpression =>
-    //                NOutOfExtendedExpression(
-    //                    1,
-    //                    parties.map(_.mspId)
-    //                )
-    //        }
-    //    }
-    //
-    //    private def collectIdentities(expressionWithMspIds: Expression, current: Array[(String, MSPPrincipal)] = Array.empty): Array[(String, MSPPrincipal)] = {
-    //        expressionWithMspIds match {
-    //            case Member(mspId) => current :+ (mspId, makeMSPPrincipal(mspId))
-    //            case OrExp(exps) => exps.flatMap(x => collectIdentities(x, current))
-    //            case AndExp(exps) => exps.flatMap(x => collectIdentities(x, current))
-    //            case NOutOfExtendedExpression(_, exps) => exps.map(mspId => (mspId, makeMSPPrincipal(mspId)))
-    //        }
-    //    }
-    //
-    //    def convertRoleToMspId(role: String, parties: Array[ContractParticipant]): Array[String] = {
-    //        parties.filter(e => e.role == role).map(_.mspId)
-    //    }
-    //
-    //    def bftThreshold(participantQuantity: Int): Int = math.ceil(participantQuantity.toDouble * 2 / 3).toInt
-    //
-    //    def moreThenHalfThreshold(participantQuantity: Int): Int = participantQuantity / 2 + 1
-    //
-    //    //=========================================================================
-    //    private def makeMSPPrincipal(memberName: String): MSPPrincipal = {
-    //        MSPPrincipal.newBuilder()
-    //          .setPrincipalClassification(MSPPrincipal.Classification.ROLE)
-    //          .setPrincipal(
-    //              MSPRole.newBuilder
-    //                .setRole(MSPRole.MSPRoleType.MEMBER)
-    //                .setMspIdentifier(memberName)
-    //                .build
-    //                .toByteString
-    //          ).build
-    //    }
-    //
-    //    //=========================================================================
-    //    private def makeSignaturePolicy(expression: Expression, principalsList: Array[(String, MSPPrincipal)]): SignaturePolicy = {
-    //        expression match {
-    //            case Member(name) =>
-    //                val index = principalsList.indexWhere(_._1 == name)
-    //                SignaturePolicy.newBuilder.setSignedBy(index).build()
-    //
-    //            case OrExp(exps) =>
-    //                val rules = SignaturePolicy.NOutOf.newBuilder.setN(1)
-    //                exps.foreach(e => rules.addRules(makeSignaturePolicy(e, principalsList)))
-    //                SignaturePolicy.newBuilder.setNOutOf(rules).build()
-    //
-    //            case AndExp(exps) =>
-    //                val rules = SignaturePolicy.NOutOf.newBuilder.setN(exps.length)
-    //                exps.foreach(e => rules.addRules(makeSignaturePolicy(e, principalsList)))
-    //                SignaturePolicy.newBuilder.setNOutOf(rules).build()
-    //
-    //            case NOutOfExtendedExpression(n, p) =>
-    //                val rules = SignaturePolicy.NOutOf.newBuilder.setN(n)
-    //                for (i <- 0 to p.length) rules.addRules(SignaturePolicy.newBuilder.setSignedBy(i).build())
-    //                SignaturePolicy.newBuilder.setNOutOf(rules).build()
-    //        }
-    //    }
-    //
-    //    //=========================================================================
-    //    private def makeSignaturePolicyEvelope(principals: Iterable[MSPPrincipal], rules: SignaturePolicy): SignaturePolicyEnvelope = {
-    //        SignaturePolicyEnvelope.newBuilder
-    //          .setVersion(0)
-    //          .addAllIdentities(principals.asJava)
-    //          .setRule(rules)
-    //          .build
-    //    }
-    //
-    //    //=========================================================================
-    //    private def makeChaincodeEndorsementPolicy(policy: SignaturePolicyEnvelope): ChaincodeEndorsementPolicy = {
-    //        val result = new ChaincodeEndorsementPolicy()
-    //        result.fromBytes(policy.toByteArray)
-    //        result
-    //    }
-    //
     //=========================================================================
     def signaturePolicyAnyMemberOf(members: Iterable[String]): SignaturePolicyEnvelope = {
         val rules = SignaturePolicy.NOutOf.newBuilder.setN(1)
@@ -410,11 +286,11 @@ object Util {
 }
 
 case class PrivateCollectionConfiguration(
-  name: String,
-  memberIds: Iterable[String],
-  blocksToLive: Long = 0, // Infinity by default
-  minPeersToSpread: Int = 0, // not require to disseminate before commit
-  maxPeersToSpread: Int = 0 // can be disseminated before commit
+    name: String,
+    memberIds: Iterable[String],
+    blocksToLive: Long = 0, // Infinity by default
+    minPeersToSpread: Int = 0, // not require to disseminate before commit
+    maxPeersToSpread: Int = 0 // can be disseminated before commit
 )
 
 
