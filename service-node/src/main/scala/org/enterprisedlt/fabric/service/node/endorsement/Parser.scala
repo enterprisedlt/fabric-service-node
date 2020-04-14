@@ -24,8 +24,8 @@ object Parser {
             case _ ~ _ ~ head ~ tail ~ _ => AnyOf(head +: tail.map { case _ ~ exp => exp })
         }
 
-        def bfaOf: Parser[BFAOf] = "bfa_of" ~ "(" ~ expression ~ rep("," ~ expression) ~ ")" ^^ {
-            case _ ~ _ ~ head ~ tail ~ _ => BFAOf(head +: tail.map { case _ ~ exp => exp })
+        def bfaOf: Parser[BFOf] = "bf_of" ~ "(" ~ expression ~ rep("," ~ expression) ~ ")" ^^ {
+            case _ ~ _ ~ head ~ tail ~ _ => BFOf(head +: tail.map { case _ ~ exp => exp })
         }
 
         def majorityOf: Parser[MajorityOf] = "majority_of" ~ "(" ~ expression ~ rep("," ~ expression) ~ ")" ^^ {

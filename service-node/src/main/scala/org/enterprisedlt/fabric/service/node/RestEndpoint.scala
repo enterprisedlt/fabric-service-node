@@ -473,7 +473,7 @@ class RestEndpoint(
                               logger.info(s"[ $organizationFullName ] - Preparing ${contractRequest.name} chain code ...")
                               val filesBaseName = s"${contractRequest.contractType}-${contractRequest.version}"
                               val chainCodeName = s"${contractRequest.name}-${contractRequest.version}"
-                              val deploymentDescriptor = Util.typedCodec.fromJson(new FileReader(s"/opt/profile/chain-code/$filesBaseName.json"), classOf[ContractDeploymentDescriptor])
+                              val deploymentDescriptor = Util.codec.fromJson(new FileReader(s"/opt/profile/chain-code/$filesBaseName.json"), classOf[ContractDeploymentDescriptor])
                               logger.info(s"[ $organizationFullName ] - deploymentDescriptor = $deploymentDescriptor...")
                               val path = s"/opt/profile/chain-code/$filesBaseName.tgz"
                               for {

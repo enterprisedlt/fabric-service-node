@@ -21,8 +21,7 @@ import org.bouncycastle.asn1.ASN1ObjectIdentifier
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x500.style.{BCStyle, IETFUtils}
 import org.enterprisedlt.fabric.service.node.endorsement.EndorsementPolicyCompiler
-import org.enterprisedlt.fabric.service.node.model.{ContractParticipant, ServiceNodeTypeNameResolver}
-import org.enterprisedlt.general.gson._
+import org.enterprisedlt.fabric.service.node.model.ContractParticipant
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope, Payload}
 import org.hyperledger.fabric.protos.common.Configtx
@@ -183,11 +182,6 @@ object Util {
 
     //=========================================================================
     def codec: Gson = (new GsonBuilder).create()
-
-    def typedCodec: Gson = new GsonBuilder()
-      .encodeTypes(typeFieldName = "type", typeNamesResolver = ServiceNodeTypeNameResolver)
-      .serializeNulls()
-      .create()
 
     //=========================================================================
     def setupLogging(logLevel: String): Unit = {

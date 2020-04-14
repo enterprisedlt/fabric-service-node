@@ -22,8 +22,8 @@ case class AnyOf(values: Iterable[ASTExpression]) extends CompositeExpression {
     override def reconstruct(values: Iterable[ASTExpression]): CompositeExpression = AnyOf(values)
 }
 
-case class BFAOf(values: Iterable[ASTExpression]) extends CompositeExpression {
-    override def reconstruct(values: Iterable[ASTExpression]): CompositeExpression = BFAOf(values)
+case class BFOf(values: Iterable[ASTExpression]) extends CompositeExpression {
+    override def reconstruct(values: Iterable[ASTExpression]): CompositeExpression = BFOf(values)
 }
 
 case class MajorityOf(values: Iterable[ASTExpression]) extends CompositeExpression {
