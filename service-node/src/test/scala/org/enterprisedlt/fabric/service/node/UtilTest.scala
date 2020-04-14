@@ -2,7 +2,9 @@ package org.enterprisedlt.fabric.service.node
 
 import org.enterprisedlt.fabric.service.node.endorsement._
 import org.enterprisedlt.fabric.service.node.model._
-import org.scalatest.FunSuite
+import org.scalatest._
+import Matchers._
+
 
 /**
  * @author Andrew Pudovikov
@@ -33,12 +35,17 @@ class UtilTest extends FunSuite {
         val anySimpleExpression = "any_of('role1','role2','role3','role4')"
         val mixedExpression = "all_of(any_of('role1','role2'),any_of('role3','role4'))"
 
-
         val majorityExpressionExpanded = Parser.parse(majorityExpression).map(e => EndorsementPolicyCompiler.expandRoles(e, participantsRoleMap))
         val allExpressionExpanded = Parser.parse(allExpression).map(e => EndorsementPolicyCompiler.expandRoles(e, participantsRoleMap))
         val bfaExpressionExpanded = Parser.parse(bfaExpression).map(e => EndorsementPolicyCompiler.expandRoles(e, participantsRoleMap))
         val anySimpleExpressionExpanded = Parser.parse(anySimpleExpression).map(e => EndorsementPolicyCompiler.expandRoles(e, participantsRoleMap))
         val mixedExpressionExpanded = Parser.parse(mixedExpression).map(e => EndorsementPolicyCompiler.expandRoles(e, participantsRoleMap))
+
+        majorityExpressionExpanded should be('right)
+        allExpressionExpanded should be('right)
+        bfaExpressionExpanded should be('right)
+        anySimpleExpressionExpanded should be('right)
+        mixedExpressionExpanded should be('right)
 
         val majorityExpressionExpandedToMatch = MajorityOf(List(Id("org1"), Id("org3"), Id("org5"), Id("org2"), Id("org4"), Id("org6"), Id("org7")))
         val allExpressionExpandedToMatch = AllOf(List(Id("org1"), Id("org3"), Id("org5"), Id("org2"), Id("org4"), Id("org6"), Id("org7")))
@@ -46,14 +53,22 @@ class UtilTest extends FunSuite {
         val anySimpleExpressionExpandedToMatch = AnyOf(List(Id("org1"), Id("org3"), Id("org5"), Id("org2"), Id("org4"), Id("org6"), Id("org7")))
         val mixedExpressionExpandedToMatch = AllOf(List(AnyOf(List(Id("org1"), Id("org3"), Id("org5"), Id("org2"))), AnyOf(List(Id("org4"), Id("org6"), Id("org7")))))
 
-
-        assert(majorityExpressionExpanded.right.get == majorityExpressionExpandedToMatch)
-        assert(allExpressionExpanded.right.get == allExpressionExpandedToMatch)
-        assert(bfaExpressionExpanded.right.get == bfaExpressionExpandedToMatch)
-        assert(anySimpleExpressionExpanded.right.get == anySimpleExpressionExpandedToMatch)
-        assert(mixedExpressionExpanded.right.get == mixedExpressionExpandedToMatch)
+        majorityExpressionExpanded.right.get should be(majorityExpressionExpandedToMatch)
+        allExpressionExpanded.right.get should be(allExpressionExpandedToMatch)
+        bfaExpressionExpanded.right.get should be(bfaExpressionExpandedToMatch)
+        anySimpleExpressionExpanded.right.get should be(anySimpleExpressionExpandedToMatch)
+        mixedExpressionExpanded.right.get should be(mixedExpressionExpandedToMatch)
     }
 
+    test("should give exception") {
+        val missedRole = "errorRole"
+        val errorMajorityExpressionString = s"majority_of('$missedRole')"
+        val errorMajorityASTExpression = Parser.parse(errorMajorityExpressionString)
+        errorMajorityASTExpression.right.get shouldBe a[MajorityOf]
+        an[NoSuchElementException] should be thrownBy {
+            EndorsementPolicyCompiler.expandRoles(errorMajorityASTExpression.right.get, participantsRoleMap)
+        }
+    }
 
     test("should calculate correct threshold for majority policy") {
         val majorityThresholdFor1 = EndorsementPolicyCompiler.majorityThreshold(1)
@@ -62,12 +77,12 @@ class UtilTest extends FunSuite {
         val majorityThresholdFor4 = EndorsementPolicyCompiler.majorityThreshold(4)
         val majorityThresholdFor5 = EndorsementPolicyCompiler.majorityThreshold(5)
         val majorityThresholdFor10 = EndorsementPolicyCompiler.majorityThreshold(10)
-        assert(majorityThresholdFor1 == 1)
-        assert(majorityThresholdFor2 == 2)
-        assert(majorityThresholdFor3 == 2)
-        assert(majorityThresholdFor4 == 3)
-        assert(majorityThresholdFor5 == 3)
-        assert(majorityThresholdFor10 == 6)
+        majorityThresholdFor1 should be(1)
+        majorityThresholdFor2 should be(2)
+        majorityThresholdFor3 should be(2)
+        majorityThresholdFor4 should be(3)
+        majorityThresholdFor5 should be(3)
+        majorityThresholdFor10 should be(6)
     }
 
     test("should calculate correct threshold for bfa policy") {
@@ -77,12 +92,12 @@ class UtilTest extends FunSuite {
         val bftMajorityThresholdFor4 = EndorsementPolicyCompiler.bfaThreshold(4)
         val bftMajorityThresholdFor5 = EndorsementPolicyCompiler.bfaThreshold(5)
         val bftMajorityThresholdFor10 = EndorsementPolicyCompiler.bfaThreshold(10)
-        assert(bftMajorityThresholdFor1 == 1)
-        assert(bftMajorityThresholdFor2 == 2)
-        assert(bftMajorityThresholdFor3 == 2)
-        assert(bftMajorityThresholdFor4 == 3)
-        assert(bftMajorityThresholdFor5 == 4)
-        assert(bftMajorityThresholdFor10 == 7)
+        bftMajorityThresholdFor1 should be(1)
+        bftMajorityThresholdFor2 should be(2)
+        bftMajorityThresholdFor3 should be(2)
+        bftMajorityThresholdFor4 should be(3)
+        bftMajorityThresholdFor5 should be(4)
+        bftMajorityThresholdFor10 should be(7)
     }
 
 }
