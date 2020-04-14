@@ -3,14 +3,17 @@ package org.enterprisedlt.fabric.service.node.endorsement
 import scala.util.parsing.combinator.RegexParsers
 
 /**
+ * Endorsement policy expression examples:
+ * ba_of('role1','role2','role3')
+ * all_of('role1',any_of('role2','role3'))
+ *
  * @author Alexey Polubelov
  */
 object Parser {
 
     private object Parsers extends RegexParsers {
-        //def number: Parser[Int] = """(0|[1-9]\d*)""".r ^^ (x => x.toInt)
 
-        def topLevelExpression: Parser[ASTExpression] = allOf | anyOf | bfaOf | majorityOf
+        def topLevelExpression: Parser[ASTExpression] = allOf | anyOf | baOf | majorityOf
 
         def expression: Parser[ASTExpression] = id | topLevelExpression
 
@@ -24,8 +27,8 @@ object Parser {
             case _ ~ _ ~ head ~ tail ~ _ => AnyOf(head +: tail.map { case _ ~ exp => exp })
         }
 
-        def bfaOf: Parser[BFOf] = "bf_of" ~ "(" ~ expression ~ rep("," ~ expression) ~ ")" ^^ {
-            case _ ~ _ ~ head ~ tail ~ _ => BFOf(head +: tail.map { case _ ~ exp => exp })
+        def baOf: Parser[BAOf] = "ba_of" ~ "(" ~ expression ~ rep("," ~ expression) ~ ")" ^^ {
+            case _ ~ _ ~ head ~ tail ~ _ => BAOf(head +: tail.map { case _ ~ exp => exp })
         }
 
         def majorityOf: Parser[MajorityOf] = "majority_of" ~ "(" ~ expression ~ rep("," ~ expression) ~ ")" ^^ {

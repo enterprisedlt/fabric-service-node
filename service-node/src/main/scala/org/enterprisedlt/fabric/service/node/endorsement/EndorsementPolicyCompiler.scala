@@ -7,6 +7,7 @@ import org.hyperledger.fabric.sdk.ChaincodeEndorsementPolicy
 import scala.collection.JavaConverters._
 
 /**
+ *
  * @author Alexey Polubelov
  * @author Andrew Pudovikov
  */
@@ -64,7 +65,7 @@ object EndorsementPolicyCompiler {
             case Id(value) => SignaturePolicy.newBuilder.setSignedBy(indexes(value)).build()
             case AllOf(values) => translateToNOutOf(values.size, values, indexes)
             case AnyOf(values) => translateToNOutOf(1, values, indexes)
-            case BFOf(values) => translateToNOutOf(bfThreshold(values.size), values, indexes)
+            case BAOf(values) => translateToNOutOf(baThreshold(values.size), values, indexes)
             case MajorityOf(values) => translateToNOutOf(majorityThreshold(values.size), values, indexes)
         }
 
@@ -74,10 +75,9 @@ object EndorsementPolicyCompiler {
         SignaturePolicy.newBuilder.setNOutOf(rules).build()
     }
 
-    def bfThreshold(count: Int): Int = {
-        val calculatedMultiply = count.toDouble * 2 / 3
-        if (calculatedMultiply % 1D == 0) math.ceil(calculatedMultiply).toInt + 1
-        else math.ceil(calculatedMultiply).toInt
+    def baThreshold(participantsCount: Int): Int = {
+        val reasonableMaliciousActors: Int = (participantsCount - 1)/3
+        participantsCount - reasonableMaliciousActors
     }
 
     def majorityThreshold(count: Int): Int = count / 2 + 1
