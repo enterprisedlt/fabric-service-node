@@ -1,6 +1,10 @@
 #!/bin/bash
 
-./build.sh
+FABRIC_SERVICE_NODE_VERSION=$1
 
-docker build -t enterprisedlt/fabric-service-node:1.4.2-rc-7 .
-docker tag enterprisedlt/fabric-service-node:1.4.2-rc-7 enterprisedlt/fabric-service-node
+./build.sh
+./prepare-scripts.sh ${FABRIC_SERVICE_NODE_VERSION}
+
+docker build -t enterprisedlt/fabric-service-node:${FABRIC_SERVICE_NODE_VERSION} .
+docker tag enterprisedlt/fabric-service-node:${FABRIC_SERVICE_NODE_VERSION} enterprisedlt/fabric-service-node
+

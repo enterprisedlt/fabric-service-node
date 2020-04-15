@@ -12,3 +12,7 @@ crypto
 
 #
 *.tgz
+
+fabric-service-node-scripts
+
+fabric-service-node-scripts.tgz
