@@ -33,7 +33,7 @@ serviceID=`docker run -d \
  --log-driver json-file \
  --log-opt max-size=100m \
  --log-opt max-file=5 \
- enterprisedlt/fabric-service-node`
+ enterprisedlt/fabric-service-node:@FABRIC_SERVICE_NODE_VERSION@`
 echo "Service ID: ${serviceID}"
 
 # await service node to start up
