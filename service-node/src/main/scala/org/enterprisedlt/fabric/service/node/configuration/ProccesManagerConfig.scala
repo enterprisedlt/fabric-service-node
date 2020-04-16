@@ -10,5 +10,6 @@ case class DockerConfig
 (
     dockerSocket: String,
     logFileSize: String,
-    logMaxFiles: String
+    logMaxFiles: String,
+    fabricComponentsLogLevel: String
 ) extends ProccesManagerConfig

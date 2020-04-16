@@ -6,13 +6,19 @@ import java.time.Instant
 import java.util
 import java.util.concurrent.atomic.AtomicReference
 
+import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
+import org.apache.http.entity.ContentType
+import org.eclipse.jetty.server.Request
+import org.eclipse.jetty.server.handler.AbstractHandler
 import org.enterprisedlt.fabric.service.model.{Contract, UpgradeContract}
+import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
 import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
+import org.hyperledger.fabric.sdk.{Peer, User}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
@@ -44,12 +50,12 @@ class RestEndpoint(
     }
 
     @Get("/service/state")
-    def getState(): Either[String, FabricServiceState] = {
+    def getState: Either[String, FabricServiceState] = {
         Option(state.get()).toRight("Some error with full org name")
     }
 
     @Get("/service/list-channels")
-    def getListChannels(): Either[String, String] = {
+    def getListChannels: Either[String, String] = {
         for {
             state <- globalState.toRight("Node is not initialized yet")
             network = state.networkManager
@@ -58,7 +64,7 @@ class RestEndpoint(
     }
 
     @Get("/service/list-organizations")
-    def getListOrganizations(): Either[String, String] = {
+    def getListOrganizations: Either[String, String] = {
         logger.info(s"ListOrganizations ...")
         for {
             state <- globalState.toRight("Node is not initialized yet")
@@ -69,7 +75,7 @@ class RestEndpoint(
     }
 
     @Get("/service/list-collections")
-    def getListCollections(): Either[String, String] = {
+    def getListCollections: Either[String, String] = {
         logger.info(s"ListCollections ...")
         for {
             state <- globalState.toRight("Node is not initialized yet")
@@ -80,7 +86,7 @@ class RestEndpoint(
     }
 
     @Get("/admin/create-invite")
-    def getCreateInvite(): Either[String, Invite] = {
+    def getCreateInvite: Either[String, Invite] = {
         for {
             state <- globalState.toRight("Node is not initialized yet")
             address = {
@@ -152,8 +158,22 @@ class RestEndpoint(
         } yield result
     }
 
+    @Get("/admin/join-to-channel")
+    def joinToChannel(channelName: String): Either[String, String] = {
+        logger.info(s"Joining to channel $channelName ...")
+        for {
+            state <- globalState.toRight("Node is not initialized yet")
+            _ = state.networkManager.defineChannel(channelName)
+            _ <- state.network.peerNodes.map(
+                peer => state.networkManager.addPeerToChannel(channelName, peer.name)
+            ).foldRight(Right(Nil): Either[String, List[Peer]]) {
+                (e, p) => for (xs <- p.right; x <- e.right) yield x :: xs
+            }
+        } yield s"Sucessfully has been joined to channel $channelName"
+    }
+
     @Get("/service/list-messages")
-    def getListMessages(): Either[String, String] = {
+    def getListMessages: Either[String, String] = {
         logger.info(s"Querying messages for ${organizationConfig.name}...")
         for {
             state <- globalState.toRight("Node is not initialized yet")
@@ -164,7 +184,7 @@ class RestEndpoint(
     }
 
     @Get("/service/list-confirmations")
-    def getListConfirmations(): Either[String, String] = {
+    def getListConfirmations: Either[String, String] = {
         logger.info(s"Querying confirmations for ${organizationConfig.name}...")
         for {
             state <- globalState.toRight("Node is not initialized yet")
@@ -175,7 +195,7 @@ class RestEndpoint(
     }
 
     @Get("/service/list-contracts")
-    def getListContracts(): Either[String, String] = {
+    def getListContracts: Either[String, String] = {
         logger.info(s"Querying contracts for ${organizationConfig.name}...")
         for {
             state <- globalState.toRight("Node is not initialized yet")
@@ -186,7 +206,7 @@ class RestEndpoint(
     }
 
     @Get("/admin/list-contract-packages")
-    def getListContractPackages(): Either[String, String] = {
+    def getListContractPackages: Either[String, String] = {
         logger.info("Listing contract packages...")
         val chaincodePath = new File(s"/opt/profile/chain-code/").getAbsoluteFile
         if (!chaincodePath.exists()) chaincodePath.mkdirs()
@@ -303,13 +323,10 @@ class RestEndpoint(
                     upgradeContractRequest.lang,
                     chainCodePkg)
             }
-            endorsementPolicy = {
-                logger.info(s"[ $organizationFullName ] - Upgrading $chainCodeName chain code up to ${upgradeContractRequest.version}...")
-                Util.policyAnyOf(
-                    deploymentDescriptor.endorsement
-                      .flatMap(r => upgradeContractRequest.parties.filter(_.role == r).map(_.mspId))
-                )
-            }
+            endorsementPolicy <- Util.makeEndorsementPolicy(
+                deploymentDescriptor.endorsement,
+                upgradeContractRequest.parties
+            )
             collections = deploymentDescriptor.collections.map { cd =>
                 PrivateCollectionConfiguration(
                     name = cd.name,
@@ -375,13 +392,10 @@ class RestEndpoint(
                     contractRequest.lang,
                     chainCodePkg)
             }
-            endorsementPolicy = {
-                logger.info(s"[ $organizationFullName ] - Instantiating $chainCodeName chain code ...")
-                Util.policyAnyOf(
-                    deploymentDescriptor.endorsement
-                      .flatMap(r => contractRequest.parties.filter(_.role == r).map(_.mspId))
-                )
-            }
+            endorsementPolicy <- Util.makeEndorsementPolicy(
+                deploymentDescriptor.endorsement,
+                contractRequest.parties
+            )
             collections = deploymentDescriptor.collections.map { cd =>
                 PrivateCollectionConfiguration(
                     name = cd.name,
@@ -390,6 +404,7 @@ class RestEndpoint(
                     )
                 )
             }
+            _ = logger.info(s"[ $organizationFullName ] - Instantiating $chainCodeName chain code ...")
             _ <- state.networkManager.instantiateChainCode(
                 contractRequest.channelName,
                 contractRequest.name,

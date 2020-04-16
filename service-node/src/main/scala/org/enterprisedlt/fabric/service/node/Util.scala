@@ -20,6 +20,8 @@ import org.apache.http.util.EntityUtils
 import org.bouncycastle.asn1.ASN1ObjectIdentifier
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x500.style.{BCStyle, IETFUtils}
+import org.enterprisedlt.fabric.service.node.endorsement.EndorsementPolicyCompiler
+import org.enterprisedlt.fabric.service.node.model.ContractParticipant
 import org.enterprisedlt.fabric.service.node.rest.JsonServerCodec
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope, Payload}
@@ -35,19 +37,20 @@ import org.slf4j.{Logger, LoggerFactory}
 import scala.collection.JavaConverters._
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object Util {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
-    //=========================================================================
-    def policyAnyOf(members: Iterable[String]): ChaincodeEndorsementPolicy = {
-        val signaturePolicy = signaturePolicyAnyMemberOf(members)
-        val result = new ChaincodeEndorsementPolicy()
-        result.fromBytes(signaturePolicy.toByteArray)
-        result
+    //=========================================================================]
+    def makeEndorsementPolicy(expression: String, parties: Array[ContractParticipant]): Either[String, ChaincodeEndorsementPolicy] = {
+        val roles = parties.foldLeft(Map.empty[String, List[String]]) { case (r, c) =>
+            r + (c.role -> (r.getOrElse(c.role, List.empty) :+ c.mspId))
+        }
+        EndorsementPolicyCompiler.compile(expression, roles(_))
     }
 
+    //=========================================================================
     def signaturePolicyAnyMemberOf(members: Iterable[String]): SignaturePolicyEnvelope = {
         val rules = SignaturePolicy.NOutOf.newBuilder.setN(1)
         val identities = members.zipWithIndex.map { case (member, index) =>
@@ -67,6 +70,14 @@ object Util {
           .addAllIdentities(identities.asJava)
           .setRule(SignaturePolicy.newBuilder.setNOutOf(rules))
           .build
+    }
+
+    //=========================================================================
+    def policyAnyOf(members: Iterable[String]): ChaincodeEndorsementPolicy = {
+        val signaturePolicy = signaturePolicyAnyMemberOf(members)
+        val result = new ChaincodeEndorsementPolicy()
+        result.fromBytes(signaturePolicy.toByteArray)
+        result
     }
 
     //=========================================================================

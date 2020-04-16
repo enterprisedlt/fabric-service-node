@@ -87,7 +87,7 @@ case class ContractDeploymentDescriptor(
     roles: Array[String],
     initMethod: String,
     warmUpMethod: String,
-    endorsement: Array[String],
+    endorsement: String,
     collections: Array[ContractCollectionDescriptor]
 )
 
