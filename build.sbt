@@ -183,6 +183,7 @@ lazy val BouncyCastle = Seq(
 
 lazy val Jetty = Seq(
     "org.eclipse.jetty" % "jetty-server" % JettyVersion,
+    "org.eclipse.jetty" % "jetty-client" % JettyVersion,
     "org.eclipse.jetty.websocket" % "websocket-server" % JettyVersion
 )
 

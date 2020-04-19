@@ -22,6 +22,7 @@ import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x500.style.{BCStyle, IETFUtils}
 import org.enterprisedlt.fabric.service.node.endorsement.EndorsementPolicyCompiler
 import org.enterprisedlt.fabric.service.node.model.ContractParticipant
+import org.enterprisedlt.fabric.service.node.rest.JsonServerCodec
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope, Payload}
 import org.hyperledger.fabric.protos.common.Configtx
@@ -52,7 +53,7 @@ object Util {
     //=========================================================================
     def signaturePolicyAnyMemberOf(members: Iterable[String]): SignaturePolicyEnvelope = {
         val rules = SignaturePolicy.NOutOf.newBuilder.setN(1)
-        val identities: Iterable[MSPPrincipal] = members.zipWithIndex.map { case (member, index) =>
+        val identities = members.zipWithIndex.map { case (member, index) =>
             rules.addRules(SignaturePolicy.newBuilder.setSignedBy(index))
             MSPPrincipal.newBuilder()
               .setPrincipalClassification(MSPPrincipal.Classification.ROLE)
@@ -183,6 +184,7 @@ object Util {
     //=========================================================================
     def codec: Gson = (new GsonBuilder).create()
 
+    def createCodec: () => JsonServerCodec = () => new JsonServerCodec(codec)
     //=========================================================================
     def setupLogging(logLevel: String): Unit = {
         LoggerFactory
