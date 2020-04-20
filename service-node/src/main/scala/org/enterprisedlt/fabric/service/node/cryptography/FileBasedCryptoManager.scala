@@ -13,7 +13,7 @@ import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
-import org.enterprisedlt.fabric.service.node.configuration.{NetworkConfig, OrganizationConfig}
+import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FabricCryptoMaterial.writeToPemFile
 import org.enterprisedlt.fabric.service.node.{CryptoManager, Util}
 import org.hyperledger.fabric.sdk.identity.X509Enrollment
@@ -57,11 +57,23 @@ class FileBasedCryptoManager(
         key.store(new FileOutputStream(s"$cryptoDir/users/admin/admin-${organizationConfig.name}.p12"), password.toCharArray)
     }
 
-    override def createOrgCrypto(network: NetworkConfig, orgFullName: String): Unit = {
-        val components = network.orderingNodes.map(o => FabricComponent("orderers", o.name)) ++
-          network.peerNodes.map(p => FabricComponent("peers", p.name, Option("peer")))
-        FabricCryptoMaterial.createOrgCrypto(organizationConfig, orgFullName, cryptoDir, orgCryptoMaterial, notBefore, notAfter, components)
+
+    override def generateComponentCrypto(componentType: Component, componentName: String): ComponentCerts = {
+        val component = componentType match {
+            case Peer => FabricComponent("peers", componentName)
+            case Orderer => FabricComponent("orderers", componentName)
+        }
+        FabricCryptoMaterial.generateComponentCerts(organizationConfig, orgFullName, component, orgCryptoMaterial, notBefore, notAfter)
     }
+
+    override def saveComponentCrypto(componentType: Component, componentName: String, componentCerts: ComponentCerts): Unit = {
+        val component = componentType match {
+            case Peer => FabricComponent("peers", componentName)
+            case Orderer => FabricComponent("orderers", componentName)
+        }
+        FabricCryptoMaterial.saveComponentCerts(organizationConfig, orgFullName, component, cryptoDir, componentCerts)
+    }
+
 
     //=========================================================================
     override def loadDefaultAdmin: UserAccount =
