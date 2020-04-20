@@ -319,7 +319,7 @@ object FabricCryptoMaterial {
     ): CertAndKey = {
         CryptoUtil.createSignedCert(
             OrgMeta(
-                name = s"$componentName",
+                name = componentName,
                 location = Option(location),
                 state = Option(state),
                 country = Option(country)
@@ -332,8 +332,7 @@ object FabricCryptoMaterial {
                 UseForEncipherment,
                 UseForClientAuth,
                 UseForServerAuth,
-                AlternativeDNSName(s"$componentName"),
-                AlternativeDNSName(componentName),
+                AlternativeDNSName(componentName)
             ),
             signCert
         )
