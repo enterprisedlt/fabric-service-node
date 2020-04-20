@@ -76,7 +76,6 @@ object FabricCryptoMaterial {
         val theCert = FabricCryptoMaterial.generateComponentCert(
             componentName = component.name,
             organizationUnit = component.unit,
-            organization = orgFullName,
             location = orgConfig.location,
             state = orgConfig.state,
             country = orgConfig.country,
@@ -86,7 +85,6 @@ object FabricCryptoMaterial {
         )
         val tlsCert = FabricCryptoMaterial.generateComponentTlsCert(
             componentName = component.name,
-            organization = orgFullName,
             location = orgConfig.location,
             state = orgConfig.state,
             country = orgConfig.country,
@@ -122,7 +120,7 @@ object FabricCryptoMaterial {
         writeToPemFile(s"$outPath/msp/keystore/${component.name}_sk", componentCerts.componentCert.key)
 
         Util.mkDirs(s"$outPath/msp/signcerts")
-        writeToPemFile(s"$outPath/msp/signcerts/${component.name}.$orgFullName-cert.pem", componentCerts.componentCert.certificate)
+        writeToPemFile(s"$outPath/msp/signcerts/${component.name}-cert.pem", componentCerts.componentCert.certificate)
         //
         Util.mkDirs(s"$outPath/tls")
         writeToPemFile(s"$outPath/tls/ca.crt", componentCerts.organizationCryptoMaterial.tlscaCert.certificate)
@@ -143,7 +141,6 @@ object FabricCryptoMaterial {
 
         val tlsCert = FabricCryptoMaterial.generateComponentTlsCert(
             componentName = "service",
-            organization = organizationFullName,
             location = orgConfig.location,
             state = orgConfig.state,
             country = orgConfig.country,
@@ -292,7 +289,6 @@ object FabricCryptoMaterial {
     private def generateComponentCert(
         componentName: String,
         organizationUnit: Option[String],
-        organization: String,
         location: String,
         state: String,
         country: String,
@@ -302,7 +298,7 @@ object FabricCryptoMaterial {
     ): CertAndKey = {
         CryptoUtil.createSignedCert(
             OrgMeta(
-                name = s"$componentName.$organization",
+                name = componentName,
                 organizationUnit = organizationUnit,
                 location = Option(location),
                 state = Option(state),
@@ -320,7 +316,6 @@ object FabricCryptoMaterial {
 
     private def generateComponentTlsCert(
         componentName: String,
-        organization: String,
         location: String,
         state: String,
         country: String,
@@ -330,7 +325,7 @@ object FabricCryptoMaterial {
     ): CertAndKey = {
         CryptoUtil.createSignedCert(
             OrgMeta(
-                name = s"$componentName.$organization",
+                name = componentName,
                 location = Option(location),
                 state = Option(state),
                 country = Option(country)
@@ -343,8 +338,7 @@ object FabricCryptoMaterial {
                 UseForEncipherment,
                 UseForClientAuth,
                 UseForServerAuth,
-                AlternativeDNSName(s"$componentName.$organization"),
-                AlternativeDNSName(componentName),
+                AlternativeDNSName(componentName)
             ),
             signCert
         )
