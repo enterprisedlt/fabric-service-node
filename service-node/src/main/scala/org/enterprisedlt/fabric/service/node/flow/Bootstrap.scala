@@ -39,8 +39,9 @@ object Bootstrap {
             processConfig: DockerConfig
         )
         //
-        logger.info(s"[ $organizationFullName ] - Generating crypto material...")
-        cryptography.createOrgCrypto(bootstrapOptions.network, organizationFullName)
+        bootstrapOptions.network.orderingNodes.foreach { osnConfig =>
+            cryptography.generateOsnCrypto(osnConfig.name)
+        }
 
         logger.info(s"[ $organizationFullName ] - Creating genesis ...")
         state.set(FabricServiceState(FabricServiceState.BootstrapCreatingGenesis))
@@ -72,6 +73,7 @@ object Bootstrap {
         logger.info(s"[ $organizationFullName ] - Starting peer nodes ...")
         state.set(FabricServiceState(FabricServiceState.BootstrapStartingPeers))
         bootstrapOptions.network.peerNodes.foreach { peerConfig =>
+            cryptography.generatePeerCrypto(peerConfig.name)
             processManager.startPeerNode(peerConfig.name)
             network.definePeer(peerConfig)
         }

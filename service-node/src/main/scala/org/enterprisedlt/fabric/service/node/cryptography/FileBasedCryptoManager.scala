@@ -13,7 +13,7 @@ import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
-import org.enterprisedlt.fabric.service.node.configuration.{NetworkConfig, OrganizationConfig}
+import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FabricCryptoMaterial.writeToPemFile
 import org.enterprisedlt.fabric.service.node.{CryptoManager, Util}
 import org.hyperledger.fabric.sdk.identity.X509Enrollment
@@ -57,10 +57,15 @@ class FileBasedCryptoManager(
         key.store(new FileOutputStream(s"$cryptoDir/users/admin/admin-${organizationConfig.name}.p12"), password.toCharArray)
     }
 
-    override def createOrgCrypto(network: NetworkConfig, orgFullName: String): Unit = {
-        val components = network.orderingNodes.map(o => FabricComponent("orderers", o.name)) ++
-          network.peerNodes.map(p => FabricComponent("peers", p.name, Option("peer")))
-        FabricCryptoMaterial.createOrgCrypto(organizationConfig, orgFullName, cryptoDir, orgCryptoMaterial, notBefore, notAfter, components)
+
+    override def generatePeerCrypto(peerName: String): ComponentCerts = {
+        val component = FabricComponent("peers", peerName)
+        FabricCryptoMaterial.createComponentDir(organizationConfig, orgFullName, component, cryptoDir, orgCryptoMaterial.caCert, orgCryptoMaterial.tlscaCert, orgCryptoMaterial.adminCert, notBefore, notAfter)
+    }
+
+    override def generateOsnCrypto(osnName: String): ComponentCerts = {
+        val component = FabricComponent("orderers", osnName)
+        FabricCryptoMaterial.createComponentDir(organizationConfig, orgFullName, component, cryptoDir, orgCryptoMaterial.caCert, orgCryptoMaterial.tlscaCert, orgCryptoMaterial.adminCert, notBefore, notAfter)
     }
 
     //=========================================================================

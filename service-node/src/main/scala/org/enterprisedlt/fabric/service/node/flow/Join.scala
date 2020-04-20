@@ -41,8 +41,6 @@ object Join {
             joinOptions.network,
             processConfig
         )
-        logger.info(s"[ $organizationFullName ] - Generating crypto material...")
-        cryptoManager.createOrgCrypto(joinOptions.network, organizationFullName)
         //
         logger.info(s"[ $organizationFullName ] - Creating JoinRequest ...")
         state.set(FabricServiceState(FabricServiceState.JoinCreatingJoinRequest))
@@ -95,6 +93,7 @@ object Join {
         logger.info(s"[ $organizationFullName ] - Connecting to channel ...")
         joinOptions.network.orderingNodes.foreach { osnConfig =>
             logger.info(s"[ ${osnConfig.name} ] - Adding ordering service to channel ...")
+            cryptoManager.generateOsnCrypto(osnConfig.name)
             network.defineOsn(osnConfig)
             network.addOsnToChannel(osnConfig.name, cryptoPath)
             network.addOsnToChannel(osnConfig.name, cryptoPath, Some(ServiceChannelName))
@@ -108,6 +107,7 @@ object Join {
         state.set(FabricServiceState(FabricServiceState.JoinStartingPeers))
         logger.info(s"[ $organizationFullName ] - Starting peer nodes ...")
         joinOptions.network.peerNodes.foreach { peerConfig =>
+            cryptoManager.generatePeerCrypto(peerConfig.name)
             processManager.startPeerNode(peerConfig.name)
             network.definePeer(peerConfig)
         }

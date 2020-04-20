@@ -70,7 +70,7 @@ object FabricCryptoMaterial {
         }
     }
 
-    private def createComponentDir(
+    def createComponentDir(
         orgConfig: OrganizationConfig,
         orgFullName: String,
         component: FabricComponent,
@@ -80,7 +80,7 @@ object FabricCryptoMaterial {
         adminCert: CertAndKey,
         notBefore: Date,
         notAfter: Date
-    ): Unit = {
+    ): ComponentCerts = {
         val outPath = s"$path/${component.group}/${component.name}"
         Util.mkDirs(s"$outPath/msp/admincerts")
         writeToPemFile(s"$outPath/msp/admincerts/Admin@$orgFullName-cert.pem", adminCert.certificate)
@@ -122,6 +122,7 @@ object FabricCryptoMaterial {
         writeToPemFile(s"$outPath/tls/ca.crt", tlscaCert.certificate)
         writeToPemFile(s"$outPath/tls/server.crt", tlsCert.certificate)
         writeToPemFile(s"$outPath/tls/server.key", tlsCert.key)
+        ComponentCerts(theCert, tlsCert)
     }
 
     private def createServiceDir(
