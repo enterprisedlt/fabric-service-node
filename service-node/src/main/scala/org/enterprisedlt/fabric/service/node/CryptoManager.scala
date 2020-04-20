@@ -3,7 +3,7 @@ package org.enterprisedlt.fabric.service.node
 import java.security.KeyStore
 import java.security.cert.X509Certificate
 
-import org.enterprisedlt.fabric.service.node.cryptography.{ComponentCerts, UserAccount}
+import org.enterprisedlt.fabric.service.node.cryptography.{Component, ComponentCerts, UserAccount}
 import org.hyperledger.fabric.sdk.User
 
 /**
@@ -12,9 +12,9 @@ import org.hyperledger.fabric.sdk.User
 trait CryptoManager {
 
 
-    def generatePeerCrypto(peerName: String): ComponentCerts
+    def generateComponentCrypto(componentType: Component, componentName: String): ComponentCerts
 
-    def generateOsnCrypto(osnName: String): ComponentCerts
+    def saveComponentCrypto(componentType: Component, componentName: String, componentCerts: ComponentCerts): Unit
 
     def loadDefaultAdmin: User
 

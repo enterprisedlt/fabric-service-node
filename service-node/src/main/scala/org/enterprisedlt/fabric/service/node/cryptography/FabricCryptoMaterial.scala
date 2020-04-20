@@ -64,33 +64,15 @@ object FabricCryptoMaterial {
             adminCert)
     }
 
-    def createOrgCrypto(organizationConfig: OrganizationConfig, orgFullName: String, path: String, orgCrypto: OrganizationCryptoMaterial, notBefore: Date, notAfter: Date, components: Array[FabricComponent]): Unit = {
-        components.foreach { component =>
-            createComponentDir(organizationConfig, orgFullName, component, path, orgCrypto.caCert, orgCrypto.tlscaCert, orgCrypto.adminCert, notBefore, notAfter)
-        }
-    }
 
-    def createComponentDir(
+    def generateComponentCerts(
         orgConfig: OrganizationConfig,
         orgFullName: String,
         component: FabricComponent,
-        path: String,
-        caCert: CertAndKey,
-        tlscaCert: CertAndKey,
-        adminCert: CertAndKey,
+        orgCryptoMaterial: OrganizationCryptoMaterial,
         notBefore: Date,
         notAfter: Date
     ): ComponentCerts = {
-        val outPath = s"$path/${component.group}/${component.name}"
-        Util.mkDirs(s"$outPath/msp/admincerts")
-        writeToPemFile(s"$outPath/msp/admincerts/Admin@$orgFullName-cert.pem", adminCert.certificate)
-
-        Util.mkDirs(s"$outPath/msp/cacerts")
-        writeToPemFile(s"$outPath/msp/cacerts/ca.$orgFullName-cert.pem", caCert.certificate)
-
-        Util.mkDirs(s"$outPath/msp/tlscacerts")
-        writeToPemFile(s"$outPath/msp/tlscacerts/tlsca.$orgFullName-cert.pem", tlscaCert.certificate)
-
         val theCert = FabricCryptoMaterial.generateComponentCert(
             componentName = component.name,
             organizationUnit = component.unit,
@@ -98,31 +80,54 @@ object FabricCryptoMaterial {
             location = orgConfig.location,
             state = orgConfig.state,
             country = orgConfig.country,
-            signCert = caCert,
+            signCert = orgCryptoMaterial.caCert,
             notBefore = notBefore,
             notAfter = notAfter
         )
-        Util.mkDirs(s"$outPath/msp/keystore")
-        writeToPemFile(s"$outPath/msp/keystore/${component.name}_sk", theCert.key)
-
-        Util.mkDirs(s"$outPath/msp/signcerts")
-        writeToPemFile(s"$outPath/msp/signcerts/${component.name}.$orgFullName-cert.pem", theCert.certificate)
-
         val tlsCert = FabricCryptoMaterial.generateComponentTlsCert(
             componentName = component.name,
             organization = orgFullName,
             location = orgConfig.location,
             state = orgConfig.state,
             country = orgConfig.country,
-            signCert = tlscaCert,
+            signCert = orgCryptoMaterial.tlscaCert,
             notBefore = notBefore,
             notAfter = notAfter
         )
+        ComponentCerts(
+            orgCryptoMaterial,
+            theCert,
+            tlsCert)
+    }
+
+    def saveComponentCerts(
+        orgConfig: OrganizationConfig,
+        orgFullName: String,
+        component: FabricComponent,
+        path: String,
+        componentCerts: ComponentCerts
+    ): Unit = {
+        val outPath = s"$path/${component.group}/${component.name}"
+        //
+        Util.mkDirs(s"$outPath/msp/admincerts")
+        writeToPemFile(s"$outPath/msp/admincerts/Admin@$orgFullName-cert.pem", componentCerts.organizationCryptoMaterial.adminCert.certificate)
+
+        Util.mkDirs(s"$outPath/msp/cacerts")
+        writeToPemFile(s"$outPath/msp/cacerts/ca.$orgFullName-cert.pem", componentCerts.organizationCryptoMaterial.caCert.certificate)
+
+        Util.mkDirs(s"$outPath/msp/tlscacerts")
+        writeToPemFile(s"$outPath/msp/tlscacerts/tlsca.$orgFullName-cert.pem", componentCerts.organizationCryptoMaterial.tlscaCert.certificate)
+        //
+        Util.mkDirs(s"$outPath/msp/keystore")
+        writeToPemFile(s"$outPath/msp/keystore/${component.name}_sk", componentCerts.componentCert.key)
+
+        Util.mkDirs(s"$outPath/msp/signcerts")
+        writeToPemFile(s"$outPath/msp/signcerts/${component.name}.$orgFullName-cert.pem", componentCerts.componentCert.certificate)
+        //
         Util.mkDirs(s"$outPath/tls")
-        writeToPemFile(s"$outPath/tls/ca.crt", tlscaCert.certificate)
-        writeToPemFile(s"$outPath/tls/server.crt", tlsCert.certificate)
-        writeToPemFile(s"$outPath/tls/server.key", tlsCert.key)
-        ComponentCerts(theCert, tlsCert)
+        writeToPemFile(s"$outPath/tls/ca.crt", componentCerts.organizationCryptoMaterial.tlscaCert.certificate)
+        writeToPemFile(s"$outPath/tls/server.crt", componentCerts.componentTLSCert.certificate)
+        writeToPemFile(s"$outPath/tls/server.key", componentCerts.componentTLSCert.key)
     }
 
     private def createServiceDir(

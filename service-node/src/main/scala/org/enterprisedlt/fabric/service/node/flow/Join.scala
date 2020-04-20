@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicReference
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, OrganizationsOrdering, ServiceVersion}
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.{DockerConfig, JoinOptions, OSNConfig, OrganizationConfig}
+import org.enterprisedlt.fabric.service.node.cryptography.{Orderer, Peer}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
@@ -16,8 +17,8 @@ import org.slf4j.LoggerFactory
 import scala.util.Try
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 object Join {
 
     private val logger = LoggerFactory.getLogger(this.getClass)
@@ -93,7 +94,8 @@ object Join {
         logger.info(s"[ $organizationFullName ] - Connecting to channel ...")
         joinOptions.network.orderingNodes.foreach { osnConfig =>
             logger.info(s"[ ${osnConfig.name} ] - Adding ordering service to channel ...")
-            cryptoManager.generateOsnCrypto(osnConfig.name)
+            val componentCrypto = cryptoManager.generateComponentCrypto(Orderer, osnConfig.name)
+            cryptoManager.saveComponentCrypto(Orderer, osnConfig.name, componentCrypto)
             network.defineOsn(osnConfig)
             network.addOsnToChannel(osnConfig.name, cryptoPath)
             network.addOsnToChannel(osnConfig.name, cryptoPath, Some(ServiceChannelName))
@@ -107,7 +109,8 @@ object Join {
         state.set(FabricServiceState(FabricServiceState.JoinStartingPeers))
         logger.info(s"[ $organizationFullName ] - Starting peer nodes ...")
         joinOptions.network.peerNodes.foreach { peerConfig =>
-            cryptoManager.generatePeerCrypto(peerConfig.name)
+            val componentCrypto = cryptoManager.generateComponentCrypto(Peer, peerConfig.name)
+            cryptoManager.saveComponentCrypto(Peer, peerConfig.name, componentCrypto)
             processManager.startPeerNode(peerConfig.name)
             network.definePeer(peerConfig)
         }

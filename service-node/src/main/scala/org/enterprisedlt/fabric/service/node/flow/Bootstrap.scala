@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicReference
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, ServiceVersion}
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, DockerConfig, OrganizationConfig}
+import org.enterprisedlt.fabric.service.node.cryptography.{Orderer, Peer}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model.FabricServiceState
 import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
@@ -40,7 +41,8 @@ object Bootstrap {
         )
         //
         bootstrapOptions.network.orderingNodes.foreach { osnConfig =>
-            cryptography.generateOsnCrypto(osnConfig.name)
+            val componentCrypto = cryptography.generateComponentCrypto(Orderer, osnConfig.name)
+            cryptography.saveComponentCrypto(Orderer, osnConfig.name, componentCrypto)
         }
 
         logger.info(s"[ $organizationFullName ] - Creating genesis ...")
@@ -73,7 +75,8 @@ object Bootstrap {
         logger.info(s"[ $organizationFullName ] - Starting peer nodes ...")
         state.set(FabricServiceState(FabricServiceState.BootstrapStartingPeers))
         bootstrapOptions.network.peerNodes.foreach { peerConfig =>
-            cryptography.generatePeerCrypto(peerConfig.name)
+            val componentCrypto = cryptography.generateComponentCrypto(Peer, peerConfig.name)
+            cryptography.saveComponentCrypto(Peer, peerConfig.name, componentCrypto)
             processManager.startPeerNode(peerConfig.name)
             network.definePeer(peerConfig)
         }

@@ -58,15 +58,22 @@ class FileBasedCryptoManager(
     }
 
 
-    override def generatePeerCrypto(peerName: String): ComponentCerts = {
-        val component = FabricComponent("peers", peerName)
-        FabricCryptoMaterial.createComponentDir(organizationConfig, orgFullName, component, cryptoDir, orgCryptoMaterial.caCert, orgCryptoMaterial.tlscaCert, orgCryptoMaterial.adminCert, notBefore, notAfter)
+    override def generateComponentCrypto(componentType: Component, componentName: String): ComponentCerts = {
+        val component = componentType match {
+            case Peer => FabricComponent("peers", componentName)
+            case Orderer => FabricComponent("orderers", componentName)
+        }
+        FabricCryptoMaterial.generateComponentCerts(organizationConfig, orgFullName, component, orgCryptoMaterial, notBefore, notAfter)
     }
 
-    override def generateOsnCrypto(osnName: String): ComponentCerts = {
-        val component = FabricComponent("orderers", osnName)
-        FabricCryptoMaterial.createComponentDir(organizationConfig, orgFullName, component, cryptoDir, orgCryptoMaterial.caCert, orgCryptoMaterial.tlscaCert, orgCryptoMaterial.adminCert, notBefore, notAfter)
+    override def saveComponentCrypto(componentType: Component, componentName: String, componentCerts: ComponentCerts): Unit = {
+        val component = componentType match {
+            case Peer => FabricComponent("peers", componentName)
+            case Orderer => FabricComponent("orderers", componentName)
+        }
+        FabricCryptoMaterial.saveComponentCerts(organizationConfig, orgFullName, component, cryptoDir, componentCerts)
     }
+
 
     //=========================================================================
     override def loadDefaultAdmin: UserAccount =
