@@ -4,13 +4,15 @@ import java.security.KeyStore
 import java.security.cert.X509Certificate
 
 import org.enterprisedlt.fabric.service.node.cryptography.{Component, ComponentCerts, UserAccount}
+import org.enterprisedlt.fabric.service.node.process.OrganizationCryptoMaterialPEM
 import org.hyperledger.fabric.sdk.User
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 trait CryptoManager {
 
+    def getOrgCryptoMaterialPem: OrganizationCryptoMaterialPEM
 
     def generateComponentCrypto(componentType: Component, componentName: String): ComponentCerts
 

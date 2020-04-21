@@ -1,15 +1,17 @@
 package org.enterprisedlt.fabric.service.node.flow
 
 import java.io.{BufferedInputStream, FileInputStream}
+import java.nio.charset.StandardCharsets
+import java.util.Base64
 import java.util.concurrent.atomic.AtomicReference
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, ServiceVersion}
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, DockerConfig, OrganizationConfig}
-import org.enterprisedlt.fabric.service.node.cryptography.{Orderer, Peer}
+import org.enterprisedlt.fabric.service.node.cryptography.{FabricCryptoMaterial, Orderer, Peer}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model.FabricServiceState
-import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
+import org.enterprisedlt.fabric.service.node.process._
 import org.enterprisedlt.fabric.service.node.proto._
 import org.slf4j.LoggerFactory
 
@@ -32,18 +34,19 @@ object Bootstrap {
         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
         //
         logger.info(s"[ $organizationFullName ] - Starting process manager ...")
-        val processManager = new DockerBasedProcessManager(
-            profilePath,
-            organizationConfig,
-            bootstrapOptions.networkName,
-            bootstrapOptions.network,
-            processConfig: DockerConfig
+        val componentsPath = s"$profilePath/components"
+        val processManager = new DockerBoxManager(
+            hostPath = componentsPath,
+            containerName = s"service.$organizationFullName",
+            networkName = bootstrapOptions.networkName,
+            processConfig
         )
         //
-        bootstrapOptions.network.orderingNodes.foreach { osnConfig =>
+        val componentsCrypto = bootstrapOptions.network.orderingNodes.map { osnConfig =>
             val componentCrypto = cryptography.generateComponentCrypto(Orderer, osnConfig.name)
             cryptography.saveComponentCrypto(Orderer, osnConfig.name, componentCrypto)
-        }
+            osnConfig.name -> componentCrypto
+        }.toMap
 
         logger.info(s"[ $organizationFullName ] - Creating genesis ...")
         state.set(FabricServiceState(FabricServiceState.BootstrapCreatingGenesis))
@@ -54,9 +57,30 @@ object Bootstrap {
 
         //
         logger.info(s"[ $organizationFullName ] - Starting ordering nodes ...")
+
+        val organizationInfo =
+            process.OrganizationConfig(
+                mspId = organizationConfig.name,
+                fullName = organizationFullName,
+                cryptoMaterial = cryptography.getOrgCryptoMaterialPem
+            )
+
         state.set(FabricServiceState(FabricServiceState.BootstrapStartingOrdering))
         bootstrapOptions.network.orderingNodes.foreach { osnConfig =>
-            processManager.startOrderingNode(osnConfig.name)
+            processManager.startOrderingNode(
+                StartOSNRequest(
+                    port = osnConfig.port,
+                    genesis = new String(Base64.getEncoder.encode(genesis.toByteArray), StandardCharsets.UTF_8),
+                    organization = organizationInfo,
+                    component = ComponentConfig(
+                        fullName = osnConfig.name,
+                        cryptoMaterial = ComponentCryptoMaterialPEM(
+                            msp = FabricCryptoMaterial.asPem(componentsCrypto(osnConfig.name).componentCert),
+                            tls = FabricCryptoMaterial.asPem(componentsCrypto(osnConfig.name).componentTLSCert)
+                        )
+                    )
+                )
+            )
         }
         state.set(FabricServiceState(FabricServiceState.BootstrapAwaitingOrdering))
         bootstrapOptions.network.orderingNodes.foreach { osnConfig =>
@@ -77,7 +101,19 @@ object Bootstrap {
         bootstrapOptions.network.peerNodes.foreach { peerConfig =>
             val componentCrypto = cryptography.generateComponentCrypto(Peer, peerConfig.name)
             cryptography.saveComponentCrypto(Peer, peerConfig.name, componentCrypto)
-            processManager.startPeerNode(peerConfig.name)
+            processManager.startPeerNode(
+                StartPeerRequest(
+                    port = peerConfig.port,
+                    organization = organizationInfo,
+                    component = ComponentConfig(
+                        fullName = peerConfig.name,
+                        cryptoMaterial = ComponentCryptoMaterialPEM(
+                            msp = FabricCryptoMaterial.asPem(componentCrypto.componentCert),
+                            tls = FabricCryptoMaterial.asPem(componentCrypto.componentTLSCert)
+                        )
+                    )
+                )
+            )
             network.definePeer(peerConfig)
         }
 

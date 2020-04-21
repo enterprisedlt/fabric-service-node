@@ -16,6 +16,7 @@ import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
+import org.enterprisedlt.fabric.service.node.process.DockerBoxManager
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
 import org.hyperledger.fabric.sdk.{Peer, User}
@@ -581,7 +582,7 @@ class RestEndpoint(
 
 case class GlobalState(
     networkManager: FabricNetworkManager,
-    processManager: FabricProcessManager,
+    processManager: DockerBoxManager,
     network: NetworkConfig,
     networkName: String
 )

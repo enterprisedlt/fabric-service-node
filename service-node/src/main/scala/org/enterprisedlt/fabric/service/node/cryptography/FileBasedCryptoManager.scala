@@ -15,13 +15,14 @@ import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
 import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FabricCryptoMaterial.writeToPemFile
+import org.enterprisedlt.fabric.service.node.process.OrganizationCryptoMaterialPEM
 import org.enterprisedlt.fabric.service.node.{CryptoManager, Util}
 import org.hyperledger.fabric.sdk.identity.X509Enrollment
 import org.slf4j.LoggerFactory
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 class FileBasedCryptoManager(
     organizationConfig: OrganizationConfig,
     cryptoDir: String,
@@ -261,4 +262,13 @@ class FileBasedCryptoManager(
         keystore.setKeyEntry("key", key, password.toCharArray, Array(cert))
         keystore
     }
+
+    override def getOrgCryptoMaterialPem: OrganizationCryptoMaterialPEM = {
+        OrganizationCryptoMaterialPEM(
+            ca = FabricCryptoMaterial.asPem(orgCryptoMaterial.caCert),
+            tlsca = FabricCryptoMaterial.asPem(orgCryptoMaterial.tlscaCert),
+            admin = FabricCryptoMaterial.asPem(orgCryptoMaterial.adminCert)
+        )
+    }
+
 }

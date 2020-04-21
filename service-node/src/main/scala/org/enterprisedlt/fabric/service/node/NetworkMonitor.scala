@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit
 import org.enterprisedlt.fabric.service.model.{Organization, ServiceVersion}
 import org.enterprisedlt.fabric.service.node.configuration.{NetworkConfig, OrganizationConfig, ServiceConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
+import org.enterprisedlt.fabric.service.node.process.DockerBoxManager
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.hyperledger.fabric.protos.peer.Chaincode.ChaincodeDeploymentSpec
 import org.hyperledger.fabric.sdk.{BlockEvent, BlockListener}
@@ -22,7 +23,7 @@ class NetworkMonitor(
     organizationConfig: OrganizationConfig,
     networkConfig: NetworkConfig,
     network: FabricNetworkManager,
-    processManager: FabricProcessManager,
+    processManager: DockerBoxManager,
     hostsManager: HostsManager,
     initialVersion: ServiceVersion
 ) extends BlockListener {

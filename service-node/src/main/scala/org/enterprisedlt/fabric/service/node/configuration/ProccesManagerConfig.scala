@@ -6,8 +6,7 @@ package org.enterprisedlt.fabric.service.node.configuration
 
 trait ProccesManagerConfig
 
-case class DockerConfig
-(
+case class DockerConfig(
     dockerSocket: String,
     logFileSize: String,
     logMaxFiles: String,

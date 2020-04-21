@@ -212,6 +212,21 @@ object Util {
     def mkDirs(path: String): Boolean = new File(path).mkdirs()
 
     //=========================================================================
+    def writeTextFile(filePath: String, content: String): Unit = {
+        val writer = new FileWriter(filePath)
+        writer.write(content)
+        writer.close()
+    }
+
+    //=========================================================================
+    def writeBase64BinaryFile(filePath: String, content: String): Unit = {
+        val writer = new FileOutputStream(filePath)
+        val binary = Base64.getDecoder.decode(content)
+        writer.write(binary)
+        writer.close()
+    }
+
+    //=========================================================================
     def getUserCertificate(request: ServletRequest): Option[X509Certificate] = {
         request.getAttribute("javax.servlet.request.X509Certificate") match {
             case x: Array[java.security.cert.X509Certificate] if x.length == 1 => x.headOption

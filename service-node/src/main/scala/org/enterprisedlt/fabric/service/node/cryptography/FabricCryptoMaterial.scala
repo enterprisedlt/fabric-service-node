@@ -1,15 +1,16 @@
 package org.enterprisedlt.fabric.service.node.cryptography
 
-import java.io.FileWriter
+import java.io.{FileWriter, StringWriter}
 import java.util.Date
 
 import org.bouncycastle.openssl.jcajce.JcaPEMWriter
 import org.enterprisedlt.fabric.service.node.Util
 import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
+import org.enterprisedlt.fabric.service.node.process.CertAndKeyPEM
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object FabricCryptoMaterial {
 
     def generateOrgCrypto(organizationConfig: OrganizationConfig, orgFullName: String, path: String, notBefore: Date, notAfter: Date): OrganizationCryptoMaterial = {
@@ -169,6 +170,21 @@ object FabricCryptoMaterial {
         val writer = new JcaPEMWriter(new FileWriter(fileName))
         writer.writeObject(o)
         writer.close()
+    }
+
+    def asPemText(o: AnyRef): String = {
+        val sw = new StringWriter()
+        val writer = new JcaPEMWriter(sw)
+        writer.writeObject(o)
+        writer.close()
+        sw.toString
+    }
+
+    def asPem(certAndKey: CertAndKey): CertAndKeyPEM = {
+        CertAndKeyPEM(
+            certificate = asPemText(certAndKey.certificate),
+            key = asPemText(certAndKey.key)
+        )
     }
 
     private def generateCACert(

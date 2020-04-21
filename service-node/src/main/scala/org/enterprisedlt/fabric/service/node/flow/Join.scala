@@ -6,25 +6,26 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, OrganizationsOrdering, ServiceVersion}
-import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.{DockerConfig, JoinOptions, OSNConfig, OrganizationConfig}
-import org.enterprisedlt.fabric.service.node.cryptography.{Orderer, Peer}
+import org.enterprisedlt.fabric.service.node.cryptography.{FabricCryptoMaterial, Orderer, Peer}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
+import org.enterprisedlt.fabric.service.node.process._
+import org.enterprisedlt.fabric.service.node.{process, _}
 import org.slf4j.LoggerFactory
 
 import scala.util.Try
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object Join {
 
     private val logger = LoggerFactory.getLogger(this.getClass)
 
     def join(
-        organizationConfig: OrganizationConfig, cryptoManager: CryptoManager,
+        organizationConfig: OrganizationConfig,
+        cryptoManager: CryptoManager,
         joinOptions: JoinOptions,
         externalAddress: Option[ExternalAddress],
         hostsManager: HostsManager,
@@ -35,11 +36,12 @@ object Join {
         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
         val cryptoPath = "/opt/profile/crypto"
         logger.info(s"[ $organizationFullName ] - Starting process manager ...")
-        val processManager = new DockerBasedProcessManager(
-            profilePath,
-            organizationConfig,
-            joinOptions.invite.networkName,
-            joinOptions.network,
+        val componentsPath = s"$profilePath/components"
+        Util.mkDirs(componentsPath)
+        val processManager = new DockerBoxManager(
+            hostPath = componentsPath,
+            containerName = s"service.$organizationFullName",
+            networkName = joinOptions.invite.networkName,
             processConfig
         )
         //
@@ -92,6 +94,12 @@ object Join {
         state.set(FabricServiceState(FabricServiceState.JoinConnectingToNetwork))
 
         logger.info(s"[ $organizationFullName ] - Connecting to channel ...")
+        val organizationInfo =
+            process.OrganizationConfig(
+                mspId = organizationConfig.name,
+                fullName = organizationFullName,
+                cryptoMaterial = cryptoManager.getOrgCryptoMaterialPem
+            )
         joinOptions.network.orderingNodes.foreach { osnConfig =>
             logger.info(s"[ ${osnConfig.name} ] - Adding ordering service to channel ...")
             val componentCrypto = cryptoManager.generateComponentCrypto(Orderer, osnConfig.name)
@@ -100,7 +108,20 @@ object Join {
             network.addOsnToChannel(osnConfig.name, cryptoPath)
             network.addOsnToChannel(osnConfig.name, cryptoPath, Some(ServiceChannelName))
             //
-            processManager.startOrderingNode(osnConfig.name)
+            processManager.startOrderingNode(
+                StartOSNRequest(
+                    port = osnConfig.port,
+                    genesis = joinResponse.genesis,
+                    organization = organizationInfo,
+                    component = ComponentConfig(
+                        fullName = osnConfig.name,
+                        cryptoMaterial = ComponentCryptoMaterialPEM(
+                            msp = FabricCryptoMaterial.asPem(componentCrypto.componentCert),
+                            tls = FabricCryptoMaterial.asPem(componentCrypto.componentTLSCert)
+                        )
+                    )
+                )
+            )
             processManager.osnAwaitJoinedToRaft(osnConfig.name)
             processManager.osnAwaitJoinedToChannel(osnConfig.name, SystemChannelName)
             processManager.osnAwaitJoinedToChannel(osnConfig.name, ServiceChannelName)
@@ -111,7 +132,19 @@ object Join {
         joinOptions.network.peerNodes.foreach { peerConfig =>
             val componentCrypto = cryptoManager.generateComponentCrypto(Peer, peerConfig.name)
             cryptoManager.saveComponentCrypto(Peer, peerConfig.name, componentCrypto)
-            processManager.startPeerNode(peerConfig.name)
+            processManager.startPeerNode(
+                StartPeerRequest(
+                    port = peerConfig.port,
+                    organization = organizationInfo,
+                    component = ComponentConfig(
+                        fullName = peerConfig.name,
+                        cryptoMaterial = ComponentCryptoMaterialPEM(
+                            msp = FabricCryptoMaterial.asPem(componentCrypto.componentCert),
+                            tls = FabricCryptoMaterial.asPem(componentCrypto.componentTLSCert)
+                        )
+                    )
+                )
+            )
             network.definePeer(peerConfig)
         }
         state.set(FabricServiceState(FabricServiceState.JoinAddingPeersToChannel))
