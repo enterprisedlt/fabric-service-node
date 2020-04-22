@@ -25,8 +25,6 @@ import scala.util.Try
  * @author Andrew Pudovikov
  * @author Alexey Polubelov
  */
-// DockerBoxManager
-// DockerManagedBox
 class DockerManagedBox(
     hostPath: String,
     containerName: String,
@@ -48,20 +46,20 @@ class DockerManagedBox(
     private val logConfig = makeDockerLogConfig(processConfig)
     // =================================================================================================================
     logger.info(s"Initializing ${this.getClass.getSimpleName} ...")
-    //    val containerName = s"service.$organizationFullName"
-    logger.info(s"Checking network ...")
-    if (docker.listNetworksCmd().withNameFilter(networkName).exec().isEmpty) {
-        logger.info(s"Network $networkName does not exist, creating ...")
-        docker.createNetworkCmd()
-          .withName(networkName)
-          .withDriver("bridge")
-          .exec()
-    }
-    logger.info(s"Connecting myself [$containerName] to network $networkName ...")
-    docker.connectToNetworkCmd()
-      .withContainerId(containerName)
-      .withNetworkId(networkName)
-      .exec()
+
+//    logger.info(s"Checking network ...")
+//    if (docker.listNetworksCmd().withNameFilter(networkName).exec().isEmpty) {
+//        logger.info(s"Network $networkName does not exist, creating ...")
+//        docker.createNetworkCmd()
+//          .withName(networkName)
+//          .withDriver("bridge")
+//          .exec()
+//    }
+//    logger.info(s"Connecting myself [$containerName] to network $networkName ...")
+//    docker.connectToNetworkCmd()
+//      .withContainerId(containerName)
+//      .withNetworkId(networkName)
+//      .exec()
 
     Util.mkDirs(InnerPath) // ensure inner path exists
     private val hostsFile = new File(s"$InnerPath/hosts")

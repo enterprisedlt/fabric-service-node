@@ -13,29 +13,26 @@ import org.eclipse.jetty.util.ssl.SslContextFactory
 import org.eclipse.jetty.websocket.server.WebSocketHandler
 import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory
 import org.enterprisedlt.fabric.service.node.auth.{FabricAuthenticator, Role}
-import org.enterprisedlt.fabric.service.node.configuration.{DockerConfig, OrganizationConfig}
+import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
 import org.enterprisedlt.fabric.service.node.model.FabricServiceState
-import org.enterprisedlt.fabric.service.node.process.{DockerManagedBox, ProcessManager}
-import org.enterprisedlt.fabric.service.node.rest.JsonRestEndpoint
+import org.enterprisedlt.fabric.service.node.process.{ManagedBox, ProcessManager}
+import org.enterprisedlt.fabric.service.node.rest.{JsonRestClient, JsonRestEndpoint}
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.slf4j.LoggerFactory
 
 /**
-  * @author Alexey Polubelov
-  * @author Andrew Pudovikov
-  * @author Maxim Fedin
-  */
+ * @author Alexey Polubelov
+ * @author Andrew Pudovikov
+ * @author Maxim Fedin
+ */
 object ServiceNode extends App {
     private val Environment = System.getenv()
     private val LogLevel = Option(Environment.get("LOG_LEVEL")).filter(_.trim.nonEmpty).getOrElse("INFO")
-    private val FabricComponentsLogLevel = Option(Environment.get("FABRIC_COMPONENTS_LOG_LEVEL")).filter(_.trim.nonEmpty).getOrElse("INFO")
+    private val BoxManagerBindPort = Option(Environment.get("BOX_MANAGER_BIND_PORT")).map(_.toInt).getOrElse(throw new Exception("Mandatory environment variable missing SERVICE_BIND_PORT!"))
     private val ServiceBindPort = Option(Environment.get("SERVICE_BIND_PORT")).map(_.toInt).getOrElse(throw new Exception("Mandatory environment variable missing SERVICE_BIND_PORT!"))
     private val ServiceExternalAddress = Option(Environment.get("SERVICE_EXTERNAL_ADDRESS")).filter(_.trim.nonEmpty).map(parseExternalAddress(_, ServiceBindPort))
     private val ProfilePath = Option(Environment.get("PROFILE_PATH")).getOrElse(throw new Exception("Mandatory environment variable missing PROFILE_PATH!"))
-    private val DockerSocket = Option(Environment.get("DOCKER_SOCKET")).getOrElse(throw new Exception("Mandatory environment variable missing DOCKER_SOCKET!"))
-    private val LogFileSize = Option(Environment.get("LOG_FILE_SIZE")).filter(_.trim.nonEmpty).getOrElse("100m")
-    private val LogMaxFiles = Option(Environment.get("LOG_MAX_FILES")).filter(_.trim.nonEmpty).getOrElse("5")
     // Org variables
     private val OrgName = Option(Environment.get("ORG")).getOrElse(throw new Exception("Mandatory environment variable missing ORG!"))
     private val Domain = Option(Environment.get("DOMAIN")).getOrElse(throw new Exception("Mandatory environment variable missing DOMAIN!"))
@@ -57,25 +54,12 @@ object ServiceNode extends App {
         Location,
         State,
         Country,
-        CertificateDuration)
-    private val processConfig: DockerConfig = DockerConfig(
-        DockerSocket,
-        LogFileSize,
-        LogMaxFiles,
-        FabricComponentsLogLevel
+        CertificateDuration
     )
 
-    // ==============================================================================
-    logger.info("Starting process manager ...")
-    private val componentsPath = s"$ProfilePath/components"
-    private val defaultBox =
-        new DockerManagedBox(
-                hostPath = componentsPath,
-                containerName = s"service.$OrgName.$Domain",
-                networkName = "fabric_service",
-                processConfig
-            )
 
+    // ==============================================================================
+    private val defaultBox = JsonRestClient.create[ManagedBox](s"http://box-mngr-$BoxManagerBindPort:$BoxManagerBindPort")
     private val processManager = new ProcessManager
     processManager.registerBox("default", defaultBox)
     // ==============================================================================
@@ -97,7 +81,7 @@ object ServiceNode extends App {
     setupShutdownHook()
     server.start()
     logger.info("Started.")
-    server.join()
+//    server.join()
 
 
     //=========================================================================
