@@ -26,9 +26,7 @@ serviceID=`docker run -d \
  -e "SERVICE_EXTERNAL_ADDRESS=${SERVICE_EXTERNAL_ADDRESS}" \
  -e "DOCKER_SOCKET=unix:///host/var/run/docker.sock" \
  -e "ADMIN_PASSWORD=${ADMIN_PASSWORD}" \
- -e "BOX_MANAGER_BIND_PORT=${BOX_MANAGER_BIND_PORT}" \
  -e "FABRIC_SERVICE_NETWORK=${FABRIC_SERVICE_NETWORK}" \
- -e "BOX_MANAGER_NAME=${BOX_MANAGER_NAME}" \
  -p ${SERVICE_BIND_PORT}:${SERVICE_BIND_PORT} \
  --volume=${PROFILE_PATH}/hosts:/etc/hosts \
  --volume=${PROFILE_PATH}:/opt/profile \

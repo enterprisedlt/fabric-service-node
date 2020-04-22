@@ -33,7 +33,7 @@ object JsonRestClient {
 
 
         override def invoke(proxy: Any, method: Method, args: Array[AnyRef]): AnyRef = {
-            logger.info(s"Executing ${method.getName} ...")
+            logger.debug(s"Executing ${method.getName} ...")
             method.getGenericReturnType match {
                 case pt: ParameterizedType =>
                     val pts = pt.getActualTypeArguments
@@ -46,15 +46,15 @@ object JsonRestClient {
                         val request = new HttpGet(targetUrl)
                         val response = client.execute(request)
                         try {
-                            logger.info(s"Got status from remote: ${response.getStatusLine.toString}")
+                            logger.debug(s"Got status from remote: ${response.getStatusLine.toString}")
                             val entity = response.getEntity
                             response.getStatusLine.getStatusCode match {
                                 case HttpStatus.SC_OK =>
-                                    println(s"*********\nCONTENT TYPE: ${entity.getContentType}\n*********")
+                                    logger.trace(s"CONTENT TYPE: ${entity.getContentType}")
                                     Right(getCodec.fromJson(new InputStreamReader(entity.getContent), returnType))
 
                                 case _ =>
-                                    println(s"*********\nCONTENT TYPE: ${entity.getContentType}\n*********")
+                                    logger.trace(s"CONTENT TYPE: ${entity.getContentType}")
                                     Left(getCodec.fromJson(new InputStreamReader(entity.getContent), classOf[String]))
 
                             }
@@ -75,13 +75,15 @@ object JsonRestClient {
                         request.setEntity(entity)
                         val response = client.execute(request)
                         try {
-                            logger.info(s"Got status from remote: ${response.getStatusLine.toString}")
+                            logger.debug(s"Got status from remote: ${response.getStatusLine.toString}")
                             val entity = response.getEntity
                             response.getStatusLine.getStatusCode match {
                                 case HttpStatus.SC_OK =>
+                                    logger.trace(s"CONTENT TYPE: ${entity.getContentType}")
                                     Right(getCodec.fromJson(new InputStreamReader(entity.getContent), returnType))
 
                                 case _ =>
+                                    logger.trace(s"CONTENT TYPE: ${entity.getContentType}")
                                     Left(getCodec.fromJson(new InputStreamReader(entity.getContent), classOf[String]))
 
                             }

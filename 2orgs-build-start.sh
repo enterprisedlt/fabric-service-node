@@ -6,19 +6,21 @@ set -e
 
 ./build.sh
 #
-./scripts-template/fabric-service-generate-static-env.sh ./test
+./scripts-template/fabric-service-generate-static-env.sh ./test/config.csv ./test/net
 
 export BOX_MANAGER_BIND_PORT=3070
 export FABRIC_SERVICE_NETWORK="fabric_service"
-export BOX_MANAGER_NAME="box-mngr-${BOX_MANAGER_BIND_PORT}"
+export BOX_MANAGER_NAME="single-box-mngr"
 
-mkdir -p ./test/box
-touch ./test/box/hosts
+mkdir -p ./test/net/box
+touch ./test/net/box/hosts
 
-./docker-box-mngr-start-dev.sh ./test/box
+./docker-box-mngr-start-dev.sh ./test/net/box
 
 # start ORG1
-./fabric-service-start-dev.sh ./test/org1
+./fabric-service-start-dev.sh ./test/net/org1
+./scripts-template/fabric-service-register-box-manager.sh ./test/net/org1 "default" "http://${BOX_MANAGER_NAME}:${BOX_MANAGER_BIND_PORT}"
 
 # start ORG2
-#./fabric-service-start-dev.sh ./test/org2
+./fabric-service-start-dev.sh ./test/net/org2
+./scripts-template/fabric-service-register-box-manager.sh ./test/net/org2 "default" "http://${BOX_MANAGER_NAME}:${BOX_MANAGER_BIND_PORT}"

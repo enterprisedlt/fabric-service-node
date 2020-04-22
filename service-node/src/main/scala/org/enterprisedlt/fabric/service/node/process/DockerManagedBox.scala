@@ -33,7 +33,7 @@ class DockerManagedBox(
     LogWindow: Int = 1500
 ) extends ManagedBox {
     private val logger = LoggerFactory.getLogger(this.getClass)
-    private val InnerPath = "/opt/profile/components"
+    private val InnerPath = "/opt/profile/"
     //    private val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
     private val dockerConfig = new DefaultDockerClientConfig.Builder().withDockerHost(processConfig.dockerSocket).build
     private val execFactory: DockerCmdExecFactory = new OkHttpDockerCmdExecFactory
@@ -75,8 +75,8 @@ class DockerManagedBox(
         //        if (checkContainerExistence(osnFullName: String)) {
         //            stopAndRemoveContainer(osnFullName: String)
         //        }
-        val hostComponentPath = s"$hostPath/${request.component.fullName}"
-        val innerComponentPath = s"$InnerPath/${request.component.fullName}"
+        val hostComponentPath = s"$hostPath/components/${request.component.fullName}"
+        val innerComponentPath = s"$InnerPath/components/${request.component.fullName}"
         Try {
             // create required directory structure, dump certificates/keys
             Util.mkDirs(innerComponentPath)
@@ -91,7 +91,7 @@ class DockerManagedBox(
                   new Bind(s"$hostComponentPath/data/genesis.block", new Volume("/var/hyperledger/orderer/orderer.genesis.block")),
                   new Bind(s"$hostComponentPath/msp", new Volume("/var/hyperledger/orderer/msp")),
                   new Bind(s"$hostComponentPath/tls", new Volume("/var/hyperledger/orderer/tls")),
-                  new Bind(s"$hostComponentPath/data/ledger", new Volume("/var/hyperledger/production/orderer"))
+//                  new Bind(s"$hostComponentPath/data/ledger", new Volume("/var/hyperledger/production/orderer"))
               )
               .withPortBindings(
                   new PortBinding(new Binding("0.0.0.0", request.port.toString), new ExposedPort(request.port, InternetProtocol.TCP))
@@ -146,8 +146,8 @@ class DockerManagedBox(
         //                        s"CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=")
         //                }
         //                .getOrElse(List.empty)
-        val hostComponentPath = s"$hostPath/${request.component.fullName}"
-        val innerComponentPath = s"$InnerPath/${request.component.fullName}"
+        val hostComponentPath = s"$hostPath/components/${request.component.fullName}"
+        val innerComponentPath = s"$InnerPath/components/${request.component.fullName}"
         Try {
             // create required directory structure, dump certificates/keys
             Util.mkDirs(innerComponentPath)
@@ -160,7 +160,7 @@ class DockerManagedBox(
                   new Bind(s"$hostPath/hosts", new Volume("/etc/hosts")),
                   new Bind(s"$hostComponentPath/msp", new Volume("/etc/hyperledger/fabric/msp")),
                   new Bind(s"$hostComponentPath/tls", new Volume("/etc/hyperledger/fabric/tls")),
-                  new Bind(s"$hostComponentPath/data/ledger", new Volume("/var/hyperledger/production")),
+//                  new Bind(s"$hostComponentPath/data/ledger", new Volume("/var/hyperledger/production")),
                   new Bind(s"/var/run", new Volume("/host/var/run/"))
               )
               .withPortBindings(
@@ -275,8 +275,6 @@ class DockerManagedBox(
                 logger.error(msg)
                 msg
             }
-
-            _ = logger.info(s"RAFT OSN node started on $channelName:\n$findResult")
 
             nodeId <- findResult.map(_.split("=")).filter(_.length == 3).map(_ (2).trim).toRight {
                 val msg = s"$osnFullName failed to on-board to channel $channelName:\nFailed to resolve nodeId from: $findResult"
@@ -419,7 +417,7 @@ class DockerManagedBox(
         toFind: String*
     ) extends CompletableFuture[Option[String]] with ResultCallback[Frame] {
         private val logger = LoggerFactory.getLogger(s"FindInLog")
-        private var taskControl = new AtomicReference[Closeable]()
+        private val taskControl = new AtomicReference[Closeable]()
 
         override def onStart(taskControl: Closeable): Unit = {
             if (!this.taskControl.compareAndSet(null, taskControl)) {

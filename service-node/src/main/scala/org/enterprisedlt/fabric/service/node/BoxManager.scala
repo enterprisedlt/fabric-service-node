@@ -32,10 +32,9 @@ object BoxManager extends App {
         FabricComponentsLogLevel
     )
 
-    private val componentsPath = s"$ProfilePath/components"
     private val box =
         new DockerManagedBox(
-            hostPath = componentsPath,
+            hostPath = ProfilePath,
             containerName = BoxManagerName,
             networkName = FabricServiceNetwork,
             processConfig

@@ -147,6 +147,11 @@ case class OsnCertificates(
     serverTlsCert: String
 )
 
+case class RegisterBoxManager(
+    name: String,
+    url: String
+)
+
 object CCLanguage {
 
     object GoLang {

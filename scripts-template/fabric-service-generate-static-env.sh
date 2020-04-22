@@ -1,23 +1,17 @@
 #!/bin/bash
+set -e
 
-PROFILE_PATH=${1:-.}
-if [[ "$(uname)" == "Darwin" ]]; then
-  PROFILE_PATH=$(greadlink -f "${PROFILE_PATH}")
-else
-  PROFILE_PATH=$(readlink -f "${PROFILE_PATH}")
-fi
-ENV_CONFIG="${PROFILE_PATH}/config.csv"
+ENV_CONFIG=$1
+TARGET_DIR=$2
 
-if [[ ! -f ${ENV_CONFIG} ]]; then
-  echo "Profile config does not exist!"
+if [[ ! -f "${ENV_CONFIG}" ]]
+then
+  echo "Config does not exist!"
   exit 1
 fi
 
-for i in $(ls ${PROFILE_PATH} | grep -v 'config.csv'); do rm -rfv "${PROFILE_PATH}/${i}"; done
-
-rm -rf ${PROFILE_PATH}/shared
-mkdir -p ${PROFILE_PATH}/shared
-cat ${ENV_CONFIG} | awk -v PROFILE_PATH="${PROFILE_PATH}" -F, '
+mkdir -p ${TARGET_DIR}/shared
+cat ${ENV_CONFIG} | awk -v TARGET_DIR="${TARGET_DIR}" -F, '
     {
         if (NR==1) {
             for (i = 1; i < NF + 1; i++){
@@ -25,7 +19,7 @@ cat ${ENV_CONFIG} | awk -v PROFILE_PATH="${PROFILE_PATH}" -F, '
             }
         } else {
             org_name=$1
-            org_path=sprintf("%s/%s", PROFILE_PATH, org_name)
+            org_path=sprintf("%s/%s", TARGET_DIR, org_name)
 
             mkd="mkdir -p " org_path
             system(mkd)
@@ -38,7 +32,7 @@ cat ${ENV_CONFIG} | awk -v PROFILE_PATH="${PROFILE_PATH}" -F, '
             }
             close(settings_file)
 
-            org_list_file = sprintf("%s/shared/list", PROFILE_PATH)
+            org_list_file = sprintf("%s/shared/list", TARGET_DIR)
             print org_name >> org_list_file
             close(org_list_file)
         }
@@ -46,31 +40,27 @@ cat ${ENV_CONFIG} | awk -v PROFILE_PATH="${PROFILE_PATH}" -F, '
 '
 
 PORT=7000
-for ORG in $(cat ${PROFILE_PATH}/shared/list); do
-  . ${PROFILE_PATH}/${ORG}/settings
-  cat >${PROFILE_PATH}/${ORG}/components.json <<EOL
+for ORG in $(cat ${TARGET_DIR}/shared/list); do
+  . ${TARGET_DIR}/${ORG}/settings
+  cat >${TARGET_DIR}/${ORG}/components.json <<EOL
 {
   "network": {
     "orderingNodes": [
       {
-        "box": "default"
         "name": "osn1.${ORG}.${DOMAIN}",
         "port": $((PORT + 1))
       },
       {
-        "box": "default"
         "name": "osn2.${ORG}.${DOMAIN}",
         "port": $((PORT + 2))
       },
       {
-        "box": "default"
         "name": "osn3.${ORG}.${DOMAIN}",
         "port": $((PORT + 3))
       }
     ],
     "peerNodes": [
       {
-        "box": "default"
         "name": "peer0.${ORG}.${DOMAIN}",
         "port": $((PORT + 4)),
         "couchDB": {
@@ -82,7 +72,7 @@ for ORG in $(cat ${PROFILE_PATH}/shared/list); do
 }
 EOL
   PORT=$((PORT + 10))
-  echo "" >${PROFILE_PATH}/${ORG}/hosts
+  echo "" >${TARGET_DIR}/${ORG}/hosts
 done
 
 echo "Done"

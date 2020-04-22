@@ -12,9 +12,9 @@ import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.process.ProcessManager
+import org.enterprisedlt.fabric.service.node.process.{ManagedBox, ProcessManager}
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
-import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
+import org.enterprisedlt.fabric.service.node.rest.{Get, JsonRestClient, Post}
 import org.hyperledger.fabric.sdk.Peer
 import org.slf4j.LoggerFactory
 
@@ -31,38 +31,29 @@ class RestEndpoint(
     cryptoManager: CryptoManager,
     hostsManager: HostsManager,
     profilePath: String,
-    //    processConfig: DockerConfig,
     processManager: ProcessManager,
     state: AtomicReference[FabricServiceState]
 ) {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
     @Get("/service/organization-msp-id")
-    def organizationMspId(): Either[String, String] = {
-        Option(organizationConfig.name).toRight("Some error with org name")
-    }
+    def organizationMspId(): Either[String, String] = Right(organizationConfig.name)
 
     @Get("/service/organization-full-name")
-    def organizationFullName(): Either[String, String] = {
-        Option(s"${organizationConfig.name}.${organizationConfig.domain}").toRight("Some error with full org name")
-    }
+    def organizationFullName(): Either[String, String] = Right(s"${organizationConfig.name}.${organizationConfig.domain}")
 
     @Get("/service/state")
-    def getState: Either[String, FabricServiceState] = {
-        Option(state.get()).toRight("Some error with full org name")
-    }
+    def getState: Either[String, FabricServiceState] = Right(state.get())
 
     @Get("/service/list-channels")
-    def getListChannels: Either[String, String] = {
-        for {
-            state <- globalState.toRight("Node is not initialized yet")
-            network = state.networkManager
-            channels = network.getChannelNames
-        } yield channels.mkString(" ")
+    def listChannels: Either[String, Array[String]] = {
+        globalState
+          .toRight("Node is not initialized yet")
+          .map(_.networkManager.getChannelNames)
     }
 
     @Get("/service/list-organizations")
-    def getListOrganizations: Either[String, String] = {
+    def listOrganizations: Either[String, String] = {
         logger.info(s"ListOrganizations ...")
         for {
             state <- globalState.toRight("Node is not initialized yet")
@@ -73,7 +64,7 @@ class RestEndpoint(
     }
 
     @Get("/service/list-collections")
-    def getListCollections: Either[String, String] = {
+    def listCollections: Either[String, String] = {
         logger.info(s"ListCollections ...")
         for {
             state <- globalState.toRight("Node is not initialized yet")
@@ -84,7 +75,7 @@ class RestEndpoint(
     }
 
     @Get("/admin/create-invite")
-    def getCreateInvite: Either[String, Invite] = {
+    def createInvite: Either[String, Invite] = {
         for {
             state <- globalState.toRight("Node is not initialized yet")
             address = {
@@ -213,6 +204,15 @@ class RestEndpoint(
           .map(_.getName)
           .map(name => name.substring(0, name.length - 4)))
           .toEither.left.map(_.getMessage)
+    }
+
+    @Post("/admin/register-box-manager")
+    def registerBox(request: RegisterBoxManager): Either[String, String] = {
+        Try {
+            val box = JsonRestClient.create[ManagedBox](request.url)
+            processManager.registerBox(request.name, box)
+            s"${request.name} registered"
+        }.toEither.left.map(_.getMessage)
     }
 
     @Post("/admin/bootstrap")
