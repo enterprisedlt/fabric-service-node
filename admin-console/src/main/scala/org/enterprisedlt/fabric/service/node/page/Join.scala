@@ -89,6 +89,7 @@ object Join {
                 case "peer" =>
                     PeerNodes.modify { x =>
                         x :+ PeerConfig(
+                            box = "default", // TODO: box!
                             name = s"${componentCandidate.name}.${g.orgFullName}",
                             port = componentCandidate.port,
                             couchDB = null
@@ -97,6 +98,7 @@ object Join {
                 case "orderer" =>
                     OsnNodes.modify { x =>
                         x :+ OSNConfig(
+                            box = "default", // TODO: box!
                             name = s"${componentCandidate.name}.${g.orgFullName}",
                             port = componentCandidate.port
                         )
@@ -130,6 +132,7 @@ object Join {
                 OsnNodes.modify { x =>
                     x ++ defaultOSNList.zipWithIndex.map { case (name, index) =>
                         OSNConfig(
+                            box = "default", // TODO: box!
                             name = s"$name.${g.orgFullName}",
                             port = 6001 + index
                         )
@@ -139,6 +142,7 @@ object Join {
             val addDefaultPeer =
                 PeerNodes.modify { x =>
                     x :+ PeerConfig(
+                        box = "default", // TODO: box!
                         name = s"peer0.${g.orgFullName}",
                         port = 6010,
                         couchDB = null

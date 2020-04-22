@@ -108,6 +108,7 @@ object NetworkConfig {
 trait ComponentConfig
 
 @Lenses case class OSNConfig(
+    box: String,
     name: String,
     port: Int
 ) extends ComponentConfig
@@ -117,6 +118,7 @@ object OSNConfig {
 }
 
 @Lenses case class PeerConfig(
+    box: String,
     name: String,
     port: Int,
     couchDB: CouchDBConfig

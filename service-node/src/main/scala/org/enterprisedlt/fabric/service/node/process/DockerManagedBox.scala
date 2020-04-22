@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node.process
 
-import java.io.{Closeable, File, FileOutputStream}
+import java.io.{Closeable, File}
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicReference
@@ -25,13 +25,15 @@ import scala.util.Try
  * @author Andrew Pudovikov
  * @author Alexey Polubelov
  */
-class DockerBoxManager(
+// DockerBoxManager
+// DockerManagedBox
+class DockerManagedBox(
     hostPath: String,
     containerName: String,
     networkName: String,
     processConfig: DockerConfig,
     LogWindow: Int = 1500
-) {
+) extends ManagedBox {
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val InnerPath = "/opt/profile/components"
     //    private val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
@@ -70,7 +72,7 @@ class DockerBoxManager(
 
 
     //=========================================================================
-    def startOrderingNode(request: StartOSNRequest): Either[String, String] = {
+    override def startOrderingNode(request: StartOSNRequest): Either[String, String] = {
         logger.info(s"Starting ${request.component.fullName} ...")
         //        if (checkContainerExistence(osnFullName: String)) {
         //            stopAndRemoveContainer(osnFullName: String)
@@ -130,7 +132,7 @@ class DockerBoxManager(
     }
 
     //=============================================================================
-    def startPeerNode(request: StartPeerRequest): Either[String, String] = {
+    override def startPeerNode(request: StartPeerRequest): Either[String, String] = {
         val peerFullName = request.component.fullName
         logger.info(s"Starting $peerFullName ...")
         //        if (checkContainerExistence(peerFullName: String)) {
@@ -235,78 +237,107 @@ class DockerBoxManager(
         couchDBContainerId
     }
 
-    def osnAwaitJoinedToRaft(osnFullName: String): Unit = {
+    override def osnAwaitJoinedToRaft(osnFullName: String): Either[String, Unit] = {
         logger.info(s"Awaiting for $osnFullName to join RAFT cluster ...")
-        val findResult = docker.logContainerCmd(osnFullName)
-          .withStdOut(true)
-          .withStdErr(true)
-          .withTail(LogWindow)
-          .withFollowStream(true)
-          .exec(new FindInLog("Raft leader changed"))
-        findResult.get() match {
-            case Some(logLine) =>
-                logger.info(s"$osnFullName:\n$logLine")
-            case _ =>
-                val msg = s"$osnFullName is failed to join RAFT cluster"
-                logger.error(msg)
-                throw new Exception(msg)
+        val findResult =
+            Try {
+                docker.logContainerCmd(osnFullName)
+                  .withStdOut(true)
+                  .withStdErr(true)
+                  .withTail(LogWindow)
+                  .withFollowStream(true)
+                  .exec(new FindInLog("Raft leader changed"))
+                  .get() // todo: add timeout
+            }
+        findResult
+          .toEither
+          .left.map { ex =>
+            val msg = s"$osnFullName is failed to join RAFT cluster: ${ex.getMessage}"
+            logger.error(msg, ex)
+            msg
         }
+          .flatMap(_.toRight("Failed to find pattern in log"))
+          .map { logLine =>
+              logger.info(s"$osnFullName joined RAFT:\n$logLine")
+          }
     }
 
-    def osnAwaitJoinedToChannel(osnFullName: String, channelName: String): Unit = {
-        (for {
-            findResult <- docker.logContainerCmd(osnFullName)
-              .withStdOut(true)
-              .withStdErr(true)
-              .withTail(LogWindow)
-              .withFollowStream(true)
-              .exec(new FindInLog(s"Starting raft node to join an existing channel channel=$channelName"))
-              .get()
+    override def osnAwaitJoinedToChannel(osnFullName: String, channelName: String): Either[String, Unit] = {
+        for {
+            findResult <- Try {
+                docker.logContainerCmd(osnFullName)
+                  .withStdOut(true)
+                  .withStdErr(true)
+                  .withTail(LogWindow)
+                  .withFollowStream(true)
+                  .exec(new FindInLog(s"Starting raft node to join an existing channel channel=$channelName"))
+                  .get() // todo: add timeout
+            }.toEither.left.map { ex =>
+                val msg = s"$osnFullName failed to on-board to channel $channelName: ${ex.getMessage}"
+                logger.error(msg)
+                msg
+            }
 
-            _ <- Option(logger.info(s"RAFT OSN node started on $channelName:\n$findResult"))
+            _ = logger.info(s"RAFT OSN node started on $channelName:\n$findResult")
 
-            nodeId <- Option(findResult.split("=")).filter(_.length == 3).map(_ (2).trim)
+            nodeId <- findResult.map(_.split("=")).filter(_.length == 3).map(_ (2).trim).toRight {
+                val msg = s"$osnFullName failed to on-board to channel $channelName:\nFailed to resolve nodeId from: $findResult"
+                logger.error(msg)
+                msg
+            }
 
-            _ <- Option(logger.info(s"Got OSN node id for channel $channelName: $nodeId"))
+            _ = logger.info(s"Got OSN node id for channel $channelName: $nodeId")
 
-            logLine <- docker.logContainerCmd(osnFullName)
-              .withStdOut(true)
-              .withStdErr(true)
-              .withTail(LogWindow)
-              .withFollowStream(true)
-              .exec(new FindInLog(s"Applied config change to add node $nodeId", s"channel=$channelName"))
-              .get()
+            logLine <- Try {
+                docker.logContainerCmd(osnFullName)
+                  .withStdOut(true)
+                  .withStdErr(true)
+                  .withTail(LogWindow)
+                  .withFollowStream(true)
+                  .exec(new FindInLog(s"Applied config change to add node $nodeId", s"channel=$channelName"))
+                  .get() // todo: add timeout
+            }.toEither.left.map { ex =>
+                val msg = s"$osnFullName failed to on-board to channel $channelName: ${ex.getMessage}"
+                logger.error(msg)
+                msg
+            }.flatMap(_.toRight("Failed to find pattern in log"))
 
         } yield {
-            logger.info(s"$osnFullName:\n$logLine")
-        }).getOrElse {
-            val msg = s"$osnFullName is failed to on-board to channel $channelName"
-            logger.error(msg)
-            throw new Exception(msg)
+            logger.info(s"$osnFullName joined to channel:\n$logLine")
         }
     }
 
-    def peerAwaitForBlock(peerFullName: String, blockNumber: Long): Unit = {
+    override def peerAwaitForBlock(peerFullName: String, blockNumber: Long): Either[String, Unit] = {
         logger.info(s"Awaiting for block $blockNumber on peer $peerFullName ...")
-        val findResult = docker.logContainerCmd(peerFullName)
-          .withStdOut(true)
-          .withStdErr(true)
-          .withTail(LogWindow)
-          .withFollowStream(true)
-          .exec(new FindInLog(s"Committed block [$blockNumber]"))
-        findResult.get() match {
-            case Some(logLine) =>
-                logger.info(s"$peerFullName:\n$logLine")
-            case _ =>
-                val msg = s"Didn't got block $blockNumber on $peerFullName"
-                logger.error(msg)
-                throw new Exception(msg)
+        val findResult = Try {
+            docker.logContainerCmd(peerFullName)
+              .withStdOut(true)
+              .withStdErr(true)
+              .withTail(LogWindow)
+              .withFollowStream(true)
+              .exec(new FindInLog(s"Committed block [$blockNumber]"))
+              .get() // todo: add timeout
         }
+        findResult
+          .toEither
+          .left.map { ex =>
+            val msg = s"Failed to get block $blockNumber on $peerFullName: ${ex.getMessage}"
+            logger.error(msg, ex)
+            msg
+        }
+          .flatMap(_.toRight("Failed to find pattern in log"))
+          .map { logLine =>
+              logger.info(s"$peerFullName committed block:\n$logLine")
+          }
     }
 
-    def terminateChainCode(peerName: String, chainCodeName: String, chainCodeVersion: String): Unit = {
+    override def terminateChainCode(peerName: String, chainCodeName: String, chainCodeVersion: String): Either[String, Unit] = {
         val containerName = s"dev-$peerName-$chainCodeName-$chainCodeVersion"
-        stopAndRemoveContainer(containerName)
+        Try(stopAndRemoveContainer(containerName)).toEither.left.map { ex =>
+            val msg = s"Failed to terminate chain code container $containerName: ${ex.getMessage}"
+            logger.error(msg, ex)
+            msg
+        }
     }
 
 

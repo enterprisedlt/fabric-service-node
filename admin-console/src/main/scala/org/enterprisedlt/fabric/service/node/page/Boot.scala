@@ -78,6 +78,7 @@ object Boot {
                 case "peer" =>
                     PeerNodes.modify { x =>
                         x :+ PeerConfig(
+                            box = "default", // TODO: box!
                             name = s"${componentCandidate.name}.${g.orgFullName}",
                             port = componentCandidate.port,
                             couchDB = null
@@ -86,6 +87,7 @@ object Boot {
                 case "orderer" =>
                     OsnNodes.modify { x =>
                         x :+ OSNConfig(
+                            box = "default", // TODO: box!
                             name = s"${componentCandidate.name}.${g.orgFullName}",
                             port = componentCandidate.port
                         )
@@ -114,6 +116,7 @@ object Boot {
                 OsnNodes.modify { x =>
                     x ++ defaultOSNList.zipWithIndex.map { case (name, index) =>
                         OSNConfig(
+                            box = "default", // TODO: box!
                             name = s"$name.${g.orgFullName}",
                             port = 7001 + index
                         )
@@ -123,6 +126,7 @@ object Boot {
             val addDefaultPeer =
                 PeerNodes.modify { x =>
                     x :+ PeerConfig(
+                        box = "default", // TODO: box!
                         name = s"peer0.${g.orgFullName}",
                         port = 7010,
                         couchDB = null

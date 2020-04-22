@@ -53,20 +53,24 @@ for ORG in $(cat ${PROFILE_PATH}/shared/list); do
   "network": {
     "orderingNodes": [
       {
+        "box": "default"
         "name": "osn1.${ORG}.${DOMAIN}",
         "port": $((PORT + 1))
       },
       {
+        "box": "default"
         "name": "osn2.${ORG}.${DOMAIN}",
         "port": $((PORT + 2))
       },
       {
+        "box": "default"
         "name": "osn3.${ORG}.${DOMAIN}",
         "port": $((PORT + 3))
       }
     ],
     "peerNodes": [
       {
+        "box": "default"
         "name": "peer0.${ORG}.${DOMAIN}",
         "port": $((PORT + 4)),
         "couchDB": {

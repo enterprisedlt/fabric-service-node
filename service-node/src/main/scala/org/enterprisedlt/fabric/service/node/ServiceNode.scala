@@ -16,6 +16,7 @@ import org.enterprisedlt.fabric.service.node.auth.{FabricAuthenticator, Role}
 import org.enterprisedlt.fabric.service.node.configuration.{DockerConfig, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
 import org.enterprisedlt.fabric.service.node.model.FabricServiceState
+import org.enterprisedlt.fabric.service.node.process.{DockerManagedBox, ProcessManager}
 import org.enterprisedlt.fabric.service.node.rest.JsonRestEndpoint
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.slf4j.LoggerFactory
@@ -63,11 +64,27 @@ object ServiceNode extends App {
         LogMaxFiles,
         FabricComponentsLogLevel
     )
+
+    // ==============================================================================
+    logger.info("Starting process manager ...")
+    private val componentsPath = s"$ProfilePath/components"
+    private val defaultBox =
+        new DockerManagedBox(
+                hostPath = componentsPath,
+                containerName = s"service.$OrgName.$Domain",
+                networkName = "fabric_service",
+                processConfig
+            )
+
+    private val processManager = new ProcessManager
+    processManager.registerBox("default", defaultBox)
+    // ==============================================================================
+
     private val cryptoManager = new FileBasedCryptoManager(organizationConfig, "/opt/profile/crypto", AdminPassword)
     private val restEndpoint = new RestEndpoint(
         ServiceBindPort, ServiceExternalAddress, organizationConfig, cryptoManager,
         hostsManager = new HostsManager("/opt/profile/hosts", organizationConfig),
-        ProfilePath, processConfig, serviceState
+        ProfilePath, processManager, serviceState
     )
     //TODO: make web app optional, based on configuration
     private val server =

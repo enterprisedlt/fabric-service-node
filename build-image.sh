@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 FABRIC_SERVICE_NODE_VERSION=$1
 

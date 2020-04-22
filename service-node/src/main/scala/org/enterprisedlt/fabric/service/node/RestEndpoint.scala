@@ -6,20 +6,16 @@ import java.time.Instant
 import java.util
 import java.util.concurrent.atomic.AtomicReference
 
-import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
-import org.apache.http.entity.ContentType
-import org.eclipse.jetty.server.Request
-import org.eclipse.jetty.server.handler.AbstractHandler
+import com.google.gson.GsonBuilder
 import org.enterprisedlt.fabric.service.model.{Contract, UpgradeContract}
-import org.enterprisedlt.fabric.service.node.auth.FabricAuthenticator
 import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.process.DockerBoxManager
+import org.enterprisedlt.fabric.service.node.process.ProcessManager
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
-import org.hyperledger.fabric.sdk.{Peer, User}
+import org.hyperledger.fabric.sdk.Peer
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
@@ -35,7 +31,8 @@ class RestEndpoint(
     cryptoManager: CryptoManager,
     hostsManager: HostsManager,
     profilePath: String,
-    processConfig: DockerConfig,
+    //    processConfig: DockerConfig,
+    processManager: ProcessManager,
     state: AtomicReference[FabricServiceState]
 ) {
     private val logger = LoggerFactory.getLogger(this.getClass)
@@ -196,28 +193,26 @@ class RestEndpoint(
     }
 
     @Get("/service/list-contracts")
-    def getListContracts: Either[String, String] = {
+    def getListContracts: Either[String, Array[Contract]] = {
         logger.info(s"Querying contracts for ${organizationConfig.name}...")
         for {
             state <- globalState.toRight("Node is not initialized yet")
             queryResult <- state.networkManager
               .queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContracts")
             contracts <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
-        } yield contracts
+            result <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[Contract]])).toEither.left.map(_.getMessage)
+        } yield result
     }
 
     @Get("/admin/list-contract-packages")
-    def getListContractPackages: Either[String, String] = {
+    def getListContractPackages: Either[String, Array[String]] = {
         logger.info("Listing contract packages...")
         val chaincodePath = new File(s"/opt/profile/chain-code/").getAbsoluteFile
         if (!chaincodePath.exists()) chaincodePath.mkdirs()
-        for {
-            contractPackages <- Try(chaincodePath.listFiles().filter(_.getName.endsWith(".tgz"))
-              .map(file => file.getName)
-              .map(name => name.substring(0, name.length - 4)))
-              .toEither.left.map(_.getMessage)
-            result <- Try(contractPackages.mkString("\n")).toEither.left.map(_.getMessage)
-        } yield result
+        Try(chaincodePath.listFiles().filter(_.getName.endsWith(".tgz"))
+          .map(_.getName)
+          .map(name => name.substring(0, name.length - 4)))
+          .toEither.left.map(_.getMessage)
     }
 
     @Post("/admin/bootstrap")
@@ -233,7 +228,7 @@ class RestEndpoint(
                 hostsManager,
                 externalAddress,
                 profilePath,
-                processConfig,
+                processManager,
                 state))
               .toEither.left.map(e => s"Bootstrap failed: ${e.getMessage}")
             _ = init(gState)
@@ -249,6 +244,7 @@ class RestEndpoint(
             join <- Join.joinOrgToNetwork(
                 state,
                 cryptoManager,
+                processManager,
                 joinRequest,
                 hostsManager,
                 organizationConfig
@@ -285,14 +281,18 @@ class RestEndpoint(
         val start = System.currentTimeMillis()
         state.set(FabricServiceState(FabricServiceState.JoinStarted))
         for {
-            gState <- Try(Join.join(organizationConfig,
-                cryptoManager,
-                joinOptions,
-                externalAddress,
-                hostsManager,
-                profilePath,
-                processConfig,
-                state)).toEither.left.map(_.getMessage)
+            gState <- Try(
+                Join.join(
+                    organizationConfig,
+                    cryptoManager,
+                    joinOptions,
+                    externalAddress,
+                    hostsManager,
+                    profilePath,
+                    processManager,
+                    state
+                )
+            ).toEither.left.map(_.getMessage)
             _ = init(gState)
             end = System.currentTimeMillis() - start
             _ = logger.info(s"Joined ($end ms)")
@@ -582,7 +582,7 @@ class RestEndpoint(
 
 case class GlobalState(
     networkManager: FabricNetworkManager,
-    processManager: DockerBoxManager,
+    //    processManager: DockerManagedBox,
     network: NetworkConfig,
     networkName: String
 )

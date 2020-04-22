@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, ServiceVersion}
 import org.enterprisedlt.fabric.service.node._
-import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, DockerConfig, OrganizationConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.cryptography.{FabricCryptoMaterial, Orderer, Peer}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model.FabricServiceState
@@ -28,19 +28,10 @@ object Bootstrap {
         hostsManager: HostsManager,
         externalAddress: Option[ExternalAddress],
         profilePath: String,
-        processConfig: DockerConfig,
+        processManager: ProcessManager,
         state: AtomicReference[FabricServiceState]
     ): GlobalState = {
         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
-        //
-        logger.info(s"[ $organizationFullName ] - Starting process manager ...")
-        val componentsPath = s"$profilePath/components"
-        val processManager = new DockerBoxManager(
-            hostPath = componentsPath,
-            containerName = s"service.$organizationFullName",
-            networkName = bootstrapOptions.networkName,
-            processConfig
-        )
         //
         val componentsCrypto = bootstrapOptions.network.orderingNodes.map { osnConfig =>
             val componentCrypto = cryptography.generateComponentCrypto(Orderer, osnConfig.name)
@@ -68,6 +59,7 @@ object Bootstrap {
         state.set(FabricServiceState(FabricServiceState.BootstrapStartingOrdering))
         bootstrapOptions.network.orderingNodes.foreach { osnConfig =>
             processManager.startOrderingNode(
+                osnConfig.box,
                 StartOSNRequest(
                     port = osnConfig.port,
                     genesis = new String(Base64.getEncoder.encode(genesis.toByteArray), StandardCharsets.UTF_8),
@@ -84,7 +76,7 @@ object Bootstrap {
         }
         state.set(FabricServiceState(FabricServiceState.BootstrapAwaitingOrdering))
         bootstrapOptions.network.orderingNodes.foreach { osnConfig =>
-            processManager.osnAwaitJoinedToRaft(osnConfig.name)
+            processManager.osnAwaitJoinedToRaft(osnConfig.box, osnConfig.name)
         }
 
         //
@@ -102,6 +94,7 @@ object Bootstrap {
             val componentCrypto = cryptography.generateComponentCrypto(Peer, peerConfig.name)
             cryptography.saveComponentCrypto(Peer, peerConfig.name, componentCrypto)
             processManager.startPeerNode(
+                peerConfig.box,
                 StartPeerRequest(
                     port = peerConfig.port,
                     organization = organizationInfo,
@@ -186,6 +179,6 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Bootstrap done.")
         state.set(FabricServiceState(FabricServiceState.Ready))
-        GlobalState(network, processManager, bootstrapOptions.network, bootstrapOptions.networkName)
+        GlobalState(network, bootstrapOptions.network, bootstrapOptions.networkName)
     }
 }

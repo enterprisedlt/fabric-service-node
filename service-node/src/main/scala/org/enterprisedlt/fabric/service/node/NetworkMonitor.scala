@@ -1,13 +1,13 @@
 package org.enterprisedlt.fabric.service.node
 
-import java.io.{BufferedInputStream, File, FileInputStream}
+import java.io.{BufferedInputStream, FileInputStream}
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.TimeUnit
 
 import org.enterprisedlt.fabric.service.model.{Organization, ServiceVersion}
-import org.enterprisedlt.fabric.service.node.configuration.{NetworkConfig, OrganizationConfig, ServiceConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{NetworkConfig, OrganizationConfig}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
-import org.enterprisedlt.fabric.service.node.process.DockerBoxManager
+import org.enterprisedlt.fabric.service.node.process.ProcessManager
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.hyperledger.fabric.protos.peer.Chaincode.ChaincodeDeploymentSpec
 import org.hyperledger.fabric.sdk.{BlockEvent, BlockListener}
@@ -17,13 +17,13 @@ import scala.collection.JavaConverters._
 
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 class NetworkMonitor(
     organizationConfig: OrganizationConfig,
     networkConfig: NetworkConfig,
     network: FabricNetworkManager,
-    processManager: DockerBoxManager,
+    processManager: ProcessManager,
     hostsManager: HostsManager,
     initialVersion: ServiceVersion
 ) extends BlockListener {
@@ -90,7 +90,7 @@ class NetworkMonitor(
             networkConfig.peerNodes.foreach { peer =>
                 val previousVersion = s"${oldVersion.chainCodeVersion}.${oldVersion.networkVersion}"
                 logger.info(s"Removing previous version [$previousVersion] of service on ${peer.name} ...")
-                processManager.terminateChainCode(peer.name, ServiceChainCodeName, previousVersion)
+                processManager.terminateChainCode(peer.box, peer.name, ServiceChainCodeName, previousVersion)
             }
             hostsManager.addOrganization(organization)
         } else {

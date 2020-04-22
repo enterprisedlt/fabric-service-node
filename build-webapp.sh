@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 rm -rf ./target/assembly/admin-console
 ###
