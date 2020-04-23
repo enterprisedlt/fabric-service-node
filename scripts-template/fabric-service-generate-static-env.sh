@@ -67,7 +67,7 @@ for ORG in $(cat ${TARGET_DIR}/shared/list); do
       {
         "name": "peer0.${ORG}.${DOMAIN}",
         "port": $((PORT + 4)),
-        "box": "default"
+        "box": "default",
         "couchDB": {
           "port": $((PORT + 5))
         }
