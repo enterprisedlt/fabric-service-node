@@ -49,21 +49,25 @@ for ORG in $(cat ${TARGET_DIR}/shared/list); do
     "orderingNodes": [
       {
         "name": "osn1.${ORG}.${DOMAIN}",
-        "port": $((PORT + 1))
+        "port": $((PORT + 1)),
+        "box": "default"
       },
       {
         "name": "osn2.${ORG}.${DOMAIN}",
-        "port": $((PORT + 2))
+        "port": $((PORT + 2)),
+        "box": "default"
       },
       {
         "name": "osn3.${ORG}.${DOMAIN}",
-        "port": $((PORT + 3))
+        "port": $((PORT + 3)),
+        "box": "default"
       }
     ],
     "peerNodes": [
       {
         "name": "peer0.${ORG}.${DOMAIN}",
         "port": $((PORT + 4)),
+        "box": "default"
         "couchDB": {
           "port": $((PORT + 5))
         }
