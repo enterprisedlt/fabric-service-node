@@ -20,14 +20,20 @@ serviceID=`docker run -d \
  -e "DOMAIN=${DOMAIN}" \
  -e "ORG_LOCATION=${ORG_LOCATION}" \
  -e "ORG_STATE=${ORG_STATE}" \
+ -e "LOG_LEVEL=${SERVICE_LOG_LEVEL:-INFO}" \
+ -e "FABRIC_COMPONENTS_LOG_LEVEL=${FABRIC_COMPONENTS_LOG_LEVEL:-INFO}" \
  -e "ORG_COUNTRY=${ORG_COUNTRY}" \
  -e "CERTIFICATION_DURATION=${CERTIFICATION_DURATION}" \
  -e "SERVICE_BIND_PORT=${SERVICE_BIND_PORT}" \
  -e "SERVICE_EXTERNAL_ADDRESS=${SERVICE_EXTERNAL_ADDRESS}" \
- -e "DOCKER_SOCKET=unix:///host/var/run/docker.sock" \
  -e "ADMIN_PASSWORD=${ADMIN_PASSWORD}" \
- -e "FABRIC_SERVICE_NETWORK=${FABRIC_SERVICE_NETWORK}" \
+ -e "DOCKER_SOCKET=unix:///host/var/run/docker.sock" \
+ -e "LOG_FILE_SIZE=100m" \
+ -e "LOG_MAX_FILES=5" \
  -p ${SERVICE_BIND_PORT}:${SERVICE_BIND_PORT} \
+ --log-driver json-file \
+ --log-opt max-size=100m \
+ --log-opt max-file=5 \
  --volume=${PROFILE_PATH}/hosts:/etc/hosts \
  --volume=${PROFILE_PATH}:/opt/profile \
  --volume=${SERVICE_NODE_HOME}/target/assembly:/opt/service \

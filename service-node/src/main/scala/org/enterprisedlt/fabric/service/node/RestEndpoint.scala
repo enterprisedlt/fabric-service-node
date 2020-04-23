@@ -7,7 +7,7 @@ import java.util
 import java.util.concurrent.atomic.AtomicReference
 
 import com.google.gson.GsonBuilder
-import org.enterprisedlt.fabric.service.model.{Contract, UpgradeContract}
+import org.enterprisedlt.fabric.service.model.{Contract, Organization, UpgradeContract}
 import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
@@ -53,25 +53,27 @@ class RestEndpoint(
     }
 
     @Get("/service/list-organizations")
-    def listOrganizations: Either[String, String] = {
+    def listOrganizations: Either[String, Array[Organization]] = {
         logger.info(s"ListOrganizations ...")
         for {
             state <- globalState.toRight("Node is not initialized yet")
             network = state.networkManager
             organization <- network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listOrganizations")
             res <- organization.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
-        } yield res
+            r <- Try((new GsonBuilder).create().fromJson(res, classOf[Array[Organization]])).toEither.left.map(_.getMessage)
+        } yield r
     }
 
     @Get("/service/list-collections")
-    def listCollections: Either[String, String] = {
+    def listCollections: Either[String, Array[String]] = {
         logger.info(s"ListCollections ...")
         for {
             state <- globalState.toRight("Node is not initialized yet")
             network = state.networkManager
             queryResult <- network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listCollections")
             collections <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
-        } yield collections
+            r <- Try((new GsonBuilder).create().fromJson(collections, classOf[Array[String]])).toEither.left.map(_.getMessage)
+        } yield r
     }
 
     @Get("/admin/create-invite")

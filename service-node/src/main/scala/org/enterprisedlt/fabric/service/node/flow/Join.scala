@@ -38,6 +38,42 @@ object Join {
         //
         logger.info(s"[ $organizationFullName ] - Creating JoinRequest ...")
         state.set(FabricServiceState(FabricServiceState.JoinCreatingJoinRequest))
+
+        logger.info(s"[ $organizationFullName ] - Generating list of known hosts ...")
+        import ConversionHelper._
+        val knownHosts =
+            (
+              joinOptions.network.orderingNodes.map(osn => osn.name -> osn.box) ++
+                joinOptions.network.peerNodes.map(peer => peer.name -> peer.box)
+              )
+              .map { case (name, box) =>
+                  processManager.getBoxAddress(box).map {
+                      _.map { boxAddress =>
+                          KnownHostRecord(
+                              dnsName = s"$name.$organizationFullName",
+                              ipAddress = boxAddress
+                          )
+                      }
+                  }
+              }.toSeq.fold2Either.map { list =>
+                (list.toSeq :+ externalAddress.map { serviceAddress =>
+                    KnownHostRecord(
+                        dnsName = s"service.$organizationFullName",
+                        ipAddress = serviceAddress.host
+                    )
+                }).flatten
+            }
+              .left.map { msg =>
+                logger.error(s"Failed to obtain known hosts list: $msg")
+            }
+              .getOrElse {
+                  throw new Exception(s"Failed to get known hosts list")
+              }.toArray
+
+        logger.debug(s"List of known hosts: ${knownHosts.toSeq}")
+        hostsManager.updateHosts(knownHosts)
+        processManager.updateKnownHosts(knownHosts)
+
         //
         val joinRequest = JoinRequest(
             organization = Organization(
@@ -65,7 +101,11 @@ object Join {
         val key = Util.keyStoreFromBase64(joinOptions.invite.key, password)
         val joinResponse = Util.executePostRequest(s"https://${joinOptions.invite.address}/join-network", key, password, joinRequest, classOf[JoinResponse])
 
-        joinResponse.knownOrganizations.foreach(hostsManager.addOrganization)
+        logger.info(s"[ $organizationFullName ] - Updating known hosts")
+        val knownHostFromJoin = joinResponse.knownOrganizations.flatMap(_.knownHosts)
+        hostsManager.updateHosts(knownHostFromJoin)
+        processManager.updateKnownHosts(knownHostFromJoin)
+
         //
         logger.info(s"[ $organizationFullName ] - Saving Osn cert to file ...")
         Util.storeToFile(s"/opt/profile/crypto/orderers/${joinResponse.osnHost}/tls/server.crt", Base64.getDecoder.decode(joinResponse.osnTLSCert))
@@ -283,7 +323,8 @@ object Join {
                 processManager.terminateChainCode(peer.box, peer.name, ServiceChainCodeName, previousVersion)
             }
 
-            hostsManager.addOrganization(joinRequest.organization)
+            hostsManager.updateHosts(joinRequest.organization.knownHosts)
+            processManager.updateKnownHosts(joinRequest.organization.knownHosts)
 
             // create result
             logger.info(s"Preparing JoinResponse ...")

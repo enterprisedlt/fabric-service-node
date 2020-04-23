@@ -10,6 +10,7 @@ then
   exit 1
 fi
 
+rm -rf ${TARGET_DIR}/shared
 mkdir -p ${TARGET_DIR}/shared
 cat ${ENV_CONFIG} | awk -v TARGET_DIR="${TARGET_DIR}" -F, '
     {

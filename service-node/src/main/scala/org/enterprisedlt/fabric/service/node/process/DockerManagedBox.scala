@@ -14,7 +14,8 @@ import com.github.dockerjava.api.model.Ports.Binding
 import com.github.dockerjava.api.model._
 import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientImpl}
 import com.github.dockerjava.okhttp.OkHttpDockerCmdExecFactory
-import org.enterprisedlt.fabric.service.node.Util
+import org.enterprisedlt.fabric.service.model.KnownHostRecord
+import org.enterprisedlt.fabric.service.node.{HostsManager, Util}
 import org.enterprisedlt.fabric.service.node.configuration.DockerConfig
 import org.slf4j.LoggerFactory
 
@@ -28,7 +29,9 @@ import scala.util.Try
 class DockerManagedBox(
     hostPath: String,
     containerName: String,
+    address: Option[String],
     networkName: String,
+    hostsManager: HostsManager,
     processConfig: DockerConfig,
     LogWindow: Int = 1500
 ) extends ManagedBox {
@@ -47,25 +50,25 @@ class DockerManagedBox(
     // =================================================================================================================
     logger.info(s"Initializing ${this.getClass.getSimpleName} ...")
 
-//    logger.info(s"Checking network ...")
-//    if (docker.listNetworksCmd().withNameFilter(networkName).exec().isEmpty) {
-//        logger.info(s"Network $networkName does not exist, creating ...")
-//        docker.createNetworkCmd()
-//          .withName(networkName)
-//          .withDriver("bridge")
-//          .exec()
-//    }
-//    logger.info(s"Connecting myself [$containerName] to network $networkName ...")
-//    docker.connectToNetworkCmd()
-//      .withContainerId(containerName)
-//      .withNetworkId(networkName)
-//      .exec()
+    //    logger.info(s"Checking network ...")
+    //    if (docker.listNetworksCmd().withNameFilter(networkName).exec().isEmpty) {
+    //        logger.info(s"Network $networkName does not exist, creating ...")
+    //        docker.createNetworkCmd()
+    //          .withName(networkName)
+    //          .withDriver("bridge")
+    //          .exec()
+    //    }
+    //    logger.info(s"Connecting myself [$containerName] to network $networkName ...")
+    //    docker.connectToNetworkCmd()
+    //      .withContainerId(containerName)
+    //      .withNetworkId(networkName)
+    //      .exec()
 
-    Util.mkDirs(InnerPath) // ensure inner path exists
-    private val hostsFile = new File(s"$InnerPath/hosts")
-    if (!hostsFile.exists()) {
-        hostsFile.createNewFile()
-    }
+    //    Util.mkDirs(InnerPath) // ensure inner path exists
+    //    private val hostsFile = new File(s"$InnerPath/hosts")
+    //    if (!hostsFile.exists()) {
+    //        hostsFile.createNewFile()
+    //    }
     // =================================================================================================================
 
 
@@ -91,7 +94,7 @@ class DockerManagedBox(
                   new Bind(s"$hostComponentPath/data/genesis.block", new Volume("/var/hyperledger/orderer/orderer.genesis.block")),
                   new Bind(s"$hostComponentPath/msp", new Volume("/var/hyperledger/orderer/msp")),
                   new Bind(s"$hostComponentPath/tls", new Volume("/var/hyperledger/orderer/tls")),
-//                  new Bind(s"$hostComponentPath/data/ledger", new Volume("/var/hyperledger/production/orderer"))
+                  //                  new Bind(s"$hostComponentPath/data/ledger", new Volume("/var/hyperledger/production/orderer"))
               )
               .withPortBindings(
                   new PortBinding(new Binding("0.0.0.0", request.port.toString), new ExposedPort(request.port, InternetProtocol.TCP))
@@ -160,7 +163,7 @@ class DockerManagedBox(
                   new Bind(s"$hostPath/hosts", new Volume("/etc/hosts")),
                   new Bind(s"$hostComponentPath/msp", new Volume("/etc/hyperledger/fabric/msp")),
                   new Bind(s"$hostComponentPath/tls", new Volume("/etc/hyperledger/fabric/tls")),
-//                  new Bind(s"$hostComponentPath/data/ledger", new Volume("/var/hyperledger/production")),
+                  //                  new Bind(s"$hostComponentPath/data/ledger", new Volume("/var/hyperledger/production")),
                   new Bind(s"/var/run", new Volume("/host/var/run/"))
               )
               .withPortBindings(
@@ -336,15 +339,26 @@ class DockerManagedBox(
         }
     }
 
+    override def getBoxAddress: Either[String, String] = Right(address.getOrElse(""))
+
+    override def updateKnownHosts(hosts: Array[KnownHostRecord]): Either[String, Unit] =
+        Try {
+            hostsManager.updateHosts(hosts)
+        }.toEither.left.map { ex =>
+            val msg = s"Failed to update known hosts: ${ex.getMessage}"
+            logger.error(msg, ex)
+            msg
+        }
 
     // =================================================================================================================
-    private def makeDockerLogConfig(processConfig: DockerConfig): LogConfig = {
-        val jsonLogConfig = Map(
-            "max-size" -> processConfig.logFileSize,
-            "max-file" -> processConfig.logMaxFiles
-        ).asJava
-        new LogConfig(LoggingType.JSON_FILE, jsonLogConfig)
-    }
+    private def makeDockerLogConfig(processConfig: DockerConfig): LogConfig =
+        new LogConfig(
+            LoggingType.JSON_FILE,
+            Map(
+                "max-size" -> processConfig.logFileSize,
+                "max-file" -> processConfig.logMaxFiles
+            ).asJava
+        )
 
     // =================================================================================================================
     private def checkContainerExistence(name: String): Boolean = {

@@ -15,7 +15,7 @@ export BOX_MANAGER_NAME="single-box-mngr"
 mkdir -p ./test/net/box
 touch ./test/net/box/hosts
 
-./docker-box-mngr-start-dev.sh ./test/net/box
+./fabric-service-box-manager-start-dev.sh ./test/net/box
 
 # start ORG1
 ./fabric-service-start-dev.sh ./test/net/org1

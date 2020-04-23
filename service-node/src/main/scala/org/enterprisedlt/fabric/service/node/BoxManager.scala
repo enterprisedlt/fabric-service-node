@@ -13,8 +13,9 @@ object BoxManager extends App {
     private val Environment = System.getenv()
     private val LogLevel = Option(Environment.get("LOG_LEVEL")).filter(_.trim.nonEmpty).getOrElse("INFO")
     Util.setupLogging(LogLevel)
-    private val BoxManagerBindPort = Option(Environment.get("BOX_MANAGER_BIND_PORT")).map(_.toInt).getOrElse(throw new Exception("Mandatory environment variable missing SERVICE_BIND_PORT!"))
     private val BoxManagerName = Option(Environment.get("BOX_MANAGER_NAME")).filter(_.trim.nonEmpty).getOrElse(throw new Exception("Mandatory environment variable missing BOX_MANAGER_NAME!"))
+    private val BoxManagerBindPort = Option(Environment.get("BOX_MANAGER_BIND_PORT")).map(_.toInt).getOrElse(throw new Exception("Mandatory environment variable missing SERVICE_BIND_PORT!"))
+    private val BoxManagerAddress = Option(Environment.get("BOX_MANAGER_EXTERNAL_ADDRESS")).filter(_.trim.nonEmpty)
     private val FabricServiceNetwork = Option(Environment.get("FABRIC_SERVICE_NETWORK")).filter(_.trim.nonEmpty).getOrElse(throw new Exception("Mandatory environment variable missing FABRIC_SERVICE_NETWORK!"))
     private val ProfilePath = Option(Environment.get("PROFILE_PATH")).getOrElse(throw new Exception("Mandatory environment variable missing PROFILE_PATH!"))
     private val FabricComponentsLogLevel = Option(Environment.get("FABRIC_COMPONENTS_LOG_LEVEL")).filter(_.trim.nonEmpty).getOrElse("INFO")
@@ -32,12 +33,15 @@ object BoxManager extends App {
         FabricComponentsLogLevel
     )
 
+    private val hostsManager = new HostsManager("/opt/profile/hosts", BoxManagerAddress)
     private val box =
         new DockerManagedBox(
             hostPath = ProfilePath,
             containerName = BoxManagerName,
+            address = BoxManagerAddress,
             networkName = FabricServiceNetwork,
-            processConfig
+            hostsManager = hostsManager,
+            processConfig = processConfig
         )
 
     private val server = new Server(BoxManagerBindPort)

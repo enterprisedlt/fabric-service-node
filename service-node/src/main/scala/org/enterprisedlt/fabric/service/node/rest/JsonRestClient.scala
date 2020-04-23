@@ -40,7 +40,16 @@ object JsonRestClient {
                     val returnType = pts(1).asInstanceOf[Class[_]]
                     if (method.isAnnotationPresent(classOf[Get])) {
                         val path = method.getAnnotation(classOf[Get]).value()
-                        val params = method.getParameters.map(_.getName).zip(args.map(getCodec.toJson).map(URLEncoder.encode(_, StandardCharsets.UTF_8.name())))
+                        val params =
+                            Option(method.getParameters)
+                              .getOrElse(Array.empty)
+                              .map(_.getName)
+                              .zip(
+                                  Option(args)
+                                    .getOrElse(Array.empty)
+                                    .map(getCodec.toJson)
+                                    .map(URLEncoder.encode(_, StandardCharsets.UTF_8.name()))
+                              )
                         val targetUrl = s"$url$path${params.map(v => s"${v._1}=${v._2}").mkString("?", "&", "")}"
                         logger.debug(s"Target URL is $targetUrl")
                         val request = new HttpGet(targetUrl)
@@ -64,7 +73,7 @@ object JsonRestClient {
                     }
                     else if (method.isAnnotationPresent(classOf[Post])) {
                         val path = method.getAnnotation(classOf[Post]).value()
-                        if (args.length != 1) {
+                        if (args == null || args.length != 1) {
                             throw new Exception("Post method supported only with single argument")
                         }
                         val targetUrl = s"$url$path"

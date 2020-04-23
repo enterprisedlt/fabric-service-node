@@ -1,5 +1,7 @@
 package org.enterprisedlt.fabric.service.node.process
 
+import org.enterprisedlt.fabric.service.model.KnownHostRecord
+
 import scala.collection.concurrent.TrieMap
 
 /**
@@ -7,6 +9,16 @@ import scala.collection.concurrent.TrieMap
  */
 class ProcessManager {
     private val boxes = TrieMap.empty[String, ManagedBox]
+
+    def getBoxAddress(box: String): Either[String, Option[String]] =
+        boxes
+          .get(box).toRight(s"Unknown box $box")
+          .flatMap(
+              _.getBoxAddress
+                .map(addr =>
+                    Option(addr).filter(_.nonEmpty)
+                )
+          )
 
     def registerBox(boxName: String, box: ManagedBox): Unit =
         boxes += boxName -> box
@@ -46,4 +58,10 @@ class ProcessManager {
           .get(box).toRight(s"Unknown box $box")
           .flatMap(_.terminateChainCode(peerName, chainCodeName, chainCodeVersion))
 
+    def updateKnownHosts(hosts: Array[KnownHostRecord]): Either[String, Unit] = {
+        import org.enterprisedlt.fabric.service.node.ConversionHelper._
+        boxes.map { case (_, box) =>
+            box.updateKnownHosts(hosts)
+        }.fold2Either.map(_ => ())
+    }
 }

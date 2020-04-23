@@ -92,7 +92,8 @@ class NetworkMonitor(
                 logger.info(s"Removing previous version [$previousVersion] of service on ${peer.name} ...")
                 processManager.terminateChainCode(peer.box, peer.name, ServiceChainCodeName, previousVersion)
             }
-            hostsManager.addOrganization(organization)
+            hostsManager.updateHosts(organization.knownHosts)
+            processManager.updateKnownHosts(organization.knownHosts)
         } else {
             logger.info("Skipping upgrade from self")
         }

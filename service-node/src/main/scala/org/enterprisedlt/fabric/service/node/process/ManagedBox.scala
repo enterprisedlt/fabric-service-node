@@ -1,11 +1,15 @@
 package org.enterprisedlt.fabric.service.node.process
 
+import org.enterprisedlt.fabric.service.model.KnownHostRecord
 import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
 
 /**
  * @author Alexey Polubelov
  */
 trait ManagedBox {
+
+    @Get("/address")
+    def getBoxAddress: Either[String, String]
 
     @Post("/start-ordering-node")
     def startOrderingNode(request: StartOSNRequest): Either[String, String]
@@ -24,4 +28,7 @@ trait ManagedBox {
 
     @Get("/terminate-chain-code")
     def terminateChainCode(peerName: String, chainCodeName: String, chainCodeVersion: String): Either[String, Unit]
+
+    @Post("/update-known-hosts")
+    def updateKnownHosts(hosts: Array[KnownHostRecord]): Either[String, Unit]
 }

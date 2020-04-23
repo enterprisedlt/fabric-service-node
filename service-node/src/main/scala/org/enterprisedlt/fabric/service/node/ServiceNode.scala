@@ -59,7 +59,7 @@ object ServiceNode extends App {
     private val cryptoManager = new FileBasedCryptoManager(organizationConfig, "/opt/profile/crypto", AdminPassword)
     private val restEndpoint = new RestEndpoint(
         ServiceBindPort, ServiceExternalAddress, organizationConfig, cryptoManager,
-        hostsManager = new HostsManager("/opt/profile/hosts", organizationConfig),
+        hostsManager = new HostsManager("/opt/profile/hosts", ServiceExternalAddress.map(_.host)),
         ProfilePath, processManager, serviceState
     )
     //TODO: make web app optional, based on configuration

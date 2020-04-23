@@ -185,6 +185,7 @@ object Util {
     def codec: Gson = (new GsonBuilder).create()
 
     def createCodec: () => JsonServerCodec = () => new JsonServerCodec(codec)
+
     //=========================================================================
     def setupLogging(logLevel: String): Unit = {
         LoggerFactory
@@ -293,6 +294,21 @@ object Util {
     def futureDate(shift: Period): Date = Date.from(LocalDate.now().plus(shift).atStartOfDay(ZoneOffset.UTC).toInstant)
 
     def parsePeriod(periodString: String): Period = Period.parse(periodString)
+
+}
+
+object ConversionHelper {
+
+    implicit class EitherSeqOps[L, R](values: Iterable[Either[L, R]]) {
+
+        def fold2Either: Either[L, Iterable[R]] =
+            values.foldLeft[Either[L, Seq[R]]](Right(Seq.empty[R])) { case (r, i) =>
+                for {
+                    rv <- r
+                    iv <- i
+                } yield rv :+ iv
+            }
+    }
 
 }
 
