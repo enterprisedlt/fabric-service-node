@@ -22,14 +22,13 @@ BOX_MANAGER_ID=`docker run -d \
  -p ${BOX_MANAGER_BIND_PORT}:${BOX_MANAGER_BIND_PORT} \
  --volume=${PROFILE_PATH}/hosts:/etc/hosts \
  --volume=${PROFILE_PATH}:/opt/profile \
- --volume=${SERVICE_NODE_HOME}/target/assembly:/opt/service \
  --volume=/var/run/:/host/var/run/ \
  --network=${FABRIC_SERVICE_NETWORK} \
  --name ${BOX_MANAGER_NAME} \
  --log-driver json-file \
  --log-opt max-size=100m \
  --log-opt max-file=5 \
- enterprisedlt/fabric-service-node \
+ enterprisedlt/fabric-service-node:@FABRIC_SERVICE_NODE_VERSION@ \
  java -cp /opt/service/service-node.jar org.enterprisedlt.fabric.service.node.BoxManager`
 echo "Box manager ID: ${BOX_MANAGER_ID}"
 
