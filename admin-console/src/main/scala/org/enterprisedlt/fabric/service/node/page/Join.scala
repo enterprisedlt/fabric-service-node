@@ -31,6 +31,7 @@ object Join {
             JoinState(
                 JoinOptions.Defaults,
                 ComponentCandidate(
+                    box = "",
                     name = "",
                     port = 0,
                     componentType = ComponentTypes.head
@@ -89,7 +90,7 @@ object Join {
                 case "peer" =>
                     PeerNodes.modify { x =>
                         x :+ PeerConfig(
-                            box = "default", // TODO: box!
+                            box = componentCandidate.box,
                             name = s"${componentCandidate.name}.${g.orgFullName}",
                             port = componentCandidate.port,
                             couchDB = null
@@ -98,7 +99,7 @@ object Join {
                 case "orderer" =>
                     OsnNodes.modify { x =>
                         x :+ OSNConfig(
-                            box = "default", // TODO: box!
+                            box = componentCandidate.box, // TODO: box!
                             name = s"${componentCandidate.name}.${g.orgFullName}",
                             port = componentCandidate.port
                         )
@@ -132,7 +133,7 @@ object Join {
                 OsnNodes.modify { x =>
                     x ++ defaultOSNList.zipWithIndex.map { case (name, index) =>
                         OSNConfig(
-                            box = "default", // TODO: box!
+                            box = "default",
                             name = s"$name.${g.orgFullName}",
                             port = 6001 + index
                         )
@@ -142,7 +143,7 @@ object Join {
             val addDefaultPeer =
                 PeerNodes.modify { x =>
                     x :+ PeerConfig(
-                        box = "default", // TODO: box!
+                        box = "default",
                         name = s"peer0.${g.orgFullName}",
                         port = 6010,
                         couchDB = null
@@ -229,6 +230,13 @@ object Join {
                         <.div(^.className := "form-group row",
                             <.label(^.`for` := "componentType", ^.className := "col-sm-2 col-form-label", "Component type"),
                             <.div(^.className := "col-sm-10", renderComponentType(s))
+                        ),
+                        <.div(^.className := "form-group row",
+                            <.label(^.`for` := "componentBox", ^.className := "col-sm-2 col-form-label", "Component box"),
+                            <.div(^.className := "col-sm-10",
+                                <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentBox",
+                                    bind(s) := JoinState.componentCandidate / ComponentCandidate.box)
+                            )
                         ),
                         <.div(^.className := "form-group row",
                             <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "Component name"),

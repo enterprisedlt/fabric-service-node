@@ -9,8 +9,8 @@ import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.state.GlobalStateAware
-import org.scalajs.dom.html.{Div, Select}
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
+import org.scalajs.dom.html.{Div, Select}
 
 /**
  * @author Alexey Polubelov
@@ -28,6 +28,7 @@ object Boot {
             BootstrapState(
                 BootstrapOptions.Defaults,
                 ComponentCandidate(
+                    box = "",
                     name = "",
                     port = 0,
                     componentType = ComponentTypes.head
@@ -78,7 +79,7 @@ object Boot {
                 case "peer" =>
                     PeerNodes.modify { x =>
                         x :+ PeerConfig(
-                            box = "default", // TODO: box!
+                            box = componentCandidate.box,
                             name = s"${componentCandidate.name}.${g.orgFullName}",
                             port = componentCandidate.port,
                             couchDB = null
@@ -87,7 +88,7 @@ object Boot {
                 case "orderer" =>
                     OsnNodes.modify { x =>
                         x :+ OSNConfig(
-                            box = "default", // TODO: box!
+                            box = componentCandidate.box,
                             name = s"${componentCandidate.name}.${g.orgFullName}",
                             port = componentCandidate.port
                         )

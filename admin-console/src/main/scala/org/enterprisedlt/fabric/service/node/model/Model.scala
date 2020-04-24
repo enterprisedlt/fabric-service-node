@@ -63,6 +63,7 @@ object JoinOptions {
 }
 
 @Lenses case class ComponentCandidate(
+    box: String,
     name: String,
     port: Int,
     componentType: String
