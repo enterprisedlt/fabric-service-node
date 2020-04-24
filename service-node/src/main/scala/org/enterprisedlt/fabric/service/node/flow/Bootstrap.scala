@@ -50,7 +50,7 @@ object Bootstrap {
                   processManager.getBoxAddress(box).map {
                       _.map { boxAddress =>
                           KnownHostRecord(
-                              dnsName = s"$name.$organizationFullName",
+                              dnsName = name,
                               ipAddress = boxAddress
                           )
                       }

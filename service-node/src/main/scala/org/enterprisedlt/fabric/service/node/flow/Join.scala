@@ -50,7 +50,7 @@ object Join {
                   processManager.getBoxAddress(box).map {
                       _.map { boxAddress =>
                           KnownHostRecord(
-                              dnsName = s"$name.$organizationFullName",
+                              dnsName = name,
                               ipAddress = boxAddress
                           )
                       }
@@ -80,12 +80,7 @@ object Join {
                 mspId = organizationConfig.name,
                 name = organizationConfig.name,
                 memberNumber = 0,
-                knownHosts = externalAddress.map { address =>
-                    joinOptions.network.orderingNodes.map(osn => KnownHostRecord(address.host, osn.name)) ++
-                      joinOptions.network.peerNodes.map(peer => KnownHostRecord(address.host, peer.name)) :+
-                      KnownHostRecord(address.host, s"service.$organizationFullName")
-                }
-                  .getOrElse(Array.empty)
+                knownHosts = knownHosts
             ),
             organizationCertificates = OrganizationCertificates(
                 caCerts = Array(Util.readAsByteString(s"$cryptoPath/ca/ca.crt")).map(Util.base64Encode),
