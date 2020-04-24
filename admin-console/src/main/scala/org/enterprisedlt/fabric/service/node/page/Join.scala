@@ -188,6 +188,7 @@ object Join {
                                     <.tr(
                                         <.th(^.scope := "col", "#"),
                                         <.th(^.scope := "col", "Component type"),
+                                        <.th(^.scope := "col", "Component box"),
                                         <.th(^.scope := "col", "Component name"),
                                         <.th(^.scope := "col", "Port"),
                                         <.th(^.scope := "col", "Actions"),
@@ -198,6 +199,7 @@ object Join {
                                         <.tr(
                                             <.td(^.scope := "row", s"${index + 1}"),
                                             <.td("orderer"),
+                                            <.td(osnNode.box),
                                             <.td(osnNode.name),
                                             <.td(osnNode.port),
                                             <.td(
@@ -212,6 +214,7 @@ object Join {
                                         <.tr(
                                             <.td(^.scope := "row", s"${s.joinOptions.network.orderingNodes.length + index + 1}"),
                                             <.td("peer"),
+                                            <.td(peerNode.box),
                                             <.td(peerNode.name),
                                             <.td(peerNode.port),
                                             <.td(

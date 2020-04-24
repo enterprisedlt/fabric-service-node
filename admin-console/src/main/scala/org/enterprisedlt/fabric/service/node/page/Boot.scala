@@ -171,6 +171,7 @@ object Boot {
                                         <.tr(
                                             <.th(^.scope := "col", "#"),
                                             <.th(^.scope := "col", "Component type"),
+                                            <.th(^.scope := "col", "Component box"),
                                             <.th(^.scope := "col", "Component name"),
                                             <.th(^.scope := "col", "Port"),
                                             <.th(^.scope := "col", "Actions"),
@@ -181,6 +182,7 @@ object Boot {
                                             <.tr(
                                                 <.td(^.scope := "row", s"${index + 1}"),
                                                 <.td("orderer"),
+                                                <.td(osnNode.box),
                                                 <.td(osnNode.name),
                                                 <.td(osnNode.port),
                                                 <.td(
@@ -195,6 +197,7 @@ object Boot {
                                             <.tr(
                                                 <.td(^.scope := "row", s"${s.bootstrapOptions.network.orderingNodes.length + index + 1}"),
                                                 <.td("peer"),
+                                                <.td(peerNode.box),
                                                 <.td(peerNode.name),
                                                 <.td(peerNode.port),
                                                 <.td(
@@ -216,6 +219,13 @@ object Boot {
                                     //                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentType",
                                     //                                bind(s) := JoinState.componentCandidate / ComponentCandidate.componentType
                                     //                            )
+                                )
+                            ),
+                            <.div(^.className := "form-group row",
+                                <.label(^.`for` := "componentBox", ^.className := "col-sm-2 col-form-label", "Component box"),
+                                <.div(^.className := "col-sm-10",
+                                    <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentBox",
+                                        bind(s) := BootstrapState.componentCandidate / ComponentCandidate.box)
                                 )
                             ),
                             <.div(^.className := "form-group row",
