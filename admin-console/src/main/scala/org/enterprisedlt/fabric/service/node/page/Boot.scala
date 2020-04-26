@@ -8,13 +8,13 @@ import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.state.GlobalStateAware
+import org.enterprisedlt.fabric.service.node.state.{ApplyFor, GlobalStateAware}
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
 import org.scalajs.dom.html.{Div, Select}
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 object Boot {
 
     @Lenses case class BootstrapState(
@@ -47,6 +47,12 @@ object Boot {
         private val PeerNodes = BootstrapState.bootstrapOptions / BootstrapOptions.network / NetworkConfig.peerNodes
         private val OsnNodes = BootstrapState.bootstrapOptions / BootstrapOptions.network / NetworkConfig.orderingNodes
 
+
+        override def connectLocal: ConnectFunction = ApplyFor(
+            Seq(
+                ((BootstrapState.componentCandidate / ComponentCandidate.box).when(_.trim.isEmpty) <~~ GlobalState.boxes.when(_.nonEmpty)) (_.head)
+            )
+        )
 
         def goInit: Callback = Callback {
             Context.switchModeTo(InitMode)
@@ -96,6 +102,21 @@ object Boot {
                 case _ => throw new Exception("Unknown component type")
             }
         }
+
+        def renderBoxesList(s: BootstrapState, g: GlobalState): VdomTagOf[Select] = {
+            <.select(className := "form-control",
+                id := "componentType",
+                bind(s) := BootstrapState.componentCandidate / ComponentCandidate.box,
+                boxOptions(s, g)
+            )
+        }
+
+        def boxOptions(s: BootstrapState, g: GlobalState): TagMod = {
+            g.boxes.map { box =>
+                option((className := "selected").when(s.componentCandidate.box == box), box)
+            }.toTagMod
+        }
+
 
         def renderComponentType(s: BootstrapState): VdomTagOf[Select] = {
             <.select(className := "form-control",
@@ -223,9 +244,7 @@ object Boot {
                             ),
                             <.div(^.className := "form-group row",
                                 <.label(^.`for` := "componentBox", ^.className := "col-sm-2 col-form-label", "Component box"),
-                                <.div(^.className := "col-sm-10",
-                                    <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentBox",
-                                        bind(s) := BootstrapState.componentCandidate / ComponentCandidate.box)
+                                <.div(^.className := "col-sm-10", renderBoxesList(s, g)
                                 )
                             ),
                             <.div(^.className := "form-group row",

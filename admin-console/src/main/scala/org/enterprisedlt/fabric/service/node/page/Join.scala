@@ -8,10 +8,10 @@ import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.state.GlobalStateAware
+import org.enterprisedlt.fabric.service.node.state.{ApplyFor, GlobalStateAware}
+import org.enterprisedlt.fabric.service.node.util.DataFunction._
 import org.scalajs.dom.html.{Div, Select}
 import org.scalajs.dom.raw.{File, FileReader}
-import org.enterprisedlt.fabric.service.node.util.DataFunction._
 
 /**
  * @author Maxim Fedin
@@ -51,6 +51,13 @@ object Join {
 
         private val PeerNodes = JoinState.joinOptions / JoinOptions.network / NetworkConfig.peerNodes
         private val OsnNodes = JoinState.joinOptions / JoinOptions.network / NetworkConfig.orderingNodes
+
+
+        override def connectLocal: ConnectFunction = ApplyFor(
+            Seq(
+                ((JoinState.componentCandidate / ComponentCandidate.box).when(_.trim.isEmpty) <~~ GlobalState.boxes.when(_.nonEmpty)) (_.head)
+            )
+        )
 
         def goInit: Callback = Callback {
             Context.switchModeTo(InitMode)
@@ -107,6 +114,22 @@ object Join {
                 case _ => throw new Exception("Unknown component type")
             }
         }
+
+
+        def renderBoxesList(s: JoinState, g: GlobalState): VdomTagOf[Select] = {
+            <.select(className := "form-control",
+                id := "componentType",
+                bind(s) := JoinState.componentCandidate / ComponentCandidate.box,
+                boxOptions(s, g)
+            )
+        }
+
+        def boxOptions(s: JoinState, g: GlobalState): TagMod = {
+            g.boxes.map { box =>
+                option((className := "selected").when(s.componentCandidate.box == box), box)
+            }.toTagMod
+        }
+
 
         def renderComponentType(s: JoinState): VdomTagOf[Select] = {
             <.select(className := "form-control",
@@ -236,9 +259,7 @@ object Join {
                         ),
                         <.div(^.className := "form-group row",
                             <.label(^.`for` := "componentBox", ^.className := "col-sm-2 col-form-label", "Component box"),
-                            <.div(^.className := "col-sm-10",
-                                <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentBox",
-                                    bind(s) := JoinState.componentCandidate / ComponentCandidate.box)
+                            <.div(^.className := "col-sm-10", renderBoxesList(s, g)
                             )
                         ),
                         <.div(^.className := "form-group row",

@@ -18,9 +18,10 @@ object Context {
         for {
             state <- ServiceNodeRemote.getServiceState
             stateMode = getStateMode(state)
-            states: Option[(Array[String], Array[String], Array[Organization], Array[Contract])] <- if (stateMode == ReadyForUse) updateState else Future.successful(None)
+            states <- if (stateMode == ReadyForUse) updateState else Future.successful(None)
             orgFullName <- ServiceNodeRemote.getOrganisationFullName
             mspId <- ServiceNodeRemote.getOrganisationMspId
+            boxes <- ServiceNodeRemote.listBoxes
         } yield {
             State.update { _ =>
                 val (packages, channels, organizations, contracts) = states.getOrElse((Array.empty[String], Array.empty[String], Array.empty[Organization], Array.empty[Contract]))
@@ -31,7 +32,8 @@ object Context {
                     channels = channels,
                     packages = packages,
                     organizations = organizations,
-                    contracts = contracts
+                    contracts = contracts,
+                    boxes = boxes
                 )
             }
         }
@@ -77,7 +79,8 @@ case object Initial extends AppState
     channels: Array[String],
     packages: Array[String],
     organizations: Array[Organization],
-    contracts: Array[Contract]
+    contracts: Array[Contract],
+    boxes: Array[String]
 ) extends AppState
 
 sealed trait AppMode

@@ -3,12 +3,17 @@ package org.enterprisedlt.fabric.service.node.process
 import org.enterprisedlt.fabric.service.model.KnownHostRecord
 
 import scala.collection.concurrent.TrieMap
+import scala.util.Try
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 class ProcessManager {
     private val boxes = TrieMap.empty[String, ManagedBox]
+
+    def listBoxes: Either[String, Array[String]] = Try {
+        boxes.keys.toArray
+    }.toEither.left.map(_.getMessage)
 
     def getBoxAddress(box: String): Either[String, Option[String]] =
         boxes

@@ -36,6 +36,10 @@ class RestEndpoint(
 ) {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
+
+    @Get("/service/list-boxes")
+    def listBoxes: Either[String, Array[String]] = processManager.listBoxes
+
     @Get("/service/organization-msp-id")
     def organizationMspId(): Either[String, String] = Right(organizationConfig.name)
 
