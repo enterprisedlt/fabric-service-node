@@ -152,6 +152,11 @@ case class RegisterBoxManager(
     url: String
 )
 
+case class Box(
+    boxName: String,
+    boxAddress: String
+)
+
 object CCLanguage {
 
     object GoLang {

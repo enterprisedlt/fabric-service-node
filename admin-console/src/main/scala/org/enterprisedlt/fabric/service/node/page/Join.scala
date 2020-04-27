@@ -55,7 +55,7 @@ object Join {
 
         override def connectLocal: ConnectFunction = ApplyFor(
             Seq(
-                ((JoinState.componentCandidate / ComponentCandidate.box).when(_.trim.isEmpty) <~~ GlobalState.boxes.when(_.nonEmpty)) (_.head)
+                ((JoinState.componentCandidate / ComponentCandidate.box).when(_.trim.isEmpty) <~~ GlobalState.boxes.when(_.nonEmpty)) (_.head.boxName)
             )
         )
 
@@ -89,7 +89,7 @@ object Join {
             $.modState(
                 addComponent(joinState, g) andThen JoinState.componentCandidate.set(
                     JoinState.Defaults.componentCandidate.copy(
-                        box = g.boxes.head
+                        box = g.boxes.head.boxName
                     )
                 )
             )
@@ -128,7 +128,7 @@ object Join {
 
         def boxOptions(s: JoinState, g: GlobalState): TagMod = {
             g.boxes.map { box =>
-                option((className := "selected").when(s.componentCandidate.box == box), box)
+                option((className := "selected").when(s.componentCandidate.box == box.boxName), box.boxName)
             }.toTagMod
         }
 

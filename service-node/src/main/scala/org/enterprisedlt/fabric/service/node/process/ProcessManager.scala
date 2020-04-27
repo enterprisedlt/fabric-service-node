@@ -1,6 +1,7 @@
 package org.enterprisedlt.fabric.service.node.process
 
 import org.enterprisedlt.fabric.service.model.KnownHostRecord
+import org.enterprisedlt.fabric.service.node.model.Box
 
 import scala.collection.concurrent.TrieMap
 import scala.util.Try
@@ -9,64 +10,66 @@ import scala.util.Try
   * @author Alexey Polubelov
   */
 class ProcessManager {
-    private val boxes = TrieMap.empty[String, ManagedBox]
 
-    def listBoxes: Either[String, Array[String]] = Try {
-        boxes.keys.toArray
+    private val boxes: TrieMap[String, (ManagedBox, Box)] = TrieMap.empty[String, (ManagedBox, Box)]
+
+    def listBoxes: Either[String, Array[Box]] = Try {
+        boxes.values.toArray.map(_._2)
     }.toEither.left.map(_.getMessage)
 
     def getBoxAddress(box: String): Either[String, Option[String]] =
         boxes
           .get(box).toRight(s"Unknown box $box")
           .flatMap(
-              _.getBoxAddress
+              _._1.getBoxAddress
                 .map(addr =>
                     Option(addr).filter(_.nonEmpty)
                 )
           )
 
-    def registerBox(boxName: String, box: ManagedBox): Unit =
-        boxes += boxName -> box
+    def registerBox(box: ManagedBox, boxName: String, boxAddress: String): Unit =
+        boxes += boxName -> ((box, Box(boxName, boxAddress)))
+
 
     def startOrderingNode(box: String, request: StartOSNRequest): Either[String, String] =
         boxes
           .get(box).toRight(s"Unknown box $box")
-          .flatMap(_.startOrderingNode(request))
+          .flatMap(_._1.startOrderingNode(request))
 
 
     def startPeerNode(box: String, request: StartPeerRequest): Either[String, String] =
         boxes
           .get(box).toRight(s"Unknown box $box")
-          .flatMap(_.startPeerNode(request))
+          .flatMap(_._1.startPeerNode(request))
 
 
     def osnAwaitJoinedToRaft(box: String, osnFullName: String): Either[String, Unit] =
         boxes
           .get(box).toRight(s"Unknown box $box")
-          .flatMap(_.osnAwaitJoinedToRaft(osnFullName))
+          .flatMap(_._1.osnAwaitJoinedToRaft(osnFullName))
 
 
     def osnAwaitJoinedToChannel(box: String, osnFullName: String, channelName: String): Either[String, Unit] =
         boxes
           .get(box).toRight(s"Unknown box $box")
-          .flatMap(_.osnAwaitJoinedToChannel(osnFullName, channelName))
+          .flatMap(_._1.osnAwaitJoinedToChannel(osnFullName, channelName))
 
 
     def peerAwaitForBlock(box: String, peerFullName: String, blockNumber: Long): Either[String, Unit] =
         boxes
           .get(box).toRight(s"Unknown box $box")
-          .flatMap(_.peerAwaitForBlock(peerFullName, blockNumber))
+          .flatMap(_._1.peerAwaitForBlock(peerFullName, blockNumber))
 
 
     def terminateChainCode(box: String, peerName: String, chainCodeName: String, chainCodeVersion: String): Either[String, Unit] =
         boxes
           .get(box).toRight(s"Unknown box $box")
-          .flatMap(_.terminateChainCode(peerName, chainCodeName, chainCodeVersion))
+          .flatMap(_._1.terminateChainCode(peerName, chainCodeName, chainCodeVersion))
 
     def updateKnownHosts(hosts: Array[KnownHostRecord]): Either[String, Unit] = {
         import org.enterprisedlt.fabric.service.node.ConversionHelper._
         boxes.map { case (_, box) =>
-            box.updateKnownHosts(hosts)
+            box._1.updateKnownHosts(hosts)
         }.fold2Either.map(_ => ())
     }
 }

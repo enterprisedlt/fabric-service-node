@@ -278,3 +278,18 @@ object ContractJoinRequest {
 
     implicit val rw: RW[ContractJoinRequest] = macroRW
 }
+
+
+@Lenses case class Box(
+    boxName: String,
+    boxAddress: String
+)
+
+
+object Box {
+    val Defaults: Box = Box(
+        boxName = "",
+        boxAddress = ""
+    )
+    implicit val rw: RW[Box] = macroRW
+}

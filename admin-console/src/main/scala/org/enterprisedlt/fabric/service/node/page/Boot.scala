@@ -50,7 +50,7 @@ object Boot {
 
         override def connectLocal: ConnectFunction = ApplyFor(
             Seq(
-                ((BootstrapState.componentCandidate / ComponentCandidate.box).when(_.trim.isEmpty) <~~ GlobalState.boxes.when(_.nonEmpty)) (_.head)
+                ((BootstrapState.componentCandidate / ComponentCandidate.box).when(_.trim.isEmpty) <~~ GlobalState.boxes.when(_.nonEmpty)) (_.head.boxName)
             )
         )
 
@@ -79,7 +79,7 @@ object Boot {
             $.modState(
                 addComponent(bootstrapState, g) andThen BootstrapState.componentCandidate.set(
                     BootstrapState.Defaults.componentCandidate.copy(
-                        box = g.boxes.head
+                        box = g.boxes.head.boxName
                     )
                 )
             )
@@ -117,7 +117,7 @@ object Boot {
 
         def boxOptions(s: BootstrapState, g: GlobalState): TagMod = {
             g.boxes.map { box =>
-                option((className := "selected").when(s.componentCandidate.box == box), box)
+                option((className := "selected").when(s.componentCandidate.box == box.boxName), box.boxName)
             }.toTagMod
         }
 

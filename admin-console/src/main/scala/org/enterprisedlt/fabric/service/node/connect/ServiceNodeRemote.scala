@@ -58,10 +58,10 @@ object ServiceNodeRemote {
       .map(r => upickle.default.read[Array[String]](r))
 
 
-    def listBoxes: Future[Array[String]] = Ajax
+    def listBoxes: Future[Array[Box]] = Ajax
       .get("/service/list-boxes")
       .map(_.responseText)
-      .map(r => upickle.default.read[Array[String]](r))
+      .map(r => upickle.default.read[Array[Box]](r))
 
     def createContract(createContractRequest: CreateContractRequest): Future[Unit] = {
         val json = upickle.default.write(createContractRequest)

@@ -2,7 +2,7 @@ package org.enterprisedlt.fabric.service.node
 
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
-import org.enterprisedlt.fabric.service.node.model.{Contract, FabricServiceState, Organization, Status}
+import org.enterprisedlt.fabric.service.node.model.{Box, Contract, FabricServiceState, Organization, Status}
 import org.enterprisedlt.fabric.service.node.state.GlobalStateManager
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -80,7 +80,7 @@ case object Initial extends AppState
     packages: Array[String],
     organizations: Array[Organization],
     contracts: Array[Contract],
-    boxes: Array[String]
+    boxes: Array[Box]
 ) extends AppState
 
 sealed trait AppMode

@@ -22,8 +22,8 @@ import scala.collection.JavaConverters._
 import scala.util.Try
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 class RestEndpoint(
     bindPort: Int,
     externalAddress: Option[ExternalAddress],
@@ -38,7 +38,7 @@ class RestEndpoint(
 
 
     @Get("/service/list-boxes")
-    def listBoxes: Either[String, Array[String]] = processManager.listBoxes
+    def listBoxes: Either[String, Array[Box]] = processManager.listBoxes
 
     @Get("/service/organization-msp-id")
     def organizationMspId(): Either[String, String] = Right(organizationConfig.name)
@@ -216,7 +216,7 @@ class RestEndpoint(
     def registerBox(request: RegisterBoxManager): Either[String, String] = {
         Try {
             val box = JsonRestClient.create[ManagedBox](request.url)
-            processManager.registerBox(request.name, box)
+            processManager.registerBox(box, request.name, request.url)
             s"${request.name} registered"
         }.toEither.left.map(_.getMessage)
     }
