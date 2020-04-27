@@ -14,8 +14,8 @@ import org.scalajs.dom.html.{Div, Select}
 import org.scalajs.dom.raw.{File, FileReader}
 
 /**
- * @author Maxim Fedin
- */
+  * @author Maxim Fedin
+  */
 object Join {
 
     @Lenses case class JoinState(
@@ -87,7 +87,11 @@ object Join {
 
         def addNetworkComponent(joinState: JoinState, g: GlobalState): CallbackTo[Unit] = {
             $.modState(
-                addComponent(joinState, g) andThen JoinState.componentCandidate.set(JoinState.Defaults.componentCandidate)
+                addComponent(joinState, g) andThen JoinState.componentCandidate.set(
+                    JoinState.Defaults.componentCandidate.copy(
+                        box = g.boxes.head
+                    )
+                )
             )
         }
 

@@ -76,29 +76,33 @@ object Boot {
 
 
         def addNetworkComponent(bootstrapState: BootstrapState, g: GlobalState): CallbackTo[Unit] = {
-            $.modState(addComponent(bootstrapState, g) andThen BootstrapState.componentCandidate.set(BootstrapState.Defaults.componentCandidate))
+            $.modState(
+                addComponent(bootstrapState, g) andThen BootstrapState.componentCandidate.set(
+                    BootstrapState.Defaults.componentCandidate.copy(
+                        box = g.boxes.head
+                    )
+                )
+            )
         }
 
         private def addComponent(bootstrapState: BootstrapState, g: GlobalState): BootstrapState => BootstrapState = {
             val componentCandidate = bootstrapState.componentCandidate
             componentCandidate.componentType match {
                 case "peer" =>
-                    PeerNodes.modify { x =>
-                        x :+ PeerConfig(
-                            box = componentCandidate.box,
-                            name = s"${componentCandidate.name}.${g.orgFullName}",
-                            port = componentCandidate.port,
-                            couchDB = null
-                        )
-                    }
+                    val peerConfig = PeerConfig(
+                        box = componentCandidate.box,
+                        name = s"${componentCandidate.name}.${g.orgFullName}",
+                        port = componentCandidate.port,
+                        couchDB = null
+                    )
+                    PeerNodes.modify(x => x :+ peerConfig)
                 case "orderer" =>
-                    OsnNodes.modify { x =>
-                        x :+ OSNConfig(
-                            box = componentCandidate.box,
-                            name = s"${componentCandidate.name}.${g.orgFullName}",
-                            port = componentCandidate.port
-                        )
-                    }
+                    val osnConfig = OSNConfig(
+                        box = componentCandidate.box,
+                        name = s"${componentCandidate.name}.${g.orgFullName}",
+                        port = componentCandidate.port
+                    )
+                    OsnNodes.modify(x => x :+ osnConfig)
                 case _ => throw new Exception("Unknown component type")
             }
         }
