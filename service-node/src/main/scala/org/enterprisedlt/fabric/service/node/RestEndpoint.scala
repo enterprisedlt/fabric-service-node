@@ -12,9 +12,9 @@ import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.process.{ManagedBox, ProcessManager}
+import org.enterprisedlt.fabric.service.node.process.ProcessManager
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
-import org.enterprisedlt.fabric.service.node.rest.{Get, JsonRestClient, Post}
+import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
 import org.hyperledger.fabric.sdk.Peer
 import org.slf4j.LoggerFactory
 
@@ -22,8 +22,8 @@ import scala.collection.JavaConverters._
 import scala.util.Try
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 class RestEndpoint(
     bindPort: Int,
     externalAddress: Option[ExternalAddress],
@@ -213,13 +213,9 @@ class RestEndpoint(
     }
 
     @Post("/admin/register-box-manager")
-    def registerBox(request: RegisterBoxManager): Either[String, String] = {
-        Try {
-            val box = JsonRestClient.create[ManagedBox](request.url)
-            processManager.registerBox(box, request.name, request.url)
-            s"${request.name} registered"
-        }.toEither.left.map(_.getMessage)
-    }
+    def registerBox(request: RegisterBoxManager): Either[String, Box] =
+        processManager.registerBox(request.name, request.url)
+
 
     @Post("/admin/bootstrap")
     def bootstrap(bootstrapOptions: BootstrapOptions): Either[String, String] = {

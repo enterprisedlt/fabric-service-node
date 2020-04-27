@@ -40,26 +40,35 @@ object Bootstrap {
         }.toMap
 
         logger.info(s"[ $organizationFullName ] - Generating list of known hosts ...")
-        val knownHosts: Array[KnownHostRecord] =
+        import ConversionHelper._
+        val knownHosts =
             (
               bootstrapOptions.network.orderingNodes.map(osn => osn.name -> osn.box) ++
                 bootstrapOptions.network.peerNodes.map(peer => peer.name -> peer.box)
               )
               .map { case (name, box) =>
-                  processManager.getBoxAddress(box).map { boxAddress =>
-                      KnownHostRecord(
-                          dnsName = name,
-                          ipAddress = boxAddress
-                      )
+                  processManager.getBoxAddress(box).map {
+                      _.map { boxAddress =>
+                          KnownHostRecord(
+                              dnsName = name,
+                              ipAddress = boxAddress
+                          )
+                      }
                   }
-              }.flatMap { list =>
-                list.toSeq ++ externalAddress.map { serviceAddress =>
+              }.toSeq.fold2Either.map { list =>
+                (list.toSeq :+ externalAddress.map { serviceAddress =>
                     KnownHostRecord(
                         dnsName = s"service.$organizationFullName",
                         ipAddress = serviceAddress.host
                     )
-                }
+                }).flatten
             }
+              .left.map { msg =>
+                logger.error(s"Failed to obtain known hosts list: $msg")
+            }
+              .getOrElse {
+                  throw new Exception(s"Failed to get known hosts list")
+              }.toArray
 
         logger.info(s"List of known hosts: ${knownHosts.toSeq}")
         hostsManager.updateHosts(knownHosts)

@@ -2,32 +2,46 @@ package org.enterprisedlt.fabric.service.node.process
 
 import org.enterprisedlt.fabric.service.model.KnownHostRecord
 import org.enterprisedlt.fabric.service.node.model.Box
+import org.enterprisedlt.fabric.service.node.rest.JsonRestClient
+import org.slf4j.LoggerFactory
 
 import scala.collection.concurrent.TrieMap
 import scala.util.Try
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 class ProcessManager {
-
+    private val logger = LoggerFactory.getLogger(this.getClass)
     private val boxes: TrieMap[String, (ManagedBox, Box)] = TrieMap.empty[String, (ManagedBox, Box)]
 
     def listBoxes: Either[String, Array[Box]] = Try {
         boxes.values.toArray.map(_._2)
     }.toEither.left.map(_.getMessage)
 
-    def getBoxAddress(box: String): Option[String] =
-        Option(
-            boxes
-              .getOrElse(box, throw new Exception)
-              ._2.boxAddress
-        ).filter(_.trim.nonEmpty)
+    def getBoxAddress(box: String): Either[String, Option[String]] =
+        boxes
+          .get(box).toRight(s"Unknown box $box")
+          .map(_._2.boxAddress)
+          .map { boxAddress =>
+              Option(boxAddress).filter(_.nonEmpty)
+          }
 
-
-    def registerBox(box: ManagedBox, boxName: String, boxAddress: String): Unit = {
-        boxes += boxName -> ((box, Box(boxName, boxAddress)))
-    }
+    def registerBox(boxName: String, url: String): Either[String, Box] =
+        Try(JsonRestClient.create[ManagedBox](url))
+          .toEither.left
+          .map { ex =>
+              val msg = s"Failed to create BoxManager '$boxName' with URI '$url' : ${ex.getMessage}"
+              logger.warn(msg, ex)
+              msg
+          }
+          .flatMap { boxManager =>
+              boxManager.getBoxAddress.map { boxAddress =>
+                  val box = Box(boxName, boxAddress)
+                  boxes += boxName -> (boxManager, box)
+                  box
+              }
+          }
 
 
     def startOrderingNode(box: String, request: StartOSNRequest): Either[String, String] =

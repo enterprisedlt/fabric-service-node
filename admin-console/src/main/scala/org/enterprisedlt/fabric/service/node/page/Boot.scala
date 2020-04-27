@@ -13,8 +13,8 @@ import org.enterprisedlt.fabric.service.node.util.DataFunction._
 import org.scalajs.dom.html.{Div, Select}
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object Boot {
 
     @Lenses case class BootstrapState(
@@ -183,6 +183,38 @@ object Boot {
                                     )
                                 )
                             ),
+                            <.hr(),
+                            <.span(<.br()),
+                            <.div(^.className := "form-group row",
+                                <.table(^.className := "table table-hover table-sm",
+                                    <.thead(
+                                        <.tr(
+                                            <.th(^.scope := "col", "#"),
+                                            <.th(^.scope := "col", "Name"),
+                                            <.th(^.scope := "col", "Address"),
+                                            //                                            <.th(^.scope := "col", "Actions"),
+                                        )
+                                    ),
+                                    <.tbody(
+                                        g.boxes.zipWithIndex.map { case (box, index) =>
+                                            <.tr(
+                                                <.td(^.scope := "row", s"${index + 1}"),
+                                                <.td(box.boxName),
+                                                <.td(
+                                                    if (box.boxAddress.trim.nonEmpty) box.boxAddress else "local"
+                                                ),
+                                                //                                                <.td(
+                                                //                                                    <.button(
+                                                //                                                        ^.className := "btn btn-primary",
+                                                //                                                        "Remove",
+                                                //                                                        ^.onClick --> deleteComponent(osnNode))
+                                                //                                                )
+                                            )
+                                        }.toTagMod,
+                                    )
+                                )
+                            ),
+                            <.span(<.br()),
                             <.div(^.className := "form-group row",
                                 <.button(
                                     ^.className := "btn btn-primary",
@@ -195,9 +227,9 @@ object Boot {
                                     <.thead(
                                         <.tr(
                                             <.th(^.scope := "col", "#"),
-                                            <.th(^.scope := "col", "Component type"),
-                                            <.th(^.scope := "col", "Component box"),
-                                            <.th(^.scope := "col", "Component name"),
+                                            <.th(^.scope := "col", "Type"),
+                                            <.th(^.scope := "col", "Box"),
+                                            <.th(^.scope := "col", "Name"),
                                             <.th(^.scope := "col", "Port"),
                                             <.th(^.scope := "col", "Actions"),
                                         )
@@ -206,7 +238,7 @@ object Boot {
                                         s.bootstrapOptions.network.orderingNodes.zipWithIndex.map { case (osnNode, index) =>
                                             <.tr(
                                                 <.td(^.scope := "row", s"${index + 1}"),
-                                                <.td("orderer"),
+                                                <.td("Orderer"),
                                                 <.td(osnNode.box),
                                                 <.td(osnNode.name),
                                                 <.td(osnNode.port),
@@ -221,7 +253,7 @@ object Boot {
                                         s.bootstrapOptions.network.peerNodes.zipWithIndex.map { case (peerNode, index) =>
                                             <.tr(
                                                 <.td(^.scope := "row", s"${s.bootstrapOptions.network.orderingNodes.length + index + 1}"),
-                                                <.td("peer"),
+                                                <.td("Peer"),
                                                 <.td(peerNode.box),
                                                 <.td(peerNode.name),
                                                 <.td(peerNode.port),
