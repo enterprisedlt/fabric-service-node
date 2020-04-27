@@ -95,14 +95,14 @@ object Boot {
                         port = componentCandidate.port,
                         couchDB = null
                     )
-                    PeerNodes.modify(x => x :+ peerConfig)
+                    PeerNodes.modify(_ :+ peerConfig)
                 case "orderer" =>
                     val osnConfig = OSNConfig(
                         box = componentCandidate.box,
                         name = s"${componentCandidate.name}.${g.orgFullName}",
                         port = componentCandidate.port
                     )
-                    OsnNodes.modify(x => x :+ osnConfig)
+                    OsnNodes.modify(_ :+ osnConfig)
                 case _ => throw new Exception("Unknown component type")
             }
         }

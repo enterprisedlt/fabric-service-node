@@ -99,22 +99,20 @@ object Join {
             val componentCandidate = joinState.componentCandidate
             componentCandidate.componentType match {
                 case "peer" =>
-                    PeerNodes.modify { x =>
-                        x :+ PeerConfig(
-                            box = componentCandidate.box,
-                            name = s"${componentCandidate.name}.${g.orgFullName}",
-                            port = componentCandidate.port,
-                            couchDB = null
-                        )
-                    }
+                    val peerConfig = PeerConfig(
+                        box = componentCandidate.box,
+                        name = s"${componentCandidate.name}.${g.orgFullName}",
+                        port = componentCandidate.port,
+                        couchDB = null
+                    )
+                    PeerNodes.modify(_ :+ peerConfig)
                 case "orderer" =>
-                    OsnNodes.modify { x =>
-                        x :+ OSNConfig(
-                            box = componentCandidate.box, // TODO: box!
-                            name = s"${componentCandidate.name}.${g.orgFullName}",
-                            port = componentCandidate.port
-                        )
-                    }
+                    val osnConfig = OSNConfig(
+                        box = componentCandidate.box,
+                        name = s"${componentCandidate.name}.${g.orgFullName}",
+                        port = componentCandidate.port
+                    )
+                    OsnNodes.modify(_ :+ osnConfig)
                 case _ => throw new Exception("Unknown component type")
             }
         }
