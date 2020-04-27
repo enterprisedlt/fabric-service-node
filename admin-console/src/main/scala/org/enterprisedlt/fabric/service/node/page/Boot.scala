@@ -117,7 +117,7 @@ object Boot {
 
         def boxOptions(s: BootstrapState, g: GlobalState): TagMod = {
             g.boxes.map { box =>
-                option((className := "selected").when(s.componentCandidate.box == box.boxName), box.boxName)
+                option((className := "selected").when(s.componentCandidate.box == box.boxName), s"${box.boxName} - ${box.boxAddress}")
             }.toTagMod
         }
 

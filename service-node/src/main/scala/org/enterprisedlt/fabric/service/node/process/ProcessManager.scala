@@ -17,18 +17,17 @@ class ProcessManager {
         boxes.values.toArray.map(_._2)
     }.toEither.left.map(_.getMessage)
 
-    def getBoxAddress(box: String): Either[String, Option[String]] =
-        boxes
-          .get(box).toRight(s"Unknown box $box")
-          .flatMap(
-              _._1.getBoxAddress
-                .map(addr =>
-                    Option(addr).filter(_.nonEmpty)
-                )
-          )
+    def getBoxAddress(box: String): Option[String] =
+        Option(
+            boxes
+              .getOrElse(box, throw new Exception)
+              ._2.boxAddress
+        ).filter(_.trim.nonEmpty)
 
-    def registerBox(box: ManagedBox, boxName: String, boxAddress: String): Unit =
+
+    def registerBox(box: ManagedBox, boxName: String, boxAddress: String): Unit = {
         boxes += boxName -> ((box, Box(boxName, boxAddress)))
+    }
 
 
     def startOrderingNode(box: String, request: StartOSNRequest): Either[String, String] =
