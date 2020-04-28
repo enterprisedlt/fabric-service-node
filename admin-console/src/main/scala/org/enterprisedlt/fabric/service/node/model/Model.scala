@@ -293,3 +293,17 @@ object Box {
     )
     implicit val rw: RW[Box] = macroRW
 }
+
+@Lenses case class RegisterBoxManager(
+     name : String,
+     url : String
+)
+
+
+object RegisterBoxManager {
+    val Defaults: RegisterBoxManager = RegisterBoxManager(
+        name = "",
+        url = ""
+    )
+    implicit val rw: RW[RegisterBoxManager] = macroRW
+}

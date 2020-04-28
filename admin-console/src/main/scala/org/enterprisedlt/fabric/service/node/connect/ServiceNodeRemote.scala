@@ -92,4 +92,13 @@ object ServiceNodeRemote {
         Ajax.post("/admin/contract-join", json)
           .map(_.responseText)
     }
+
+
+    def registerBox(request: RegisterBoxManager): Future[Box] = {
+        val json = upickle.default.write(request)
+        Ajax.post("/admin/register-box-manager", json)
+        .map(_.responseText)
+        .map(r => upickle.default.read[Box](r))
+
+    }
 }

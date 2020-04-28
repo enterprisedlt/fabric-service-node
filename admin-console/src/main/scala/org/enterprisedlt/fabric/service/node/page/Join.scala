@@ -21,6 +21,7 @@ object Join {
     @Lenses case class JoinState(
         joinOptions: JoinOptions,
         componentCandidate: ComponentCandidate,
+        boxCandidate: RegisterBoxManager,
         joinFile: File,
         joinFileName: String,
     )
@@ -36,6 +37,7 @@ object Join {
                     port = 0,
                     componentType = ComponentTypes.head
                 ),
+                RegisterBoxManager.Defaults,
                 null,
                 "Choose file"
             )
@@ -73,6 +75,11 @@ object Join {
             }
             reader.readAsText(joinState.joinFile)
         }
+
+        def addBox(boxCandidate: RegisterBoxManager): Callback = Callback {
+            ServiceNodeRemote.registerBox(boxCandidate)
+        }
+
 
         def deleteComponent(componentConfig: ComponentConfig): CallbackTo[Unit] = {
             val state = componentConfig match {
@@ -223,6 +230,28 @@ object Join {
                                 )
                             )
                         ),
+                        <.div(^.className := "form-group row",
+                            <.label(^.`for` := "boxName", ^.className := "col-sm-2 col-form-label", "Box name"),
+                            <.div(^.className := "col-sm-10",
+                                <.input(^.`type` := "text", ^.className := "form-control", ^.id := "boxName",
+                                    bind(s) := JoinState.boxCandidate / RegisterBoxManager.name)
+                            )
+                        ),
+                        <.div(^.className := "form-group row",
+                            <.label(^.`for` := "boxAddress", ^.className := "col-sm-2 col-form-label", "Box address"),
+                            <.div(^.className := "col-sm-10",
+                                <.input(^.`type` := "text", ^.className := "form-control", ^.id := "boxAddress",
+                                    bind(s) := JoinState.boxCandidate / RegisterBoxManager.url)
+                            )
+                        ),
+                        <.div(^.className := "form-group row",
+                            <.button(
+                                ^.className := "btn btn-primary",
+                                "Add box",
+                                ^.onClick --> addBox(s.boxCandidate)
+                            )
+                        ),
+
                         <.hr(),
                         <.h5("Network components:"),
                         <.div(^.className := "form-group row",

@@ -13,13 +13,14 @@ import org.enterprisedlt.fabric.service.node.util.DataFunction._
 import org.scalajs.dom.html.{Div, Select}
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 object Boot {
 
     @Lenses case class BootstrapState(
         bootstrapOptions: BootstrapOptions,
-        componentCandidate: ComponentCandidate
+        componentCandidate: ComponentCandidate,
+        boxCandidate: RegisterBoxManager
     )
 
     object BootstrapState {
@@ -32,7 +33,8 @@ object Boot {
                     name = "",
                     port = 0,
                     componentType = ComponentTypes.head
-                )
+                ),
+                RegisterBoxManager.Defaults
             )
     }
 
@@ -63,6 +65,9 @@ object Boot {
             Context.switchModeTo(BootstrapInProgress)
         }
 
+        def addBox(boxCandidate: RegisterBoxManager): Callback = Callback {
+            ServiceNodeRemote.registerBox(boxCandidate)
+        }
 
         def deleteComponent(componentConfig: ComponentConfig): CallbackTo[Unit] = {
             val state = componentConfig match {
@@ -206,6 +211,27 @@ object Boot {
                                             )
                                         }.toTagMod,
                                     )
+                                )
+                            ),
+                            <.div(^.className := "form-group row",
+                                <.label(^.`for` := "boxName", ^.className := "col-sm-2 col-form-label", "Box name"),
+                                <.div(^.className := "col-sm-10",
+                                    <.input(^.`type` := "text", ^.className := "form-control", ^.id := "boxName",
+                                        bind(s) := BootstrapState.boxCandidate / RegisterBoxManager.name)
+                                )
+                            ),
+                            <.div(^.className := "form-group row",
+                                <.label(^.`for` := "boxAddress", ^.className := "col-sm-2 col-form-label", "Box address"),
+                                <.div(^.className := "col-sm-10",
+                                    <.input(^.`type` := "text", ^.className := "form-control", ^.id := "boxAddress",
+                                        bind(s) := BootstrapState.boxCandidate / RegisterBoxManager.url)
+                                )
+                            ),
+                            <.div(^.className := "form-group row",
+                                <.button(
+                                    ^.className := "btn btn-primary",
+                                    "Add box",
+                                    ^.onClick --> addBox(s.boxCandidate)
                                 )
                             ),
                             <.span(<.br()),
