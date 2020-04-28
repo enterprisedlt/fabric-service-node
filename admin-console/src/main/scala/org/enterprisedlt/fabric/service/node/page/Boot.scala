@@ -80,6 +80,10 @@ object Boot {
         }
 
 
+        def refresh(globalState: GlobalState): Callback = Callback {
+            Context.refreshState(globalState, BootstrapMode)
+        }
+
         def addNetworkComponent(bootstrapState: BootstrapState, g: GlobalState): CallbackTo[Unit] = {
             $.modState(
                 addComponent(bootstrapState, g) andThen BootstrapState.componentCandidate.set(
@@ -178,6 +182,13 @@ object Boot {
                             <.h1("Bootstrap new network")
                         ),
                         <.div(^.className := "card-body aut-form-card",
+                            <.div(^.className := "form-group row",
+                                <.button(
+                                    ^.className := "btn btn-primary",
+                                    "Refresh",
+                                    ^.onClick --> refresh(g)
+                                )
+                            ),
                             <.h4("Network settings:"),
                             <.span(<.br()),
                             <.div(^.className := "form-group row",
