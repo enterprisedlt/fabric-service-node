@@ -168,12 +168,12 @@ object Boot {
                     <.div(^.className := "card aut-form-card",
                         <.div(^.className := "card-header text-white bg-primary",
                             <.div(^.float.right,
-                                <.h5(g.orgFullName)
+                                <.h4(g.orgFullName)
                             ),
                             <.h1("Bootstrap new network")
                         ),
                         <.div(^.className := "card-body aut-form-card",
-                            <.h5("Network settings:"),
+                            <.h4("Network settings:"),
                             <.span(<.br()),
                             <.div(^.className := "form-group row",
                                 <.label(^.className := "col-sm-2 col-form-label", "Network name"),
@@ -184,7 +184,7 @@ object Boot {
                                 )
                             ),
                             <.hr(),
-                            <.span(<.br()),
+                            <.h5("Boxes:"),
                             <.div(^.className := "form-group row",
                                 <.table(^.className := "table table-hover table-sm",
                                     <.thead(
@@ -203,25 +203,13 @@ object Boot {
                                                 <.td(
                                                     if (box.boxAddress.trim.nonEmpty) box.boxAddress else "local"
                                                 ),
-                                                //                                                <.td(
-                                                //                                                    <.button(
-                                                //                                                        ^.className := "btn btn-primary",
-                                                //                                                        "Remove",
-                                                //                                                        ^.onClick --> deleteComponent(osnNode))
-                                                //                                                )
                                             )
                                         }.toTagMod,
                                     )
                                 )
                             ),
                             <.span(<.br()),
-                            <.div(^.className := "form-group row",
-                                <.button(
-                                    ^.className := "btn btn-primary",
-                                    "Add defaults",
-                                    ^.onClick --> populateWithDefault(g)
-                                )
-                            ),
+                            <.h5("Network components:"),
                             <.div(^.className := "form-group row",
                                 <.table(^.className := "table table-hover table-sm",
                                     <.thead(
@@ -302,6 +290,13 @@ object Boot {
                                     ^.className := "btn btn-primary",
                                     "Add component",
                                     ^.onClick --> addNetworkComponent(s, g)
+                                )
+                            ),
+                            <.div(^.className := "form-group row",
+                                <.button(
+                                    ^.className := "btn btn-primary",
+                                    "Populate with default components",
+                                    ^.onClick --> populateWithDefault(g)
                                 )
                             ),
                             <.hr(),

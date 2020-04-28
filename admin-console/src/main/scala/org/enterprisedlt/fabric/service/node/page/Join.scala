@@ -188,7 +188,7 @@ object Join {
                     ),
                     <.hr(),
                     <.div(^.className := "card-body aut-form-card",
-                        <.h5("Join settings"),
+                        <.h4("Join settings"),
                         <.div(^.className := "form-group row",
                             <.label(^.className := "col-sm-2 col-form-label", "Invite:"),
                             <.div(^.className := "input-group col-sm-10",
@@ -198,15 +198,33 @@ object Join {
                                 )
                             )
                         ),
-                        <.hr(),
-                        <.h5("Network settings"),
+                        <.h4("Network settings"),
+                        <.h5("Boxes:"),
                         <.div(^.className := "form-group row",
-                            <.button(
-                                ^.className := "btn btn-primary",
-                                "Add defaults",
-                                ^.onClick --> populateWithDefault(g)
+                            <.table(^.className := "table table-hover table-sm",
+                                <.thead(
+                                    <.tr(
+                                        <.th(^.scope := "col", "#"),
+                                        <.th(^.scope := "col", "Name"),
+                                        <.th(^.scope := "col", "Address"),
+                                        //                                            <.th(^.scope := "col", "Actions"),
+                                    )
+                                ),
+                                <.tbody(
+                                    g.boxes.zipWithIndex.map { case (box, index) =>
+                                        <.tr(
+                                            <.td(^.scope := "row", s"${index + 1}"),
+                                            <.td(box.boxName),
+                                            <.td(
+                                                if (box.boxAddress.trim.nonEmpty) box.boxAddress else "local"
+                                            ),
+                                        )
+                                    }.toTagMod,
+                                )
                             )
                         ),
+                        <.hr(),
+                        <.h5("Network components:"),
                         <.div(^.className := "form-group row",
                             <.table(^.className := "table table-hover table-sm",
                                 <.thead(
@@ -283,6 +301,13 @@ object Join {
                                 ^.className := "btn btn-primary",
                                 "Add component",
                                 ^.onClick --> addNetworkComponent(s, g)
+                            )
+                        ),
+                        <.div(^.className := "form-group row",
+                            <.button(
+                                ^.className := "btn btn-primary",
+                                "Populate with default components",
+                                ^.onClick --> populateWithDefault(g)
                             )
                         ),
                         <.hr(),
