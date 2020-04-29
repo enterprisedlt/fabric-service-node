@@ -228,22 +228,29 @@ object Join {
                     ^.onClick --> refresh(g)
                 )
             )
-
         }
+
+        def footerButtons(s:JoinState) = {
+            <.div(^.className := "form-group mt-1",
+                <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
+                <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goJoinProgress(s), "Join")
+            )
+        }
+
 
         def renderWithGlobal(s: JoinState, global: AppState): VdomTagOf[Div] = global match {
             case g: GlobalState =>
                 <.div(
                     <.div(^.className := "card aut-form-card",
                         <.div(^.className := "card-header text-white bg-primary",
+                            <.div(^.float.right,
+                                <.h4(g.orgFullName)
+                            ),
                             <.h1("Join to new network")
                         ),
-                        <.hr(),
                         renderTabs(
-                            <.div(^.float.right,
-                                <.h5(g.orgFullName)
-                            ),
-                            ("join", "Bootstrap",
+                            <.div(^.float.right),
+                            ("join", "Join",
                               <.div(
                                   <.div(^.className := "card aut-form-card",
                                       <.div(^.className := "card-body aut-form-card",
@@ -347,10 +354,7 @@ object Join {
                                               )
                                           ),
                                           <.hr(),
-                                          <.div(^.className := "form-group mt-1",
-                                              <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
-                                              <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goJoinProgress(s), "Join")
-                                          )
+                                          footerButtons(s)
                                       )
                                   )
                               )
@@ -360,6 +364,8 @@ object Join {
                                   <.div(^.className := "card-body aut-form-card",
                                       refreshButton(g),
                                       Boxes(),
+                                      <.hr(),
+                                      footerButtons(s)
                                   )
                               )
                             )

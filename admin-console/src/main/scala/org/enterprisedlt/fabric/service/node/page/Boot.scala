@@ -244,7 +244,6 @@ object Boot {
                                                   )
                                               )
                                           ),
-                                          <.hr(),
                                           <.span(<.br()),
                                           <.h5("Network components:"),
                                           <.div(^.className := "form-group row",
@@ -437,7 +436,6 @@ object Boot {
                                   )
                               )
                             ),
-
                             ("box", "Boxes",
                               <.div(^.className := "card aut-form-card",
                                   <.div(^.className := "card-body aut-form-card",
