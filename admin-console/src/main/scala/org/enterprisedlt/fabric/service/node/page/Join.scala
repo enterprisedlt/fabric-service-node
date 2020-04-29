@@ -356,9 +356,11 @@ object Join {
                               )
                             ),
                             ("box", "Boxes",
-                              <.div(^.className := "card-body aut-form-card",
-                                  refreshButton(g),
-                                  Boxes(),
+                              <.div(^.className := "card aut-form-card",
+                                  <.div(^.className := "card-body aut-form-card",
+                                      refreshButton(g),
+                                      Boxes(),
+                                  )
                               )
                             )
                         )

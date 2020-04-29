@@ -217,6 +217,7 @@ object Boot {
                         <.div(^.className := "card-header text-white bg-primary",
                             <.h1("Bootstrap to new network")
                         ),
+                        <.hr(),
                         renderTabs(
                             <.div(^.float.right,
                                 <.h5(g.orgFullName)
