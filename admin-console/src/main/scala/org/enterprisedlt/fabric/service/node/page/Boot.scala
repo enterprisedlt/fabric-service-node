@@ -210,19 +210,26 @@ object Boot {
 
         }
 
+        def footerButtons(s:BootstrapState) = {
+            <.div(^.className := "form-group mt-1",
+                <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
+                <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goBootProgress(s.bootstrapOptions), "Bootstrap")
+            )
+        }
+
         def renderWithGlobal(s: BootstrapState, global: AppState): VdomTagOf[Div] = global match {
             case g: GlobalState =>
                 <.div(
                     <.div(^.className := "card aut-form-card",
                         <.div(^.className := "card-header text-white bg-primary",
-                            <.h1("Bootstrap to new network")
-                        ),
-                        <.hr(),
-                        renderTabs(
                             <.div(^.float.right,
-                                <.h5(g.orgFullName)
+                                <.h4(g.orgFullName)
                             ),
-                            ("bootstrap", "Bootstrap",
+                            <.h1("Bootstrap new network")
+                        ),
+                        renderTabs(
+                            <.div(^.float.right),
+                            ("components", "Network components",
                               <.div(
                                   <.div(^.className := "card aut-form-card",
                                       <.div(^.className := "card-body aut-form-card",
@@ -238,7 +245,6 @@ object Boot {
                                               )
                                           ),
                                           <.hr(),
-
                                           <.span(<.br()),
                                           <.h5("Network components:"),
                                           <.div(^.className := "form-group row",
@@ -330,97 +336,116 @@ object Boot {
                                                   ^.onClick --> populateWithDefault(g)
                                               )
                                           ),
-                                          <.hr(),
-                                          <.h5("Block settings:"),
-                                          <.span(<.br()),
-                                          <.div(^.className := "form-group row",
-                                              <.label(^.className := "col-sm-2 col-form-label", "Batch timeout"),
-                                              <.div(^.className := "col-sm-10",
-                                                  <.input(^.`type` := "text", ^.className := "form-control",
-                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.block / BlockConfig.batchTimeOut
-                                                  )
+                                      ),
+                                      <.hr(),
+                                      footerButtons(s)
+                                  )
+                              )
+                            ),
+
+                            ("block", "Block settings",
+                              <.div(^.className := "card aut-form-card",
+                                  <.div(^.className := "card-body aut-form-card",
+                                      refreshButton(g),
+                                      <.h5("Block settings:"),
+                                      <.span(<.br()),
+                                      <.div(^.className := "form-group row",
+                                          <.label(^.className := "col-sm-2 col-form-label", "Batch timeout"),
+                                          <.div(^.className := "col-sm-10",
+                                              <.input(^.`type` := "text", ^.className := "form-control",
+                                                  bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.block / BlockConfig.batchTimeOut
                                               )
-                                          ),
-                                          <.div(^.className := "form-group row",
-                                              <.label(^.className := "col-sm-2 col-form-label", "Max messages count"),
-                                              <.div(^.className := "col-sm-10",
-                                                  <.input(^.`type` := "text", ^.className := "form-control",
-                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.block / BlockConfig.maxMessageCount
-                                                  )
+                                          )
+                                      ),
+                                      <.div(^.className := "form-group row",
+                                          <.label(^.className := "col-sm-2 col-form-label", "Max messages count"),
+                                          <.div(^.className := "col-sm-10",
+                                              <.input(^.`type` := "text", ^.className := "form-control",
+                                                  bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.block / BlockConfig.maxMessageCount
                                               )
-                                          ),
-                                          <.div(^.className := "form-group row",
-                                              <.label(^.className := "col-sm-2 col-form-label", "Absolute max bytes"),
-                                              <.div(^.className := "col-sm-10",
-                                                  <.input(^.`type` := "text", ^.className := "form-control",
-                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.block / BlockConfig.absoluteMaxBytes
-                                                  )
+                                          )
+                                      ),
+                                      <.div(^.className := "form-group row",
+                                          <.label(^.className := "col-sm-2 col-form-label", "Absolute max bytes"),
+                                          <.div(^.className := "col-sm-10",
+                                              <.input(^.`type` := "text", ^.className := "form-control",
+                                                  bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.block / BlockConfig.absoluteMaxBytes
                                               )
-                                          ),
-                                          <.div(^.className := "form-group row",
-                                              <.label(^.className := "col-sm-2 col-form-label", "Preferred max bytes"),
-                                              <.div(^.className := "col-sm-10",
-                                                  <.input(^.`type` := "text", ^.className := "form-control",
-                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.block / BlockConfig.preferredMaxBytes
-                                                  )
-                                              )
-                                          ),
-                                          <.hr(),
-                                          <.h5("Raft settings:"),
-                                          <.span(<.br()),
-                                          <.div(^.className := "form-group row",
-                                              <.label(^.className := "col-sm-2 col-form-label", "Tick interval"),
-                                              <.div(^.className := "col-sm-10",
-                                                  <.input(^.`type` := "text", ^.className := "form-control",
-                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.tickInterval
-                                                  )
-                                              )
-                                          ),
-                                          <.div(^.className := "form-group row",
-                                              <.label(^.className := "col-sm-2 col-form-label", "Election tick"),
-                                              <.div(^.className := "col-sm-10",
-                                                  <.input(^.`type` := "text", ^.className := "form-control",
-                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.electionTick
-                                                  )
-                                              )
-                                          ),
-                                          <.div(^.className := "form-group row",
-                                              <.label(^.className := "col-sm-2 col-form-label", "Heartbeat tick"),
-                                              <.div(^.className := "col-sm-10",
-                                                  <.input(^.`type` := "text", ^.className := "form-control",
-                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.heartbeatTick
-                                                  )
-                                              )
-                                          ),
-                                          <.div(^.className := "form-group row",
-                                              <.label(^.className := "col-sm-2 col-form-label", "Max inflight blocks"),
-                                              <.div(^.className := "col-sm-10",
-                                                  <.input(^.`type` := "text", ^.className := "form-control",
-                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.maxInflightBlocks
-                                                  )
-                                              )
-                                          ),
-                                          <.div(^.className := "form-group row",
-                                              <.label(^.className := "col-sm-2 col-form-label", "Snapshot interval size"),
-                                              <.div(^.className := "col-sm-10",
-                                                  <.input(^.`type` := "text", ^.className := "form-control",
-                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.snapshotIntervalSize
-                                                  )
+                                          )
+                                      ),
+                                      <.div(^.className := "form-group row",
+                                          <.label(^.className := "col-sm-2 col-form-label", "Preferred max bytes"),
+                                          <.div(^.className := "col-sm-10",
+                                              <.input(^.`type` := "text", ^.className := "form-control",
+                                                  bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.block / BlockConfig.preferredMaxBytes
                                               )
                                           )
                                       ),
                                       <.hr(),
-                                      <.div(^.className := "form-group mt-1",
-                                          <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
-                                          <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goBootProgress(s.bootstrapOptions), "Bootstrap")
-                                      )
+                                      footerButtons(s)
                                   )
                               )
                             ),
+                            ("raft", "Raft settings",
+                              <.div(^.className := "card aut-form-card",
+                                  <.div(^.className := "card-body aut-form-card",
+                                      refreshButton(g),
+                                      <.h5("Raft settings:"),
+                                      <.span(<.br()),
+                                      <.div(^.className := "form-group row",
+                                          <.label(^.className := "col-sm-2 col-form-label", "Tick interval"),
+                                          <.div(^.className := "col-sm-10",
+                                              <.input(^.`type` := "text", ^.className := "form-control",
+                                                  bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.tickInterval
+                                              )
+                                          )
+                                      ),
+                                      <.div(^.className := "form-group row",
+                                          <.label(^.className := "col-sm-2 col-form-label", "Election tick"),
+                                          <.div(^.className := "col-sm-10",
+                                              <.input(^.`type` := "text", ^.className := "form-control",
+                                                  bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.electionTick
+                                              )
+                                          )
+                                      ),
+                                      <.div(^.className := "form-group row",
+                                          <.label(^.className := "col-sm-2 col-form-label", "Heartbeat tick"),
+                                          <.div(^.className := "col-sm-10",
+                                              <.input(^.`type` := "text", ^.className := "form-control",
+                                                  bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.heartbeatTick
+                                              )
+                                          )
+                                      ),
+                                      <.div(^.className := "form-group row",
+                                          <.label(^.className := "col-sm-2 col-form-label", "Max inflight blocks"),
+                                          <.div(^.className := "col-sm-10",
+                                              <.input(^.`type` := "text", ^.className := "form-control",
+                                                  bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.maxInflightBlocks
+                                              )
+                                          )
+                                      ),
+                                      <.div(^.className := "form-group row",
+                                          <.label(^.className := "col-sm-2 col-form-label", "Snapshot interval size"),
+                                          <.div(^.className := "col-sm-10",
+                                              <.input(^.`type` := "text", ^.className := "form-control",
+                                                  bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.snapshotIntervalSize
+                                              )
+                                          )
+                                      ),
+                                      <.hr(),
+                                      footerButtons(s)
+                                  )
+                              )
+                            ),
+
                             ("box", "Boxes",
-                              <.div(^.className := "card-body aut-form-card",
-                                  refreshButton(g),
-                                  Boxes(),
+                              <.div(^.className := "card aut-form-card",
+                                  <.div(^.className := "card-body aut-form-card",
+                                      refreshButton(g),
+                                      Boxes(),
+                                      <.hr(),
+                                      footerButtons(s)
+                                  )
                               )
                             )
                         )
@@ -433,6 +458,7 @@ object Boot {
     }
 
     def apply(): Unmounted[Unit, BootstrapState, Backend] = component()
+
 
 }
 

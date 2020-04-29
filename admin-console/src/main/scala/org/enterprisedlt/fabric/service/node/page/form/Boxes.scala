@@ -95,12 +95,6 @@ object Boxes {
                             "Add box",
                             ^.onClick --> addBox(s.boxCandidate)
                         )
-                    ),
-                    <.span(<.br()),
-                    <.hr(),
-                    <.div(^.className := "form-group mt-1",
-                        <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
-
                     )
                 )
             case _ => <.div()
