@@ -102,6 +102,10 @@ object Join {
             )
         }
 
+        def refresh(globalState: GlobalState): Callback = Callback {
+            Context.refreshState(globalState, BootstrapMode)
+        }
+
         private def addComponent(joinState: JoinState, g: GlobalState): JoinState => JoinState = {
             val componentCandidate = joinState.componentCandidate
             componentCandidate.componentType match {
@@ -195,6 +199,13 @@ object Join {
                     ),
                     <.hr(),
                     <.div(^.className := "card-body aut-form-card",
+                        <.div(^.className := "form-group row",
+                            <.button(
+                                ^.className := "btn btn-primary",
+                                "Refresh",
+                                ^.onClick --> refresh(g)
+                            )
+                        ),
                         <.h4("Join settings"),
                         <.div(^.className := "form-group row",
                             <.label(^.className := "col-sm-2 col-form-label", "Invite:"),
