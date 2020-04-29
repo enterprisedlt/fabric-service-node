@@ -8,6 +8,7 @@ import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
+import org.enterprisedlt.fabric.service.node.page.form.Boxes
 import org.enterprisedlt.fabric.service.node.state.{ApplyFor, GlobalStateAware}
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
 import org.scalajs.dom.html.{Div, Select}
@@ -188,179 +189,188 @@ object Join {
             $.modState(addDefaultOSNs andThen addDefaultPeer)
         }
 
+        // name, title, content
+        def renderTabs(heading: TagMod, tabs: (String, String, TagMod)*): VdomTagOf[Div] =
+            <.div(^.className := "card ",
+                <.div(^.className := "card-header", //bg-primary text-white
+                    //                    <.h1("Fabric service node"),
+                    heading,
+                    <.div(^.className := "nav nav-tabs card-header-tabs", ^.id := "nav-tab", ^.role := "tablist", //
+                        tabs.zipWithIndex.map { case ((name, title, _), index) =>
+                            <.a(
+                                ^.className := s"nav-link${if (index == 0) " active" else ""}",
+                                ^.id := s"nav-$name-tab",
+                                data.toggle := "tab",
+                                ^.href := s"#nav-$name",
+                                ^.role.tab,
+                                ^.aria.controls := s"nav-$name",
+                                ^.aria.selected := false,
+                                title
+                            )
+                        }.toTagMod
+                    ),
+                ),
+                <.div(^.className := "card-body ", //aut-form-card
+                    <.div(^.className := "tab-content", ^.id := "nav-tabContent",
+                        tabs.zipWithIndex.map { case ((name, _, content), index) =>
+                            <.div(^.className := s"tab-pane${if (index == 0) " active" else ""}", ^.id := s"nav-$name", ^.role.tabpanel, ^.aria.labelledBy := s"nav-$name-tab", content)
+                        }.toTagMod
+                    )
+                )
+            )
+
+
+        def refreshButton(g: GlobalState) = {
+            <.div(^.className := "form-group row",
+                <.button(
+                    ^.className := "btn btn-primary",
+                    "Refresh",
+                    ^.onClick --> refresh(g)
+                )
+            )
+
+        }
+
         def renderWithGlobal(s: JoinState, global: AppState): VdomTagOf[Div] = global match {
             case g: GlobalState =>
-                <.div(^.className := "card aut-form-card",
-                    <.div(^.className := "card-header text-white bg-primary",
-                        <.div(^.float.right,
-                            <.h5(g.orgFullName)
+                <.div(
+                    <.div(^.className := "card aut-form-card",
+                        <.div(^.className := "card-header text-white bg-primary",
+                            <.h1("Join to new network")
                         ),
-                        <.h1("Join to new network")
-                    ),
-                    <.hr(),
-                    <.div(^.className := "card-body aut-form-card",
-                        <.div(^.className := "form-group row",
-                            <.button(
-                                ^.className := "btn btn-primary",
-                                "Refresh",
-                                ^.onClick --> refresh(g)
-                            )
-                        ),
-                        <.h4("Join settings"),
-                        <.div(^.className := "form-group row",
-                            <.label(^.className := "col-sm-2 col-form-label", "Invite:"),
-                            <.div(^.className := "input-group col-sm-10",
-                                <.div(^.`class` := "custom-file",
-                                    <.input(^.`type` := "file", ^.`class` := "custom-file-input", ^.id := "inviteInput", ^.onChange ==> addFile),
-                                    <.label(^.`class` := "custom-file-label", s.joinFileName)
-                                )
-                            )
-                        ),
-                        <.h4("Network settings"),
-                        <.h5("Boxes:"),
-                        <.div(^.className := "form-group row",
-                            <.table(^.className := "table table-hover table-sm",
-                                <.thead(
-                                    <.tr(
-                                        <.th(^.scope := "col", "#"),
-                                        <.th(^.scope := "col", "Name"),
-                                        <.th(^.scope := "col", "Address"),
-                                        //                                            <.th(^.scope := "col", "Actions"),
-                                    )
-                                ),
-                                <.tbody(
-                                    g.boxes.zipWithIndex.map { case (box, index) =>
-                                        <.tr(
-                                            <.td(^.scope := "row", s"${index + 1}"),
-                                            <.td(box.boxName),
-                                            <.td(
-                                                if (box.boxAddress.trim.nonEmpty) box.boxAddress else "local"
-                                            ),
-                                        )
-                                    }.toTagMod,
-                                )
-                            )
-                        ),
-                        <.div(^.className := "form-group row",
-                            <.label(^.`for` := "boxName", ^.className := "col-sm-2 col-form-label", "Box name"),
-                            <.div(^.className := "col-sm-10",
-                                <.input(^.`type` := "text", ^.className := "form-control", ^.id := "boxName",
-                                    bind(s) := JoinState.boxCandidate / RegisterBoxManager.name)
-                            )
-                        ),
-                        <.div(^.className := "form-group row",
-                            <.label(^.`for` := "boxAddress", ^.className := "col-sm-2 col-form-label", "Box address"),
-                            <.div(^.className := "col-sm-10",
-                                <.input(^.`type` := "text", ^.className := "form-control", ^.id := "boxAddress",
-                                    bind(s) := JoinState.boxCandidate / RegisterBoxManager.url)
-                            )
-                        ),
-                        <.div(^.className := "form-group row",
-                            <.button(
-                                ^.className := "btn btn-primary",
-                                "Add box",
-                                ^.onClick --> addBox(s.boxCandidate)
-                            )
-                        ),
+                        renderTabs(
+                            <.div(^.float.right,
+                                <.h5(g.orgFullName)
+                            ),
+                            ("join", "Bootstrap",
+                              <.div(
+                                  <.div(^.className := "card aut-form-card",
+                                      <.div(^.className := "card-body aut-form-card",
+                                          refreshButton(g),
+                                          <.h4("Join settings"),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.className := "col-sm-2 col-form-label", "Invite:"),
+                                              <.div(^.className := "input-group col-sm-10",
+                                                  <.div(^.`class` := "custom-file",
+                                                      <.input(^.`type` := "file", ^.`class` := "custom-file-input", ^.id := "inviteInput", ^.onChange ==> addFile),
+                                                      <.label(^.`class` := "custom-file-label", s.joinFileName)
+                                                  )
+                                              )
+                                          ),
+                                          <.h4("Network settings"),
+                                          <.hr(),
+                                          <.h5("Network components:"),
+                                          <.div(^.className := "form-group row",
+                                              <.table(^.className := "table table-hover table-sm",
+                                                  <.thead(
+                                                      <.tr(
+                                                          <.th(^.scope := "col", "#"),
+                                                          <.th(^.scope := "col", "Component type"),
+                                                          <.th(^.scope := "col", "Component box"),
+                                                          <.th(^.scope := "col", "Component name"),
+                                                          <.th(^.scope := "col", "Port"),
+                                                          <.th(^.scope := "col", "Actions"),
+                                                      )
+                                                  ),
+                                                  <.tbody(
+                                                      s.joinOptions.network.orderingNodes.zipWithIndex.map { case (osnNode, index) =>
+                                                          <.tr(
+                                                              <.td(^.scope := "row", s"${index + 1}"),
+                                                              <.td("orderer"),
+                                                              <.td(osnNode.box),
+                                                              <.td(osnNode.name),
+                                                              <.td(osnNode.port),
+                                                              <.td(
+                                                                  <.button(
+                                                                      ^.className := "btn btn-primary",
+                                                                      "Remove",
+                                                                      ^.onClick --> deleteComponent(osnNode))
+                                                              )
+                                                          )
+                                                      }.toTagMod,
+                                                      s.joinOptions.network.peerNodes.zipWithIndex.map { case (peerNode, index) =>
+                                                          <.tr(
+                                                              <.td(^.scope := "row", s"${s.joinOptions.network.orderingNodes.length + index + 1}"),
+                                                              <.td("peer"),
+                                                              <.td(peerNode.box),
+                                                              <.td(peerNode.name),
+                                                              <.td(peerNode.port),
+                                                              <.td(
+                                                                  <.button(
+                                                                      ^.className := "btn btn-primary",
+                                                                      "Remove",
+                                                                      ^.onClick --> deleteComponent(peerNode))
+                                                              )
+                                                          )
+                                                      }.toTagMod
 
-                        <.hr(),
-                        <.h5("Network components:"),
-                        <.div(^.className := "form-group row",
-                            <.table(^.className := "table table-hover table-sm",
-                                <.thead(
-                                    <.tr(
-                                        <.th(^.scope := "col", "#"),
-                                        <.th(^.scope := "col", "Component type"),
-                                        <.th(^.scope := "col", "Component box"),
-                                        <.th(^.scope := "col", "Component name"),
-                                        <.th(^.scope := "col", "Port"),
-                                        <.th(^.scope := "col", "Actions"),
-                                    )
-                                ),
-                                <.tbody(
-                                    s.joinOptions.network.orderingNodes.zipWithIndex.map { case (osnNode, index) =>
-                                        <.tr(
-                                            <.td(^.scope := "row", s"${index + 1}"),
-                                            <.td("orderer"),
-                                            <.td(osnNode.box),
-                                            <.td(osnNode.name),
-                                            <.td(osnNode.port),
-                                            <.td(
-                                                <.button(
-                                                    ^.className := "btn btn-primary",
-                                                    "Remove",
-                                                    ^.onClick --> deleteComponent(osnNode))
-                                            )
-                                        )
-                                    }.toTagMod,
-                                    s.joinOptions.network.peerNodes.zipWithIndex.map { case (peerNode, index) =>
-                                        <.tr(
-                                            <.td(^.scope := "row", s"${s.joinOptions.network.orderingNodes.length + index + 1}"),
-                                            <.td("peer"),
-                                            <.td(peerNode.box),
-                                            <.td(peerNode.name),
-                                            <.td(peerNode.port),
-                                            <.td(
-                                                <.button(
-                                                    ^.className := "btn btn-primary",
-                                                    "Remove",
-                                                    ^.onClick --> deleteComponent(peerNode))
-                                            )
-                                        )
-                                    }.toTagMod
-
-                                )
+                                                  )
+                                              )
+                                          ),
+                                          <.hr(),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.`for` := "componentType", ^.className := "col-sm-2 col-form-label", "Component type"),
+                                              <.div(^.className := "col-sm-10", renderComponentType(s))
+                                          ),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.`for` := "componentBox", ^.className := "col-sm-2 col-form-label", "Component box"),
+                                              <.div(^.className := "col-sm-10", renderBoxesList(s, g)
+                                              )
+                                          ),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "Component name"),
+                                              <.div(^.className := "col-sm-10",
+                                                  <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentName",
+                                                      bind(s) := JoinState.componentCandidate / ComponentCandidate.name)
+                                              )
+                                          ),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.`for` := "port", ^.className := "col-sm-2 col-form-label", "Port"),
+                                              <.div(^.className := "col-sm-10",
+                                                  <.input(^.`type` := "text", ^.className := "form-control", ^.id := "port",
+                                                      bind(s) := JoinState.componentCandidate / ComponentCandidate.port)
+                                              )
+                                          ),
+                                          <.div(^.className := "form-group row",
+                                              <.button(
+                                                  ^.className := "btn btn-primary",
+                                                  "Add component",
+                                                  ^.onClick --> addNetworkComponent(s, g)
+                                              )
+                                          ),
+                                          <.div(^.className := "form-group row",
+                                              <.button(
+                                                  ^.className := "btn btn-primary",
+                                                  "Populate with default components",
+                                                  ^.onClick --> populateWithDefault(g)
+                                              )
+                                          ),
+                                          <.hr(),
+                                          <.div(^.className := "form-group mt-1",
+                                              <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
+                                              <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goJoinProgress(s), "Join")
+                                          )
+                                      )
+                                  )
+                              )
+                            ),
+                            ("box", "Boxes",
+                              <.div(^.className := "card-body aut-form-card",
+                                  refreshButton(g),
+                                  Boxes(),
+                              )
                             )
-                        ),
-                        <.hr(),
-                        <.div(^.className := "form-group row",
-                            <.label(^.`for` := "componentType", ^.className := "col-sm-2 col-form-label", "Component type"),
-                            <.div(^.className := "col-sm-10", renderComponentType(s))
-                        ),
-                        <.div(^.className := "form-group row",
-                            <.label(^.`for` := "componentBox", ^.className := "col-sm-2 col-form-label", "Component box"),
-                            <.div(^.className := "col-sm-10", renderBoxesList(s, g)
-                            )
-                        ),
-                        <.div(^.className := "form-group row",
-                            <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "Component name"),
-                            <.div(^.className := "col-sm-10",
-                                <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentName",
-                                    bind(s) := JoinState.componentCandidate / ComponentCandidate.name)
-                            )
-                        ),
-                        <.div(^.className := "form-group row",
-                            <.label(^.`for` := "port", ^.className := "col-sm-2 col-form-label", "Port"),
-                            <.div(^.className := "col-sm-10",
-                                <.input(^.`type` := "text", ^.className := "form-control", ^.id := "port",
-                                    bind(s) := JoinState.componentCandidate / ComponentCandidate.port)
-                            )
-                        ),
-                        <.div(^.className := "form-group row",
-                            <.button(
-                                ^.className := "btn btn-primary",
-                                "Add component",
-                                ^.onClick --> addNetworkComponent(s, g)
-                            )
-                        ),
-                        <.div(^.className := "form-group row",
-                            <.button(
-                                ^.className := "btn btn-primary",
-                                "Populate with default components",
-                                ^.onClick --> populateWithDefault(g)
-                            )
-                        ),
-                        <.hr(),
-                        <.div(^.className := "form-group mt-1",
-                            <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
-                            <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goJoinProgress(s), "Join")
                         )
                     )
                 )
             case _ => <.div()
         }
+
+
     }
 
     def apply(): Unmounted[Unit, JoinState, Backend] = component()
 
 }
+
+

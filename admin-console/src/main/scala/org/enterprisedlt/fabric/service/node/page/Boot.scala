@@ -8,6 +8,7 @@ import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
+import org.enterprisedlt.fabric.service.node.page.form.Boxes
 import org.enterprisedlt.fabric.service.node.state.{ApplyFor, GlobalStateAware}
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
 import org.scalajs.dom.html.{Div, Select}
@@ -63,10 +64,6 @@ object Boot {
         def goBootProgress(s: BootstrapOptions): Callback = Callback {
             ServiceNodeRemote.executeBootstrap(s) // this call will block until bootstrap complete, so ignore the future
             Context.switchModeTo(BootstrapInProgress)
-        }
-
-        def addBox(boxCandidate: RegisterBoxManager): Callback = Callback {
-            ServiceNodeRemote.registerBox(boxCandidate)
         }
 
         def deleteComponent(componentConfig: ComponentConfig): CallbackTo[Unit] = {
@@ -171,262 +168,273 @@ object Boot {
             $.modState(addDefaultOSNs andThen addDefaultPeer)
         }
 
-        def renderWithGlobal(s: BootstrapState, global: AppState): VdomTagOf[Div] =
-            global match {
-                case g: GlobalState =>
+        // name, title, content
+        def renderTabs(heading: TagMod, tabs: (String, String, TagMod)*): VdomTagOf[Div] =
+            <.div(^.className := "card ",
+                <.div(^.className := "card-header", //bg-primary text-white
+                    //                    <.h1("Fabric service node"),
+                    heading,
+                    <.div(^.className := "nav nav-tabs card-header-tabs", ^.id := "nav-tab", ^.role := "tablist", //
+                        tabs.zipWithIndex.map { case ((name, title, _), index) =>
+                            <.a(
+                                ^.className := s"nav-link${if (index == 0) " active" else ""}",
+                                ^.id := s"nav-$name-tab",
+                                data.toggle := "tab",
+                                ^.href := s"#nav-$name",
+                                ^.role.tab,
+                                ^.aria.controls := s"nav-$name",
+                                ^.aria.selected := false,
+                                title
+                            )
+                        }.toTagMod
+                    ),
+                ),
+                <.div(^.className := "card-body ", //aut-form-card
+                    <.div(^.className := "tab-content", ^.id := "nav-tabContent",
+                        tabs.zipWithIndex.map { case ((name, _, content), index) =>
+                            <.div(^.className := s"tab-pane${if (index == 0) " active" else ""}", ^.id := s"nav-$name", ^.role.tabpanel, ^.aria.labelledBy := s"nav-$name-tab", content)
+                        }.toTagMod
+                    )
+                )
+            )
+
+
+        def refreshButton(g: GlobalState) = {
+            <.div(^.className := "form-group row",
+                <.button(
+                    ^.className := "btn btn-primary",
+                    "Refresh",
+                    ^.onClick --> refresh(g)
+                )
+            )
+
+        }
+
+        def renderWithGlobal(s: BootstrapState, global: AppState): VdomTagOf[Div] = global match {
+            case g: GlobalState =>
+                <.div(
                     <.div(^.className := "card aut-form-card",
                         <.div(^.className := "card-header text-white bg-primary",
+                            <.h1("Bootstrap to new network")
+                        ),
+                        renderTabs(
                             <.div(^.float.right,
-                                <.h4(g.orgFullName)
+                                <.h5(g.orgFullName)
                             ),
-                            <.h1("Bootstrap new network")
-                        ),
-                        <.div(^.className := "card-body aut-form-card",
-                            <.div(^.className := "form-group row",
-                                <.button(
-                                    ^.className := "btn btn-primary",
-                                    "Refresh",
-                                    ^.onClick --> refresh(g)
-                                )
-                            ),
-                            <.h4("Network settings:"),
-                            <.span(<.br()),
-                            <.div(^.className := "form-group row",
-                                <.label(^.className := "col-sm-2 col-form-label", "Network name"),
-                                <.div(^.className := "col-sm-10",
-                                    <.input(^.`type` := "text", ^.`className` := "form-control",
-                                        bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.networkName
-                                    )
-                                )
-                            ),
-                            <.hr(),
-                            <.h5("Boxes:"),
-                            <.div(^.className := "form-group row",
-                                <.table(^.className := "table table-hover table-sm",
-                                    <.thead(
-                                        <.tr(
-                                            <.th(^.scope := "col", "#"),
-                                            <.th(^.scope := "col", "Name"),
-                                            <.th(^.scope := "col", "Address"),
-                                            //                                            <.th(^.scope := "col", "Actions"),
-                                        )
-                                    ),
-                                    <.tbody(
-                                        g.boxes.zipWithIndex.map { case (box, index) =>
-                                            <.tr(
-                                                <.td(^.scope := "row", s"${index + 1}"),
-                                                <.td(box.boxName),
-                                                <.td(
-                                                    if (box.boxAddress.trim.nonEmpty) box.boxAddress else "local"
-                                                ),
-                                            )
-                                        }.toTagMod,
-                                    )
-                                )
-                            ),
-                            <.div(^.className := "form-group row",
-                                <.label(^.`for` := "boxName", ^.className := "col-sm-2 col-form-label", "Box name"),
-                                <.div(^.className := "col-sm-10",
-                                    <.input(^.`type` := "text", ^.className := "form-control", ^.id := "boxName",
-                                        bind(s) := BootstrapState.boxCandidate / RegisterBoxManager.name)
-                                )
-                            ),
-                            <.div(^.className := "form-group row",
-                                <.label(^.`for` := "boxAddress", ^.className := "col-sm-2 col-form-label", "Box address"),
-                                <.div(^.className := "col-sm-10",
-                                    <.input(^.`type` := "text", ^.className := "form-control", ^.id := "boxAddress",
-                                        bind(s) := BootstrapState.boxCandidate / RegisterBoxManager.url)
-                                )
-                            ),
-                            <.div(^.className := "form-group row",
-                                <.button(
-                                    ^.className := "btn btn-primary",
-                                    "Add box",
-                                    ^.onClick --> addBox(s.boxCandidate)
-                                )
-                            ),
-                            <.span(<.br()),
-                            <.h5("Network components:"),
-                            <.div(^.className := "form-group row",
-                                <.table(^.className := "table table-hover table-sm",
-                                    <.thead(
-                                        <.tr(
-                                            <.th(^.scope := "col", "#"),
-                                            <.th(^.scope := "col", "Type"),
-                                            <.th(^.scope := "col", "Box"),
-                                            <.th(^.scope := "col", "Name"),
-                                            <.th(^.scope := "col", "Port"),
-                                            <.th(^.scope := "col", "Actions"),
-                                        )
-                                    ),
-                                    <.tbody(
-                                        s.bootstrapOptions.network.orderingNodes.zipWithIndex.map { case (osnNode, index) =>
-                                            <.tr(
-                                                <.td(^.scope := "row", s"${index + 1}"),
-                                                <.td("Orderer"),
-                                                <.td(osnNode.box),
-                                                <.td(osnNode.name),
-                                                <.td(osnNode.port),
-                                                <.td(
-                                                    <.button(
-                                                        ^.className := "btn btn-primary",
-                                                        "Remove",
-                                                        ^.onClick --> deleteComponent(osnNode))
-                                                )
-                                            )
-                                        }.toTagMod,
-                                        s.bootstrapOptions.network.peerNodes.zipWithIndex.map { case (peerNode, index) =>
-                                            <.tr(
-                                                <.td(^.scope := "row", s"${s.bootstrapOptions.network.orderingNodes.length + index + 1}"),
-                                                <.td("Peer"),
-                                                <.td(peerNode.box),
-                                                <.td(peerNode.name),
-                                                <.td(peerNode.port),
-                                                <.td(
-                                                    <.button(
-                                                        ^.className := "btn btn-primary",
-                                                        "Remove",
-                                                        ^.onClick --> deleteComponent(peerNode))
-                                                )
-                                            )
-                                        }.toTagMod
+                            ("bootstrap", "Bootstrap",
+                              <.div(
+                                  <.div(^.className := "card aut-form-card",
+                                      <.div(^.className := "card-body aut-form-card",
+                                          refreshButton(g),
+                                          <.h4("Network settings:"),
+                                          <.span(<.br()),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.className := "col-sm-2 col-form-label", "Network name"),
+                                              <.div(^.className := "col-sm-10",
+                                                  <.input(^.`type` := "text", ^.`className` := "form-control",
+                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.networkName
+                                                  )
+                                              )
+                                          ),
+                                          <.hr(),
 
-                                    )
-                                )
+                                          <.span(<.br()),
+                                          <.h5("Network components:"),
+                                          <.div(^.className := "form-group row",
+                                              <.table(^.className := "table table-hover table-sm",
+                                                  <.thead(
+                                                      <.tr(
+                                                          <.th(^.scope := "col", "#"),
+                                                          <.th(^.scope := "col", "Type"),
+                                                          <.th(^.scope := "col", "Box"),
+                                                          <.th(^.scope := "col", "Name"),
+                                                          <.th(^.scope := "col", "Port"),
+                                                          <.th(^.scope := "col", "Actions"),
+                                                      )
+                                                  ),
+                                                  <.tbody(
+                                                      s.bootstrapOptions.network.orderingNodes.zipWithIndex.map { case (osnNode, index) =>
+                                                          <.tr(
+                                                              <.td(^.scope := "row", s"${index + 1}"),
+                                                              <.td("Orderer"),
+                                                              <.td(osnNode.box),
+                                                              <.td(osnNode.name),
+                                                              <.td(osnNode.port),
+                                                              <.td(
+                                                                  <.button(
+                                                                      ^.className := "btn btn-primary",
+                                                                      "Remove",
+                                                                      ^.onClick --> deleteComponent(osnNode))
+                                                              )
+                                                          )
+                                                      }.toTagMod,
+                                                      s.bootstrapOptions.network.peerNodes.zipWithIndex.map { case (peerNode, index) =>
+                                                          <.tr(
+                                                              <.td(^.scope := "row", s"${s.bootstrapOptions.network.orderingNodes.length + index + 1}"),
+                                                              <.td("Peer"),
+                                                              <.td(peerNode.box),
+                                                              <.td(peerNode.name),
+                                                              <.td(peerNode.port),
+                                                              <.td(
+                                                                  <.button(
+                                                                      ^.className := "btn btn-primary",
+                                                                      "Remove",
+                                                                      ^.onClick --> deleteComponent(peerNode))
+                                                              )
+                                                          )
+                                                      }.toTagMod
+
+                                                  )
+                                              )
+                                          ),
+                                          <.hr(),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.`for` := "componentType", ^.className := "col-sm-2 col-form-label", "Component type"),
+                                              <.div(^.className := "col-sm-10", renderComponentType(s),
+                                                  //                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentType",
+                                                  //                                bind(s) := JoinState.componentCandidate / ComponentCandidate.componentType
+                                                  //                            )
+                                              )
+                                          ),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.`for` := "componentBox", ^.className := "col-sm-2 col-form-label", "Component box"),
+                                              <.div(^.className := "col-sm-10", renderBoxesList(s, g)
+                                              )
+                                          ),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "Component name"),
+                                              <.div(^.className := "col-sm-10",
+                                                  <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentName",
+                                                      bind(s) := BootstrapState.componentCandidate / ComponentCandidate.name)
+                                              )
+                                          ),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.`for` := "port", ^.className := "col-sm-2 col-form-label", "Port"),
+                                              <.div(^.className := "col-sm-10",
+                                                  <.input(^.`type` := "text", ^.className := "form-control", ^.id := "port",
+                                                      bind(s) := BootstrapState.componentCandidate / ComponentCandidate.port)
+                                              )
+                                          ),
+                                          <.div(^.className := "form-group row",
+                                              <.button(
+                                                  ^.className := "btn btn-primary",
+                                                  "Add component",
+                                                  ^.onClick --> addNetworkComponent(s, g)
+                                              )
+                                          ),
+                                          <.div(^.className := "form-group row",
+                                              <.button(
+                                                  ^.className := "btn btn-primary",
+                                                  "Populate with default components",
+                                                  ^.onClick --> populateWithDefault(g)
+                                              )
+                                          ),
+                                          <.hr(),
+                                          <.h5("Block settings:"),
+                                          <.span(<.br()),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.className := "col-sm-2 col-form-label", "Batch timeout"),
+                                              <.div(^.className := "col-sm-10",
+                                                  <.input(^.`type` := "text", ^.className := "form-control",
+                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.block / BlockConfig.batchTimeOut
+                                                  )
+                                              )
+                                          ),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.className := "col-sm-2 col-form-label", "Max messages count"),
+                                              <.div(^.className := "col-sm-10",
+                                                  <.input(^.`type` := "text", ^.className := "form-control",
+                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.block / BlockConfig.maxMessageCount
+                                                  )
+                                              )
+                                          ),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.className := "col-sm-2 col-form-label", "Absolute max bytes"),
+                                              <.div(^.className := "col-sm-10",
+                                                  <.input(^.`type` := "text", ^.className := "form-control",
+                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.block / BlockConfig.absoluteMaxBytes
+                                                  )
+                                              )
+                                          ),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.className := "col-sm-2 col-form-label", "Preferred max bytes"),
+                                              <.div(^.className := "col-sm-10",
+                                                  <.input(^.`type` := "text", ^.className := "form-control",
+                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.block / BlockConfig.preferredMaxBytes
+                                                  )
+                                              )
+                                          ),
+                                          <.hr(),
+                                          <.h5("Raft settings:"),
+                                          <.span(<.br()),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.className := "col-sm-2 col-form-label", "Tick interval"),
+                                              <.div(^.className := "col-sm-10",
+                                                  <.input(^.`type` := "text", ^.className := "form-control",
+                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.tickInterval
+                                                  )
+                                              )
+                                          ),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.className := "col-sm-2 col-form-label", "Election tick"),
+                                              <.div(^.className := "col-sm-10",
+                                                  <.input(^.`type` := "text", ^.className := "form-control",
+                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.electionTick
+                                                  )
+                                              )
+                                          ),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.className := "col-sm-2 col-form-label", "Heartbeat tick"),
+                                              <.div(^.className := "col-sm-10",
+                                                  <.input(^.`type` := "text", ^.className := "form-control",
+                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.heartbeatTick
+                                                  )
+                                              )
+                                          ),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.className := "col-sm-2 col-form-label", "Max inflight blocks"),
+                                              <.div(^.className := "col-sm-10",
+                                                  <.input(^.`type` := "text", ^.className := "form-control",
+                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.maxInflightBlocks
+                                                  )
+                                              )
+                                          ),
+                                          <.div(^.className := "form-group row",
+                                              <.label(^.className := "col-sm-2 col-form-label", "Snapshot interval size"),
+                                              <.div(^.className := "col-sm-10",
+                                                  <.input(^.`type` := "text", ^.className := "form-control",
+                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.snapshotIntervalSize
+                                                  )
+                                              )
+                                          )
+                                      ),
+                                      <.hr(),
+                                      <.div(^.className := "form-group mt-1",
+                                          <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
+                                          <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goBootProgress(s.bootstrapOptions), "Bootstrap")
+                                      )
+                                  )
+                              )
                             ),
-                            <.hr(),
-                            <.div(^.className := "form-group row",
-                                <.label(^.`for` := "componentType", ^.className := "col-sm-2 col-form-label", "Component type"),
-                                <.div(^.className := "col-sm-10", renderComponentType(s),
-                                    //                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentType",
-                                    //                                bind(s) := JoinState.componentCandidate / ComponentCandidate.componentType
-                                    //                            )
-                                )
-                            ),
-                            <.div(^.className := "form-group row",
-                                <.label(^.`for` := "componentBox", ^.className := "col-sm-2 col-form-label", "Component box"),
-                                <.div(^.className := "col-sm-10", renderBoxesList(s, g)
-                                )
-                            ),
-                            <.div(^.className := "form-group row",
-                                <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "Component name"),
-                                <.div(^.className := "col-sm-10",
-                                    <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentName",
-                                        bind(s) := BootstrapState.componentCandidate / ComponentCandidate.name)
-                                )
-                            ),
-                            <.div(^.className := "form-group row",
-                                <.label(^.`for` := "port", ^.className := "col-sm-2 col-form-label", "Port"),
-                                <.div(^.className := "col-sm-10",
-                                    <.input(^.`type` := "text", ^.className := "form-control", ^.id := "port",
-                                        bind(s) := BootstrapState.componentCandidate / ComponentCandidate.port)
-                                )
-                            ),
-                            <.div(^.className := "form-group row",
-                                <.button(
-                                    ^.className := "btn btn-primary",
-                                    "Add component",
-                                    ^.onClick --> addNetworkComponent(s, g)
-                                )
-                            ),
-                            <.div(^.className := "form-group row",
-                                <.button(
-                                    ^.className := "btn btn-primary",
-                                    "Populate with default components",
-                                    ^.onClick --> populateWithDefault(g)
-                                )
-                            ),
-                            <.hr(),
-                            <.h5("Block settings:"),
-                            <.span(<.br()),
-                            <.div(^.className := "form-group row",
-                                <.label(^.className := "col-sm-2 col-form-label", "Batch timeout"),
-                                <.div(^.className := "col-sm-10",
-                                    <.input(^.`type` := "text", ^.className := "form-control",
-                                        bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.block / BlockConfig.batchTimeOut
-                                    )
-                                )
-                            ),
-                            <.div(^.className := "form-group row",
-                                <.label(^.className := "col-sm-2 col-form-label", "Max messages count"),
-                                <.div(^.className := "col-sm-10",
-                                    <.input(^.`type` := "text", ^.className := "form-control",
-                                        bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.block / BlockConfig.maxMessageCount
-                                    )
-                                )
-                            ),
-                            <.div(^.className := "form-group row",
-                                <.label(^.className := "col-sm-2 col-form-label", "Absolute max bytes"),
-                                <.div(^.className := "col-sm-10",
-                                    <.input(^.`type` := "text", ^.className := "form-control",
-                                        bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.block / BlockConfig.absoluteMaxBytes
-                                    )
-                                )
-                            ),
-                            <.div(^.className := "form-group row",
-                                <.label(^.className := "col-sm-2 col-form-label", "Preferred max bytes"),
-                                <.div(^.className := "col-sm-10",
-                                    <.input(^.`type` := "text", ^.className := "form-control",
-                                        bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.block / BlockConfig.preferredMaxBytes
-                                    )
-                                )
-                            ),
-                            <.hr(),
-                            <.h5("Raft settings:"),
-                            <.span(<.br()),
-                            <.div(^.className := "form-group row",
-                                <.label(^.className := "col-sm-2 col-form-label", "Tick interval"),
-                                <.div(^.className := "col-sm-10",
-                                    <.input(^.`type` := "text", ^.className := "form-control",
-                                        bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.tickInterval
-                                    )
-                                )
-                            ),
-                            <.div(^.className := "form-group row",
-                                <.label(^.className := "col-sm-2 col-form-label", "Election tick"),
-                                <.div(^.className := "col-sm-10",
-                                    <.input(^.`type` := "text", ^.className := "form-control",
-                                        bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.electionTick
-                                    )
-                                )
-                            ),
-                            <.div(^.className := "form-group row",
-                                <.label(^.className := "col-sm-2 col-form-label", "Heartbeat tick"),
-                                <.div(^.className := "col-sm-10",
-                                    <.input(^.`type` := "text", ^.className := "form-control",
-                                        bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.heartbeatTick
-                                    )
-                                )
-                            ),
-                            <.div(^.className := "form-group row",
-                                <.label(^.className := "col-sm-2 col-form-label", "Max inflight blocks"),
-                                <.div(^.className := "col-sm-10",
-                                    <.input(^.`type` := "text", ^.className := "form-control",
-                                        bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.maxInflightBlocks
-                                    )
-                                )
-                            ),
-                            <.div(^.className := "form-group row",
-                                <.label(^.className := "col-sm-2 col-form-label", "Snapshot interval size"),
-                                <.div(^.className := "col-sm-10",
-                                    <.input(^.`type` := "text", ^.className := "form-control",
-                                        bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.snapshotIntervalSize
-                                    )
-                                )
+                            ("box", "Boxes",
+                              <.div(^.className := "card-body aut-form-card",
+                                  refreshButton(g),
+                                  Boxes(),
+                              )
                             )
-                        ),
-                        <.hr(),
-                        <.div(^.className := "form-group mt-1",
-                            <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
-                            <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goBootProgress(s.bootstrapOptions), "Bootstrap")
                         )
-                        //                                                                                                        </form>
                     )
-                case _ => <.div()
-            }
+                )
+            case _ => <.div()
+        }
 
 
     }
 
     def apply(): Unmounted[Unit, BootstrapState, Backend] = component()
+
+}
+
+object data {
+    def toggle: VdomAttr[Any] = VdomAttr("data-toggle")
 }
