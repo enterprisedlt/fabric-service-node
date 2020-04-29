@@ -238,6 +238,7 @@ object Join {
                         <.div(^.className := "card-header text-white bg-primary",
                             <.h1("Join to new network")
                         ),
+                        <.hr(),
                         renderTabs(
                             <.div(^.float.right,
                                 <.h5(g.orgFullName)
