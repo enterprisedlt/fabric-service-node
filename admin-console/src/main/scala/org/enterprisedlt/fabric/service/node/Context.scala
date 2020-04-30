@@ -41,13 +41,17 @@ object Context {
     }
 
 
-    def refreshState(globalState: GlobalState, state: AppMode): Future[Option[Array[Box]]] = {
+    def refreshState(globalState: GlobalState, state: AppMode): Future[Unit] = {
         state match {
             case BootstrapMode =>
                 for {
                     boxes <- ServiceNodeRemote.listBoxes
                 } yield {
-                    Some(boxes)
+                    State.update { _ =>
+                        globalState.copy(
+                            boxes = boxes
+                        )
+                    }
                 }
         }
     }
