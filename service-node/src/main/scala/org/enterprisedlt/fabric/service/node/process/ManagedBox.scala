@@ -1,6 +1,7 @@
 package org.enterprisedlt.fabric.service.node.process
 
 import org.enterprisedlt.fabric.service.model.KnownHostRecord
+import org.enterprisedlt.fabric.service.node.model.BoxInformation
 import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
 
 /**
@@ -8,8 +9,8 @@ import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
  */
 trait ManagedBox {
 
-    @Get("/address")
-    def getBoxAddress: Either[String, String]
+    @Get("/info")
+    def getBoxInfo: Either[String, BoxInformation]
 
     @Post("/start-ordering-node")
     def startOrderingNode(request: StartOSNRequest): Either[String, String]

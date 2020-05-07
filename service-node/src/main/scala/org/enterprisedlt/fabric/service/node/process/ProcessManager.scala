@@ -22,7 +22,7 @@ class ProcessManager {
     def getBoxAddress(box: String): Either[String, Option[String]] =
         boxes
           .get(box).toRight(s"Unknown box $box")
-          .map(_._2.boxAddress)
+          .map(_._2.information.externalAddress)
           .map { boxAddress =>
               Option(boxAddress).filter(_.nonEmpty)
           }
@@ -36,8 +36,8 @@ class ProcessManager {
               msg
           }
           .flatMap { boxManager =>
-              boxManager.getBoxAddress.map { boxAddress =>
-                  val box = Box(boxName, boxAddress)
+              boxManager.getBoxInfo.map { boxInformation =>
+                  val box = Box(boxName, boxInformation)
                   boxes += boxName -> (boxManager, box)
                   box
               }

@@ -14,8 +14,8 @@ import org.enterprisedlt.fabric.service.node.util.DataFunction._
 import org.scalajs.dom.html.{Div, Select}
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object Boot {
 
     @Lenses case class BootstrapState(
@@ -25,7 +25,7 @@ object Boot {
     )
 
     object BootstrapState {
-        val ComponentTypes = Seq("orderer", "peer")
+        val ComponentTypes = Seq("Orderer", "Peer")
         val Defaults: BootstrapState =
             BootstrapState(
                 BootstrapOptions.Defaults,
@@ -53,7 +53,7 @@ object Boot {
 
         override def connectLocal: ConnectFunction = ApplyFor(
             Seq(
-                ((BootstrapState.componentCandidate / ComponentCandidate.box).when(_.trim.isEmpty) <~~ GlobalState.boxes.when(_.nonEmpty)) (_.head.boxName)
+                ((BootstrapState.componentCandidate / ComponentCandidate.box).when(_.trim.isEmpty) <~~ GlobalState.boxes.when(_.nonEmpty)) (_.head.name)
             )
         )
 
@@ -85,7 +85,7 @@ object Boot {
             $.modState(
                 addComponent(bootstrapState, g) andThen BootstrapState.componentCandidate.set(
                     BootstrapState.Defaults.componentCandidate.copy(
-                        box = g.boxes.head.boxName
+                        box = g.boxes.head.name
                     )
                 )
             )
@@ -94,7 +94,7 @@ object Boot {
         private def addComponent(bootstrapState: BootstrapState, g: GlobalState): BootstrapState => BootstrapState = {
             val componentCandidate = bootstrapState.componentCandidate
             componentCandidate.componentType match {
-                case "peer" =>
+                case "Peer" =>
                     val peerConfig = PeerConfig(
                         box = componentCandidate.box,
                         name = s"${componentCandidate.name}.${g.orgFullName}",
@@ -102,7 +102,7 @@ object Boot {
                         couchDB = null
                     )
                     PeerNodes.modify(_ :+ peerConfig)
-                case "orderer" =>
+                case "Orderer" =>
                     val osnConfig = OSNConfig(
                         box = componentCandidate.box,
                         name = s"${componentCandidate.name}.${g.orgFullName}",
@@ -123,7 +123,7 @@ object Boot {
 
         def boxOptions(s: BootstrapState, g: GlobalState): TagMod = {
             g.boxes.map { box =>
-                option((className := "selected").when(s.componentCandidate.box == box.boxName), box.boxName)
+                option((className := "selected").when(s.componentCandidate.box == box.name), box.name)
             }.toTagMod
         }
 
@@ -198,19 +198,7 @@ object Boot {
                 )
             )
 
-
-        def refreshButton(g: GlobalState) = {
-            <.div(^.className := "form-group row",
-                <.button(
-                    ^.className := "btn btn-primary",
-                    "Refresh",
-                    ^.onClick --> refresh(g)
-                )
-            )
-
-        }
-
-        def footerButtons(s:BootstrapState) = {
+        def footerButtons(s: BootstrapState): VdomTagOf[Div] = {
             <.div(^.className := "form-group mt-1",
                 <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
                 <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goBootProgress(s.bootstrapOptions), "Bootstrap")
@@ -228,16 +216,21 @@ object Boot {
                             <.h1("Bootstrap new network")
                         ),
                         renderTabs(
-                            <.div(^.float.right),
-                            ("components", "Network components",
+                            <.div(^.float.right,
+                                <.button(
+                                    ^.className := "btn",
+                                    ^.onClick --> refresh(g),
+                                    <.i(^.className := "fas fa-sync")
+                                )
+                            ),
+                            ("components", "Network/Components",
                               <.div(
                                   <.div(^.className := "card aut-form-card",
                                       <.div(^.className := "card-body aut-form-card",
-                                          refreshButton(g),
-                                          <.h4("Network settings:"),
-                                          <.span(<.br()),
+//                                          <.h4("Network:"),
+//                                          <.span(<.br()),
                                           <.div(^.className := "form-group row",
-                                              <.label(^.className := "col-sm-2 col-form-label", "Network name"),
+                                              <.label(^.className := "col-sm-2 col-form-label", "Consortium"),
                                               <.div(^.className := "col-sm-10",
                                                   <.input(^.`type` := "text", ^.`className` := "form-control",
                                                       bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.networkName
@@ -245,15 +238,19 @@ object Boot {
                                               )
                                           ),
                                           <.span(<.br()),
-                                          <.h5("Network components:"),
+                                          <.button(
+                                              ^.className := "btn btn-light float-right",
+                                              "Add default components",
+                                              ^.onClick --> populateWithDefault(g)
+                                          ),
+                                          <.div(^.className := "form-group row", <.h5("Components:")),
                                           <.div(^.className := "form-group row",
                                               <.table(^.className := "table table-hover table-sm",
                                                   <.thead(
                                                       <.tr(
-                                                          <.th(^.scope := "col", "#"),
-                                                          <.th(^.scope := "col", "Type"),
-                                                          <.th(^.scope := "col", "Box"),
                                                           <.th(^.scope := "col", "Name"),
+                                                          <.th(^.scope := "col", "Type"),
+                                                          <.th(^.scope := "col", "Server"),
                                                           <.th(^.scope := "col", "Port"),
                                                           <.th(^.scope := "col", "Actions"),
                                                       )
@@ -261,14 +258,14 @@ object Boot {
                                                   <.tbody(
                                                       s.bootstrapOptions.network.orderingNodes.zipWithIndex.map { case (osnNode, index) =>
                                                           <.tr(
-                                                              <.td(^.scope := "row", s"${index + 1}"),
-                                                              <.td("Orderer"),
-                                                              <.td(osnNode.box),
+                                                              //                                                              <.td(^.scope := "row", s"${index + 1}"),
                                                               <.td(osnNode.name),
+                                                              <.td("Orderer"),
+                                                              <.td(boxLabel(osnNode.box, g)),
                                                               <.td(osnNode.port),
                                                               <.td(
                                                                   <.button(
-                                                                      ^.className := "btn btn-primary",
+                                                                      ^.className := "btn btn-link",
                                                                       "Remove",
                                                                       ^.onClick --> deleteComponent(osnNode))
                                                               )
@@ -276,14 +273,14 @@ object Boot {
                                                       }.toTagMod,
                                                       s.bootstrapOptions.network.peerNodes.zipWithIndex.map { case (peerNode, index) =>
                                                           <.tr(
-                                                              <.td(^.scope := "row", s"${s.bootstrapOptions.network.orderingNodes.length + index + 1}"),
-                                                              <.td("Peer"),
-                                                              <.td(peerNode.box),
+                                                              //                                                              <.td(^.scope := "row", s"${s.bootstrapOptions.network.orderingNodes.length + index + 1}"),
                                                               <.td(peerNode.name),
+                                                              <.td("Peer"),
+                                                              <.td(boxLabel(peerNode.box, g)),
                                                               <.td(peerNode.port),
                                                               <.td(
                                                                   <.button(
-                                                                      ^.className := "btn btn-primary",
+                                                                      ^.className := "btn btn-link",
                                                                       "Remove",
                                                                       ^.onClick --> deleteComponent(peerNode))
                                                               )
@@ -295,20 +292,15 @@ object Boot {
                                           ),
                                           <.hr(),
                                           <.div(^.className := "form-group row",
-                                              <.label(^.`for` := "componentType", ^.className := "col-sm-2 col-form-label", "Component type"),
-                                              <.div(^.className := "col-sm-10", renderComponentType(s),
-                                                  //                            <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentType",
-                                                  //                                bind(s) := JoinState.componentCandidate / ComponentCandidate.componentType
-                                                  //                            )
-                                              )
+                                              <.label(^.`for` := "componentType", ^.className := "col-sm-2 col-form-label", "Type"),
+                                              <.div(^.className := "col-sm-10", renderComponentType(s))
                                           ),
                                           <.div(^.className := "form-group row",
-                                              <.label(^.`for` := "componentBox", ^.className := "col-sm-2 col-form-label", "Component box"),
-                                              <.div(^.className := "col-sm-10", renderBoxesList(s, g)
-                                              )
+                                              <.label(^.`for` := "componentBox", ^.className := "col-sm-2 col-form-label", "Server"),
+                                              <.div(^.className := "col-sm-10", renderBoxesList(s, g))
                                           ),
                                           <.div(^.className := "form-group row",
-                                              <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "Component name"),
+                                              <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "Name"),
                                               <.div(^.className := "col-sm-10",
                                                   <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentName",
                                                       bind(s) := BootstrapState.componentCandidate / ComponentCandidate.name)
@@ -327,25 +319,21 @@ object Boot {
                                                   "Add component",
                                                   ^.onClick --> addNetworkComponent(s, g)
                                               )
-                                          ),
-                                          <.div(^.className := "form-group row",
-                                              <.button(
-                                                  ^.className := "btn btn-primary",
-                                                  "Populate with default components",
-                                                  ^.onClick --> populateWithDefault(g)
-                                              )
-                                          ),
-                                      ),
-                                      <.hr(),
-                                      footerButtons(s)
+                                          )
+                                      )
                                   )
                               )
                             ),
-
-                            ("block", "Block settings",
+                            ("box", "Servers",
                               <.div(^.className := "card aut-form-card",
                                   <.div(^.className := "card-body aut-form-card",
-                                      refreshButton(g),
+                                      Boxes(),
+                                  )
+                              )
+                            ),
+                            ("block", "Block",
+                              <.div(^.className := "card aut-form-card",
+                                  <.div(^.className := "card-body aut-form-card",
                                       <.h5("Block settings:"),
                                       <.span(<.br()),
                                       <.div(^.className := "form-group row",
@@ -379,16 +367,13 @@ object Boot {
                                                   bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.block / BlockConfig.preferredMaxBytes
                                               )
                                           )
-                                      ),
-                                      <.hr(),
-                                      footerButtons(s)
+                                      )
                                   )
                               )
                             ),
-                            ("raft", "Raft settings",
+                            ("raft", "Raft",
                               <.div(^.className := "card aut-form-card",
                                   <.div(^.className := "card-body aut-form-card",
-                                      refreshButton(g),
                                       <.h5("Raft settings:"),
                                       <.span(<.br()),
                                       <.div(^.className := "form-group row",
@@ -430,30 +415,23 @@ object Boot {
                                                   bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.raft / RaftConfig.snapshotIntervalSize
                                               )
                                           )
-                                      ),
-                                      <.hr(),
-                                      footerButtons(s)
-                                  )
-                              )
-                            ),
-                            ("box", "Boxes",
-                              <.div(^.className := "card aut-form-card",
-                                  <.div(^.className := "card-body aut-form-card",
-                                      refreshButton(g),
-                                      Boxes(),
-                                      <.hr(),
-                                      footerButtons(s)
+                                      )
                                   )
                               )
                             )
-                        )
+                        ),
+                        footerButtons(s)
                     )
                 )
             case _ => <.div()
         }
-
-
     }
+
+    private def boxLabel(name: String, g: GlobalState): String =
+        g.boxes.find(_.name == name).map(b => s"$name (${boxAddress(b)})").getOrElse("Unknown")
+
+    private def boxAddress(b: Box): String =
+        Option(b.information.externalAddress).filter(_.trim.nonEmpty).getOrElse("local")
 
     def apply(): Unmounted[Unit, BootstrapState, Backend] = component()
 

@@ -153,8 +153,13 @@ case class RegisterBoxManager(
 )
 
 case class Box(
-    boxName: String,
-    boxAddress: String
+    name: String,
+    information: BoxInformation
+)
+
+case class BoxInformation(
+    externalAddress: String,
+    details: String
 )
 
 object CCLanguage {

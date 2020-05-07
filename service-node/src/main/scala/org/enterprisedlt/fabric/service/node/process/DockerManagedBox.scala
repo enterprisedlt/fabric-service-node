@@ -17,6 +17,7 @@ import com.github.dockerjava.okhttp.OkHttpDockerCmdExecFactory
 import org.enterprisedlt.fabric.service.model.KnownHostRecord
 import org.enterprisedlt.fabric.service.node.{HostsManager, Util}
 import org.enterprisedlt.fabric.service.node.configuration.DockerConfig
+import org.enterprisedlt.fabric.service.node.model.BoxInformation
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
@@ -47,6 +48,12 @@ class DockerManagedBox(
     //            "com.docker.compose.service" -> organizationFullName
     //        ).asJava
     private val logConfig = makeDockerLogConfig(processConfig)
+    private val boxInformation = {
+        BoxInformation(
+            externalAddress = address.getOrElse(""),
+            details = Util.getServerInfo
+        )
+    }
     // =================================================================================================================
     logger.info(s"Initializing ${this.getClass.getSimpleName} ...")
 
@@ -339,7 +346,7 @@ class DockerManagedBox(
         }
     }
 
-    override def getBoxAddress: Either[String, String] = Right(address.getOrElse(""))
+    override def getBoxInfo: Either[String, BoxInformation] = Right(boxInformation)
 
     override def updateKnownHosts(hosts: Array[KnownHostRecord]): Either[String, Unit] =
         Try {

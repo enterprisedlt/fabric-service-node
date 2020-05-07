@@ -33,6 +33,7 @@ import org.hyperledger.fabric.protos.ext.orderer.Configuration.ConsensusType
 import org.hyperledger.fabric.protos.ext.orderer.etcdraft.Configuration.ConfigMetadata
 import org.hyperledger.fabric.sdk.{ChaincodeCollectionConfiguration, ChaincodeEndorsementPolicy}
 import org.slf4j.{Logger, LoggerFactory}
+import oshi.SystemInfo
 
 import scala.collection.JavaConverters._
 
@@ -295,6 +296,17 @@ object Util {
 
     def parsePeriod(periodString: String): Period = Period.parse(periodString)
 
+    def getServerInfo: String = {
+        val si = new SystemInfo()
+        val  hal = si.getHardware
+        val oneGb = 1024*1024*1024
+        val available = hal.getMemory.getTotal
+        val total = (available * 1d) / oneGb
+        val coreCount = hal.getProcessor.getLogicalProcessorCount
+        val oneGhz = 1000*1000*1000
+        val freq = (hal.getProcessor.getProcessorIdentifier.getVendorFreq * 1d) / oneGhz
+        s"${coreCount}Core ${freq.formatted("%.2f")}GHz ${total.formatted("%.2f")}Gb"
+    }
 }
 
 object ConversionHelper {

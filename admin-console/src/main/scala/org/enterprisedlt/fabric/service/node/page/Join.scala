@@ -15,8 +15,8 @@ import org.scalajs.dom.html.{Div, Select}
 import org.scalajs.dom.raw.{File, FileReader}
 
 /**
-  * @author Maxim Fedin
-  */
+ * @author Maxim Fedin
+ */
 object Join {
 
     @Lenses case class JoinState(
@@ -28,7 +28,7 @@ object Join {
     )
 
     object JoinState {
-        val ComponentTypes = Seq("orderer", "peer")
+        val ComponentTypes = Seq("Orderer", "Peer")
         val Defaults: JoinState =
             JoinState(
                 JoinOptions.Defaults,
@@ -58,7 +58,7 @@ object Join {
 
         override def connectLocal: ConnectFunction = ApplyFor(
             Seq(
-                ((JoinState.componentCandidate / ComponentCandidate.box).when(_.trim.isEmpty) <~~ GlobalState.boxes.when(_.nonEmpty)) (_.head.boxName)
+                ((JoinState.componentCandidate / ComponentCandidate.box).when(_.trim.isEmpty) <~~ GlobalState.boxes.when(_.nonEmpty)) (_.head.name)
             )
         )
 
@@ -97,7 +97,7 @@ object Join {
             $.modState(
                 addComponent(joinState, g) andThen JoinState.componentCandidate.set(
                     JoinState.Defaults.componentCandidate.copy(
-                        box = g.boxes.head.boxName
+                        box = g.boxes.head.name
                     )
                 )
             )
@@ -110,7 +110,7 @@ object Join {
         private def addComponent(joinState: JoinState, g: GlobalState): JoinState => JoinState = {
             val componentCandidate = joinState.componentCandidate
             componentCandidate.componentType match {
-                case "peer" =>
+                case "Peer" =>
                     val peerConfig = PeerConfig(
                         box = componentCandidate.box,
                         name = s"${componentCandidate.name}.${g.orgFullName}",
@@ -118,7 +118,7 @@ object Join {
                         couchDB = null
                     )
                     PeerNodes.modify(_ :+ peerConfig)
-                case "orderer" =>
+                case "Orderer" =>
                     val osnConfig = OSNConfig(
                         box = componentCandidate.box,
                         name = s"${componentCandidate.name}.${g.orgFullName}",
@@ -140,7 +140,7 @@ object Join {
 
         def boxOptions(s: JoinState, g: GlobalState): TagMod = {
             g.boxes.map { box =>
-                option((className := "selected").when(s.componentCandidate.box == box.boxName), box.boxName)
+                option((className := "selected").when(s.componentCandidate.box == box.name), box.name)
             }.toTagMod
         }
 
@@ -219,18 +219,7 @@ object Join {
                 )
             )
 
-
-        def refreshButton(g: GlobalState) = {
-            <.div(^.className := "form-group row",
-                <.button(
-                    ^.className := "btn btn-primary",
-                    "Refresh",
-                    ^.onClick --> refresh(g)
-                )
-            )
-        }
-
-        def footerButtons(s:JoinState) = {
+        private def footerButtons(s: JoinState): VdomTagOf[Div] = {
             <.div(^.className := "form-group mt-1",
                 <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
                 <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goJoinProgress(s), "Join")
@@ -249,12 +238,17 @@ object Join {
                             <.h1("Join to new network")
                         ),
                         renderTabs(
-                            <.div(^.float.right),
+                            <.div(^.float.right,
+                                <.button(
+                                    ^.className := "btn",
+                                    ^.onClick --> refresh(g),
+                                    <.i(^.className := "fas fa-sync")
+                                )
+                            ),
                             ("join", "Join",
                               <.div(
                                   <.div(^.className := "card aut-form-card",
                                       <.div(^.className := "card-body aut-form-card",
-                                          refreshButton(g),
                                           <.h4("Join settings"),
                                           <.div(^.className := "form-group row",
                                               <.label(^.className := "col-sm-2 col-form-label", "Invite:"),
@@ -268,6 +262,13 @@ object Join {
                                           <.h4("Network settings"),
                                           <.hr(),
                                           <.h5("Network components:"),
+                                          <.div(^.className := "form-group row",
+                                              <.button(
+                                                  ^.className := "btn btn-primary",
+                                                  "Populate with default components",
+                                                  ^.onClick --> populateWithDefault(g)
+                                              )
+                                          ),
                                           <.div(^.className := "form-group row",
                                               <.table(^.className := "table table-hover table-sm",
                                                   <.thead(
@@ -346,15 +347,6 @@ object Join {
                                                   ^.onClick --> addNetworkComponent(s, g)
                                               )
                                           ),
-                                          <.div(^.className := "form-group row",
-                                              <.button(
-                                                  ^.className := "btn btn-primary",
-                                                  "Populate with default components",
-                                                  ^.onClick --> populateWithDefault(g)
-                                              )
-                                          ),
-                                          <.hr(),
-                                          footerButtons(s)
                                       )
                                   )
                               )
@@ -362,14 +354,12 @@ object Join {
                             ("box", "Boxes",
                               <.div(^.className := "card aut-form-card",
                                   <.div(^.className := "card-body aut-form-card",
-                                      refreshButton(g),
-                                      Boxes(),
-                                      <.hr(),
-                                      footerButtons(s)
+                                      Boxes()
                                   )
                               )
                             )
-                        )
+                        ),
+                        footerButtons(s)
                     )
                 )
             case _ => <.div()

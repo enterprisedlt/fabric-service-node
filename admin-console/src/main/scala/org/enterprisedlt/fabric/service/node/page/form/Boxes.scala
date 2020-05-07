@@ -14,8 +14,8 @@ import org.scalajs.dom.html.Div
 import scala.language.higherKinds
 
 /**
-  * @author Maxim Fedin
-  */
+ * @author Maxim Fedin
+ */
 object Boxes {
 
 
@@ -51,39 +51,39 @@ object Boxes {
         def renderWithGlobal(s: BoxesState, global: AppState): VdomTagOf[Div] = global match {
             case g: GlobalState =>
                 <.div(
-                    <.h5("Boxes:"),
+                    <.h5("Servers:"),
                     <.div(^.className := "form-group row",
                         <.table(^.className := "table table-hover table-sm",
                             <.thead(
                                 <.tr(
-                                    <.th(^.scope := "col", "#"),
                                     <.th(^.scope := "col", "Name"),
                                     <.th(^.scope := "col", "Address"),
+                                    <.th(^.scope := "col", "Details"),
                                     //                                            <.th(^.scope := "col", "Actions"),
                                 )
                             ),
                             <.tbody(
-                                g.boxes.zipWithIndex.map { case (box, index) =>
+                                g.boxes.map { box =>
                                     <.tr(
-                                        <.td(^.scope := "row", s"${index + 1}"),
-                                        <.td(box.boxName),
+                                        <.td(box.name),
                                         <.td(
-                                            if (box.boxAddress.trim.nonEmpty) box.boxAddress else "local"
+                                            if (box.information.externalAddress.trim.nonEmpty) box.information.externalAddress else "local"
                                         ),
+                                        <.td(box.information.details),
                                     )
                                 }.toTagMod,
                             )
                         )
                     ),
                     <.div(^.className := "form-group row",
-                        <.label(^.`for` := "boxName", ^.className := "col-sm-2 col-form-label", "Box name"),
+                        <.label(^.`for` := "boxName", ^.className := "col-sm-2 col-form-label", "Name"),
                         <.div(^.className := "col-sm-10",
                             <.input(^.`type` := "text", ^.className := "form-control", ^.id := "boxName",
                                 bind(s) := BoxesState.boxCandidate / RegisterBoxManager.name)
                         )
                     ),
                     <.div(^.className := "form-group row",
-                        <.label(^.`for` := "boxAddress", ^.className := "col-sm-2 col-form-label", "Box address"),
+                        <.label(^.`for` := "boxAddress", ^.className := "col-sm-2 col-form-label", "Connection URL"),
                         <.div(^.className := "col-sm-10",
                             <.input(^.`type` := "text", ^.className := "form-control", ^.id := "boxAddress",
                                 bind(s) := BoxesState.boxCandidate / RegisterBoxManager.url)
@@ -92,7 +92,7 @@ object Boxes {
                     <.div(^.className := "form-group row",
                         <.button(
                             ^.className := "btn btn-primary",
-                            "Add box",
+                            "Add server",
                             ^.onClick --> addBox(s.boxCandidate)
                         )
                     )
