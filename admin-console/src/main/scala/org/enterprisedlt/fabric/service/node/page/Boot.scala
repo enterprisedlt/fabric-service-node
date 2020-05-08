@@ -1,17 +1,16 @@
 package org.enterprisedlt.fabric.service.node.page
 
 import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react.vdom.all.{className, id, option}
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ScalaComponent}
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.page.form.Boxes
-import org.enterprisedlt.fabric.service.node.state.{ApplyFor, GlobalStateAware}
+import org.enterprisedlt.fabric.service.node.page.form.{Boxes, Components}
+import org.enterprisedlt.fabric.service.node.state.GlobalStateAware
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
-import org.scalajs.dom.html.{Div, Select}
+import org.scalajs.dom.html.Div
 
 /**
  * @author Alexey Polubelov
@@ -19,24 +18,13 @@ import org.scalajs.dom.html.{Div, Select}
 object Boot {
 
     @Lenses case class BootstrapState(
-        bootstrapOptions: BootstrapOptions,
-        componentCandidate: ComponentCandidate,
-        boxCandidate: RegisterBoxManager
+        bootstrapOptions: BootstrapOptions
     )
 
     object BootstrapState {
-        val ComponentTypes = Seq("Orderer", "Peer")
         val Defaults: BootstrapState =
             BootstrapState(
-                BootstrapOptions.Defaults,
-                ComponentCandidate(
-                    box = "",
-                    name = "",
-                    port = 0,
-                    componentType = ComponentTypes.head
-                ),
-                RegisterBoxManager.Defaults
-            )
+                BootstrapOptions.Defaults)
     }
 
     private val component = ScalaComponent.builder[Unit]("BootstrapMode")
@@ -50,13 +38,6 @@ object Boot {
         private val PeerNodes = BootstrapState.bootstrapOptions / BootstrapOptions.network / NetworkConfig.peerNodes
         private val OsnNodes = BootstrapState.bootstrapOptions / BootstrapOptions.network / NetworkConfig.orderingNodes
 
-
-        override def connectLocal: ConnectFunction = ApplyFor(
-            Seq(
-                ((BootstrapState.componentCandidate / ComponentCandidate.box).when(_.trim.isEmpty) <~~ GlobalState.boxes.when(_.nonEmpty)) (_.head.name)
-            )
-        )
-
         def goInit: Callback = Callback {
             Context.switchModeTo(InitMode)
         }
@@ -66,12 +47,12 @@ object Boot {
             Context.switchModeTo(BootstrapInProgress)
         }
 
-        def deleteComponent(componentConfig: ComponentConfig): CallbackTo[Unit] = {
-            val state = componentConfig match {
-                case oc: OSNConfig =>
-                    OsnNodes.modify(_.filter(_.name != oc.name))
-                case pc: PeerConfig =>
-                    PeerNodes.modify(_.filter(_.name != pc.name))
+        def deleteComponent(cType: String, name: String): CallbackTo[Unit] = {
+            val state = cType match {
+                case ComponentCandidate.OSN =>
+                    OsnNodes.modify(_.filter(_.name != name))
+                case ComponentCandidate.Peer =>
+                    PeerNodes.modify(_.filter(_.name != name))
             }
             $.modState(state)
         }
@@ -81,91 +62,36 @@ object Boot {
             Context.refreshState(globalState, BootstrapMode)
         }
 
-        def addNetworkComponent(bootstrapState: BootstrapState, g: GlobalState): CallbackTo[Unit] = {
-            $.modState(
-                addComponent(bootstrapState, g) andThen BootstrapState.componentCandidate.set(
-                    BootstrapState.Defaults.componentCandidate.copy(
-                        box = g.boxes.head.name
-                    )
-                )
-            )
+        def addNetworkComponents(components: Seq[ComponentCandidate], g: GlobalState): CallbackTo[Unit] = {
+            $.modState(addComponents(components, g))
         }
 
-        private def addComponent(bootstrapState: BootstrapState, g: GlobalState): BootstrapState => BootstrapState = {
-            val componentCandidate = bootstrapState.componentCandidate
-            componentCandidate.componentType match {
-                case "Peer" =>
-                    val peerConfig = PeerConfig(
+        private def addComponents(components: Seq[ComponentCandidate], g: GlobalState): BootstrapState => BootstrapState = {
+            val byType = components.groupBy(_.componentType)
+            val addPeers: BootstrapState => BootstrapState = byType.get(ComponentCandidate.Peer).map { peers =>
+                val peerConfigs = peers.map { componentCandidate =>
+                    PeerConfig(
                         box = componentCandidate.box,
                         name = s"${componentCandidate.name}.${g.orgFullName}",
                         port = componentCandidate.port,
                         couchDB = null
                     )
-                    PeerNodes.modify(_ :+ peerConfig)
-                case "Orderer" =>
-                    val osnConfig = OSNConfig(
+                }
+                PeerNodes.modify(_ ++ peerConfigs)
+            }.getOrElse(s => s)
+
+            val addOSNs: BootstrapState => BootstrapState = byType.get(ComponentCandidate.OSN).map { osns =>
+                val osnConfigs = osns.map { componentCandidate =>
+                    OSNConfig(
                         box = componentCandidate.box,
                         name = s"${componentCandidate.name}.${g.orgFullName}",
                         port = componentCandidate.port
                     )
-                    OsnNodes.modify(_ :+ osnConfig)
-                case _ => throw new Exception("Unknown component type")
-            }
-        }
-
-        def renderBoxesList(s: BootstrapState, g: GlobalState): VdomTagOf[Select] = {
-            <.select(className := "form-control",
-                id := "componentType",
-                bind(s) := BootstrapState.componentCandidate / ComponentCandidate.box,
-                boxOptions(s, g)
-            )
-        }
-
-        def boxOptions(s: BootstrapState, g: GlobalState): TagMod = {
-            g.boxes.map { box =>
-                option((className := "selected").when(s.componentCandidate.box == box.name), box.name)
-            }.toTagMod
-        }
-
-
-        def renderComponentType(s: BootstrapState): VdomTagOf[Select] = {
-            <.select(className := "form-control",
-                id := "componentType",
-                bind(s) := BootstrapState.componentCandidate / ComponentCandidate.componentType,
-                componentTypeOptions(s)
-            )
-        }
-
-        def componentTypeOptions(s: BootstrapState): TagMod = {
-            BootstrapState.ComponentTypes.map { name =>
-                option((className := "selected").when(s.componentCandidate.componentType == name), name)
-            }.toTagMod
-        }
-
-        def populateWithDefault(g: GlobalState): CallbackTo[Unit] = {
-            val defaultOSNList = Array("osn1", "osn2", "osn3")
-            val addDefaultOSNs =
-                OsnNodes.modify { x =>
-                    x ++ defaultOSNList.zipWithIndex.map { case (name, index) =>
-                        OSNConfig(
-                            box = "default", // TODO: box!
-                            name = s"$name.${g.orgFullName}",
-                            port = 7001 + index
-                        )
-                    }
                 }
+                OsnNodes.modify(_ ++ osnConfigs)
+            }.getOrElse(s => s)
 
-            val addDefaultPeer =
-                PeerNodes.modify { x =>
-                    x :+ PeerConfig(
-                        box = "default", // TODO: box!
-                        name = s"peer0.${g.orgFullName}",
-                        port = 7010,
-                        couchDB = null
-                    )
-                }
-
-            $.modState(addDefaultOSNs andThen addDefaultPeer)
+            addPeers andThen addOSNs
         }
 
         // name, title, content
@@ -224,102 +150,23 @@ object Boot {
                                 )
                             ),
                             ("components", "Network/Components",
-                              <.div(
-                                  <.div(^.className := "card aut-form-card",
-                                      <.div(^.className := "card-body aut-form-card",
-//                                          <.h4("Network:"),
-//                                          <.span(<.br()),
-                                          <.div(^.className := "form-group row",
-                                              <.label(^.className := "col-sm-2 col-form-label", "Consortium"),
-                                              <.div(^.className := "col-sm-10",
-                                                  <.input(^.`type` := "text", ^.`className` := "form-control",
-                                                      bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.networkName
-                                                  )
-                                              )
-                                          ),
-                                          <.span(<.br()),
-                                          <.button(
-                                              ^.className := "btn btn-light float-right",
-                                              "Add default components",
-                                              ^.onClick --> populateWithDefault(g)
-                                          ),
-                                          <.div(^.className := "form-group row", <.h5("Components:")),
-                                          <.div(^.className := "form-group row",
-                                              <.table(^.className := "table table-hover table-sm",
-                                                  <.thead(
-                                                      <.tr(
-                                                          <.th(^.scope := "col", "Name"),
-                                                          <.th(^.scope := "col", "Type"),
-                                                          <.th(^.scope := "col", "Server"),
-                                                          <.th(^.scope := "col", "Port"),
-                                                          <.th(^.scope := "col", "Actions"),
-                                                      )
-                                                  ),
-                                                  <.tbody(
-                                                      s.bootstrapOptions.network.orderingNodes.zipWithIndex.map { case (osnNode, index) =>
-                                                          <.tr(
-                                                              //                                                              <.td(^.scope := "row", s"${index + 1}"),
-                                                              <.td(osnNode.name),
-                                                              <.td("Orderer"),
-                                                              <.td(boxLabel(osnNode.box, g)),
-                                                              <.td(osnNode.port),
-                                                              <.td(
-                                                                  <.button(
-                                                                      ^.className := "btn btn-link",
-                                                                      "Remove",
-                                                                      ^.onClick --> deleteComponent(osnNode))
-                                                              )
-                                                          )
-                                                      }.toTagMod,
-                                                      s.bootstrapOptions.network.peerNodes.zipWithIndex.map { case (peerNode, index) =>
-                                                          <.tr(
-                                                              //                                                              <.td(^.scope := "row", s"${s.bootstrapOptions.network.orderingNodes.length + index + 1}"),
-                                                              <.td(peerNode.name),
-                                                              <.td("Peer"),
-                                                              <.td(boxLabel(peerNode.box, g)),
-                                                              <.td(peerNode.port),
-                                                              <.td(
-                                                                  <.button(
-                                                                      ^.className := "btn btn-link",
-                                                                      "Remove",
-                                                                      ^.onClick --> deleteComponent(peerNode))
-                                                              )
-                                                          )
-                                                      }.toTagMod
-
-                                                  )
-                                              )
-                                          ),
-                                          <.hr(),
-                                          <.div(^.className := "form-group row",
-                                              <.label(^.`for` := "componentType", ^.className := "col-sm-2 col-form-label", "Type"),
-                                              <.div(^.className := "col-sm-10", renderComponentType(s))
-                                          ),
-                                          <.div(^.className := "form-group row",
-                                              <.label(^.`for` := "componentBox", ^.className := "col-sm-2 col-form-label", "Server"),
-                                              <.div(^.className := "col-sm-10", renderBoxesList(s, g))
-                                          ),
-                                          <.div(^.className := "form-group row",
-                                              <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "Name"),
-                                              <.div(^.className := "col-sm-10",
-                                                  <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentName",
-                                                      bind(s) := BootstrapState.componentCandidate / ComponentCandidate.name)
-                                              )
-                                          ),
-                                          <.div(^.className := "form-group row",
-                                              <.label(^.`for` := "port", ^.className := "col-sm-2 col-form-label", "Port"),
-                                              <.div(^.className := "col-sm-10",
-                                                  <.input(^.`type` := "text", ^.className := "form-control", ^.id := "port",
-                                                      bind(s) := BootstrapState.componentCandidate / ComponentCandidate.port)
-                                              )
-                                          ),
-                                          <.div(^.className := "form-group row",
-                                              <.button(
-                                                  ^.className := "btn btn-primary",
-                                                  "Add component",
-                                                  ^.onClick --> addNetworkComponent(s, g)
+                              <.div(^.className := "card aut-form-card",
+                                  <.div(^.className := "card-body aut-form-card",
+                                      //                                          <.h4("Network:"),
+                                      //                                          <.span(<.br()),
+                                      <.div(^.className := "form-group row",
+                                          <.label(^.className := "col-sm-2 col-form-label", "Consortium"),
+                                          <.div(^.className := "col-sm-10",
+                                              <.input(^.`type` := "text", ^.`className` := "form-control",
+                                                  bind(s) := BootstrapState.bootstrapOptions / BootstrapOptions.networkName
                                               )
                                           )
+                                      ),
+                                      <.span(<.br()),
+                                      Components(
+                                          network = s.bootstrapOptions.network,
+                                          addNetworkComponent = addNetworkComponents(_, g),
+                                          deleteComponent = deleteComponent
                                       )
                                   )
                               )
@@ -426,12 +273,6 @@ object Boot {
             case _ => <.div()
         }
     }
-
-    private def boxLabel(name: String, g: GlobalState): String =
-        g.boxes.find(_.name == name).map(b => s"$name (${boxAddress(b)})").getOrElse("Unknown")
-
-    private def boxAddress(b: Box): String =
-        Option(b.information.externalAddress).filter(_.trim.nonEmpty).getOrElse("local")
 
     def apply(): Unmounted[Unit, BootstrapState, Backend] = component()
 

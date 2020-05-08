@@ -4,8 +4,8 @@ import monocle.macros.Lenses
 import upickle.default.{macroRW, ReadWriter => RW}
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 
 @Lenses case class BootstrapOptions(
     block: BlockConfig,
@@ -70,6 +70,8 @@ object JoinOptions {
 )
 
 object ComponentCandidate {
+    val OSN = "OSN"
+    val Peer = "Peer"
     implicit val rw: RW[ComponentCandidate] = macroRW
 }
 
@@ -298,10 +300,9 @@ object BoxInformation {
 }
 
 
-
 @Lenses case class RegisterBoxManager(
-     name : String,
-     url : String
+    name: String,
+    url: String
 )
 
 
