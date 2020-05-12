@@ -171,7 +171,7 @@ object Join {
         def footerButtons(s: JoinState): VdomTagOf[Div] = {
             <.div(^.className := "form-group mt-1",
                 <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
-                <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goJoinProgress(s), "Bootstrap")
+                <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goJoinProgress(s), "Join")
             )
         }
 
