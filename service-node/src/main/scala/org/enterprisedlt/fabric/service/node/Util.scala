@@ -33,6 +33,7 @@ import org.hyperledger.fabric.protos.ext.orderer.Configuration.ConsensusType
 import org.hyperledger.fabric.protos.ext.orderer.etcdraft.Configuration.ConfigMetadata
 import org.hyperledger.fabric.sdk.{ChaincodeCollectionConfiguration, ChaincodeEndorsementPolicy}
 import org.slf4j.{Logger, LoggerFactory}
+import oshi.SystemInfo
 
 import scala.collection.JavaConverters._
 
@@ -185,6 +186,7 @@ object Util {
     def codec: Gson = (new GsonBuilder).create()
 
     def createCodec: () => JsonServerCodec = () => new JsonServerCodec(codec)
+
     //=========================================================================
     def setupLogging(logLevel: String): Unit = {
         LoggerFactory
@@ -210,6 +212,21 @@ object Util {
 
     //=========================================================================
     def mkDirs(path: String): Boolean = new File(path).mkdirs()
+
+    //=========================================================================
+    def writeTextFile(filePath: String, content: String): Unit = {
+        val writer = new FileWriter(filePath)
+        writer.write(content)
+        writer.close()
+    }
+
+    //=========================================================================
+    def writeBase64BinaryFile(filePath: String, content: String): Unit = {
+        val writer = new FileOutputStream(filePath)
+        val binary = Base64.getDecoder.decode(content)
+        writer.write(binary)
+        writer.close()
+    }
 
     //=========================================================================
     def getUserCertificate(request: ServletRequest): Option[X509Certificate] = {
@@ -278,6 +295,32 @@ object Util {
     def futureDate(shift: Period): Date = Date.from(LocalDate.now().plus(shift).atStartOfDay(ZoneOffset.UTC).toInstant)
 
     def parsePeriod(periodString: String): Period = Period.parse(periodString)
+
+    def getServerInfo: String = {
+        val si = new SystemInfo()
+        val  hal = si.getHardware
+        val oneGb = 1024*1024*1024
+        val available = hal.getMemory.getTotal
+        val total = (available * 1d) / oneGb
+        val coreCount = hal.getProcessor.getLogicalProcessorCount
+        val oneGhz = 1000*1000*1000
+        val freq = (hal.getProcessor.getProcessorIdentifier.getVendorFreq * 1d) / oneGhz
+        s"${coreCount}Core ${freq.formatted("%.2f")}GHz ${total.formatted("%.2f")}Gb"
+    }
+}
+
+object ConversionHelper {
+
+    implicit class EitherSeqOps[L, R](values: Iterable[Either[L, R]]) {
+
+        def fold2Either: Either[L, Iterable[R]] =
+            values.foldLeft[Either[L, Seq[R]]](Right(Seq.empty[R])) { case (r, i) =>
+                for {
+                    rv <- r
+                    iv <- i
+                } yield rv :+ iv
+            }
+    }
 
 }
 

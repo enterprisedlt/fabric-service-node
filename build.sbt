@@ -35,6 +35,8 @@ lazy val service_node = project.in(file("service-node"))
       assemblySettings,
       libraryDependencies ++= FabricChainCodeClient ++ Jetty ++ DockerJava,
       libraryDependencies += "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2",
+      libraryDependencies += "com.github.oshi" % "oshi-core" % "5.0.1",
+
       mainClass in assembly := Some("org.enterprisedlt.fabric.service.node.ServiceNode"),
       assemblyJarName in assembly := "service-node.jar"
   )

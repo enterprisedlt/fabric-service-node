@@ -17,7 +17,7 @@ trait GlobalStateAware[GS, S] {
 
     def $: BackendScope[_, S]
 
-    private lazy val updater: (BackendScope[_, S])#WithEffect[Id] = $.withEffectsImpure
+    private lazy val updater: BackendScope[_, S]#WithEffect[Id] = $.withEffectsImpure
     private var gs: GS = _
 
     def onGlobalStateUpdate(g: GS): Unit = {
@@ -36,6 +36,36 @@ trait GlobalStateAware[GS, S] {
 
     def renderWithGlobal(s: S, g: GS): VdomTagOf[Div]
 
+    implicit def CFs2CF[X, Y]: Seq[(X, Y) => X] => (X, Y) => X = fs => { (s, gs) =>
+        fs.foldRight(s) { case (f, c) => f(c, gs) }
+    }
+}
+
+trait GlobalStateAwareP[GS, S, P] {
+    type ConnectFunction = (S, GS) => S
+
+    def $: BackendScope[P, S]
+
+    private lazy val updater: BackendScope[P, S]#WithEffect[Id] = $.withEffectsImpure
+    private var gs: GS = _
+
+    def onGlobalStateUpdate(g: GS): Unit = {
+        gs = g
+        updater.modState((s, p) => connectLocal(s, g))
+    }
+
+    def connectLocal: ConnectFunction = (s, _) => s
+
+    def render(p: P, s: S): VdomTagOf[Div] = {
+        gs match {
+            case null => <.div()
+            case g => renderWithGlobal(s, p, g)
+        }
+    }
+
+    def renderWithGlobal(s: S, p: P, g: GS): VdomTagOf[Div]
+
+    // convert collection of connect functions to one
     implicit def CFs2CF[X, Y]: Seq[(X, Y) => X] => (X, Y) => X = fs => { (s, gs) =>
         fs.foldRight(s) { case (f, c) => f(c, gs) }
     }
@@ -75,7 +105,12 @@ class GlobalStateManager[GS](
 
     def connect[T <: GlobalStateAware[GS, _]](x: T): Callback = Callback(subscribe(x.onGlobalStateUpdate))
 
+    def connectP[T <: GlobalStateAwareP[GS, _, _]](x: T): Callback = Callback(subscribe(x.onGlobalStateUpdate))
+
     def disconnect[T <: GlobalStateAware[GS, _]](x: T): Callback = Callback(unsubscribe(x.onGlobalStateUpdate))
+
+    def disconnectP[T <: GlobalStateAwareP[GS, _, _]](x: T): Callback = Callback(unsubscribe(x.onGlobalStateUpdate))
+
 }
 
 object ApplyFor {

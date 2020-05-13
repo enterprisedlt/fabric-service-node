@@ -1,40 +1,34 @@
 package org.enterprisedlt.fabric.service.node.page
 
 import japgolly.scalajs.react.component.Scala.Unmounted
-import japgolly.scalajs.react.vdom.all.{VdomTagOf, className, id, option}
+import japgolly.scalajs.react.vdom.all.VdomTagOf
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ReactEventFromInput, ScalaComponent}
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
+import org.enterprisedlt.fabric.service.node.page.form.{Boxes, Components}
 import org.enterprisedlt.fabric.service.node.state.GlobalStateAware
-import org.scalajs.dom.html.{Div, Select}
-import org.scalajs.dom.raw.{File, FileReader}
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
+import org.scalajs.dom.html.Div
+import org.scalajs.dom.raw.{File, FileReader}
 
 /**
- * @author Maxim Fedin
- */
+  * @author Maxim Fedin
+  */
 object Join {
 
     @Lenses case class JoinState(
         joinOptions: JoinOptions,
-        componentCandidate: ComponentCandidate,
         joinFile: File,
         joinFileName: String,
     )
 
     object JoinState {
-        val ComponentTypes = Seq("orderer", "peer")
         val Defaults: JoinState =
             JoinState(
                 JoinOptions.Defaults,
-                ComponentCandidate(
-                    name = "",
-                    port = 0,
-                    componentType = ComponentTypes.head
-                ),
                 null,
                 "Choose file"
             )
@@ -51,6 +45,7 @@ object Join {
         private val PeerNodes = JoinState.joinOptions / JoinOptions.network / NetworkConfig.peerNodes
         private val OsnNodes = JoinState.joinOptions / JoinOptions.network / NetworkConfig.orderingNodes
 
+
         def goInit: Callback = Callback {
             Context.switchModeTo(InitMode)
         }
@@ -66,57 +61,51 @@ object Join {
             reader.readAsText(joinState.joinFile)
         }
 
-        def deleteComponent(componentConfig: ComponentConfig): CallbackTo[Unit] = {
-            val state = componentConfig match {
-                case oc: OSNConfig =>
-                    OsnNodes.modify(_.filter(_.name != oc.name))
-                case pc: PeerConfig =>
-                    PeerNodes.modify(_.filter(_.name != pc.name))
+
+        def deleteComponent(cType: String, name: String): CallbackTo[Unit] = {
+            val state = cType match {
+                case ComponentCandidate.OSN =>
+                    OsnNodes.modify(_.filter(_.name != name))
+                case ComponentCandidate.Peer =>
+                    PeerNodes.modify(_.filter(_.name != name))
             }
             $.modState(state)
         }
 
-
-        def addNetworkComponent(joinState: JoinState, g: GlobalState): CallbackTo[Unit] = {
-            $.modState(
-                addComponent(joinState, g) andThen JoinState.componentCandidate.set(JoinState.Defaults.componentCandidate)
-            )
+        def refresh(globalState: GlobalState): Callback = Callback {
+            Context.refreshState(globalState, BootstrapMode)
         }
 
-        private def addComponent(joinState: JoinState, g: GlobalState): JoinState => JoinState = {
-            val componentCandidate = joinState.componentCandidate
-            componentCandidate.componentType match {
-                case "peer" =>
-                    PeerNodes.modify { x =>
-                        x :+ PeerConfig(
-                            name = s"${componentCandidate.name}.${g.orgFullName}",
-                            port = componentCandidate.port,
-                            couchDB = null
-                        )
-                    }
-                case "orderer" =>
-                    OsnNodes.modify { x =>
-                        x :+ OSNConfig(
-                            name = s"${componentCandidate.name}.${g.orgFullName}",
-                            port = componentCandidate.port
-                        )
-                    }
-                case _ => throw new Exception("Unknown component type")
-            }
+        def addNetworkComponents(components: Seq[ComponentCandidate], g: GlobalState): CallbackTo[Unit] = {
+            $.modState(addComponents(components, g))
         }
 
-        def renderComponentType(s: JoinState): VdomTagOf[Select] = {
-            <.select(className := "form-control",
-                id := "componentType",
-                bind(s) := JoinState.componentCandidate / ComponentCandidate.componentType,
-                componentTypeOptions(s)
-            )
-        }
+        private def addComponents(components: Seq[ComponentCandidate], g: GlobalState): JoinState => JoinState = {
+            val byType = components.groupBy(_.componentType)
+            val addPeers: JoinState => JoinState = byType.get(ComponentCandidate.Peer).map { peers =>
+                val peerConfigs = peers.map { componentCandidate =>
+                    PeerConfig(
+                        box = componentCandidate.box,
+                        name = s"${componentCandidate.name}.${g.orgFullName}",
+                        port = componentCandidate.port,
+                        couchDB = null
+                    )
+                }
+                PeerNodes.modify(_ ++ peerConfigs)
+            }.getOrElse(s => s)
 
-        def componentTypeOptions(s: JoinState): TagMod = {
-            JoinState.ComponentTypes.map { name =>
-                option((className := "selected").when(s.componentCandidate.componentType == name), name)
-            }.toTagMod
+            val addOSNs: JoinState => JoinState = byType.get(ComponentCandidate.OSN).map { osns =>
+                val osnConfigs = osns.map { componentCandidate =>
+                    OSNConfig(
+                        box = componentCandidate.box,
+                        name = s"${componentCandidate.name}.${g.orgFullName}",
+                        port = componentCandidate.port
+                    )
+                }
+                OsnNodes.modify(_ ++ osnConfigs)
+            }.getOrElse(s => s)
+
+            addPeers andThen addOSNs
         }
 
         def addFile(event: ReactEventFromInput): CallbackTo[Unit] = {
@@ -130,6 +119,7 @@ object Join {
                 OsnNodes.modify { x =>
                     x ++ defaultOSNList.zipWithIndex.map { case (name, index) =>
                         OSNConfig(
+                            box = "default",
                             name = s"$name.${g.orgFullName}",
                             port = 6001 + index
                         )
@@ -139,6 +129,7 @@ object Join {
             val addDefaultPeer =
                 PeerNodes.modify { x =>
                     x :+ PeerConfig(
+                        box = "default",
                         name = s"peer0.${g.orgFullName}",
                         port = 6010,
                         couchDB = null
@@ -147,117 +138,102 @@ object Join {
             $.modState(addDefaultOSNs andThen addDefaultPeer)
         }
 
+        // name, title, content
+        def renderTabs(heading: TagMod, tabs: (String, String, TagMod)*): VdomTagOf[Div] =
+            <.div(^.className := "card ",
+                <.div(^.className := "card-header", //bg-primary text-white
+                    //                    <.h1("Fabric service node"),
+                    heading,
+                    <.div(^.className := "nav nav-tabs card-header-tabs", ^.id := "nav-tab", ^.role := "tablist", //
+                        tabs.zipWithIndex.map { case ((name, title, _), index) =>
+                            <.a(
+                                ^.className := s"nav-link${if (index == 0) " active" else ""}",
+                                ^.id := s"nav-$name-tab",
+                                data.toggle := "tab",
+                                ^.href := s"#nav-$name",
+                                ^.role.tab,
+                                ^.aria.controls := s"nav-$name",
+                                ^.aria.selected := false,
+                                title
+                            )
+                        }.toTagMod
+                    ),
+                ),
+                <.div(^.className := "card-body ", //aut-form-card
+                    <.div(^.className := "tab-content", ^.id := "nav-tabContent",
+                        tabs.zipWithIndex.map { case ((name, _, content), index) =>
+                            <.div(^.className := s"tab-pane${if (index == 0) " active" else ""}", ^.id := s"nav-$name", ^.role.tabpanel, ^.aria.labelledBy := s"nav-$name-tab", content)
+                        }.toTagMod
+                    )
+                )
+            )
+
+        def footerButtons(s: JoinState): VdomTagOf[Div] = {
+            <.div(^.className := "form-group mt-1",
+                <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
+                <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goJoinProgress(s), "Join")
+            )
+        }
+
+
         def renderWithGlobal(s: JoinState, global: AppState): VdomTagOf[Div] = global match {
             case g: GlobalState =>
-                <.div(^.className := "card aut-form-card",
-                    <.div(^.className := "card-header text-white bg-primary",
-                        <.div(^.float.right,
-                            <.h5(g.orgFullName)
+                <.div(
+                    <.div(^.className := "card aut-form-card",
+                        <.div(^.className := "card-header text-white bg-primary",
+                            <.div(^.float.right,
+                                <.h4(g.orgFullName)
+                            ),
+                            <.h1("Join to new network")
                         ),
-                        <.h1("Join to new network")
-                    ),
-                    <.hr(),
-                    <.div(^.className := "card-body aut-form-card",
-                        <.h5("Join settings"),
-                        <.div(^.className := "form-group row",
-                            <.label(^.className := "col-sm-2 col-form-label", "Invite:"),
-                            <.div(^.className := "input-group col-sm-10",
-                                <.div(^.`class` := "custom-file",
-                                    <.input(^.`type` := "file", ^.`class` := "custom-file-input", ^.id := "inviteInput", ^.onChange ==> addFile),
-                                    <.label(^.`class` := "custom-file-label", s.joinFileName)
+                        renderTabs(
+                            <.div(^.float.right,
+                                <.button(
+                                    ^.className := "btn",
+                                    ^.onClick --> refresh(g),
+                                    <.i(^.className := "fas fa-sync")
                                 )
+                            ),
+                            ("components", "Invite/Components",
+                              <.div(^.className := "card aut-form-card",
+                                  <.div(^.className := "card-body aut-form-card",
+                                      <.div(^.className := "form-group row",
+                                          <.label(^.className := "col-sm-2 col-form-label", "Invite:"),
+                                          <.div(^.className := "input-group col-sm-10",
+                                              <.div(^.`class` := "custom-file",
+                                                  <.input(^.`type` := "file", ^.`class` := "custom-file-input", ^.id := "inviteInput", ^.onChange ==> addFile),
+                                                  <.label(^.`class` := "custom-file-label", s.joinFileName)
+                                              )
+                                          )
+                                      ),
+                                      <.span(<.br()),
+                                      Components(
+                                          network = s.joinOptions.network,
+                                          addNetworkComponent = addNetworkComponents(_, g),
+                                          deleteComponent = deleteComponent
+                                      )
+                                  )
+                              )
+                            ),
+                            ("box", "Servers",
+                              <.div(^.className := "card aut-form-card",
+                                  <.div(^.className := "card-body aut-form-card",
+                                      Boxes(),
+                                  )
+                              )
                             )
                         ),
-                        <.hr(),
-                        <.h5("Network settings"),
-                        <.div(^.className := "form-group row",
-                            <.button(
-                                ^.className := "btn btn-primary",
-                                "Add defaults",
-                                ^.onClick --> populateWithDefault(g)
-                            )
-                        ),
-                        <.div(^.className := "form-group row",
-                            <.table(^.className := "table table-hover table-sm",
-                                <.thead(
-                                    <.tr(
-                                        <.th(^.scope := "col", "#"),
-                                        <.th(^.scope := "col", "Component type"),
-                                        <.th(^.scope := "col", "Component name"),
-                                        <.th(^.scope := "col", "Port"),
-                                        <.th(^.scope := "col", "Actions"),
-                                    )
-                                ),
-                                <.tbody(
-                                    s.joinOptions.network.orderingNodes.zipWithIndex.map { case (osnNode, index) =>
-                                        <.tr(
-                                            <.td(^.scope := "row", s"${index + 1}"),
-                                            <.td("orderer"),
-                                            <.td(osnNode.name),
-                                            <.td(osnNode.port),
-                                            <.td(
-                                                <.button(
-                                                    ^.className := "btn btn-primary",
-                                                    "Remove",
-                                                    ^.onClick --> deleteComponent(osnNode))
-                                            )
-                                        )
-                                    }.toTagMod,
-                                    s.joinOptions.network.peerNodes.zipWithIndex.map { case (peerNode, index) =>
-                                        <.tr(
-                                            <.td(^.scope := "row", s"${s.joinOptions.network.orderingNodes.length + index + 1}"),
-                                            <.td("peer"),
-                                            <.td(peerNode.name),
-                                            <.td(peerNode.port),
-                                            <.td(
-                                                <.button(
-                                                    ^.className := "btn btn-primary",
-                                                    "Remove",
-                                                    ^.onClick --> deleteComponent(peerNode))
-                                            )
-                                        )
-                                    }.toTagMod
-
-                                )
-                            )
-                        ),
-                        <.hr(),
-                        <.div(^.className := "form-group row",
-                            <.label(^.`for` := "componentType", ^.className := "col-sm-2 col-form-label", "Component type"),
-                            <.div(^.className := "col-sm-10", renderComponentType(s))
-                        ),
-                        <.div(^.className := "form-group row",
-                            <.label(^.`for` := "componentName", ^.className := "col-sm-2 col-form-label", "Component name"),
-                            <.div(^.className := "col-sm-10",
-                                <.input(^.`type` := "text", ^.className := "form-control", ^.id := "componentName",
-                                    bind(s) := JoinState.componentCandidate / ComponentCandidate.name)
-                            )
-                        ),
-                        <.div(^.className := "form-group row",
-                            <.label(^.`for` := "port", ^.className := "col-sm-2 col-form-label", "Port"),
-                            <.div(^.className := "col-sm-10",
-                                <.input(^.`type` := "text", ^.className := "form-control", ^.id := "port",
-                                    bind(s) := JoinState.componentCandidate / ComponentCandidate.port)
-                            )
-                        ),
-                        <.div(^.className := "form-group row",
-                            <.button(
-                                ^.className := "btn btn-primary",
-                                "Add component",
-                                ^.onClick --> addNetworkComponent(s, g)
-                            )
-                        ),
-                        <.hr(),
-                        <.div(^.className := "form-group mt-1",
-                            <.button(^.`type` := "button", ^.className := "btn btn-outline-secondary", ^.onClick --> goInit, "Back"),
-                            <.button(^.`type` := "button", ^.className := "btn btn-outline-success float-right", ^.onClick --> goJoinProgress(s), "Join")
-                        )
+                        footerButtons(s)
                     )
                 )
             case _ => <.div()
         }
+
+
     }
 
     def apply(): Unmounted[Unit, JoinState, Backend] = component()
 
 }
+
+

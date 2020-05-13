@@ -26,13 +26,14 @@ serviceID=`docker run -d \
  -e "LOG_FILE_SIZE=100m" \
  -e "LOG_MAX_FILES=5" \
  -p ${SERVICE_BIND_PORT}:${SERVICE_BIND_PORT} \
- --volume=${PROFILE_PATH}/hosts:/etc/hosts \
- --volume=${PROFILE_PATH}:/opt/profile \
- --volume=/var/run/:/host/var/run/ \
- --name service.${ORG}.${DOMAIN} \
  --log-driver json-file \
  --log-opt max-size=100m \
  --log-opt max-file=5 \
+ --volume=${PROFILE_PATH}/hosts:/etc/hosts \
+ --volume=${PROFILE_PATH}:/opt/profile \
+ --volume=/var/run/:/host/var/run/ \
+ --network=${FABRIC_SERVICE_NETWORK} \
+ --name service.${ORG}.${DOMAIN} \
  enterprisedlt/fabric-service-node:@FABRIC_SERVICE_NODE_VERSION@`
 echo "Service ID: ${serviceID}"
 

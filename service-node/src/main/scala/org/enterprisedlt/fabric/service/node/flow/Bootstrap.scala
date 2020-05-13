@@ -1,14 +1,17 @@
 package org.enterprisedlt.fabric.service.node.flow
 
 import java.io.{BufferedInputStream, FileInputStream}
+import java.nio.charset.StandardCharsets
+import java.util.Base64
 import java.util.concurrent.atomic.AtomicReference
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, ServiceVersion}
 import org.enterprisedlt.fabric.service.node._
-import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, DockerConfig, OrganizationConfig}
+import org.enterprisedlt.fabric.service.node.configuration.{BootstrapOptions, OrganizationConfig}
+import org.enterprisedlt.fabric.service.node.cryptography.{FabricCryptoMaterial, Orderer, Peer}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model.FabricServiceState
-import org.enterprisedlt.fabric.service.node.process.DockerBasedProcessManager
+import org.enterprisedlt.fabric.service.node.process._
 import org.enterprisedlt.fabric.service.node.proto._
 import org.slf4j.LoggerFactory
 
@@ -25,22 +28,51 @@ object Bootstrap {
         hostsManager: HostsManager,
         externalAddress: Option[ExternalAddress],
         profilePath: String,
-        processConfig: DockerConfig,
+        processManager: ProcessManager,
         state: AtomicReference[FabricServiceState]
     ): GlobalState = {
         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
         //
-        logger.info(s"[ $organizationFullName ] - Starting process manager ...")
-        val processManager = new DockerBasedProcessManager(
-            profilePath,
-            organizationConfig,
-            bootstrapOptions.networkName,
-            bootstrapOptions.network,
-            processConfig: DockerConfig
-        )
-        //
-        logger.info(s"[ $organizationFullName ] - Generating crypto material...")
-        cryptography.createOrgCrypto(bootstrapOptions.network, organizationFullName)
+        val componentsCrypto = bootstrapOptions.network.orderingNodes.map { osnConfig =>
+            val componentCrypto = cryptography.generateComponentCrypto(Orderer, osnConfig.name)
+            cryptography.saveComponentCrypto(Orderer, osnConfig.name, componentCrypto)
+            osnConfig.name -> componentCrypto
+        }.toMap
+
+        logger.info(s"[ $organizationFullName ] - Generating list of known hosts ...")
+        import ConversionHelper._
+        val knownHosts =
+            (
+              bootstrapOptions.network.orderingNodes.map(osn => osn.name -> osn.box) ++
+                bootstrapOptions.network.peerNodes.map(peer => peer.name -> peer.box)
+              )
+              .map { case (name, box) =>
+                  processManager.getBoxAddress(box).map {
+                      _.map { boxAddress =>
+                          KnownHostRecord(
+                              dnsName = name,
+                              ipAddress = boxAddress
+                          )
+                      }
+                  }
+              }.toSeq.fold2Either.map { list =>
+                (list.toSeq :+ externalAddress.map { serviceAddress =>
+                    KnownHostRecord(
+                        dnsName = s"service.$organizationFullName",
+                        ipAddress = serviceAddress.host
+                    )
+                }).flatten
+            }
+              .left.map { msg =>
+                logger.error(s"Failed to obtain known hosts list: $msg")
+            }
+              .getOrElse {
+                  throw new Exception(s"Failed to get known hosts list")
+              }.toArray
+
+        logger.info(s"List of known hosts: ${knownHosts.toSeq}")
+        hostsManager.updateHosts(knownHosts)
+        processManager.updateKnownHosts(knownHosts)
 
         logger.info(s"[ $organizationFullName ] - Creating genesis ...")
         state.set(FabricServiceState(FabricServiceState.BootstrapCreatingGenesis))
@@ -51,13 +83,35 @@ object Bootstrap {
 
         //
         logger.info(s"[ $organizationFullName ] - Starting ordering nodes ...")
+
+        val organizationInfo =
+            process.OrganizationConfig(
+                mspId = organizationConfig.name,
+                fullName = organizationFullName,
+                cryptoMaterial = cryptography.getOrgCryptoMaterialPem
+            )
+
         state.set(FabricServiceState(FabricServiceState.BootstrapStartingOrdering))
         bootstrapOptions.network.orderingNodes.foreach { osnConfig =>
-            processManager.startOrderingNode(osnConfig.name)
+            processManager.startOrderingNode(
+                osnConfig.box,
+                StartOSNRequest(
+                    port = osnConfig.port,
+                    genesis = new String(Base64.getEncoder.encode(genesis.toByteArray), StandardCharsets.UTF_8),
+                    organization = organizationInfo,
+                    component = ComponentConfig(
+                        fullName = osnConfig.name,
+                        cryptoMaterial = ComponentCryptoMaterialPEM(
+                            msp = FabricCryptoMaterial.asPem(componentsCrypto(osnConfig.name).componentCert),
+                            tls = FabricCryptoMaterial.asPem(componentsCrypto(osnConfig.name).componentTLSCert)
+                        )
+                    )
+                )
+            )
         }
         state.set(FabricServiceState(FabricServiceState.BootstrapAwaitingOrdering))
         bootstrapOptions.network.orderingNodes.foreach { osnConfig =>
-            processManager.osnAwaitJoinedToRaft(osnConfig.name)
+            processManager.osnAwaitJoinedToRaft(osnConfig.box, osnConfig.name)
         }
 
         //
@@ -72,7 +126,22 @@ object Bootstrap {
         logger.info(s"[ $organizationFullName ] - Starting peer nodes ...")
         state.set(FabricServiceState(FabricServiceState.BootstrapStartingPeers))
         bootstrapOptions.network.peerNodes.foreach { peerConfig =>
-            processManager.startPeerNode(peerConfig.name)
+            val componentCrypto = cryptography.generateComponentCrypto(Peer, peerConfig.name)
+            cryptography.saveComponentCrypto(Peer, peerConfig.name, componentCrypto)
+            processManager.startPeerNode(
+                peerConfig.box,
+                StartPeerRequest(
+                    port = peerConfig.port,
+                    organization = organizationInfo,
+                    component = ComponentConfig(
+                        fullName = peerConfig.name,
+                        cryptoMaterial = ComponentCryptoMaterialPEM(
+                            msp = FabricCryptoMaterial.asPem(componentCrypto.componentCert),
+                            tls = FabricCryptoMaterial.asPem(componentCrypto.componentTLSCert)
+                        )
+                    )
+                )
+            )
             network.definePeer(peerConfig)
         }
 
@@ -116,12 +185,7 @@ object Bootstrap {
                 mspId = organizationConfig.name,
                 name = organizationConfig.name,
                 memberNumber = 1,
-                knownHosts = externalAddress.map { address =>
-                    bootstrapOptions.network.orderingNodes.map(osn => KnownHostRecord(address.host, osn.name)) ++
-                      bootstrapOptions.network.peerNodes.map(peer => KnownHostRecord(address.host, peer.name)) :+
-                      KnownHostRecord(address.host, s"service.$organizationFullName")
-                }
-                  .getOrElse(Array.empty)
+                knownHosts = knownHosts
             )
         val serviceVersion =
             ServiceVersion(
@@ -145,6 +209,6 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Bootstrap done.")
         state.set(FabricServiceState(FabricServiceState.Ready))
-        GlobalState(network, processManager, bootstrapOptions.network, bootstrapOptions.networkName)
+        GlobalState(network, bootstrapOptions.network, bootstrapOptions.networkName)
     }
 }

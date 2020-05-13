@@ -2,7 +2,7 @@ package org.enterprisedlt.fabric.service.node
 
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
-import org.enterprisedlt.fabric.service.node.model.{Contract, FabricServiceState, Organization, Status}
+import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.state.GlobalStateManager
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -18,12 +18,14 @@ object Context {
         for {
             state <- ServiceNodeRemote.getServiceState
             stateMode = getStateMode(state)
-            states: Option[(Array[String], Array[String], Array[Organization], Array[Contract])] <- if (stateMode == ReadyForUse) updateState else Future.successful(None)
+            states <- if (stateMode == ReadyForUse) updateState() else Future.successful(None)
             orgFullName <- ServiceNodeRemote.getOrganisationFullName
             mspId <- ServiceNodeRemote.getOrganisationMspId
+            boxes <- ServiceNodeRemote.listBoxes
         } yield {
             State.update { _ =>
-                val (packages, channels, organizations, contracts) = states.getOrElse((Array.empty[String], Array.empty[String], Array.empty[Organization], Array.empty[Contract]))
+                val (packages, channels, organizations, contracts) =
+                    states.getOrElse((Array.empty[String], Array.empty[String], Array.empty[Organization], Array.empty[Contract]))
                 GlobalState(
                     mode = stateMode,
                     orgFullName = orgFullName,
@@ -31,9 +33,26 @@ object Context {
                     channels = channels,
                     packages = packages,
                     organizations = organizations,
-                    contracts = contracts
+                    contracts = contracts,
+                    boxes = boxes
                 )
             }
+        }
+    }
+
+
+    def refreshState(globalState: GlobalState, state: AppMode): Future[Unit] = {
+        state match {
+            case BootstrapMode =>
+                for {
+                    boxes <- ServiceNodeRemote.listBoxes
+                } yield {
+                    State.update { _ =>
+                        globalState.copy(
+                            boxes = boxes
+                        )
+                    }
+                }
         }
     }
 
@@ -49,7 +68,7 @@ object Context {
     }
 
 
-    def updateState: Future[Option[(Array[String], Array[String], Array[Organization], Array[Contract])]] = {
+    def updateState(): Future[Option[(Array[String], Array[String], Array[Organization], Array[Contract])]] = {
         for {
             packages <- ServiceNodeRemote.listContractPackages
             channels <- ServiceNodeRemote.listChannels
@@ -77,7 +96,8 @@ case object Initial extends AppState
     channels: Array[String],
     packages: Array[String],
     organizations: Array[Organization],
-    contracts: Array[Contract]
+    contracts: Array[Contract],
+    boxes: Array[Box]
 ) extends AppState
 
 sealed trait AppMode

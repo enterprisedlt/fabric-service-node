@@ -5,6 +5,7 @@ package org.enterprisedlt.fabric.service.node.configuration
   */
 
 case class OSNConfig(
+    box: String,
     name: String,
     port: Int
 )

@@ -3,16 +3,20 @@ package org.enterprisedlt.fabric.service.node
 import java.security.KeyStore
 import java.security.cert.X509Certificate
 
-import org.enterprisedlt.fabric.service.node.configuration.NetworkConfig
-import org.enterprisedlt.fabric.service.node.cryptography.UserAccount
+import org.enterprisedlt.fabric.service.node.cryptography.{Component, ComponentCerts, UserAccount}
+import org.enterprisedlt.fabric.service.node.process.OrganizationCryptoMaterialPEM
 import org.hyperledger.fabric.sdk.User
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 trait CryptoManager {
 
-    def createOrgCrypto(network: NetworkConfig, orgFullName: String): Unit
+    def getOrgCryptoMaterialPem: OrganizationCryptoMaterialPEM
+
+    def generateComponentCrypto(componentType: Component, componentName: String): ComponentCerts
+
+    def saveComponentCrypto(componentType: Component, componentName: String, componentCerts: ComponentCerts): Unit
 
     def loadDefaultAdmin: User
 

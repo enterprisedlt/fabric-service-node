@@ -50,7 +50,7 @@ object JoinProgress {
     class Backend(val $: BackendScope[Unit, State]) {
 
         def goAdministration: Callback = Callback {
-            Context.updateState
+            Context.updateState()
             Context.switchModeTo(ReadyForUse)
         }
 

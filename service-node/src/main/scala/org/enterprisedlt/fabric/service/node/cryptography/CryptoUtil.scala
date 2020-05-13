@@ -153,6 +153,18 @@ case class CertAndKey(
     key: PrivateKey
 )
 
+case class ComponentCerts(
+    organizationCryptoMaterial: OrganizationCryptoMaterial,
+    componentCert: CertAndKey,
+    componentTLSCert: CertAndKey
+)
+
+trait Component
+
+object Peer extends Component
+object Orderer extends Component
+
+
 trait CertExtension {
     def id: ASN1ObjectIdentifier
 }

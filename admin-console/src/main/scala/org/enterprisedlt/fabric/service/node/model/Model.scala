@@ -4,8 +4,8 @@ import monocle.macros.Lenses
 import upickle.default.{macroRW, ReadWriter => RW}
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 
 @Lenses case class BootstrapOptions(
     block: BlockConfig,
@@ -63,12 +63,15 @@ object JoinOptions {
 }
 
 @Lenses case class ComponentCandidate(
+    box: String,
     name: String,
     port: Int,
     componentType: String
 )
 
 object ComponentCandidate {
+    val OSN = "OSN"
+    val Peer = "Peer"
     implicit val rw: RW[ComponentCandidate] = macroRW
 }
 
@@ -108,6 +111,7 @@ object NetworkConfig {
 trait ComponentConfig
 
 @Lenses case class OSNConfig(
+    box: String,
     name: String,
     port: Int
 ) extends ComponentConfig
@@ -117,6 +121,7 @@ object OSNConfig {
 }
 
 @Lenses case class PeerConfig(
+    box: String,
     name: String,
     port: Int,
     couchDB: CouchDBConfig
@@ -274,4 +279,37 @@ object ContractJoinRequest {
     )
 
     implicit val rw: RW[ContractJoinRequest] = macroRW
+}
+
+@Lenses case class Box(
+    name: String,
+    information: BoxInformation
+)
+
+object Box {
+    implicit val rw: RW[Box] = macroRW
+}
+
+@Lenses case class BoxInformation(
+    externalAddress: String,
+    details: String
+)
+
+object BoxInformation {
+    implicit val rw: RW[BoxInformation] = macroRW
+}
+
+
+@Lenses case class RegisterBoxManager(
+    name: String,
+    url: String
+)
+
+
+object RegisterBoxManager {
+    val Defaults: RegisterBoxManager = RegisterBoxManager(
+        name = "",
+        url = ""
+    )
+    implicit val rw: RW[RegisterBoxManager] = macroRW
 }
