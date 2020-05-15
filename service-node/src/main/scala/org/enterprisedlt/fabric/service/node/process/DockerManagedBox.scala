@@ -112,11 +112,11 @@ class DockerManagedBox(
                   .exec(new PullImageResultCallback())
                   .awaitCompletion(1, TimeUnit.MINUTES)
             } catch {
-                case e: Exception => logger.info(s"Exception pulling image: $e")
+                case e: Exception => logger.error(s"Exception pulling image: $e")
             }
             logger.info(s"Image $image downloaded")
         } else
-            logger.info(s"Image $image already exists")
+            logger.debug(s"Image $image already exists")
     }
 
 
