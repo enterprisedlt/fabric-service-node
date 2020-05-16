@@ -35,7 +35,8 @@ class DockerManagedBox(
     networkName: String,
     hostsManager: HostsManager,
     processConfig: DockerConfig,
-    LogWindow: Int = 1500
+    LogWindow: Int = 1500,
+    pullImageTimeout: Int
 ) extends ManagedBox {
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val InnerPath = "/opt/profile/"
@@ -82,44 +83,46 @@ class DockerManagedBox(
 
     //=========================================================================
 
-    def pullImageIfNeeded(image: String, forcePull: Boolean = false): Unit = {
-        val images = docker
+    def pullImageIfNeeded(image: String, forcePull: Boolean = false): Either[String, Unit] = {
+        docker
           .listImagesCmd()
           .exec()
           .iterator()
-        var imageExist = false
-        while (images.hasNext && !imageExist) {
-            if (Option(images.next().getRepoTags).exists(_.contains(image))) {
-                imageExist = true
-            }
-        }
-        if (!imageExist || forcePull) {
-            logger.info(s"Unable to find image $image locally or docker pull has been forced")
-            try {
-                val pullImageCmd = image.split(":") match {
-                    case Array(imageName, imageTag) =>
-                        logger.info(s"Pulling image $imageName with tag $imageTag...")
-                        docker
-                          .pullImageCmd(imageName)
-                          .withTag(imageTag)
-                    case Array(imageName) =>
-                        logger.info(s"Pulling image $imageName with tag latest...")
-                        docker
-                          .pullImageCmd(imageName)
-                          .withTag("latest")
+          .asScala
+          .toArray
+          .flatMap(image => Option(image.getRepoTags))
+          .flatten
+          .find(_ == image) match {
+            case Some(_) =>
+                logger.debug(s"Image $image already exists")
+                Right(())
+            case None =>
+                logger.info(s"Unable to find image $image locally or docker pull has been forced")
+                try {
+                    val pullImageCmd = image.split(":") match {
+                        case Array(imageName, imageTag) =>
+                            logger.info(s"Pulling image $imageName with tag $imageTag...")
+                            docker
+                              .pullImageCmd(imageName)
+                              .withTag(imageTag)
+                        case Array(imageName) =>
+                            logger.info(s"Pulling image $imageName with tag latest...")
+                            docker
+                              .pullImageCmd(imageName)
+                              .withTag("latest")
+                    }
+                    pullImageCmd
+                      .exec(new PullImageResultCallback())
+                      .awaitCompletion(pullImageTimeout, TimeUnit.MINUTES)
+                    logger.info(s"Image $image downloaded")
+                    Right(())
+                } catch {
+                    case e: Exception =>
+                        logger.error(s"Exception pulling image: $e")
+                        Left(s"Exception pulling image: $e")
                 }
-                pullImageCmd
-                  .exec(new PullImageResultCallback())
-                  .awaitCompletion(1, TimeUnit.MINUTES)
-            } catch {
-                case e: Exception => logger.error(s"Exception pulling image: $e")
-            }
-            logger.info(s"Image $image downloaded")
-        } else
-            logger.debug(s"Image $image already exists")
+        }
     }
-
-
 
 
     override def startOrderingNode(request: StartOSNRequest): Either[String, String] = {

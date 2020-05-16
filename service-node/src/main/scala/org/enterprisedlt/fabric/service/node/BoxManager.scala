@@ -22,6 +22,7 @@ object BoxManager extends App {
     private val DockerSocket = Option(Environment.get("DOCKER_SOCKET")).getOrElse(throw new Exception("Mandatory environment variable missing DOCKER_SOCKET!"))
     private val LogFileSize = Option(Environment.get("LOG_FILE_SIZE")).filter(_.trim.nonEmpty).getOrElse("100m")
     private val LogMaxFiles = Option(Environment.get("LOG_MAX_FILES")).filter(_.trim.nonEmpty).getOrElse("5")
+    private val PullImageTimeout = Option(Environment.get("PULL_IMAGE_TIMEOUT")).filter(_.trim.nonEmpty).map(_.toInt).getOrElse(5)
 
     private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -41,7 +42,8 @@ object BoxManager extends App {
             address = BoxManagerAddress,
             networkName = FabricServiceNetwork,
             hostsManager = hostsManager,
-            processConfig = processConfig
+            processConfig = processConfig,
+            pullImageTimeout = PullImageTimeout
         )
 
     private val server = new Server(BoxManagerBindPort)
