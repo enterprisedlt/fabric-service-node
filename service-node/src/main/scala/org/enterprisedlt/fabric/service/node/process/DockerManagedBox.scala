@@ -418,28 +418,27 @@ class DockerManagedBox(
 
 
     private def pullImageIfNeeded(image: String, forcePull: Boolean = false): Either[String, Unit] = {
-        if (forcePull) {
-            logger.info(s"pull image $image forced")
+        val imageResult = findImage(image)
+        if (forcePull || imageResult.isEmpty) {
+            logger.info(s"Unable to find image $image locally")
             pullImage(image)
+        } else {
+            logger.debug(s"Image $image already exists")
+            Right(())
         }
-        else {
-            docker
-              .listImagesCmd()
-              .exec()
-              .iterator()
-              .asScala
-              .toArray
-              .flatMap(image => Option(image.getRepoTags))
-              .flatten
-              .find(_ == image) match {
-                case Some(_) =>
-                    logger.debug(s"Image $image already exists")
-                    Right(())
-                case None =>
-                    logger.info(s"Unable to find image $image locally")
-                    pullImage(image)
-            }
-        }
+    }
+
+
+    private def findImage(image: String): Option[String] = {
+        docker
+          .listImagesCmd()
+          .exec()
+          .iterator()
+          .asScala
+          .toArray
+          .flatMap(image => Option(image.getRepoTags))
+          .flatten
+          .find(_ == image)
     }
 
 
