@@ -83,47 +83,6 @@ class DockerManagedBox(
 
     //=========================================================================
 
-    def pullImageIfNeeded(image: String, forcePull: Boolean = false): Either[String, Unit] = {
-        docker
-          .listImagesCmd()
-          .exec()
-          .iterator()
-          .asScala
-          .toArray
-          .flatMap(image => Option(image.getRepoTags))
-          .flatten
-          .find(_ == image) match {
-            case Some(_) =>
-                logger.debug(s"Image $image already exists")
-                Right(())
-            case None =>
-                logger.info(s"Unable to find image $image locally or docker pull has been forced")
-                try {
-                    val pullImageCmd = image.split(":") match {
-                        case Array(imageName, imageTag) =>
-                            logger.info(s"Pulling image $imageName with tag $imageTag...")
-                            docker
-                              .pullImageCmd(imageName)
-                              .withTag(imageTag)
-                        case Array(imageName) =>
-                            logger.info(s"Pulling image $imageName with tag latest...")
-                            docker
-                              .pullImageCmd(imageName)
-                              .withTag("latest")
-                    }
-                    pullImageCmd
-                      .exec(new PullImageResultCallback())
-                      .awaitCompletion(pullImageTimeout, TimeUnit.MINUTES)
-                    logger.info(s"Image $image downloaded")
-                    Right(())
-                } catch {
-                    case e: Exception =>
-                        logger.error(s"Exception pulling image: $e")
-                        Left(s"Exception pulling image: $e")
-                }
-        }
-    }
-
 
     override def startOrderingNode(request: StartOSNRequest): Either[String, String] = {
         logger.info(s"Starting ${request.component.fullName} ...")
@@ -456,6 +415,60 @@ class DockerManagedBox(
                 throw new Exception(msg)
         }
     }
+
+
+    private def pullImageIfNeeded(image: String, forcePull: Boolean = false): Either[String, Unit] = {
+        if (forcePull) {
+            logger.info(s"pull image $image forced")
+            pullImage(image)
+        }
+        else {
+            docker
+              .listImagesCmd()
+              .exec()
+              .iterator()
+              .asScala
+              .toArray
+              .flatMap(image => Option(image.getRepoTags))
+              .flatten
+              .find(_ == image) match {
+                case Some(_) =>
+                    logger.debug(s"Image $image already exists")
+                    Right(())
+                case None =>
+                    logger.info(s"Unable to find image $image locally")
+                    pullImage(image)
+            }
+        }
+    }
+
+
+    private def pullImage(image: String): Either[String, Unit] = {
+        try {
+            val pullImageCmd = image.split(":") match {
+                case Array(imageName, imageTag) =>
+                    logger.info(s"Pulling image $imageName with tag $imageTag...")
+                    docker
+                      .pullImageCmd(imageName)
+                      .withTag(imageTag)
+                case Array(imageName) =>
+                    logger.info(s"Pulling image $imageName with tag latest...")
+                    docker
+                      .pullImageCmd(imageName)
+                      .withTag("latest")
+            }
+            pullImageCmd
+              .exec(new PullImageResultCallback())
+              .awaitCompletion(pullImageTimeout, TimeUnit.MINUTES)
+            logger.info(s"Image $image downloaded")
+            Right(())
+        } catch {
+            case e: Exception =>
+                logger.error(s"Exception pulling image: $e")
+                Left(s"Exception pulling image: $e")
+        }
+    }
+
 
     // =================================================================================================================
     private def storeComponentCryptoMaterial(outPath: String, orgConfig: OrganizationConfig, component: ComponentConfig): Unit = {
