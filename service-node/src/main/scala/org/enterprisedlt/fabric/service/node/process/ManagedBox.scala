@@ -5,12 +5,15 @@ import org.enterprisedlt.fabric.service.node.model.BoxInformation
 import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 trait ManagedBox {
 
     @Get("/info")
     def getBoxInfo: Either[String, BoxInformation]
+
+    @Post("/start-custom-node")
+    def startCustomNode(request: StartCustomNodeRequest): Either[String, String]
 
     @Post("/start-ordering-node")
     def startOrderingNode(request: StartOSNRequest): Either[String, String]

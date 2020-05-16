@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node.process
 
-import java.io.{Closeable, File}
+import java.io.Closeable
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicReference
@@ -15,18 +15,18 @@ import com.github.dockerjava.api.model._
 import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientImpl}
 import com.github.dockerjava.okhttp.OkHttpDockerCmdExecFactory
 import org.enterprisedlt.fabric.service.model.KnownHostRecord
-import org.enterprisedlt.fabric.service.node.{HostsManager, Util}
 import org.enterprisedlt.fabric.service.node.configuration.DockerConfig
 import org.enterprisedlt.fabric.service.node.model.BoxInformation
+import org.enterprisedlt.fabric.service.node.{HostsManager, Util}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
 import scala.util.Try
 
 /**
- * @author Andrew Pudovikov
- * @author Alexey Polubelov
- */
+  * @author Andrew Pudovikov
+  * @author Alexey Polubelov
+  */
 class DockerManagedBox(
     hostPath: String,
     containerName: String,
@@ -80,6 +80,50 @@ class DockerManagedBox(
 
 
     //=========================================================================
+
+
+    override def startCustomNode(request: StartCustomNodeRequest): Either[String, String] = {
+        logger.info(s"Starting ${request.containerName}...")
+        val hostComponentPath = s"$hostPath/components/${request.containerName}"
+        val innerComponentPath = s"$InnerPath/components/${request.containerName}"
+        Try {
+            Util.mkDirs(innerComponentPath)
+            // start container
+            val configHost = new HostConfig()
+              .withBinds(
+                  (new Bind(s"$hostPath/hosts", new Volume("/etc/hosts")) +:
+                    request.volumes.map { bind =>
+                        new Bind(s"$hostComponentPath/${bind.externalHost}/", new Volume(bind.internalHost))
+                    }
+                    ).toList.asJava
+              )
+              .withPortBindings(
+                  request.ports.map { port =>
+                      new PortBinding(new Binding("0.0.0.0", port.externalPort), new ExposedPort(port.internalPort.toInt, InternetProtocol.TCP))
+                  }.toList.asJava
+
+              )
+              .withNetworkMode(networkName)
+              .withLogConfig(logConfig)
+            val osnContainerId: String = docker.createContainerCmd(request.image.getName)
+              .withName(request.containerName)
+              .withEnv(
+                  request.environmentVariables.map{ envVar =>
+                      s"${envVar.key}=${envVar.value}"
+                  }.toList.asJava
+              )
+              .withWorkingDir(request.workingDir)
+              .withCmd(request.command.split(" ").toList.asJava)
+              .withExposedPorts(request.ports.map ( port => new ExposedPort(port.externalPort.toInt, InternetProtocol.TCP)).toList.asJava)
+              .withHostConfig(configHost)
+              .exec().getId
+            docker.startContainerCmd(osnContainerId).exec
+            logger.info(s"Custom Node ${request.containerName} started, ID: $osnContainerId")
+            osnContainerId
+        }.toEither.left.map(_.getMessage)
+
+    }
+
     override def startOrderingNode(request: StartOSNRequest): Either[String, String] = {
         logger.info(s"Starting ${request.component.fullName} ...")
         //        if (checkContainerExistence(osnFullName: String)) {
@@ -101,7 +145,6 @@ class DockerManagedBox(
                   new Bind(s"$hostComponentPath/data/genesis.block", new Volume("/var/hyperledger/orderer/orderer.genesis.block")),
                   new Bind(s"$hostComponentPath/msp", new Volume("/var/hyperledger/orderer/msp")),
                   new Bind(s"$hostComponentPath/tls", new Volume("/var/hyperledger/orderer/tls")),
-                  //                  new Bind(s"$hostComponentPath/data/ledger", new Volume("/var/hyperledger/production/orderer"))
               )
               .withPortBindings(
                   new PortBinding(new Binding("0.0.0.0", request.port.toString), new ExposedPort(request.port, InternetProtocol.TCP))

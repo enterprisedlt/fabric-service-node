@@ -1,9 +1,44 @@
 package org.enterprisedlt.fabric.service.node.process
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 // =================================================================================================================
+
+case class StartCustomNodeRequest(
+    containerName: String,
+    image: Image,
+    environmentVariables: Array[EnvironmentVariable],
+    ports: Array[PortBind],
+    volumes: Array[VolumeBind],
+    command: String,
+    workingDir: String
+)
+
+
+case class Image(
+    name: String,
+    tag: String = "latest"
+) {
+    def getName = s"$name:$tag"
+}
+
+case class PortBind(
+    externalPort: String,
+    internalPort: String
+)
+
+case class VolumeBind(
+    externalHost: String,
+    internalHost: String
+)
+
+case class EnvironmentVariable(
+    key: String,
+    value: String
+)
+
+
 case class StartOSNRequest(
     port: Int,
     genesis: String, //b64
