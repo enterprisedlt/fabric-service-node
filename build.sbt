@@ -1,3 +1,6 @@
+import sbt.addCompilerPlugin
+import sbtcrossproject.CrossPlugin.autoImport.{CrossType, crossProject}
+import sbtcrossproject.Platform
 
 ThisBuild / scalaVersion := "2.12.10"
 ThisBuild / organization := "org.enterprisedlt"
@@ -23,14 +26,37 @@ lazy val root = project.in(file("."))
   )
   .disablePlugins(AssemblyPlugin)
   .aggregate(
-      service_node,
+      backend,
       service_chain_code,
-      admin_console
+      frontend
   )
 
-lazy val service_node = project.in(file("service-node"))
+lazy val backend = base.jvm
+  .settings(name := "backend")
+  .dependsOn(service_chain_code_model)
+
+
+lazy val frontend = base.js
+  .settings(name := "frontend")
+  .disablePlugins(AssemblyPlugin)
+  .enablePlugins(ScalaJSPlugin)
+
+val BundlePath = file("service-node/frontend/bundle/js")
+
+lazy val base = crossProject(JSPlatform, JVMPlatform)
+  .crossType(BackendFrontendShared)
+  .in(file("service-node"))
   .settings(
-      name := "service-node",
+      libraryDependencies += "com.lihaoyi" %%% "upickle" % "0.9.5",
+      libraryDependencies ++= Seq(
+          "com.github.julien-truffaut" %%% "monocle-core" % MonocleVersion,
+          "com.github.julien-truffaut" %%% "monocle-macro" % MonocleVersion,
+          "com.github.julien-truffaut" %%% "monocle-law" % MonocleVersion % "test"
+      ),
+
+      addCompilerPlugin("org.scalamacros" %% "paradise" % "2.1.1" cross CrossVersion.full)
+  )
+  .jvmSettings(
       commonSettings,
       assemblySettings,
       libraryDependencies ++= FabricChainCodeClient ++ Jetty ++ DockerJava,
@@ -40,7 +66,40 @@ lazy val service_node = project.in(file("service-node"))
       mainClass in assembly := Some("org.enterprisedlt.fabric.service.node.ServiceNode"),
       assemblyJarName in assembly := "service-node.jar"
   )
-  .dependsOn(service_chain_code_model)
+  .jsSettings(
+      //      name := "admin-console",
+      scalacOptions ++= Seq("-P:scalajs:sjsDefinedByDefault"),
+      scalaJSUseMainModuleInitializer := true,
+      mainClass := Some("org.enterprisedlt.fabric.service.node.AdminConsole"),
+      libraryDependencies ++= Seq(
+          "org.scala-js" %%% "scalajs-dom" % "0.9.7",
+          "com.github.japgolly.scalajs-react" %%% "core" % "1.6.0",
+      ),
+      jsDependencies ++= Seq(
+
+          "org.webjars.npm" % "react" % "16.7.0"
+            / "umd/react.development.js"
+            minified "umd/react.production.min.js"
+            commonJSName "React",
+
+          "org.webjars.npm" % "react-dom" % "16.7.0"
+            / "umd/react-dom.development.js"
+            minified "umd/react-dom.production.min.js"
+            dependsOn "umd/react.development.js"
+            commonJSName "ReactDOM",
+
+          "org.webjars.npm" % "react-dom" % "16.7.0"
+            / "umd/react-dom-server.browser.development.js"
+            minified "umd/react-dom-server.browser.production.min.js"
+            dependsOn "umd/react-dom.development.js"
+            commonJSName "ReactDOMServer"
+      ),
+      // Target files for Scala.js plugin
+      Compile / fastOptJS / artifactPath := BundlePath / "admin-console.js",
+      Compile / fullOptJS / artifactPath := BundlePath / "admin-console.js",
+      Compile / packageJSDependencies / artifactPath := BundlePath / "admin-console-deps.js",
+      Compile / packageMinifiedJSDependencies / artifactPath := BundlePath / "admin-console-deps.min.js",
+  )
 
 lazy val service_chain_code = project.in(file("./service-chain-code"))
   .settings(
@@ -70,47 +129,46 @@ lazy val service_chain_code_service = project.in(file("./service-chain-code/serv
   )
   .dependsOn(service_chain_code_model)
 
-val BundlePath = file("admin-console/bundle/js")
-lazy val admin_console = project.in(file("admin-console"))
-  .settings(
-      name := "admin-console",
-      scalacOptions ++= Seq("-P:scalajs:sjsDefinedByDefault"),
-      scalaJSUseMainModuleInitializer := true,
-      mainClass := Some("org.enterprisedlt.fabric.service.node.AdminConsole"),
-      libraryDependencies ++= Seq(
-          "org.scala-js" %%% "scalajs-dom" % "0.9.7",
-          "com.github.japgolly.scalajs-react" %%% "core" % "1.6.0",
-          "com.lihaoyi" %%% "upickle" % "0.9.5"
-      ) ++ Monocle,
-      jsDependencies ++= Seq(
-
-          "org.webjars.npm" % "react" % "16.7.0"
-            / "umd/react.development.js"
-            minified "umd/react.production.min.js"
-            commonJSName "React",
-
-          "org.webjars.npm" % "react-dom" % "16.7.0"
-            / "umd/react-dom.development.js"
-            minified "umd/react-dom.production.min.js"
-            dependsOn "umd/react.development.js"
-            commonJSName "ReactDOM",
-
-          "org.webjars.npm" % "react-dom" % "16.7.0"
-            / "umd/react-dom-server.browser.development.js"
-            minified "umd/react-dom-server.browser.production.min.js"
-            dependsOn "umd/react-dom.development.js"
-            commonJSName "ReactDOMServer"
-      ),
-      // Target files for Scala.js plugin
-      Compile / fastOptJS / artifactPath := BundlePath / "admin-console.js",
-      Compile / fullOptJS / artifactPath := BundlePath / "admin-console.js",
-      Compile / packageJSDependencies / artifactPath := BundlePath / "admin-console-deps.js",
-      Compile / packageMinifiedJSDependencies / artifactPath := BundlePath / "admin-console-deps.js",
-
-      addCompilerPlugin("org.scalamacros" %% "paradise" % "2.1.1" cross CrossVersion.full)
-  )
-  .disablePlugins(AssemblyPlugin)
-  .enablePlugins(ScalaJSPlugin)
+//lazy val admin_console = project.in(file("admin-console"))
+//  .settings(
+//      name := "admin-console",
+//      scalacOptions ++= Seq("-P:scalajs:sjsDefinedByDefault"),
+//      scalaJSUseMainModuleInitializer := true,
+//      mainClass := Some("org.enterprisedlt.fabric.service.node.AdminConsole"),
+//      libraryDependencies ++= Seq(
+//          "org.scala-js" %%% "scalajs-dom" % "0.9.7",
+//          "com.github.japgolly.scalajs-react" %%% "core" % "1.6.0",
+//          "com.lihaoyi" %%% "upickle" % "0.9.5"
+//      ) ++ Monocle,
+//      jsDependencies ++= Seq(
+//
+//          "org.webjars.npm" % "react" % "16.7.0"
+//            / "umd/react.development.js"
+//            minified "umd/react.production.min.js"
+//            commonJSName "React",
+//
+//          "org.webjars.npm" % "react-dom" % "16.7.0"
+//            / "umd/react-dom.development.js"
+//            minified "umd/react-dom.production.min.js"
+//            dependsOn "umd/react.development.js"
+//            commonJSName "ReactDOM",
+//
+//          "org.webjars.npm" % "react-dom" % "16.7.0"
+//            / "umd/react-dom-server.browser.development.js"
+//            minified "umd/react-dom-server.browser.production.min.js"
+//            dependsOn "umd/react-dom.development.js"
+//            commonJSName "ReactDOMServer"
+//      ),
+//      // Target files for Scala.js plugin
+//      Compile / fastOptJS / artifactPath := BundlePath / "admin-console.js",
+//      Compile / fullOptJS / artifactPath := BundlePath / "admin-console.js",
+//      Compile / packageJSDependencies / artifactPath := BundlePath / "admin-console-deps.js",
+//      Compile / packageMinifiedJSDependencies / artifactPath := BundlePath / "admin-console-deps.js",
+//
+//      addCompilerPlugin("org.scalamacros" %% "paradise" % "2.1.1" cross CrossVersion.full)
+//  )
+//  .disablePlugins(AssemblyPlugin)
+//  .enablePlugins(ScalaJSPlugin)
 
 // ========================================================================
 //
@@ -193,11 +251,11 @@ lazy val DockerJava = Seq(
     "com.github.docker-java" % "docker-java-api" % DockerApiVersion,
     "com.github.docker-java" % "docker-java-core" % DockerApiVersion,
     "com.github.docker-java" % "docker-java-transport-okhttp" % DockerApiVersion
-//      "docker-java-transport-netty" % DockerApiVersion
+    //      "docker-java-transport-netty" % DockerApiVersion
 )
 
 lazy val Monocle = Seq(
-    "com.github.julien-truffaut" %%  "monocle-core"  % MonocleVersion,
-    "com.github.julien-truffaut" %%  "monocle-macro" % MonocleVersion,
-    "com.github.julien-truffaut" %%  "monocle-law"   % MonocleVersion % "test"
+    "com.github.julien-truffaut" %% "monocle-core" % MonocleVersion,
+    "com.github.julien-truffaut" %% "monocle-macro" % MonocleVersion,
+    "com.github.julien-truffaut" %% "monocle-law" % MonocleVersion % "test"
 )
