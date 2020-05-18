@@ -8,6 +8,6 @@ import org.enterprisedlt.fabric.service.node.rest.Get
 trait ComponentsDistributor {
 
     @Get("/service/provide-component-type-distributive")
-    def provideComponentTypeDistributive(componentName: String): Either[String, String]
+    def getComponentTypeDistributive(componentName: String): Either[String, String]
 
 }

@@ -27,7 +27,7 @@ import scala.util.Try
   */
 class RestEndpoint(
     bindPort: Int,
-    componentsDistributorBindPort:Int,
+    componentsDistributorBindPort: Int,
     externalAddress: Option[ExternalAddress],
     organizationConfig: OrganizationConfig,
     cryptoManager: CryptoManager,
@@ -39,10 +39,12 @@ class RestEndpoint(
     private val logger = LoggerFactory.getLogger(this.getClass)
 
 
-    @Get("/register-custom-node-component-type")
-    def registerCustomNodeComponentType: Either[String, String] = ???
+    @Get("/admin/register-custom-node-component-type")
+    def registerCustomNodeComponentType(boxName: String, componentTypeName: String): Either[String, String] = {
+        processManager.registerCustomNodeComponentType(boxName, componentTypeName)
+    }
 
-    @Post("/register-custom-node")
+    @Post("/admin/start-custom-node")
     def startCustomNode(request: StartCustomNodeRequest): Either[String, String] = processManager.startCustomNode(request.boxName, request)
 
     @Get("/service/list-boxes")
@@ -223,8 +225,8 @@ class RestEndpoint(
     @Post("/admin/register-box-manager")
     def registerBox(request: RegisterBoxManager): Either[String, Box] = {
         val componentsDistributorAddress = externalAddress
-          .map(ea => s"${ea.host}:$componentsDistributorBindPort")
-          .getOrElse(s"service.${organizationConfig.name}.${organizationConfig.domain}:$componentsDistributorBindPort")
+          .map(ea => s"http://${ea.host}:$componentsDistributorBindPort")
+          .getOrElse(s"http://service.${organizationConfig.name}.${organizationConfig.domain}:$componentsDistributorBindPort")
         processManager.registerBox(componentsDistributorAddress, request.name, request.url)
     }
 

@@ -1,7 +1,8 @@
 package org.enterprisedlt.fabric.service.node.process
 
-import java.io.Closeable
+import java.io._
 import java.nio.charset.StandardCharsets
+import java.util.Base64
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicReference
 
@@ -90,8 +91,15 @@ class DockerManagedBox(
     }
 
 
-    override def registerCustomNodeComponentType = ???
-
+    override def registerCustomNodeComponentType(componentName: String): Either[String, String] = {
+        for {
+            distributiveBase64 <- distributorClient.getComponentTypeDistributive(componentName)
+            distributive <- Try(Base64.getDecoder.decode(distributiveBase64)).toEither.left.map(_.getMessage)
+            _ = Util.untarFile(distributive, s"$InnerPath/distributives/")
+        } yield {
+            "Success"
+        }
+    }
 
     override def startCustomNode(request: StartCustomNodeRequest): Either[String, String] = {
         logger.info(s"Starting ${request.containerName}...")

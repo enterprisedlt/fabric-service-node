@@ -11,6 +11,8 @@ import com.google.gson.{Gson, GsonBuilder}
 import com.google.protobuf.{ByteString, MessageLite}
 import javax.security.auth.x500.X500Principal
 import javax.servlet.ServletRequest
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.apache.http.client.methods.HttpPost
 import org.apache.http.conn.ssl.{NoopHostnameVerifier, SSLConnectionSocketFactory, TrustAllStrategy}
 import org.apache.http.entity.{ByteArrayEntity, ContentType}
@@ -38,8 +40,9 @@ import oshi.SystemInfo
 import scala.collection.JavaConverters._
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  * @author Maxim Fedin
+  */
 object Util {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -306,6 +309,35 @@ object Util {
         val oneGhz = 1000*1000*1000
         val freq = (hal.getProcessor.getProcessorIdentifier.getVendorFreq * 1d) / oneGhz
         s"${coreCount}Core ${freq.formatted("%.2f")}GHz ${total.formatted("%.2f")}Gb"
+    }
+
+
+    //=========================================================================
+    def untarFile(file: Array[Byte], destinationDir: String): Unit = {
+        val BUFFER = 2048
+        val bais = new ByteArrayInputStream(file)
+        val bin = new BufferedInputStream(bais)
+        val gzIn = new GzipCompressorInputStream(bin)
+        val tarIn = new TarArchiveInputStream(gzIn)
+        while (tarIn.getNextEntry != null) {
+            val entry = tarIn.getCurrentEntry
+            logger.debug(s"Extracting ${entry.getName}")
+            entry match {
+                case entry if entry.isDirectory =>
+                    val f = new File(s"$destinationDir/${entry.getName}")
+                    f.mkdirs()
+                case entry if entry.isFile =>
+                    val data = new Array[Byte](BUFFER)
+                    val fos = new FileOutputStream(s"$destinationDir/${entry.getName}")
+                    val dest = new BufferedOutputStream(fos, BUFFER)
+                    while (tarIn.read(data, 0, BUFFER) != -1) {
+                        dest.write(data, 0, tarIn.read(data, 0, BUFFER))
+                    }
+                    dest.close()
+            }
+        }
+        tarIn.close()
+        logger.debug("Untar completed successfully")
     }
 }
 

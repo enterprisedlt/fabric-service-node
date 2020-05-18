@@ -44,6 +44,12 @@ class ProcessManager {
           }
 
 
+    def registerCustomNodeComponentType(box: String, componentType: String): Either[String, String] =
+        boxes
+          .get(box).toRight(s"Unknown box $box")
+          .flatMap(_._1.registerCustomNodeComponentType(componentType))
+
+
     def startCustomNode(box: String, request: StartCustomNodeRequest): Either[String, String] =
         boxes
           .get(box).toRight(s"Unknown box $box")
