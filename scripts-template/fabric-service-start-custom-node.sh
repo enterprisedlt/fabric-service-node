@@ -14,10 +14,12 @@ fi
 
 echo "Starting custom node ..."
 
-SERVICE_URL="localhost:3070"
+SERVICE_URL="localhost:${SERVICE_BIND_PORT}"
 curl --silent --show-error \
+--key ${PROFILE_PATH}/crypto/users/admin/admin.key \
+--cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
 --request POST \
---data-binary "@$2"  http://${SERVICE_URL}/start-custom-node
+--data-binary "@$2"  https://${SERVICE_URL}/admin/start-custom-node
 
 if [[ "$?" -ne 0 ]]; then
   echo "Failed to start custom node!"

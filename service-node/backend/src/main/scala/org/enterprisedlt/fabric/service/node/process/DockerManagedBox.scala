@@ -105,12 +105,16 @@ class DockerManagedBox(
         logger.info(s"Starting ${request.containerName}...")
         val hostComponentPath = s"$hostPath/components/${request.containerName}"
         val innerComponentPath = s"$InnerPath/components/${request.containerName}"
+        val distributivesPath = s"$hostPath/distributives"
         Try {
             Util.mkDirs(innerComponentPath)
             // start container
             val configHost = new HostConfig()
               .withBinds(
-                  (new Bind(s"$hostPath/hosts", new Volume("/etc/hosts")) +:
+                  (Array(
+                      new Bind(distributivesPath, new Volume("/opt/config")),
+                      new Bind(s"$hostPath/hosts", new Volume("/etc/hosts"))
+                  ) ++
                     request.volumes.map { bind =>
                         new Bind(s"$hostComponentPath/${bind.externalHost}/", new Volume(bind.internalHost))
                     }
