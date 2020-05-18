@@ -9,8 +9,8 @@ import scala.collection.concurrent.TrieMap
 import scala.util.Try
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 class ProcessManager {
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val boxes: TrieMap[String, (ManagedBox, Box)] = TrieMap.empty[String, (ManagedBox, Box)]
@@ -27,7 +27,7 @@ class ProcessManager {
               Option(boxAddress).filter(_.nonEmpty)
           }
 
-    def registerBox(boxName: String, url: String): Either[String, Box] =
+    def registerBox(componentsDistributorAddress: String, boxName: String, url: String): Either[String, Box] =
         Try(JsonRestClient.create[ManagedBox](url))
           .toEither.left
           .map { ex =>
@@ -36,7 +36,7 @@ class ProcessManager {
               msg
           }
           .flatMap { boxManager =>
-              boxManager.getBoxInfo.map { boxInformation =>
+              boxManager.registerServiceNode(componentsDistributorAddress).map { boxInformation =>
                   val box = Box(boxName, boxInformation)
                   boxes += boxName -> (boxManager, box)
                   box

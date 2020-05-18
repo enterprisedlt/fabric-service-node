@@ -22,14 +22,15 @@ import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.slf4j.LoggerFactory
 
 /**
- * @author Alexey Polubelov
- * @author Andrew Pudovikov
- * @author Maxim Fedin
- */
+  * @author Alexey Polubelov
+  * @author Andrew Pudovikov
+  * @author Maxim Fedin
+  */
 object ServiceNode extends App {
     private val Environment = System.getenv()
     private val LogLevel = Option(Environment.get("LOG_LEVEL")).filter(_.trim.nonEmpty).getOrElse("INFO")
     private val ServiceBindPort = Option(Environment.get("SERVICE_BIND_PORT")).map(_.toInt).getOrElse(throw new Exception("Mandatory environment variable missing SERVICE_BIND_PORT!"))
+    private val ComponentsDistributorBindPort = Option(Environment.get("COMPONENTS_DISTRIBUTOR_BIND_PORT")).map(_.toInt).getOrElse(throw new Exception("Mandatory environment variable missing COMPONENTS_DISTRIBUTOR_BIND_PORT!"))
     private val ServiceExternalAddress = Option(Environment.get("SERVICE_EXTERNAL_ADDRESS")).filter(_.trim.nonEmpty).map(parseExternalAddress(_, ServiceBindPort))
     private val ProfilePath = Option(Environment.get("PROFILE_PATH")).getOrElse(throw new Exception("Mandatory environment variable missing PROFILE_PATH!"))
     // Org variables
@@ -58,10 +59,13 @@ object ServiceNode extends App {
     private val processManager = new ProcessManager
     private val cryptoManager = new FileBasedCryptoManager(organizationConfig, "/opt/profile/crypto", AdminPassword)
     private val restEndpoint = new RestEndpoint(
-        ServiceBindPort, ServiceExternalAddress, organizationConfig, cryptoManager,
+        ServiceBindPort, ComponentsDistributorBindPort, ServiceExternalAddress, organizationConfig, cryptoManager,
         hostsManager = new HostsManager("/opt/profile/hosts", ServiceExternalAddress.map(_.host)),
         ProfilePath, processManager, serviceState
     )
+    private val componentsDistributorRestEndpoint = new ComponentsDistributorRestEndpoint()
+    private val componentsDistributorServer = new Server(ComponentsDistributorBindPort)
+    componentsDistributorServer.setHandler(new JsonRestEndpoint(Util.createCodec, componentsDistributorRestEndpoint))
     //TODO: make web app optional, based on configuration
     private val server =
         createServer(
@@ -69,8 +73,9 @@ object ServiceNode extends App {
             "/opt/profile/webapp",
             "/opt/service/admin-console"
         )
-
+    //
     setupShutdownHook()
+    componentsDistributorServer.start()
     server.start()
     logger.info("Started.")
     //    server.join()

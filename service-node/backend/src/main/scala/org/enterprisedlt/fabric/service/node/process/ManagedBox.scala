@@ -38,4 +38,8 @@ trait ManagedBox {
 
     @Post("/update-known-hosts")
     def updateKnownHosts(hosts: Array[KnownHostRecord]): Either[String, Unit]
+
+    @Post("/register-service-node")
+    def registerServiceNode(serviceNodeUrl: String): Either[String, BoxInformation]
+
 }

@@ -17,6 +17,7 @@ import com.github.dockerjava.okhttp.OkHttpDockerCmdExecFactory
 import org.enterprisedlt.fabric.service.model.KnownHostRecord
 import org.enterprisedlt.fabric.service.node.configuration.DockerConfig
 import org.enterprisedlt.fabric.service.node.model.BoxInformation
+import org.enterprisedlt.fabric.service.node.rest.JsonRestClient
 import org.enterprisedlt.fabric.service.node.{HostsManager, Util}
 import org.slf4j.LoggerFactory
 
@@ -54,6 +55,7 @@ class DockerManagedBox(
             details = Util.getServerInfo
         )
     }
+    private var distributorClient: ComponentsDistributor = _
     // =================================================================================================================
     logger.info(s"Initializing ${this.getClass.getSimpleName} ...")
 
@@ -82,6 +84,15 @@ class DockerManagedBox(
     //=========================================================================
 
 
+    override def registerServiceNode(componentsDistributorUrl: String): Either[String, BoxInformation] = {
+        distributorClient = JsonRestClient.create[ComponentsDistributor](componentsDistributorUrl)
+        Right(boxInformation)
+    }
+
+
+    override def registerCustomNodeComponentType = ???
+
+
     override def startCustomNode(request: StartCustomNodeRequest): Either[String, String] = {
         logger.info(s"Starting ${request.containerName}...")
         val hostComponentPath = s"$hostPath/components/${request.containerName}"
@@ -108,13 +119,13 @@ class DockerManagedBox(
             val osnContainerId: String = docker.createContainerCmd(request.image.getName)
               .withName(request.containerName)
               .withEnv(
-                  request.environmentVariables.map{ envVar =>
+                  request.environmentVariables.map { envVar =>
                       s"${envVar.key}=${envVar.value}"
                   }.toList.asJava
               )
               .withWorkingDir(request.workingDir)
               .withCmd(request.command.split(" ").toList.asJava)
-              .withExposedPorts(request.ports.map ( port => new ExposedPort(port.externalPort.toInt, InternetProtocol.TCP)).toList.asJava)
+              .withExposedPorts(request.ports.map(port => new ExposedPort(port.externalPort.toInt, InternetProtocol.TCP)).toList.asJava)
               .withHostConfig(configHost)
               .exec().getId
             docker.startContainerCmd(osnContainerId).exec

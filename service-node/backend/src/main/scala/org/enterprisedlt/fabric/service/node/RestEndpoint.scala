@@ -27,6 +27,7 @@ import scala.util.Try
   */
 class RestEndpoint(
     bindPort: Int,
+    componentsDistributorBindPort:Int,
     externalAddress: Option[ExternalAddress],
     organizationConfig: OrganizationConfig,
     cryptoManager: CryptoManager,
@@ -220,8 +221,12 @@ class RestEndpoint(
     }
 
     @Post("/admin/register-box-manager")
-    def registerBox(request: RegisterBoxManager): Either[String, Box] =
-        processManager.registerBox(request.name, request.url)
+    def registerBox(request: RegisterBoxManager): Either[String, Box] = {
+        val componentsDistributorAddress = externalAddress
+          .map(ea => s"${ea.host}:$componentsDistributorBindPort")
+          .getOrElse(s"service.${organizationConfig.name}.${organizationConfig.domain}:$componentsDistributorBindPort")
+        processManager.registerBox(componentsDistributorAddress, request.name, request.url)
+    }
 
 
     @Post("/admin/bootstrap")
