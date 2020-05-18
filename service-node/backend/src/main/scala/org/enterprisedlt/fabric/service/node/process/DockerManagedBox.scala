@@ -92,12 +92,21 @@ class DockerManagedBox(
 
 
     override def registerCustomNodeComponentType(componentName: String): Either[String, String] = {
-        for {
-            distributiveBase64 <- distributorClient.getComponentTypeDistributive(componentName)
-            distributive <- Try(Base64.getDecoder.decode(distributiveBase64)).toEither.left.map(_.getMessage)
-            _ = Util.untarFile(distributive, s"$InnerPath/distributives/")
-        } yield {
-            "Success"
+        val componentNameFile = new File(s"$InnerPath/distributives/$componentName").getAbsoluteFile
+        if (componentNameFile.exists()) {
+            logger.info(s"Component $componentName is already exists on a box manager")
+            Right("Success")
+        }
+        else {
+            logger.info(s"Component $componentName isn't on a box manager. Querying distributor client...")
+            for {
+                distributiveBase64 <- distributorClient.getComponentTypeDistributive(componentName)
+                distributive <- Try(Base64.getDecoder.decode(distributiveBase64)).toEither.left.map(_.getMessage)
+                _ = Util.untarFile(distributive, s"$InnerPath/distributives/")
+            } yield {
+                logger.info(s"Component $componentName has been successfully downloaded")
+                "Success"
+            }
         }
     }
 
