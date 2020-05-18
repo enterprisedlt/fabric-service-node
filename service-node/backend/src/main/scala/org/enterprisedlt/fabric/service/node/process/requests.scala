@@ -6,6 +6,8 @@ package org.enterprisedlt.fabric.service.node.process
 // =================================================================================================================
 
 case class StartCustomNodeRequest(
+    boxName: String,
+    componentType: String,
     containerName: String,
     image: Image,
     environmentVariables: Array[EnvironmentVariable],

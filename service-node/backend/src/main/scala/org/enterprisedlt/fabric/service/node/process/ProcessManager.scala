@@ -44,6 +44,11 @@ class ProcessManager {
           }
 
 
+    def startCustomNode(box: String, request: StartCustomNodeRequest): Either[String, String] =
+        boxes
+          .get(box).toRight(s"Unknown box $box")
+          .flatMap(_._1.startCustomNode(request))
+
     def startOrderingNode(box: String, request: StartOSNRequest): Either[String, String] =
         boxes
           .get(box).toRight(s"Unknown box $box")

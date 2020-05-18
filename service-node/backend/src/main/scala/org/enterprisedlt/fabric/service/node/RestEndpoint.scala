@@ -12,10 +12,10 @@ import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.shared._
-import org.enterprisedlt.fabric.service.node.process.ProcessManager
+import org.enterprisedlt.fabric.service.node.process.{ProcessManager, StartCustomNodeRequest}
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
+import org.enterprisedlt.fabric.service.node.shared._
 import org.hyperledger.fabric.sdk.Peer
 import org.slf4j.LoggerFactory
 
@@ -23,8 +23,8 @@ import scala.collection.JavaConverters._
 import scala.util.Try
 
 /**
- * @author Alexey Polubelov
- */
+  * @author Alexey Polubelov
+  */
 class RestEndpoint(
     bindPort: Int,
     externalAddress: Option[ExternalAddress],
@@ -37,6 +37,12 @@ class RestEndpoint(
 ) {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
+
+    @Get("/register-custom-node-component-type")
+    def registerCustomNodeComponentType: Either[String, String] = ???
+
+    @Post("/register-custom-node")
+    def startCustomNode(request: StartCustomNodeRequest): Either[String, String] = processManager.startCustomNode(request.boxName, request)
 
     @Get("/service/list-boxes")
     def listBoxes: Either[String, Array[Box]] = processManager.listBoxes
