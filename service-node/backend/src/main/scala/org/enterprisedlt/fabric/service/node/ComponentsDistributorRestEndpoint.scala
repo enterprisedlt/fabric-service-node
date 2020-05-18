@@ -1,6 +1,7 @@
 package org.enterprisedlt.fabric.service.node
 
 import java.io.File
+import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.util.Base64
 
@@ -15,8 +16,8 @@ class ComponentsDistributorRestEndpoint() extends ComponentsDistributor {
         val customComponentsPath = new File(s"/opt/profile/components/").getAbsoluteFile
         if (!customComponentsPath.exists()) customComponentsPath.mkdirs()
         for {
-            componentFile <-customComponentsPath.listFiles().find(_.getName == s"$componentName.tgz").toRight(s"File $componentName.tgz doesn't exist")
-        } yield Base64.getEncoder.encodeToString(Files.readAllBytes(componentFile.toPath))
+            componentFile <- customComponentsPath.listFiles().find(_.getName == s"$componentName.tgz").toRight(s"File $componentName.tgz doesn't exist")
+        } yield new String(Base64.getEncoder.encode(Files.readAllBytes(componentFile.toPath)), StandardCharsets.UTF_8)
     }
 
 }

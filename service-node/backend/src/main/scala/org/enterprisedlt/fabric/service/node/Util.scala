@@ -13,6 +13,7 @@ import javax.security.auth.x500.X500Principal
 import javax.servlet.ServletRequest
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
+import org.apache.commons.compress.utils.IOUtils
 import org.apache.http.client.methods.HttpPost
 import org.apache.http.conn.ssl.{NoopHostnameVerifier, SSLConnectionSocketFactory, TrustAllStrategy}
 import org.apache.http.entity.{ByteArrayEntity, ContentType}
@@ -314,12 +315,10 @@ object Util {
 
     //=========================================================================
     def untarFile(file: Array[Byte], destinationDir: String): Unit = {
-        val BUFFER = 2048
         val bais = new ByteArrayInputStream(file)
-        val bin = new BufferedInputStream(bais)
-        val gzIn = new GzipCompressorInputStream(bin)
+        val gzIn = new GzipCompressorInputStream(bais)
         val tarIn = new TarArchiveInputStream(gzIn)
-        while (tarIn.getNextEntry != null) {
+        while (tarIn.getNextTarEntry != null) {
             val entry = tarIn.getCurrentEntry
             logger.debug(s"Extracting ${entry.getName}")
             entry match {
@@ -327,13 +326,8 @@ object Util {
                     val f = new File(s"$destinationDir/${entry.getName}")
                     f.mkdirs()
                 case entry if entry.isFile =>
-                    val data = new Array[Byte](BUFFER)
-                    val fos = new FileOutputStream(s"$destinationDir/${entry.getName}")
-                    val dest = new BufferedOutputStream(fos, BUFFER)
-                    while (tarIn.read(data, 0, BUFFER) != -1) {
-                        dest.write(data, 0, tarIn.read(data, 0, BUFFER))
-                    }
-                    dest.close()
+                    val outputFile = new File(s"$destinationDir/${entry.getName}")
+                    IOUtils.copy(tarIn, new FileOutputStream(outputFile))
             }
         }
         tarIn.close()
