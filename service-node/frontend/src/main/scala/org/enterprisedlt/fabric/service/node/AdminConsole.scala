@@ -26,8 +26,6 @@ object AdminConsole {
                     case Initial => loadingScreen
                     case gs: GlobalState => gs.mode match {
                         case InitMode => Init()
-                        case BootstrapMode => Boot()
-                        case JoinMode => Join()
                         case BootstrapInProgress => BootProgress()
                         case JoinInProgress => JoinProgress()
                         case ReadyForUse => Dashboard()

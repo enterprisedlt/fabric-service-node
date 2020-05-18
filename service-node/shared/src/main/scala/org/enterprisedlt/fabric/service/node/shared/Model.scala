@@ -19,23 +19,9 @@ object BootstrapOptions {
     val Defaults: BootstrapOptions =
         new BootstrapOptions(
             networkName = "test_net",
-            block = BlockConfig(
-                maxMessageCount = 150,
-                absoluteMaxBytes = 103809024,
-                preferredMaxBytes = 524288,
-                batchTimeOut = "1s"
-            ),
-            raft = RaftConfig(
-                tickInterval = "500ms",
-                electionTick = 10,
-                heartbeatTick = 1,
-                maxInflightBlocks = 5,
-                snapshotIntervalSize = 20971520
-            ),
-            network = NetworkConfig(
-                orderingNodes = Array.empty[OSNConfig],
-                peerNodes = Array.empty[PeerConfig]
-            )
+            block = BlockConfig.Default,
+            raft = RaftConfig.Default,
+            network = NetworkConfig.Default
         )
 
     implicit val rw: RW[BootstrapOptions] = macroRW
@@ -51,10 +37,7 @@ object BootstrapOptions {
 object JoinOptions {
     val Defaults: JoinOptions =
         JoinOptions(
-            network = NetworkConfig(
-                orderingNodes = Array.empty[OSNConfig],
-                peerNodes = Array.empty[PeerConfig]
-            ),
+            network = NetworkConfig.Default,
             invite = Invite(
                 networkName = "",
                 address = "",
@@ -73,6 +56,12 @@ object JoinOptions {
 )
 
 object BlockConfig {
+    val Default: BlockConfig = BlockConfig(
+        maxMessageCount = 150,
+        absoluteMaxBytes = 103809024,
+        preferredMaxBytes = 524288,
+        batchTimeOut = "1s"
+    )
     implicit val rw: RW[BlockConfig] = macroRW
 }
 
@@ -86,6 +75,13 @@ object BlockConfig {
 )
 
 object RaftConfig {
+    val Default: RaftConfig = RaftConfig(
+        tickInterval = "500ms",
+        electionTick = 10,
+        heartbeatTick = 1,
+        maxInflightBlocks = 5,
+        snapshotIntervalSize = 20971520
+    )
     implicit val rw: RW[RaftConfig] = macroRW
 }
 
@@ -96,6 +92,11 @@ object RaftConfig {
 )
 
 object NetworkConfig {
+    val Default: NetworkConfig = NetworkConfig(
+        orderingNodes = Array.empty[OSNConfig],
+        peerNodes = Array.empty[PeerConfig]
+    )
+
     implicit val rw: RW[NetworkConfig] = macroRW
 }
 

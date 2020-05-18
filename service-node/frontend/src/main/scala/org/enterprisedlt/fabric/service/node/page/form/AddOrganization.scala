@@ -8,7 +8,7 @@ import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ReactEventFromInput, ScalaComponent}
 import monocle.macros.Lenses
-import org.enterprisedlt.fabric.service.node.FieldBinder
+import org.enterprisedlt.fabric.service.node.{FieldBinder, StateFieldBinder}
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model.{JoinRequest, KnownHostRecord, Organization, OrganizationCertificates}
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
@@ -59,7 +59,7 @@ object AddOrganization {
       .renderBackend[Backend]
       .build
 
-    class Backend(val $: BackendScope[Unit, AddOrganizationState]) extends FieldBinder[AddOrganizationState] {
+    class Backend(val $: BackendScope[Unit, AddOrganizationState]) extends StateFieldBinder[AddOrganizationState] {
 
         private val KnownHosts = AddOrganizationState.joinRequest / JoinRequest.organization / Organization.knownHosts
 

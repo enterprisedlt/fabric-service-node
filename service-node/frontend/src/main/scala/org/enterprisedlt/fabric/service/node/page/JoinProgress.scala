@@ -6,7 +6,8 @@ import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ScalaComponen
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model.Status.JoinProgressStatus
 import org.enterprisedlt.fabric.service.node.model.{StateUpdate, Status}
-import org.enterprisedlt.fabric.service.node.{Context, ReadyForUse}
+import org.enterprisedlt.fabric.service.node.state.GlobalStateAware
+import org.enterprisedlt.fabric.service.node.{AppState, Context, GlobalState, ReadyForUse}
 import org.scalajs.dom.html.Div
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -44,10 +45,11 @@ object JoinProgress {
     private val component = ScalaComponent.builder[Unit]("JoinProgress")
       .initialState(State())
       .renderBackend[Backend]
+      .componentWillMount($ => Context.State.connect($.backend))
       .componentDidMount(_.backend.scheduleCheck)
       .build
 
-    class Backend(val $: BackendScope[Unit, State]) {
+    class Backend(val $: BackendScope[Unit, State]) extends GlobalStateAware[AppState, State] {
 
         def goAdministration: Callback = Callback {
             Context.updateState()
@@ -102,34 +104,51 @@ object JoinProgress {
             js.timers.setTimeout(StateUpdate.Interval)(checkServiceState.runNow())
         }
 
-        def render(s: State): VdomTagOf[Div] =
-            <.div(^.className := "card aut-form-card",
-                <.div(^.className := "card-header text-white bg-primary",
-                    <.h1("Join new network ...")
-                ),
-                <.div(^.className := "card-body aut-form-card",
-                    <.ul(
-                        s.progress.map { p =>
-                            <.li(
-                                <.div(^.className := "d-flex align-items-center",
-                                    <.strong(p.text),
-                                    <.div(^.className := "spinner-border spinner-border-sm ml-auto text-primary", ^.role := "status", ^.aria.hidden := true)
-                                      .when(p.isInProgress)
-                                    // TODO: implement OK mark
-                                    //                <span if.bind="!m.isInProgress" ^.className :="aut-form-card" ><i ^.className :="icon-ok"></i></span> -->
-                                )
+        def renderWithGlobal(s: State, global: AppState): VdomTagOf[Div] = global match {
+            case g: GlobalState =>
+                <.div(
+                    FSNSPA(
+                        g.orgFullName,
+                        0,
+                        Seq(
+                            Page(
+                                name = "Progress",
+                                content =
+                                  <.div(
+                                      ^.width := "900px",
+                                      ^.marginTop := "5px",
+                                      ^.marginBottom := "0px",
+                                      ^.marginLeft := "auto",
+                                      ^.marginRight := "auto",
+                                      <.div(^.className := "card card-body",
+                                          <.ul(
+                                              s.progress.map { p =>
+                                                  <.li(
+                                                      <.div(^.className := "d-flex align-items-center",
+                                                          <.strong(p.text),
+                                                          <.div(^.className := "spinner-border spinner-border-sm ml-auto").when(p.isInProgress),
+                                                          <.div(^.className := "ml-auto", <.i(^.className := "fas fa-check", ^.color.green)).when(!p.isInProgress)
+                                                      )
+                                                  )
+                                              }.toTagMod
+                                          ),
+                                          <.hr().when(s.readyToUse),
+                                          <.button(
+                                              ^.tpe := "button",
+                                              ^.className := "btn btn-sm btn-outline-success float-right",
+                                              ^.onClick --> goAdministration,
+                                              "Start using!"
+                                          ).when(s.readyToUse)
+                                      ),
+                                  ),
+                                actions = Seq.empty
                             )
-                        }.toTagMod
-                    ),
-                    <.hr().when(s.readyToUse),
-                    <.button(
-                        ^.tpe := "button",
-                        ^.className := "btn btn-outline-success float-right",
-                        ^.onClick --> goAdministration,
-                        "Start using!"
-                    ).when(s.readyToUse)
+                        )
+                    )
                 )
-            )
+
+            case _ => <.div()
+        }
     }
 
     def apply(): Unmounted[Unit, State, Backend] = component()

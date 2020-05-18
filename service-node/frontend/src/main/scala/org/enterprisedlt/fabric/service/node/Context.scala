@@ -41,20 +41,20 @@ object Context {
     }
 
 
-    def refreshState(globalState: GlobalState, state: AppMode): Future[Unit] = {
-        state match {
-            case BootstrapMode =>
-                for {
-                    boxes <- ServiceNodeRemote.listBoxes
-                } yield {
-                    State.update { _ =>
-                        globalState.copy(
-                            boxes = boxes
-                        )
-                    }
-                }
-        }
-    }
+//    def refreshState(globalState: GlobalState, state: AppMode): Future[Unit] = {
+//        state match {
+//            case BootstrapMode =>
+//                for {
+//                    boxes <- ServiceNodeRemote.listBoxes
+//                } yield {
+//                    State.update { _ =>
+//                        globalState.copy(
+//                            boxes = boxes
+//                        )
+//                    }
+//                }
+//        }
+//    }
 
     def getStateMode(fabricServiceState: FabricServiceState): AppMode = fabricServiceState.stateCode match {
         case sm if sm == Status.NotInitialized =>
@@ -103,10 +103,6 @@ case object Initial extends AppState
 sealed trait AppMode
 
 case object InitMode extends AppMode
-
-case object BootstrapMode extends AppMode
-
-case object JoinMode extends AppMode
 
 case object BootstrapInProgress extends AppMode
 

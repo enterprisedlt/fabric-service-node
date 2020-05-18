@@ -46,7 +46,7 @@ object Contracts {
       .componentDidMount($ => Context.State.connect($.backend))
       .build
 
-    class Backend(val $: BackendScope[Unit, ContractState]) extends FieldBinder[ContractState] with GlobalStateAware[AppState, ContractState] {
+    class Backend(val $: BackendScope[Unit, ContractState]) extends StateFieldBinder[ContractState] with GlobalStateAware[AppState, ContractState] {
 
         private val ChoosePackageLens =
             new GetSetModifyFunctions[ContractState, String] {

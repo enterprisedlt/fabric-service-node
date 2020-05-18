@@ -17,6 +17,8 @@ import upickle.default.{macroRW, ReadWriter => RW}
 object ComponentCandidate {
     val OSN = "OSN"
     val Peer = "Peer"
+    val Types = Seq(OSN, Peer)
+
     implicit val rw: RW[ComponentCandidate] = macroRW
 }
 
@@ -178,9 +180,5 @@ object BoxInformation {
 
 
 object RegisterBoxManager {
-    val Defaults: RegisterBoxManager = RegisterBoxManager(
-        name = "",
-        url = ""
-    )
     implicit val rw: RW[RegisterBoxManager] = macroRW
 }
