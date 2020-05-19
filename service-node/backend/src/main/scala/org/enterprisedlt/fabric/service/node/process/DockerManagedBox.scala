@@ -25,9 +25,9 @@ import scala.collection.JavaConverters._
 import scala.util.Try
 
 /**
-  * @author Andrew Pudovikov
-  * @author Alexey Polubelov
-  */
+ * @author Andrew Pudovikov
+ * @author Alexey Polubelov
+ */
 class DockerManagedBox(
     hostPath: String,
     containerName: String,
@@ -418,13 +418,19 @@ class DockerManagedBox(
 
 
     private def pullImageIfNeeded(image: String, forcePull: Boolean = false): Either[String, Unit] = {
-        val imageResult = findImage(image)
-        if (forcePull || imageResult.isEmpty) {
-            logger.info(s"Unable to find image $image locally")
+        if (forcePull) {
+            logger.info(s"Force pulling image $image")
             pullImage(image)
         } else {
-            logger.debug(s"Image $image already exists")
-            Right(())
+            findImage(image) match {
+                case Some(_) =>
+                    logger.info(s"Unable to find image $image locally")
+                    pullImage(image)
+
+                case None =>
+                    logger.debug(s"Image $image already exists")
+                    Right(())
+            }
         }
     }
 
