@@ -9,8 +9,8 @@ import scala.collection.concurrent.TrieMap
 import scala.util.Try
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 class ProcessManager {
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val boxes: TrieMap[String, (ManagedBox, Box)] = TrieMap.empty[String, (ManagedBox, Box)]
@@ -27,7 +27,7 @@ class ProcessManager {
               Option(boxAddress).filter(_.nonEmpty)
           }
 
-    def registerBox(componentsDistributorAddress: String, boxName: String, url: String): Either[String, Box] =
+    def registerBox(serviceNodeName: String, componentsDistributorAddress: String, boxName: String, url: String): Either[String, Box] =
         Try(JsonRestClient.create[ManagedBox](url))
           .toEither.left
           .map { ex =>
@@ -36,7 +36,7 @@ class ProcessManager {
               msg
           }
           .flatMap { boxManager =>
-              boxManager.registerServiceNode(componentsDistributorAddress).map { boxInformation =>
+              boxManager.registerServiceNode(serviceNodeName, componentsDistributorAddress).map { boxInformation =>
                   val box = Box(boxName, boxInformation)
                   boxes += boxName -> (boxManager, box)
                   box
@@ -44,10 +44,10 @@ class ProcessManager {
           }
 
 
-    def registerCustomNodeComponentType(box: String, componentType: String): Either[String, String] =
+    def registerCustomNodeComponentType(serviceNodeName: String, box: String, componentType: String): Either[String, String] =
         boxes
           .get(box).toRight(s"Unknown box $box")
-          .flatMap(_._1.registerCustomNodeComponentType(componentType))
+          .flatMap(_._1.registerCustomNodeComponentType(serviceNodeName, componentType))
 
 
     def startCustomNode(box: String, request: StartCustomNodeRequest): Either[String, String] =

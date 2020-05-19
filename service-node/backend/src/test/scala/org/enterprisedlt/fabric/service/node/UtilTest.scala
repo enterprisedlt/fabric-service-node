@@ -30,7 +30,7 @@ class UtilTest extends FunSuite {
     }
 
 
-    test("untarFile method works fine") {
+    test("untarFile method should work fine") {
         val tempFolder = Files.createTempDirectory("temp-dir").toFile
         val initialFile = File.createTempFile("test", ".txt", tempFolder)
         initialFile.deleteOnExit()

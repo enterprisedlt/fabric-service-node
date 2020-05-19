@@ -5,15 +5,15 @@ import org.enterprisedlt.fabric.service.node.model.BoxInformation
 import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 trait ManagedBox {
 
     @Get("/info")
     def getBoxInfo: Either[String, BoxInformation]
 
     @Get("/register-custom-node-component-type")
-    def registerCustomNodeComponentType(componentName: String): Either[String, String]
+    def registerCustomNodeComponentType(serviceNodeName: String, componentName: String): Either[String, String]
 
     @Post("/start-custom-node")
     def startCustomNode(request: StartCustomNodeRequest): Either[String, String]
@@ -39,7 +39,7 @@ trait ManagedBox {
     @Post("/update-known-hosts")
     def updateKnownHosts(hosts: Array[KnownHostRecord]): Either[String, Unit]
 
-    @Post("/register-service-node")
-    def registerServiceNode(serviceNodeUrl: String): Either[String, BoxInformation]
+    @Get("/register-service-node")
+    def registerServiceNode(serviceNodeName: String, serviceNodeUrl: String): Either[String, BoxInformation]
 
 }

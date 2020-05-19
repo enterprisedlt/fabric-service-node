@@ -23,8 +23,8 @@ import scala.collection.JavaConverters._
 import scala.util.Try
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 class RestEndpoint(
     bindPort: Int,
     componentsDistributorBindPort: Int,
@@ -37,11 +37,11 @@ class RestEndpoint(
     state: AtomicReference[FabricServiceState]
 ) {
     private val logger = LoggerFactory.getLogger(this.getClass)
-
+    private val serviceNodeName = s"service.${organizationConfig.name}.${organizationConfig.domain}"
 
     @Get("/admin/register-custom-node-component-type")
     def registerCustomNodeComponentType(boxName: String, componentTypeName: String): Either[String, String] = {
-        processManager.registerCustomNodeComponentType(boxName, componentTypeName)
+        processManager.registerCustomNodeComponentType(serviceNodeName, boxName, componentTypeName)
     }
 
     @Post("/admin/start-custom-node")
@@ -227,7 +227,7 @@ class RestEndpoint(
         val componentsDistributorAddress = externalAddress
           .map(ea => s"http://${ea.host}:$componentsDistributorBindPort")
           .getOrElse(s"http://service.${organizationConfig.name}.${organizationConfig.domain}:$componentsDistributorBindPort")
-        processManager.registerBox(componentsDistributorAddress, request.name, request.url)
+        processManager.registerBox(serviceNodeName, componentsDistributorAddress, request.name, request.url)
     }
 
 

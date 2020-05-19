@@ -23,12 +23,14 @@ import org.enterprisedlt.fabric.service.node.{HostsManager, Util}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
+import scala.collection.concurrent.TrieMap
+import scala.collection.mutable
 import scala.util.Try
 
 /**
-  * @author Andrew Pudovikov
-  * @author Alexey Polubelov
-  */
+ * @author Andrew Pudovikov
+ * @author Alexey Polubelov
+ */
 class DockerManagedBox(
     hostPath: String,
     containerName: String,
@@ -56,7 +58,7 @@ class DockerManagedBox(
             details = Util.getServerInfo
         )
     }
-    private var distributorClient: ComponentsDistributor = _
+    private lazy val distributorClients: mutable.Map[String, ComponentsDistributor] = TrieMap.empty[String, ComponentsDistributor]
     // =================================================================================================================
     logger.info(s"Initializing ${this.getClass.getSimpleName} ...")
 
@@ -85,13 +87,13 @@ class DockerManagedBox(
     //=========================================================================
 
 
-    override def registerServiceNode(componentsDistributorUrl: String): Either[String, BoxInformation] = {
-        distributorClient = JsonRestClient.create[ComponentsDistributor](componentsDistributorUrl)
+    override def registerServiceNode(serviceNodeName: String, componentsDistributorUrl: String): Either[String, BoxInformation] = {
+        distributorClients.put(serviceNodeName, JsonRestClient.create[ComponentsDistributor](componentsDistributorUrl))
         Right(boxInformation)
     }
 
 
-    override def registerCustomNodeComponentType(componentName: String): Either[String, String] = {
+    override def registerCustomNodeComponentType(serviceNodeName: String, componentName: String): Either[String, String] = {
         val componentNameFile = new File(s"$InnerPath/distributives/$componentName").getAbsoluteFile
         if (componentNameFile.exists()) {
             logger.info(s"Component $componentName is already exists on a box manager")
@@ -100,6 +102,7 @@ class DockerManagedBox(
         else {
             logger.info(s"Component $componentName isn't on a box manager. Querying distributor client...")
             for {
+                distributorClient <- distributorClients.get(serviceNodeName).toRight(s"Service node $serviceNodeName is not registered in box manager")
                 distributiveBase64 <- distributorClient.getComponentTypeDistributive(componentName)
                 distributive <- Try(Base64.getDecoder.decode(distributiveBase64)).toEither.left.map(_.getMessage)
                 _ = Util.untarFile(distributive, s"$InnerPath/distributives/")
