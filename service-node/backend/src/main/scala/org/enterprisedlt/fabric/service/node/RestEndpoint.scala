@@ -12,7 +12,7 @@ import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.process.{ProcessManager, StartCustomNodeRequest}
+import org.enterprisedlt.fabric.service.node.process.{ProcessManager, StartCustomNodeDescriptor, StartCustomNodeRequest}
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
 import org.enterprisedlt.fabric.service.node.shared._
@@ -45,7 +45,15 @@ class RestEndpoint(
     }
 
     @Post("/admin/start-custom-node")
-    def startCustomNode(request: StartCustomNodeRequest): Either[String, String] = processManager.startCustomNode(request.boxName, request)
+    def startCustomNode(descriptor: StartCustomNodeDescriptor): Either[String, String] = {
+
+        val crypto = cryptoManager.generateCustomComponentCrypto(descriptor.boxName)
+        val request = StartCustomNodeRequest(
+            descriptor,
+            crypto
+        )
+        processManager.startCustomNode(descriptor.boxName, request)
+    }
 
     @Get("/service/list-boxes")
     def listBoxes: Either[String, Array[Box]] = processManager.listBoxes
@@ -115,7 +123,7 @@ class RestEndpoint(
     @Get("/admin/create-user")
     def createUser(name: String): Either[String, Unit] = {
         logger.info(s"Creating new user $name ...")
-        Try(cryptoManager.createFabricUser(name)).toEither.left.map(_.getMessage)
+        Try(cryptoManager.createFabricUser(name)).toEither.left.map(_.getMessage).right.map(_ => ())
     }
 
 

@@ -1,11 +1,11 @@
 package org.enterprisedlt.fabric.service.node.process
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 // =================================================================================================================
 
-case class StartCustomNodeRequest(
+case class StartCustomNodeDescriptor(
     boxName: String,
     componentType: String,
     containerName: String,
@@ -15,6 +15,11 @@ case class StartCustomNodeRequest(
     volumes: Array[VolumeBind],
     command: String,
     workingDir: String
+)
+
+case class StartCustomNodeRequest(
+    descriptor: StartCustomNodeDescriptor,
+    crypto: CustomComponentCerts
 )
 
 
@@ -79,4 +84,10 @@ case class ComponentCryptoMaterialPEM(
 case class CertAndKeyPEM(
     certificate: String,
     key: String
+)
+
+case class CustomComponentCerts(
+    tlsPeer: String,
+    tlsOsn: String,
+    customComponentCerts: CertAndKeyPEM
 )

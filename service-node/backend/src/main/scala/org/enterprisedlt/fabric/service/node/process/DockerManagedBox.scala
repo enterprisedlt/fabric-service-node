@@ -114,12 +114,14 @@ class DockerManagedBox(
     }
 
     override def startCustomNode(request: StartCustomNodeRequest): Either[String, String] = {
-        logger.info(s"Starting ${request.containerName}...")
-        val hostComponentPath = s"$hostPath/components/${request.containerName}"
-        val innerComponentPath = s"$InnerPath/components/${request.containerName}"
+        val descriptor = request.descriptor
+        logger.info(s"Starting ${descriptor.containerName}...")
+        val hostComponentPath = s"$hostPath/components/${descriptor.containerName}"
+        val innerComponentPath = s"$InnerPath/components/${descriptor.containerName}"
         val distributivesPath = s"$hostPath/distributives"
         Try {
             Util.mkDirs(innerComponentPath)
+            storeCustomComponentCryptoMaterial(innerComponentPath, descriptor.componentType, request.crypto)
             // start container
             val configHost = new HostConfig()
               .withBinds(
@@ -127,33 +129,33 @@ class DockerManagedBox(
                       new Bind(distributivesPath, new Volume("/opt/config")),
                       new Bind(s"$hostPath/hosts", new Volume("/etc/hosts"))
                   ) ++
-                    request.volumes.map { bind =>
+                    descriptor.volumes.map { bind =>
                         new Bind(s"$hostComponentPath/${bind.externalHost}/", new Volume(bind.internalHost))
                     }
                     ).toList.asJava
               )
               .withPortBindings(
-                  request.ports.map { port =>
+                  descriptor.ports.map { port =>
                       new PortBinding(new Binding("0.0.0.0", port.externalPort), new ExposedPort(port.internalPort.toInt, InternetProtocol.TCP))
                   }.toList.asJava
 
               )
               .withNetworkMode(networkName)
               .withLogConfig(logConfig)
-            val osnContainerId: String = docker.createContainerCmd(request.image.getName)
-              .withName(request.containerName)
+            val osnContainerId: String = docker.createContainerCmd(descriptor.image.getName)
+              .withName(descriptor.containerName)
               .withEnv(
-                  request.environmentVariables.map { envVar =>
+                  descriptor.environmentVariables.map { envVar =>
                       s"${envVar.key}=${envVar.value}"
                   }.toList.asJava
               )
-              .withWorkingDir(request.workingDir)
-              .withCmd(request.command.split(" ").toList.asJava)
-              .withExposedPorts(request.ports.map(port => new ExposedPort(port.externalPort.toInt, InternetProtocol.TCP)).toList.asJava)
+              .withWorkingDir(descriptor.workingDir)
+              .withCmd(descriptor.command.split(" ").toList.asJava)
+              .withExposedPorts(descriptor.ports.map(port => new ExposedPort(port.externalPort.toInt, InternetProtocol.TCP)).toList.asJava)
               .withHostConfig(configHost)
               .exec().getId
             docker.startContainerCmd(osnContainerId).exec
-            logger.info(s"Custom Node ${request.containerName} started, ID: $osnContainerId")
+            logger.info(s"Custom Node ${descriptor.containerName} started, ID: $osnContainerId")
             osnContainerId
         }.toEither.left.map(_.getMessage)
 
@@ -488,6 +490,18 @@ class DockerManagedBox(
     }
 
     // =================================================================================================================
+    private def storeCustomComponentCryptoMaterial(outPath: String, componentType: String, crypto: CustomComponentCerts): Unit = {
+        Util.mkDirs(s"$outPath/orderers/tls")
+        Util.writeTextFile(s"$outPath/orderers/tls/server.crt", crypto.tlsOsn)
+
+        Util.mkDirs(s"$outPath/peers/tls")
+        Util.writeTextFile(s"$outPath/peers/tls/server.crt", crypto.tlsPeer)
+        ///
+        Util.mkDirs(s"$outPath/users/$componentType")
+        Util.writeTextFile(s"$outPath/users/$componentType/$componentType.crt", crypto.customComponentCerts.certificate)
+        Util.writeTextFile(s"$outPath/users/$componentType/$componentType.key", crypto.customComponentCerts.key)
+    }
+
     private def storeComponentCryptoMaterial(outPath: String, orgConfig: OrganizationConfig, component: ComponentConfig): Unit = {
         //
         Util.mkDirs(s"$outPath/msp/admincerts")
