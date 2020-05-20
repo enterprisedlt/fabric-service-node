@@ -86,7 +86,7 @@ class DockerManagedBox(
 
     override def startOrderingNode(request: StartOSNRequest): Either[String, String] = {
         logger.info(s"Starting ${request.component.fullName} ...")
-        pullImageIfNeeded("hyperledger/fabric-orderer:1.4.2")
+        pullImageIfNeeded("hyperledger/fabric-orderer","1.4.2")
         //        if (checkContainerExistence(osnFullName: String)) {
         //            stopAndRemoveContainer(osnFullName: String)
         //        }
@@ -147,7 +147,7 @@ class DockerManagedBox(
     //=============================================================================
     override def startPeerNode(request: StartPeerRequest): Either[String, String] = {
         val peerFullName = request.component.fullName
-        pullImageIfNeeded("hyperledger/fabric-peer:1.4.2")
+        pullImageIfNeeded("hyperledger/fabric-peer","1.4.2")
         logger.info(s"Starting $peerFullName ...")
         //        if (checkContainerExistence(peerFullName: String)) {
         //            stopAndRemoveContainer(peerFullName: String)
@@ -226,7 +226,7 @@ class DockerManagedBox(
     //=============================================================================
     private def startCouchDB(couchDBFullName: String, port: Int): String = {
         logger.info(s"Starting $couchDBFullName ...")
-        pullImageIfNeeded("hyperledger/fabric-couchdb:0.4.18")
+        pullImageIfNeeded("hyperledger/fabric-couchdb","0.4.18")
         if (checkContainerExistence(couchDBFullName)) {
             stopAndRemoveContainer(couchDBFullName)
         }
@@ -417,11 +417,12 @@ class DockerManagedBox(
     }
 
 
-    private def pullImageIfNeeded(image: String, forcePull: Boolean = false): Either[String, Unit] = {
+    private def pullImageIfNeeded(imageName: String, imageTag: String = "latest", forcePull: Boolean = false): Either[String, Unit] = {
+        val image = s"$imageName:$imageTag"
         if (!forcePull && findImage(image).isDefined) {
             if (forcePull) logger.info(s"Force pulling image $image")
             else logger.info(s"Unable to find image $image locally")
-            pullImage(image)
+            pullImage(imageName, imageTag)
         } else {
             logger.debug(s"Image $image already exists")
             Right(())
@@ -442,29 +443,21 @@ class DockerManagedBox(
     }
 
 
-    private def pullImage(image: String): Either[String, Unit] = {
+    private def pullImage(imageName: String, imageTag: String): Either[String, Unit] = {
+        val image = s"$imageName:$imageTag"
         try {
-            val pullImageCmd = image.split(":") match {
-                case Array(imageName, imageTag) =>
-                    logger.info(s"Pulling image $imageName with tag $imageTag...")
-                    docker
-                      .pullImageCmd(imageName)
-                      .withTag(imageTag)
-                case Array(imageName) =>
-                    logger.info(s"Pulling image $imageName with tag latest...")
-                    docker
-                      .pullImageCmd(imageName)
-                      .withTag("latest")
-            }
-            pullImageCmd
+            logger.info(s"Pulling image $image...")
+            docker
+              .pullImageCmd(imageName)
+              .withTag(imageTag)
               .exec(new PullImageResultCallback())
               .awaitCompletion(pullImageTimeout, TimeUnit.MINUTES)
             logger.info(s"Image $image downloaded")
             Right(())
         } catch {
             case e: Exception =>
-                logger.error(s"Exception pulling image: $e")
-                Left(s"Exception pulling image: $e")
+                logger.error(s"Exception pulling image $image: $e")
+                Left(s"Exception pulling image $image: $e")
         }
     }
 
