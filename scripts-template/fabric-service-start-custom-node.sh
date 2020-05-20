@@ -11,11 +11,12 @@ else
     PROFILE_PATH=$(readlink -f "$1")
 fi
 
+. ${PROFILE_PATH}/settings
 
 echo "Starting custom node ..."
 
 SERVICE_URL="localhost:${SERVICE_BIND_PORT}"
-curl --silent --show-error \
+curl -k --silent --show-error \
 --key ${PROFILE_PATH}/crypto/users/admin/admin.key \
 --cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
 --request POST \
