@@ -420,12 +420,12 @@ class DockerManagedBox(
     private def pullImageIfNeeded(imageName: String, imageTag: String = "latest", forcePull: Boolean = false): Either[String, Unit] = {
         val image = s"$imageName:$imageTag"
         if (!forcePull && findImage(image).isDefined) {
+            logger.info(s"Image $image already exists")
+            Right(())
+        } else {
             if (forcePull) logger.info(s"Force pulling image $image")
             else logger.info(s"Unable to find image $image locally")
             pullImage(imageName, imageTag)
-        } else {
-            logger.debug(s"Image $image already exists")
-            Right(())
         }
     }
 
