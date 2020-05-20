@@ -121,7 +121,7 @@ class DockerManagedBox(
         val distributivesPath = s"$hostPath/distributives"
         Try {
             Util.mkDirs(innerComponentPath)
-            storeCustomComponentCryptoMaterial(innerComponentPath, descriptor.componentType, request.crypto)
+            storeCustomComponentCryptoMaterial(s"$innerComponentPath/crypto", descriptor.componentType, request.crypto)
             // start container
             val configHost = new HostConfig()
               .withBinds(

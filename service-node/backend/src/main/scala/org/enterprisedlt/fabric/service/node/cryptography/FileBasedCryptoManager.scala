@@ -62,8 +62,8 @@ class FileBasedCryptoManager(
     override def generateCustomComponentCrypto(componentName: String): CustomComponentCerts = {
         val customComponentCerts = createFabricUser(componentName)
         CustomComponentCerts(
-            tlsPeer = ???,
-            tlsOsn = ???,
+            tlsPeer = getOrgCryptoMaterialPem.tlsca.certificate,
+            tlsOsn = getOrgCryptoMaterialPem.tlsca.certificate,
             customComponentCerts = customComponentCerts)
 
     }
