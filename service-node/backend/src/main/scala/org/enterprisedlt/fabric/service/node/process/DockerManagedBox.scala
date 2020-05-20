@@ -419,7 +419,8 @@ class DockerManagedBox(
 
     private def pullImageIfNeeded(image: String, forcePull: Boolean = false): Either[String, Unit] = {
         if (!forcePull && findImage(image).isDefined) {
-            logger.info(s"Unable to find image $image locally or pull forced")
+            if (forcePull) logger.info(s"Force pulling image $image")
+            else logger.info(s"Unable to find image $image locally")
             pullImage(image)
         } else {
             logger.debug(s"Image $image already exists")
