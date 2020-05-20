@@ -167,6 +167,12 @@ object Init {
             addPeers andThen addOSNs
         }
 
+        private def removeOsn(config: OSNConfig): CallbackTo[Unit] =
+            $.modState(OsnNodes.modify(_.filter(_.name != config.name)))
+
+        private def removePeer(config: PeerConfig): CallbackTo[Unit] =
+            $.modState(PeerNodes.modify(_.filter(_.name != config.name)))
+
         def renderWithGlobal(s: State, global: AppState): VdomTagOf[Div] = global match {
             case g: GlobalState =>
                 val osnByBox = s.network.orderingNodes.groupBy(_.box)
@@ -197,7 +203,8 @@ object Init {
                                                       ^.width := "100%",
                                                       <.tbody(
                                                           <.tr(
-                                                              <.td(^.colSpan := 2, <.i(<.b("Ordering Nodes:"))),
+                                                              <.td(<.i(<.b("Ordering Nodes:"))),
+                                                              <.td(),
                                                               <.td(),
                                                           ).when(osnNodes.isDefined),
                                                           osnNodes.map { orderingNodes =>
@@ -210,6 +217,7 @@ object Init {
                                                                               <.i(^.className := "far fa-edit")
                                                                           ),
                                                                           <.button(^.className := "btn btn-sm btn-outline-danger", //^.aria.label="remove">
+                                                                              ^.onClick --> removeOsn(osn),
                                                                               <.i(^.className := "fas fa-minus-circle")
                                                                           ),
                                                                       )
@@ -217,7 +225,8 @@ object Init {
                                                               }.toTagMod
                                                           }.getOrElse(TagMod.empty),
                                                           <.tr(
-                                                              <.td(^.colSpan := 2, <.i(<.b("Peer Nodes:"))),
+                                                              <.td(<.i(<.b("Peer Nodes:"))), //^.colSpan := 2,
+                                                              <.td(),
                                                               <.td(),
                                                           ).when(peerNodes.isDefined),
                                                           peerNodes.map { peerNodes =>
@@ -226,9 +235,18 @@ object Init {
                                                                       <.td(),
                                                                       <.td(peer.name),
                                                                       <.td(
-                                                                          <.i(^.className := "far fa-edit"), //, ^.color := "#996633"),
-                                                                          <.i(^.className := "fas fa-minus-circle") //, ^.color := "#cc0000"),
+                                                                          <.button(^.className := "btn btn-sm btn-outline-secondary", //^.aria.label="edit">
+                                                                              <.i(^.className := "far fa-edit")
+                                                                          ),
+                                                                          <.button(^.className := "btn btn-sm btn-outline-danger", //^.aria.label="remove">
+                                                                              ^.onClick --> removePeer(peer),
+                                                                              <.i(^.className := "fas fa-minus-circle")
+                                                                          ),
                                                                       )
+//                                                                      <.td(
+//                                                                          <.i(^.className := "far fa-edit"), //, ^.color := "#996633"),
+//                                                                          <.i(^.className := "fas fa-minus-circle") //, ^.color := "#cc0000"),
+//                                                                      )
                                                                   )
                                                               }.toTagMod
                                                           }.getOrElse(TagMod.empty),

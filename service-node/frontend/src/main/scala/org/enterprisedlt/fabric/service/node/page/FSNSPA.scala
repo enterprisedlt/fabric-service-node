@@ -43,15 +43,16 @@ object FSNSPA {
                 <.div(
                     ^.className := "fixed-top",
                     <.nav(^.className := "navbar navbar-expand-lg navbar-dark bg-dark",
-                        <.a(^.className := "navbar-brand", ^.href := "#",
+                        <.a(
+                            ^.className := "navbar-brand",
+                            ^.href := "#",
                             <.img(
-                                ^.src := "logo.png",
-                                ^.width := "30px",
-                                ^.height := "30px",
+                                ^.src := "logo_full.png",
+                                ^.width := "140px",
+                                ^.height := "40px",
                                 ^.className := "d-inline-block align-top",
                                 ^.alt := ""
                             ),
-                            <.i("ServiceNode")
                         ),
                         <.button(^.className := "navbar-toggler", ^.`type` := "button",
                             data.toggle := "collapse", data.target := "#navbarNavAltMarkup",
