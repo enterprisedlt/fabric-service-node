@@ -93,21 +93,22 @@ class DockerManagedBox(
     }
 
 
-    override def registerCustomNodeComponentType(serviceNodeName: String, componentName: String): Either[String, String] = {
-        val componentNameFile = new File(s"$InnerPath/distributives/$componentName").getAbsoluteFile
-        if (componentNameFile.exists()) {
-            logger.info(s"Component $componentName is already exists on a box manager")
+    override def registerCustomNodeComponentType(serviceNodeName: String, componentType: String): Either[String, String] = {
+        val componentNameFolder = new File(s"$InnerPath/distributives/$componentType").getAbsoluteFile
+        if (componentNameFolder.exists()) {
+            logger.info(s"Component type $componentType is already exists on a box manager")
             Right("Success")
         }
         else {
-            logger.info(s"Component $componentName isn't on a box manager. Querying distributor client...")
+            componentNameFolder.mkdirs()
+            logger.info(s"Component type $componentType isn't on a box manager. Querying distributor client...")
             for {
                 distributorClient <- distributorClients.get(serviceNodeName).toRight(s"Service node $serviceNodeName is not registered in box manager")
-                distributiveBase64 <- distributorClient.getComponentTypeDistributive(componentName)
+                distributiveBase64 <- distributorClient.getComponentTypeDistributive(componentType)
                 distributive <- Try(Base64.getDecoder.decode(distributiveBase64)).toEither.left.map(_.getMessage)
-                _ = Util.untarFile(distributive, s"$InnerPath/distributives/")
+                _ = Util.untarFile(distributive, componentNameFolder.getAbsolutePath)
             } yield {
-                logger.info(s"Component $componentName has been successfully downloaded")
+                logger.info(s"Component type $componentType has been successfully downloaded")
                 "Success"
             }
         }
@@ -118,7 +119,7 @@ class DockerManagedBox(
         logger.info(s"Starting ${descriptor.containerName}...")
         val hostComponentPath = s"$hostPath/components/${descriptor.containerName}"
         val innerComponentPath = s"$InnerPath/components/${descriptor.containerName}"
-        val distributivesPath = s"$hostPath/distributives"
+        val distributivesPath = s"$hostPath/distributives/${descriptor.componentType}"
         Try {
             Util.mkDirs(innerComponentPath)
             storeCustomComponentCryptoMaterial(s"$innerComponentPath/crypto", descriptor.componentType, request.crypto)
