@@ -18,6 +18,7 @@ case class StartCustomNodeDescriptor(
 )
 
 case class StartCustomNodeRequest(
+    serviceNodeName: String,
     descriptor: StartCustomNodeDescriptor,
     crypto: CustomComponentCerts
 )

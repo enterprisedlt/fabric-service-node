@@ -93,73 +93,78 @@ class DockerManagedBox(
     }
 
 
-    override def registerCustomNodeComponentType(serviceNodeName: String, componentType: String): Either[String, String] = {
-        val componentNameFolder = new File(s"$InnerPath/distributives/$componentType").getAbsoluteFile
-        if (componentNameFolder.exists()) {
-            logger.info(s"Component type $componentType is already exists on a box manager")
-            Right("Success")
-        }
-        else {
-            componentNameFolder.mkdirs()
-            logger.info(s"Component type $componentType isn't on a box manager. Querying distributor client...")
-            for {
-                distributorClient <- distributorClients.get(serviceNodeName).toRight(s"Service node $serviceNodeName is not registered in box manager")
-                distributiveBase64 <- distributorClient.getComponentTypeDistributive(componentType)
-                distributive <- Try(Base64.getDecoder.decode(distributiveBase64)).toEither.left.map(_.getMessage)
-                _ = Util.untarFile(distributive, componentNameFolder.getAbsolutePath)
-            } yield {
-                logger.info(s"Component type $componentType has been successfully downloaded")
-                "Success"
-            }
-        }
-    }
+    //    override def registerCustomNodeComponentType(serviceNodeName: String, componentType: String): Either[String, String] = {
+    //        val componentNameFolder = new File(s"$InnerPath/distributives/$componentType").getAbsoluteFile
+    //        if (componentNameFolder.exists()) {
+    //            logger.info(s"Component type $componentType is already exists on a box manager")
+    //            Right("Success")
+    //        }
+    //        else {
+    //            componentNameFolder.mkdirs()
+    //            logger.info(s"Component type $componentType isn't on a box manager. Querying distributor client...")
+    //            for {
+    //                distributorClient <- distributorClients.get(serviceNodeName).toRight(s"Service node $serviceNodeName is not registered in box manager")
+    //                distributiveBase64 <- distributorClient.getComponentTypeDistributive(componentType)
+    //                distributive <- Try(Base64.getDecoder.decode(distributiveBase64)).toEither.left.map(_.getMessage)
+    //                _ = Util.untarFile(distributive, componentNameFolder.getAbsolutePath)
+    //            } yield {
+    //                logger.info(s"Component type $componentType has been successfully downloaded")
+    //                "Success"
+    //            }
+    //        }
+    //    }
+
+
 
     override def startCustomNode(request: StartCustomNodeRequest): Either[String, String] = {
         val descriptor = request.descriptor
-        logger.info(s"Starting ${descriptor.containerName}...")
         val hostComponentPath = s"$hostPath/components/${descriptor.containerName}"
         val innerComponentPath = s"$InnerPath/components/${descriptor.containerName}"
         val distributivesPath = s"$hostPath/distributives/${descriptor.componentType}"
-        Try {
-            Util.mkDirs(innerComponentPath)
-            storeCustomComponentCryptoMaterial(s"$innerComponentPath/crypto", descriptor.componentType, request.crypto)
-            // start container
-            val configHost = new HostConfig()
-              .withBinds(
-                  (Array(
-                      new Bind(distributivesPath, new Volume("/opt/config")),
-                      new Bind(s"$hostPath/hosts", new Volume("/etc/hosts"))
-                  ) ++
-                    descriptor.volumes.map { bind =>
-                        new Bind(s"$hostComponentPath/${bind.externalHost}/", new Volume(bind.internalHost))
-                    }
-                    ).toList.asJava
-              )
-              .withPortBindings(
-                  descriptor.ports.map { port =>
-                      new PortBinding(new Binding("0.0.0.0", port.externalPort), new ExposedPort(port.internalPort.toInt, InternetProtocol.TCP))
-                  }.toList.asJava
-
-              )
-              .withNetworkMode(networkName)
-              .withLogConfig(logConfig)
-            val osnContainerId: String = docker.createContainerCmd(descriptor.image.getName)
-              .withName(descriptor.containerName)
-              .withEnv(
-                  descriptor.environmentVariables.map { envVar =>
-                      s"${envVar.key}=${envVar.value}"
-                  }.toList.asJava
-              )
-              .withWorkingDir(descriptor.workingDir)
-              .withCmd(descriptor.command.split(" ").toList.asJava)
-              .withExposedPorts(descriptor.ports.map(port => new ExposedPort(port.externalPort.toInt, InternetProtocol.TCP)).toList.asJava)
-              .withHostConfig(configHost)
-              .exec().getId
-            docker.startContainerCmd(osnContainerId).exec
-            logger.info(s"Custom Node ${descriptor.containerName} started, ID: $osnContainerId")
-            osnContainerId
-        }.toEither.left.map(_.getMessage)
-
+        val componentNameFolder = new File(s"$InnerPath/distributives/${descriptor.componentType}").getAbsoluteFile
+        //
+        logger.info(s"Starting ${descriptor.containerName}...")
+        for {
+            _ <- checkComponentTypeExists(request.serviceNodeName, descriptor.componentType, componentNameFolder)
+            osnContainerId <- Try {
+                Util.mkDirs(innerComponentPath)
+                storeCustomComponentCryptoMaterial(s"$innerComponentPath/crypto", descriptor.componentType, request.crypto)
+                // start container
+                val configHost = new HostConfig()
+                  .withBinds(
+                      (Array(
+                          new Bind(distributivesPath, new Volume("/opt/config")),
+                          new Bind(s"$hostPath/hosts", new Volume("/etc/hosts"))
+                      ) ++
+                        descriptor.volumes.map { bind =>
+                            new Bind(s"$hostComponentPath/${bind.externalHost}/", new Volume(bind.internalHost))
+                        }
+                        ).toList.asJava
+                  )
+                  .withPortBindings(
+                      descriptor.ports.map { port =>
+                          new PortBinding(new Binding("0.0.0.0", port.externalPort), new ExposedPort(port.internalPort.toInt, InternetProtocol.TCP))
+                      }.toList.asJava
+                  )
+                  .withNetworkMode(networkName)
+                  .withLogConfig(logConfig)
+                val osnContainerId: String = docker.createContainerCmd(descriptor.image.getName)
+                  .withName(descriptor.containerName)
+                  .withEnv(
+                      descriptor.environmentVariables.map { envVar =>
+                          s"${envVar.key}=${envVar.value}"
+                      }.toList.asJava
+                  )
+                  .withWorkingDir(descriptor.workingDir)
+                  .withCmd(descriptor.command.split(" ").toList.asJava)
+                  .withExposedPorts(descriptor.ports.map(port => new ExposedPort(port.externalPort.toInt, InternetProtocol.TCP)).toList.asJava)
+                  .withHostConfig(configHost)
+                  .exec().getId
+                docker.startContainerCmd(osnContainerId).exec
+                logger.info(s"Custom Node ${descriptor.containerName} started, ID: $osnContainerId")
+                osnContainerId
+            }.toEither.left.map(_.getMessage)
+        } yield osnContainerId
     }
 
     override def startOrderingNode(request: StartOSNRequest): Either[String, String] = {
@@ -524,6 +529,30 @@ class DockerManagedBox(
         Util.writeTextFile(s"$outPath/tls/ca.crt", orgConfig.cryptoMaterial.tlsca.certificate)
         Util.writeTextFile(s"$outPath/tls/server.crt", component.cryptoMaterial.tls.certificate)
         Util.writeTextFile(s"$outPath/tls/server.key", component.cryptoMaterial.tls.key)
+    }
+
+    // =================================================================================================================
+
+    private def checkComponentTypeExists(serviceNodeName: String, componentType: String, componentNameFolder: File): Either[String, Unit] = {
+        if (componentNameFolder.exists()) {
+            logger.info(s"Component type $componentType is already exists on a box manager")
+            Right(())
+        } else {
+            componentNameFolder.mkdirs()
+            logger.info(s"Component type $componentType isn't on a box manager. Querying distributor client...")
+            getServiceNodeComponent(serviceNodeName, componentType, componentNameFolder)
+        }
+    }
+
+    private def getServiceNodeComponent(serviceNodeName: String, componentType: String, componentNameFolder: File): Either[String, Unit] = {
+        for {
+            distributorClient <- distributorClients.get(serviceNodeName).toRight(s"Service node ${serviceNodeName} is not registered in box manager")
+            distributiveBase64 <- distributorClient.getComponentTypeDistributive(componentType)
+            distributive <- Try(Base64.getDecoder.decode(distributiveBase64)).toEither.left.map(_.getMessage)
+            _ <- Util.untarFile(distributive, componentNameFolder.getAbsolutePath)
+        } yield {
+            logger.info(s"Component type $componentType has been successfully downloaded")
+        }
     }
 
     // =================================================================================================================

@@ -39,11 +39,12 @@ import org.slf4j.{Logger, LoggerFactory}
 import oshi.SystemInfo
 
 import scala.collection.JavaConverters._
+import scala.util.Try
 
 /**
-  * @author Alexey Polubelov
-  * @author Maxim Fedin
-  */
+ * @author Alexey Polubelov
+ * @author Maxim Fedin
+ */
 object Util {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -302,36 +303,38 @@ object Util {
 
     def getServerInfo: String = {
         val si = new SystemInfo()
-        val  hal = si.getHardware
-        val oneGb = 1024*1024*1024
+        val hal = si.getHardware
+        val oneGb = 1024 * 1024 * 1024
         val available = hal.getMemory.getTotal
         val total = (available * 1d) / oneGb
         val coreCount = hal.getProcessor.getLogicalProcessorCount
-        val oneGhz = 1000*1000*1000
+        val oneGhz = 1000 * 1000 * 1000
         val freq = (hal.getProcessor.getProcessorIdentifier.getVendorFreq * 1d) / oneGhz
         s"${coreCount}Core ${freq.formatted("%.2f")}GHz ${total.formatted("%.2f")}Gb"
     }
 
 
     //=========================================================================
-    def untarFile(file: Array[Byte], destinationDir: String): Unit = {
-        val bais = new ByteArrayInputStream(file)
-        val gzIn = new GzipCompressorInputStream(bais)
-        val tarIn = new TarArchiveInputStream(gzIn)
-        while (tarIn.getNextTarEntry != null) {
-            val entry = tarIn.getCurrentEntry
-            logger.debug(s"Extracting ${entry.getName}")
-            entry match {
-                case entry if entry.isDirectory =>
-                    val f = new File(s"$destinationDir/${entry.getName}")
-                    f.mkdirs()
-                case entry if entry.isFile =>
-                    val outputFile = new File(s"$destinationDir/${entry.getName}")
-                    IOUtils.copy(tarIn, new FileOutputStream(outputFile))
+    def untarFile(file: Array[Byte], destinationDir: String): Either[String, Unit] = {
+        Try {
+            val bais = new ByteArrayInputStream(file)
+            val gzIn = new GzipCompressorInputStream(bais)
+            val tarIn = new TarArchiveInputStream(gzIn)
+            while (tarIn.getNextTarEntry != null) {
+                val entry = tarIn.getCurrentEntry
+                logger.debug(s"Extracting ${entry.getName}")
+                entry match {
+                    case entry if entry.isDirectory =>
+                        val f = new File(s"$destinationDir/${entry.getName}")
+                        f.mkdirs()
+                    case entry if entry.isFile =>
+                        val outputFile = new File(s"$destinationDir/${entry.getName}")
+                        IOUtils.copy(tarIn, new FileOutputStream(outputFile))
+                }
             }
-        }
-        tarIn.close()
-        logger.debug("Untar completed successfully")
+            tarIn.close()
+            logger.debug("Untar completed successfully")
+        }.toEither.left.map(_.getMessage)
     }
 }
 

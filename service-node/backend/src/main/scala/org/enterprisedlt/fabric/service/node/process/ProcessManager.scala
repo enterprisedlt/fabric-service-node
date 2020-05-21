@@ -44,10 +44,10 @@ class ProcessManager {
           }
 
 
-    def registerCustomNodeComponentType(serviceNodeName: String, box: String, componentType: String): Either[String, String] =
-        boxes
-          .get(box).toRight(s"Unknown box $box")
-          .flatMap(_._1.registerCustomNodeComponentType(serviceNodeName, componentType))
+//    def registerCustomNodeComponentType(serviceNodeName: String, box: String, componentType: String): Either[String, String] =
+//        boxes
+//          .get(box).toRight(s"Unknown box $box")
+//          .flatMap(_._1.registerCustomNodeComponentType(serviceNodeName, componentType))
 
 
     def startCustomNode(box: String, request: StartCustomNodeRequest): Either[String, String] =
