@@ -3,109 +3,123 @@ package org.enterprisedlt.fabric.service.node
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
+import org.enterprisedlt.fabric.service.node.shared.FabricServiceState
 import org.enterprisedlt.fabric.service.node.state.GlobalStateManager
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.scalajs.js
+import scala.scalajs.js.timers.SetTimeoutHandle
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object Context {
+    val stateUpdateInterval = 1000 // 1s
     val State: GlobalStateManager[AppState] = new GlobalStateManager(Initial)
+    var lastStateVersion: Long = -1
 
-    def initialize: Future[Unit] = {
-        for {
-            state <- ServiceNodeRemote.getServiceState
-            stateMode = getStateMode(state)
-            states <- if (stateMode == ReadyForUse) updateState() else Future.successful(None)
-            orgFullName <- ServiceNodeRemote.getOrganisationFullName
-            mspId <- ServiceNodeRemote.getOrganisationMspId
-            boxes <- ServiceNodeRemote.listBoxes
-        } yield {
-            State.update { _ =>
-                val (packages, channels, organizations, contracts) =
-                    states.getOrElse((Array.empty[String], Array.empty[String], Array.empty[Organization], Array.empty[Contract]))
-                GlobalState(
-                    mode = stateMode,
-                    orgFullName = orgFullName,
-                    mspId = mspId,
-                    channels = channels,
-                    packages = packages,
-                    organizations = organizations,
-                    contracts = contracts,
-                    boxes = boxes
-                )
+    def initialize(): Unit = {
+        checkUpdateState()
+    }
+
+    private def scheduleStateCheck: SetTimeoutHandle = {
+        js.timers.setTimeout(stateUpdateInterval) {
+            checkUpdateState()
+        }
+    }
+
+    private def checkUpdateState(): Unit = {
+        ServiceNodeRemote.getServiceState.foreach { state =>
+            if (state.version != lastStateVersion) {
+                val update = state.stateCode match {
+                    case FabricServiceState.NotInitialized =>
+                        ServiceNodeRemote.listBoxes.map { boxes =>
+                            Initializing(
+                                info = BaseInfo(
+                                    stateCode = state.stateCode,
+                                    mspId = state.mspId,
+                                    orgFullName = state.organizationFullName,
+                                    boxes = boxes
+                                ),
+                                inProgress = false
+                            )
+                        }
+
+                    case sm if bootstrapIsInProgress(sm) || joinIsInProgress(sm) =>
+                        ServiceNodeRemote.listBoxes.map { boxes =>
+                            Initializing(
+                                info = BaseInfo(
+                                    stateCode = state.stateCode,
+                                    mspId = state.mspId,
+                                    orgFullName = state.organizationFullName,
+                                    boxes = boxes
+                                ),
+                                inProgress = true
+                            )
+                        }
+
+                    case FabricServiceState.Ready =>
+                        for {
+                            packages <- ServiceNodeRemote.listContractPackages
+                            channels <- ServiceNodeRemote.listChannels
+                            organizations <- ServiceNodeRemote.listOrganizations
+                            contracts <- ServiceNodeRemote.listContracts
+                            boxes <- ServiceNodeRemote.listBoxes
+                        } yield {
+                            Ready(
+                                info = BaseInfo(
+                                    stateCode = state.stateCode,
+                                    mspId = state.mspId,
+                                    orgFullName = state.organizationFullName,
+                                    boxes = boxes
+                                ),
+                                channels = channels,
+                                packages = packages,
+                                organizations = organizations,
+                                contracts = contracts
+                            )
+                        }
+                }
+                update.foreach { stateUpdate =>
+                    State.update(_ => stateUpdate)
+                    lastStateVersion = state.version
+                    // schedule next state check at the end
+                    scheduleStateCheck
+                }
+            } else {
+                scheduleStateCheck
             }
         }
     }
 
+    def bootstrapIsInProgress(code: Int): Boolean =
+        code >= FabricServiceState.BootstrapStarted && code <= FabricServiceState.BootstrapMaxValue
 
-//    def refreshState(globalState: GlobalState, state: AppMode): Future[Unit] = {
-//        state match {
-//            case BootstrapMode =>
-//                for {
-//                    boxes <- ServiceNodeRemote.listBoxes
-//                } yield {
-//                    State.update { _ =>
-//                        globalState.copy(
-//                            boxes = boxes
-//                        )
-//                    }
-//                }
-//        }
-//    }
+    def joinIsInProgress(code: Int): Boolean =
+        code >= FabricServiceState.JoinStarted && code <= FabricServiceState.JoinMaxValue
 
-    def getStateMode(fabricServiceState: FabricServiceState): AppMode = fabricServiceState.stateCode match {
-        case sm if sm == Status.NotInitialized =>
-            InitMode
-        case sm if sm >= Status.JoinProgressStatus.JoinStarted && sm <= Status.JoinProgressStatus.JoinMaxValue =>
-            JoinInProgress
-        case sm if sm >= Status.BootProgressStatus.BootstrapStarted && sm <= Status.BootProgressStatus.BootstrapMaxValue =>
-            BootstrapInProgress
-        case sm if sm == Status.Ready =>
-            ReadyForUse
-    }
-
-
-    def updateState(): Future[Option[(Array[String], Array[String], Array[Organization], Array[Contract])]] = {
-        for {
-            packages <- ServiceNodeRemote.listContractPackages
-            channels <- ServiceNodeRemote.listChannels
-            organizations <- ServiceNodeRemote.listOrganizations
-            contracts <- ServiceNodeRemote.listContracts
-        } yield Some(packages, channels, organizations, contracts)
-    }
-
-    def switchModeTo(mode: AppMode): Unit = {
-        State.update {
-            case x: GlobalState => x.copy(mode = mode)
-            case s => throw new IllegalStateException(s"Unexpected state $s")
-        }
-    }
 }
 
 sealed trait AppState
 
 case object Initial extends AppState
 
-@Lenses case class GlobalState(
-    mode: AppMode,
-    orgFullName: String,
-    mspId: String,
+@Lenses case class Initializing(
+    info: BaseInfo,
+    inProgress: Boolean
+) extends AppState
+
+@Lenses case class Ready(
+    info: BaseInfo,
     channels: Array[String],
     packages: Array[String],
     organizations: Array[Organization],
     contracts: Array[Contract],
-    boxes: Array[Box]
 ) extends AppState
 
-sealed trait AppMode
-
-case object InitMode extends AppMode
-
-case object BootstrapInProgress extends AppMode
-
-case object JoinInProgress extends AppMode
-
-case object ReadyForUse extends AppMode
+@Lenses case class BaseInfo(
+    stateCode: Int,
+    mspId: String,
+    orgFullName: String,
+    boxes: Array[Box]
+)

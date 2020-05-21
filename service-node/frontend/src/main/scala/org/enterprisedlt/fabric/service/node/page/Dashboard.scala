@@ -12,13 +12,12 @@ import org.enterprisedlt.fabric.service.node.shared._
 import org.enterprisedlt.fabric.service.node.state.{ApplyFor, GlobalStateAware}
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
 import org.enterprisedlt.fabric.service.node.util.Html.data
-import org.scalajs.dom.html.Div
 import org.scalajs.dom
+import org.scalajs.dom.html.Div
 import org.scalajs.dom.raw.{Blob, HTMLLinkElement, URL}
 
-import scala.scalajs.js
-
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.scalajs.js
 
 /**
  * @author Alexey Polubelov
@@ -62,7 +61,7 @@ object Dashboard {
     class Backend(val $: BackendScope[Unit, State]) extends GlobalStateAware[AppState, State] with StateFieldBinder[State] {
         override def connectLocal: ConnectFunction = ApplyFor(
             Seq(
-                ((State.componentCandidate / ComponentCandidate.box).when(_.trim.isEmpty) <~~ GlobalState.boxes.when(_.nonEmpty)) (_.head.name)
+                ((State.componentCandidate / ComponentCandidate.box).when(_.trim.isEmpty) <~~ (Ready.info / BaseInfo.boxes).when(_.nonEmpty)) (_.head.name)
             )
         )
 
@@ -70,7 +69,7 @@ object Dashboard {
             ServiceNodeRemote.registerBox(boxCandidate)
         }
 
-        def addNetworkComponents(components: Seq[ComponentCandidate], g: GlobalState): CallbackTo[Unit] = {
+        def addNetworkComponents(components: Seq[ComponentCandidate], g: Ready): CallbackTo[Unit] = {
             //TODO: implement
             println("not yet :(")
             Callback()
@@ -83,12 +82,12 @@ object Dashboard {
         }
 
         def renderWithGlobal(s: State, global: AppState): VdomTagOf[Div] = global match {
-            case g: GlobalState =>
+            case g: Ready =>
                 val osnByBox = s.network.orderingNodes.groupBy(_.box)
                 val peerByBox = s.network.peerNodes.groupBy(_.box)
                 <.div(
                     FSNSPA(
-                        g.orgFullName,
+                        g.info.orgFullName,
                         0,
                         Seq(
                             Page(
@@ -100,7 +99,7 @@ object Dashboard {
                                       ^.marginBottom := "0px",
                                       ^.marginLeft := "auto",
                                       ^.marginRight := "auto",
-                                      g.boxes.map { box =>
+                                      g.info.boxes.map { box =>
                                           val osnNodes = osnByBox.get(box.name)
                                           val peerNodes = peerByBox.get(box.name)
                                           <.div(
@@ -173,7 +172,7 @@ object Dashboard {
                                         name = "Component",
                                         id = "component-form",
                                         <.div(
-                                            ComponentForm(s, State.componentCandidate, CompD(g.orgFullName, g.boxes)),
+                                            ComponentForm(s, State.componentCandidate, CompD(g.info.orgFullName, g.info.boxes)),
                                             <.div(^.className := "form-group mt-1",
                                                 <.button(
                                                     ^.className := "btn btn-sm btn-outline-secondary",

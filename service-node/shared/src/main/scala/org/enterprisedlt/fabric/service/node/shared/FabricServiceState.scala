@@ -1,10 +1,15 @@
-package org.enterprisedlt.fabric.service.node.model
+package org.enterprisedlt.fabric.service.node.shared
+
+import upickle.default.{macroRW, ReadWriter => RW}
 
 /**
   * @author Alexey Polubelov
   */
 case class FabricServiceState(
-    stateCode: Int
+    mspId: String,
+    organizationFullName: String,
+    stateCode: Int,
+    version: Long
 )
 
 object FabricServiceState {
@@ -43,4 +48,7 @@ object FabricServiceState {
 
     // Ready to work
     val Ready = 100
+
+    implicit val rw: RW[FabricServiceState] = macroRW
+
 }

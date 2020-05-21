@@ -15,9 +15,10 @@ import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory
 import org.enterprisedlt.fabric.service.node.auth.{FabricAuthenticator, Role}
 import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
-import org.enterprisedlt.fabric.service.node.model.FabricServiceState
+import org.enterprisedlt.fabric.service.node.model.FabricServiceStateHolder
 import org.enterprisedlt.fabric.service.node.process.ProcessManager
 import org.enterprisedlt.fabric.service.node.rest.JsonRestEndpoint
+import org.enterprisedlt.fabric.service.node.shared.FabricServiceState
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.slf4j.LoggerFactory
 
@@ -45,8 +46,15 @@ object ServiceNode extends App {
     Util.setupLogging(LogLevel)
     private val logger = LoggerFactory.getLogger(this.getClass)
 
-    logger.info(s"Starting service node for Org $OrgName.$Domain ...")
-    private val serviceState = new AtomicReference(FabricServiceState(FabricServiceState.NotInitialized))
+    logger.info(s"Starting service node for $OrgName.$Domain ...")
+    FabricServiceStateHolder.update(_ =>
+        FabricServiceState(
+            mspId = OrgName,
+            organizationFullName = s"$OrgName.$Domain",
+            stateCode = FabricServiceState.NotInitialized,
+            version = 0
+        )
+    )
     private val organizationConfig: OrganizationConfig = OrganizationConfig(
         OrgName,
         Domain,
@@ -60,7 +68,7 @@ object ServiceNode extends App {
     private val restEndpoint = new RestEndpoint(
         ServiceBindPort, ServiceExternalAddress, organizationConfig, cryptoManager,
         hostsManager = new HostsManager("/opt/profile/hosts", ServiceExternalAddress.map(_.host)),
-        ProfilePath, processManager, serviceState
+        ProfilePath, processManager
     )
     //TODO: make web app optional, based on configuration
     private val server =

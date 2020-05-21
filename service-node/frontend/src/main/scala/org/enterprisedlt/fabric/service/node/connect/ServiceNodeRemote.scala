@@ -1,7 +1,7 @@
 package org.enterprisedlt.fabric.service.node.connect
 
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.shared.{BootstrapOptions, JoinOptions}
+import org.enterprisedlt.fabric.service.node.shared.{BootstrapOptions, FabricServiceState, JoinOptions}
 import org.scalajs.dom.ext.Ajax
 
 import scala.concurrent.ExecutionContext.Implicits.global

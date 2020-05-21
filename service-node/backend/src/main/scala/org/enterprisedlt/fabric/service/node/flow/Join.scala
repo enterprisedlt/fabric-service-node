@@ -3,7 +3,6 @@ package org.enterprisedlt.fabric.service.node.flow
 import java.io.{BufferedInputStream, FileInputStream}
 import java.util.Base64
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicReference
 
 import org.enterprisedlt.fabric.service.model.{KnownHostRecord, Organization, OrganizationsOrdering, ServiceVersion}
 import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
@@ -32,13 +31,12 @@ object Join {
         hostsManager: HostsManager,
         profilePath: String,
         processManager: ProcessManager,
-        state: AtomicReference[FabricServiceState]
     ): GlobalState = {
         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
         val cryptoPath = "/opt/profile/crypto"
         //
         logger.info(s"[ $organizationFullName ] - Creating JoinRequest ...")
-        state.set(FabricServiceState(FabricServiceState.JoinCreatingJoinRequest))
+        FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.JoinCreatingJoinRequest))
 
         logger.info(s"[ $organizationFullName ] - Generating list of known hosts ...")
         import ConversionHelper._
@@ -93,7 +91,7 @@ object Join {
         )
         //
         logger.info(s"[ $organizationFullName ] - Sending JoinRequest to ${joinOptions.invite.address} ...")
-        state.set(FabricServiceState(FabricServiceState.JoinAwaitingJoin))
+        FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.JoinAwaitingJoin))
         val password = "join me" // TODO: password should be taken from request
         val key = Util.keyStoreFromBase64(joinOptions.invite.key, password)
         val joinResponse = Util.executePostRequest(s"https://${joinOptions.invite.address}/join-network", key, password, joinRequest, classOf[JoinResponse])
@@ -112,14 +110,14 @@ object Join {
 
         //
         logger.info(s"[ $organizationFullName ] - Starting ordering nodes ...")
-        state.set(FabricServiceState(FabricServiceState.JoinStartingOrdering))
+        FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.JoinStartingOrdering))
         //
         logger.info(s"[ $organizationFullName ] - Initializing network ...")
         val admin = cryptoManager.loadDefaultAdmin
         val network = new FabricNetworkManager(organizationConfig, OSNConfig("", joinResponse.osnHost, joinResponse.osnPort), admin)
         network.defineChannel(ServiceChannelName)
 
-        state.set(FabricServiceState(FabricServiceState.JoinConnectingToNetwork))
+        FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.JoinConnectingToNetwork))
 
         logger.info(s"[ $organizationFullName ] - Connecting to channel ...")
         val organizationInfo =
@@ -156,7 +154,7 @@ object Join {
             processManager.osnAwaitJoinedToChannel(osnConfig.box, osnConfig.name, ServiceChannelName)
         }
         //
-        state.set(FabricServiceState(FabricServiceState.JoinStartingPeers))
+        FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.JoinStartingPeers))
         logger.info(s"[ $organizationFullName ] - Starting peer nodes ...")
         joinOptions.network.peerNodes.foreach { peerConfig =>
             val componentCrypto = cryptoManager.generateComponentCrypto(Peer, peerConfig.name)
@@ -177,7 +175,7 @@ object Join {
             )
             network.definePeer(peerConfig)
         }
-        state.set(FabricServiceState(FabricServiceState.JoinAddingPeersToChannel))
+        FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.JoinAddingPeersToChannel))
         logger.info(s"[ $organizationFullName ] - Adding peers to channel ...")
         joinOptions.network.peerNodes.foreach { peerConfig =>
             network.addPeerToChannel(ServiceChannelName, peerConfig.name)
@@ -198,14 +196,14 @@ object Join {
         }
 
         //
-        state.set(FabricServiceState(FabricServiceState.JoinUpdatingAnchors))
+        FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.JoinUpdatingAnchors))
         logger.info(s"[ $organizationFullName ] - Updating anchors for channel ...")
         joinOptions.network.peerNodes.foreach { peerConfig =>
             network.addAnchorsToChannel(ServiceChannelName, peerConfig.name)
         }
 
         //
-        state.set(FabricServiceState(FabricServiceState.JoinInstallingServiceChainCode))
+        FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.JoinInstallingServiceChainCode))
         logger.info(s"[ $organizationFullName ] - Preparing service chain code ...")
         val chainCodePkg = new BufferedInputStream(new FileInputStream(ServiceChainCodePath))
 
@@ -218,7 +216,7 @@ object Join {
             chainCodePkg)
 
         // fetch current network version
-        state.set(FabricServiceState(FabricServiceState.JoinInitializingServiceChainCode))
+        FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.JoinInitializingServiceChainCode))
         logger.info(s"[ $organizationFullName ] - Warming up service chain code ...")
         implicit val timeout: OperationTimeout = OperationTimeout(5, TimeUnit.MINUTES)
         network
@@ -228,9 +226,9 @@ object Join {
         match {
             case Left(error) => throw new Exception(s"Failed to warn up service chain code: $error")
             case Right(serviceVersion) =>
-                state.set(FabricServiceState(FabricServiceState.JoinSettingUpBlockListener))
+                FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.JoinSettingUpBlockListener))
                 network.setupBlockListener(ServiceChannelName, new NetworkMonitor(organizationConfig, joinOptions.network, network, processManager, hostsManager, serviceVersion))
-                state.set(FabricServiceState(FabricServiceState.Ready))
+                FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.Ready))
                 GlobalState(network, joinOptions.network, joinOptions.invite.networkName)
         }
     }

@@ -22,15 +22,6 @@ object ComponentCandidate {
     implicit val rw: RW[ComponentCandidate] = macroRW
 }
 
-case class FabricServiceState(
-    stateCode: Int
-)
-
-object FabricServiceState {
-    implicit val rw: RW[FabricServiceState] = macroRW
-}
-
-
 @Lenses case class JoinRequest(
     organization: Organization,
     organizationCertificates: OrganizationCertificates,

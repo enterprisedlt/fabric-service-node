@@ -33,7 +33,6 @@ class RestEndpoint(
     hostsManager: HostsManager,
     profilePath: String,
     processManager: ProcessManager,
-    state: AtomicReference[FabricServiceState]
 ) {
     private val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -41,14 +40,8 @@ class RestEndpoint(
     @Get("/service/list-boxes")
     def listBoxes: Either[String, Array[Box]] = processManager.listBoxes
 
-    @Get("/service/organization-msp-id")
-    def organizationMspId(): Either[String, String] = Right(organizationConfig.name)
-
-    @Get("/service/organization-full-name")
-    def organizationFullName(): Either[String, String] = Right(s"${organizationConfig.name}.${organizationConfig.domain}")
-
     @Get("/service/state")
-    def getState: Either[String, FabricServiceState] = Right(state.get())
+    def getState: Either[String, FabricServiceState] = Right(FabricServiceStateHolder.get)
 
     @Get("/service/list-channels")
     def listChannels: Either[String, Array[String]] = {
@@ -216,24 +209,26 @@ class RestEndpoint(
     @Post("/admin/register-box-manager")
     def registerBox(request: RegisterBoxManager): Either[String, Box] =
         processManager.registerBox(request.name, request.url)
+          .map { r => FabricServiceStateHolder.incrementVersion(); r }
 
 
     @Post("/admin/bootstrap")
     def bootstrap(bootstrapOptions: BootstrapOptions): Either[String, String] = {
         logger.info(s"Bootstrapping organization ${organizationConfig.name}...")
         val start = System.currentTimeMillis()
-        state.set(FabricServiceState(FabricServiceState.BootstrapStarted))
+        FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.BootstrapStarted))
         for {
-            gState <- Try(Bootstrap.bootstrapOrganization(
-                organizationConfig,
-                bootstrapOptions,
-                cryptoManager,
-                hostsManager,
-                externalAddress,
-                profilePath,
-                processManager,
-                state))
-              .toEither.left.map(e => s"Bootstrap failed: ${e.getMessage}")
+            gState <- Try(
+                Bootstrap.bootstrapOrganization(
+                    organizationConfig,
+                    bootstrapOptions,
+                    cryptoManager,
+                    hostsManager,
+                    externalAddress,
+                    profilePath,
+                    processManager,
+                )
+            ).toEither.left.map(e => s"Bootstrap failed: ${e.getMessage}")
             _ = init(gState)
             end = System.currentTimeMillis() - start
             _ = logger.info(s"Bootstrap done ($end ms)")
@@ -282,7 +277,7 @@ class RestEndpoint(
     def requestJoin(joinOptions: JoinOptions): Either[String, String] = {
         logger.info("Requesting to joining network ...")
         val start = System.currentTimeMillis()
-        state.set(FabricServiceState(FabricServiceState.JoinStarted))
+        FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.JoinStarted))
         for {
             gState <- Try(
                 Join.join(
@@ -293,7 +288,6 @@ class RestEndpoint(
                     hostsManager,
                     profilePath,
                     processManager,
-                    state
                 )
             ).toEither.left.map(_.getMessage)
             _ = init(gState)

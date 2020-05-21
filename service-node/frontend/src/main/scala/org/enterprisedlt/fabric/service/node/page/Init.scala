@@ -71,7 +71,7 @@ object Init {
 
         override def connectLocal: ConnectFunction = ApplyFor(
             Seq(
-                ((State.componentCandidate / ComponentCandidate.box).when(_.trim.isEmpty) <~~ GlobalState.boxes.when(_.nonEmpty)) (_.head.name)
+                ((State.componentCandidate / ComponentCandidate.box).when(_.trim.isEmpty) <~~ (Initializing.info / BaseInfo.boxes).when(_.nonEmpty)) (_.head.name)
             )
         )
 
@@ -83,7 +83,7 @@ object Init {
                 raft = s.raft
             )
             ServiceNodeRemote.executeBootstrap(options) // this call will block until bootstrap complete, so ignore the future
-            Context.switchModeTo(BootstrapInProgress)
+            //Context.switchModeTo(BootstrapInProgress)
         }
 
         def goJoinProgress(s: State): Callback = Callback {
@@ -95,7 +95,7 @@ object Init {
                     invite = invite,
                 )
                 ServiceNodeRemote.executeJoin(options)
-                Context.switchModeTo(JoinInProgress)
+                //Context.switchModeTo(JoinInProgress)
             }
             reader.readAsText(s.inviteFile)
         }
@@ -113,12 +113,12 @@ object Init {
             ServiceNodeRemote.registerBox(boxCandidate)
         }
 
-        def addNetworkComponents(components: Seq[ComponentCandidate], g: GlobalState): CallbackTo[Unit] = {
+        def addNetworkComponents(components: Seq[ComponentCandidate], g: Initializing): CallbackTo[Unit] = {
             $.modState(addComponents(components, g))
         }
 
-        def addDefaultComponents(g: GlobalState): CallbackTo[Unit] = {
-            val defaultBox = g.boxes.headOption.map(_.name).getOrElse("default")
+        def addDefaultComponents(g: Initializing): CallbackTo[Unit] = {
+            val defaultBox = g.info.boxes.headOption.map(_.name).getOrElse("default")
             val components =
                 Seq("osn1", "osn2", "osn3")
                   .zipWithIndex.map { case (name, index) =>
@@ -139,13 +139,13 @@ object Init {
             addNetworkComponents(components, g)
         }
 
-        private def addComponents(components: Seq[ComponentCandidate], g: GlobalState): State => State = {
+        private def addComponents(components: Seq[ComponentCandidate], g: Initializing): State => State = {
             val byType = components.groupBy(_.componentType)
             val addPeers: State => State = byType.get(ComponentCandidate.Peer).map { peers =>
                 val peerConfigs = peers.map { componentCandidate =>
                     PeerConfig(
                         box = componentCandidate.box,
-                        name = s"${componentCandidate.name}.${g.orgFullName}",
+                        name = s"${componentCandidate.name}.${g.info.orgFullName}",
                         port = componentCandidate.port,
                         couchDB = null
                     )
@@ -157,7 +157,7 @@ object Init {
                 val osnConfigs = osns.map { componentCandidate =>
                     OSNConfig(
                         box = componentCandidate.box,
-                        name = s"${componentCandidate.name}.${g.orgFullName}",
+                        name = s"${componentCandidate.name}.${g.info.orgFullName}",
                         port = componentCandidate.port
                     )
                 }
@@ -174,12 +174,12 @@ object Init {
             $.modState(PeerNodes.modify(_.filter(_.name != config.name)))
 
         def renderWithGlobal(s: State, global: AppState): VdomTagOf[Div] = global match {
-            case g: GlobalState =>
+            case g: Initializing =>
                 val osnByBox = s.network.orderingNodes.groupBy(_.box)
                 val peerByBox = s.network.peerNodes.groupBy(_.box)
                 <.div(
                     FSNSPA(
-                        g.orgFullName,
+                        g.info.orgFullName,
                         0,
                         Seq(
                             Page(
@@ -191,7 +191,7 @@ object Init {
                                       ^.marginBottom := "0px",
                                       ^.marginLeft := "auto",
                                       ^.marginRight := "auto",
-                                      g.boxes.map { box =>
+                                      g.info.boxes.map { box =>
                                           val osnNodes = osnByBox.get(box.name)
                                           val peerNodes = peerByBox.get(box.name)
                                           <.div(
@@ -350,7 +350,7 @@ object Init {
                                         name = "Component",
                                         id = "component-form",
                                         <.div(
-                                            ComponentForm(s, State.componentCandidate, CompD(g.orgFullName, g.boxes)),
+                                            ComponentForm(s, State.componentCandidate, CompD(g.info.orgFullName, g.info.boxes)),
                                             <.div(^.className := "form-group mt-1",
                                                 <.button(
                                                     ^.className := "btn btn-sm btn-outline-secondary",
