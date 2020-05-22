@@ -124,7 +124,7 @@ class DockerManagedBox(
         val distributivesPath = s"$hostPath/distributives/${descriptor.componentType}"
         val componentNameFolder = new File(s"$InnerPath/distributives/${descriptor.componentType}").getAbsoluteFile
         //
-        pullImageIfNeeded(request.descriptor.image.name, request.descriptor.image.tag)
+        pullImageIfNeeded(request.descriptor.image)
         logger.info(s"Starting ${descriptor.containerName}...")
         for {
             _ <- checkComponentTypeExists(request.serviceNodeName, descriptor.componentType, componentNameFolder)
@@ -171,7 +171,7 @@ class DockerManagedBox(
 
     override def startOrderingNode(request: StartOSNRequest): Either[String, String] = {
         logger.info(s"Starting ${request.component.fullName} ...")
-        pullImageIfNeeded("hyperledger/fabric-orderer", "1.4.2")
+        pullImageIfNeeded(Image("hyperledger/fabric-orderer", "1.4.2"))
         //        if (checkContainerExistence(osnFullName: String)) {
         //            stopAndRemoveContainer(osnFullName: String)
         //        }
@@ -231,7 +231,7 @@ class DockerManagedBox(
     //=============================================================================
     override def startPeerNode(request: StartPeerRequest): Either[String, String] = {
         val peerFullName = request.component.fullName
-        pullImageIfNeeded("hyperledger/fabric-peer", "1.4.2")
+        pullImageIfNeeded(Image("hyperledger/fabric-peer", "1.4.2"))
         logger.info(s"Starting $peerFullName ...")
         //        if (checkContainerExistence(peerFullName: String)) {
         //            stopAndRemoveContainer(peerFullName: String)
@@ -310,7 +310,7 @@ class DockerManagedBox(
     //=============================================================================
     private def startCouchDB(couchDBFullName: String, port: Int): String = {
         logger.info(s"Starting $couchDBFullName ...")
-        pullImageIfNeeded("hyperledger/fabric-couchdb", "0.4.18")
+        pullImageIfNeeded(Image("hyperledger/fabric-couchdb", "0.4.18"))
         if (checkContainerExistence(couchDBFullName)) {
             stopAndRemoveContainer(couchDBFullName)
         }
@@ -501,15 +501,14 @@ class DockerManagedBox(
     }
 
 
-    private def pullImageIfNeeded(imageName: String, imageTag: String = "latest", forcePull: Boolean = false): Either[String, Unit] = {
-        val image = s"$imageName:$imageTag"
-        if (!forcePull && findImage(image).isDefined) {
+    private def pullImageIfNeeded(image: Image, forcePull: Boolean = false): Either[String, Unit] = {
+        if (!forcePull && findImage(image.getName).isDefined) {
             logger.info(s"Image $image already exists")
             Right(())
         } else {
             if (forcePull) logger.info(s"Force pulling image $image")
             else logger.info(s"Unable to find image $image locally")
-            pullImage(imageName, imageTag)
+            pullImage(image)
         }
     }
 
@@ -527,13 +526,12 @@ class DockerManagedBox(
     }
 
 
-    private def pullImage(imageName: String, imageTag: String): Either[String, Unit] = {
-        val image = s"$imageName:$imageTag"
+    private def pullImage(image: Image): Either[String, Unit] = {
         try {
             logger.info(s"Pulling image $image...")
             docker
-              .pullImageCmd(imageName)
-              .withTag(imageTag)
+              .pullImageCmd(image.name)
+              .withTag(image.tag)
               .exec(new PullImageResultCallback())
               .awaitCompletion(pullImageTimeout, TimeUnit.MINUTES)
             logger.info(s"Image $image downloaded")
