@@ -1,10 +1,12 @@
 package org.enterprisedlt.fabric.service.node.process
 
+import java.io.Closeable
 import java.io._
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.atomic.AtomicReference
+import java.util.concurrent.{CompletableFuture, TimeUnit}
 
 import com.github.dockerjava.api.DockerClient
 import com.github.dockerjava.api.async.ResultCallback
@@ -13,11 +15,13 @@ import com.github.dockerjava.api.exception.NotFoundException
 import com.github.dockerjava.api.model.LogConfig.LoggingType
 import com.github.dockerjava.api.model.Ports.Binding
 import com.github.dockerjava.api.model._
+import com.github.dockerjava.core.command.PullImageResultCallback
 import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientImpl}
 import com.github.dockerjava.okhttp.OkHttpDockerCmdExecFactory
 import org.enterprisedlt.fabric.service.model.KnownHostRecord
 import org.enterprisedlt.fabric.service.node.configuration.DockerConfig
 import org.enterprisedlt.fabric.service.node.model.BoxInformation
+import org.enterprisedlt.fabric.service.node.{HostsManager, Util}
 import org.enterprisedlt.fabric.service.node.rest.JsonRestClient
 import org.enterprisedlt.fabric.service.node.{HostsManager, Util}
 import org.slf4j.LoggerFactory
@@ -38,7 +42,8 @@ class DockerManagedBox(
     networkName: String,
     hostsManager: HostsManager,
     processConfig: DockerConfig,
-    LogWindow: Int = 1500
+    LogWindow: Int = 1500,
+    pullImageTimeout: Int
 ) extends ManagedBox {
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val InnerPath = "/opt/profile/"
@@ -169,6 +174,7 @@ class DockerManagedBox(
 
     override def startOrderingNode(request: StartOSNRequest): Either[String, String] = {
         logger.info(s"Starting ${request.component.fullName} ...")
+        pullImageIfNeeded("hyperledger/fabric-orderer","1.4.2")
         //        if (checkContainerExistence(osnFullName: String)) {
         //            stopAndRemoveContainer(osnFullName: String)
         //        }
@@ -195,7 +201,7 @@ class DockerManagedBox(
               .withNetworkMode(networkName)
               .withLogConfig(logConfig)
 
-            val osnContainerId: String = docker.createContainerCmd("hyperledger/fabric-orderer")
+            val osnContainerId: String = docker.createContainerCmd("hyperledger/fabric-orderer:1.4.2")
               .withName(request.component.fullName)
               .withEnv(
                   s"FABRIC_LOGGING_SPEC=${processConfig.fabricComponentsLogLevel}",
@@ -228,6 +234,7 @@ class DockerManagedBox(
     //=============================================================================
     override def startPeerNode(request: StartPeerRequest): Either[String, String] = {
         val peerFullName = request.component.fullName
+        pullImageIfNeeded("hyperledger/fabric-peer","1.4.2")
         logger.info(s"Starting $peerFullName ...")
         //        if (checkContainerExistence(peerFullName: String)) {
         //            stopAndRemoveContainer(peerFullName: String)
@@ -265,7 +272,7 @@ class DockerManagedBox(
               .withNetworkMode(networkName)
               .withLogConfig(logConfig)
 
-            val peerContainerId: String = docker.createContainerCmd("hyperledger/fabric-peer")
+            val peerContainerId: String = docker.createContainerCmd("hyperledger/fabric-peer:1.4.2")
               .withName(peerFullName)
               .withEnv(
                   List(
@@ -306,6 +313,7 @@ class DockerManagedBox(
     //=============================================================================
     private def startCouchDB(couchDBFullName: String, port: Int): String = {
         logger.info(s"Starting $couchDBFullName ...")
+        pullImageIfNeeded("hyperledger/fabric-couchdb","0.4.18")
         if (checkContainerExistence(couchDBFullName)) {
             stopAndRemoveContainer(couchDBFullName)
         }
@@ -494,6 +502,52 @@ class DockerManagedBox(
                 throw new Exception(msg)
         }
     }
+
+
+    private def pullImageIfNeeded(imageName: String, imageTag: String = "latest", forcePull: Boolean = false): Either[String, Unit] = {
+        val image = s"$imageName:$imageTag"
+        if (!forcePull && findImage(image).isDefined) {
+            logger.info(s"Image $image already exists")
+            Right(())
+        } else {
+            if (forcePull) logger.info(s"Force pulling image $image")
+            else logger.info(s"Unable to find image $image locally")
+            pullImage(imageName, imageTag)
+        }
+    }
+
+
+    private def findImage(image: String): Option[String] = {
+        docker
+          .listImagesCmd()
+          .exec()
+          .iterator()
+          .asScala
+          .toArray
+          .flatMap(image => Option(image.getRepoTags))
+          .flatten
+          .find(_ == image)
+    }
+
+
+    private def pullImage(imageName: String, imageTag: String): Either[String, Unit] = {
+        val image = s"$imageName:$imageTag"
+        try {
+            logger.info(s"Pulling image $image...")
+            docker
+              .pullImageCmd(imageName)
+              .withTag(imageTag)
+              .exec(new PullImageResultCallback())
+              .awaitCompletion(pullImageTimeout, TimeUnit.MINUTES)
+            logger.info(s"Image $image downloaded")
+            Right(())
+        } catch {
+            case e: Exception =>
+                logger.error(s"Exception pulling image $image: $e")
+                Left(s"Exception pulling image $image: $e")
+        }
+    }
+
 
     // =================================================================================================================
     private def storeCustomComponentCryptoMaterial(outPath: String, componentType: String, crypto: CustomComponentCerts): Unit = {
