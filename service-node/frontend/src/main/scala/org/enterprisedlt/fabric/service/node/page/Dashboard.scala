@@ -6,9 +6,9 @@ import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ScalaComponen
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
-import org.enterprisedlt.fabric.service.node.model.{ComponentCandidate, RegisterBoxManager}
-import org.enterprisedlt.fabric.service.node.page.form.{CompD, ComponentForm, ServerForm}
-import org.enterprisedlt.fabric.service.node.shared._
+import org.enterprisedlt.fabric.service.node.model.ComponentCandidate
+import org.enterprisedlt.fabric.service.node.page.form.{ComponentForm, ContractsN, ServerForm}
+import org.enterprisedlt.fabric.service.node.shared.RegisterBoxManager
 import org.enterprisedlt.fabric.service.node.state.{ApplyFor, GlobalStateAware}
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
 import org.enterprisedlt.fabric.service.node.util.Html.data
@@ -28,11 +28,13 @@ object Dashboard {
         // working entities
         boxCandidate: RegisterBoxManager,
         componentCandidate: ComponentCandidate,
+        channelName: String,
+
         //        // config entries
         //        block: BlockConfig,
         //        raft: RaftConfig,
         //        networkName: String,
-        network: NetworkConfig
+        //        network: NetworkConfig
     )
 
     private val component = ScalaComponent.builder[Unit]("Initial")
@@ -48,8 +50,10 @@ object Dashboard {
                   port = 0,
                   componentType = ComponentCandidate.Types.head
               ),
+              channelName = "",
+
               //              networkName = "test_net",
-              network = NetworkConfig.Default,
+              //              network = NetworkConfig.Default,
               //              block = BlockConfig.Default,
               //              raft = RaftConfig.Default
           )
@@ -81,10 +85,15 @@ object Dashboard {
             }
         }
 
+        def createChannel(channelName: String): Callback = Callback.future {
+            ServiceNodeRemote.createChannel(channelName).map(Callback(_))
+        }
+
         def renderWithGlobal(s: State, global: AppState): VdomTagOf[Div] = global match {
             case g: Ready =>
-                val osnByBox = s.network.orderingNodes.groupBy(_.box)
-                val peerByBox = s.network.peerNodes.groupBy(_.box)
+                val osnByBox = g.network.orderingNodes.groupBy(_.box)
+                val peerByBox = g.network.peerNodes.groupBy(_.box)
+                val chainCodeByChannel = g.chainCodes.groupBy(_.channelName)
                 <.div(
                     FSNSPA(
                         g.info.orgFullName,
@@ -105,13 +114,14 @@ object Dashboard {
                                           <.div(
                                               ^.className := "card",
                                               ^.marginTop := "3px",
+                                              <.div(^.className := "card-header", box.name), //} [${box.information.details}]"),
                                               <.div(^.className := "card-body",
-                                                  <.h5(^.className := "card-title", s"${box.name} [${box.information.details}]"),
                                                   <.table(
                                                       ^.width := "100%",
                                                       <.tbody(
                                                           <.tr(
-                                                              <.td(^.colSpan := 2, <.i(<.b("Ordering Nodes:"))),
+                                                              <.td(<.i(<.b("Ordering Nodes:"))),
+                                                              <.td(),
                                                               <.td(),
                                                           ).when(osnNodes.isDefined),
                                                           osnNodes.map { orderingNodes =>
@@ -120,14 +130,14 @@ object Dashboard {
                                                                       <.td(),
                                                                       <.td(osn.name),
                                                                       <.td(
-                                                                          <.i(^.className := "far fa-edit"), //, ^.color := "#996633"),
-                                                                          <.i(^.className := "fas fa-minus-circle") //, ^.color := "#cc0000"),
+                                                                          <.i(^.className := "fas fa-check", ^.color.green),
                                                                       )
                                                                   )
                                                               }.toTagMod
                                                           }.getOrElse(TagMod.empty),
                                                           <.tr(
-                                                              <.td(^.colSpan := 2, <.i(<.b("Peer Nodes:"))),
+                                                              <.td(<.i(<.b("Peer Nodes:"))),
+                                                              <.td(),
                                                               <.td(),
                                                           ).when(peerNodes.isDefined),
                                                           peerNodes.map { peerNodes =>
@@ -136,8 +146,7 @@ object Dashboard {
                                                                       <.td(),
                                                                       <.td(peer.name),
                                                                       <.td(
-                                                                          <.i(^.className := "far fa-edit"), //, ^.color := "#996633"),
-                                                                          <.i(^.className := "fas fa-minus-circle") //, ^.color := "#cc0000"),
+                                                                          <.i(^.className := "fas fa-check", ^.color.green),
                                                                       )
                                                                   )
                                                               }.toTagMod
@@ -172,7 +181,7 @@ object Dashboard {
                                         name = "Component",
                                         id = "component-form",
                                         <.div(
-                                            ComponentForm(s, State.componentCandidate, CompD(g.info.orgFullName, g.info.boxes)),
+                                            ComponentForm(s, State.componentCandidate, g.info),
                                             <.div(^.className := "form-group mt-1",
                                                 <.button(
                                                     ^.className := "btn btn-sm btn-outline-secondary",
@@ -192,23 +201,111 @@ object Dashboard {
                             ),
                             Page(
                                 name = "Network",
-                                content = <.div(),
+                                content =
+                                  <.div(
+                                      ^.width := "900px",
+                                      ^.marginTop := "0px",
+                                      ^.marginBottom := "0px",
+                                      ^.marginLeft := "auto",
+                                      ^.marginRight := "auto",
+                                      g.channels.map { channel =>
+                                          val chainCodes = chainCodeByChannel.get(channel)
+                                          <.div(
+                                              ^.className := "card",
+                                              ^.marginTop := "3px",
+                                              <.div(^.className := "card-header", channel),
+                                              <.div(^.className := "card-body",
+                                                  <.table(
+                                                      ^.width := "100%",
+                                                      <.tbody(
+                                                          <.tr(
+                                                              <.td(<.i(<.b("Smart contracts:"))),
+                                                              <.td(),
+                                                              <.td(),
+                                                              <.td(),
+                                                          ).when(chainCodes.isDefined),
+                                                          chainCodes.map {
+                                                              _.map { chainCodeInfo =>
+                                                                  <.tr(
+                                                                      <.td(),
+                                                                      <.td(chainCodeInfo.name),
+                                                                      <.td(chainCodeInfo.version),
+                                                                      <.td(chainCodeInfo.language),
+                                                                  )
+                                                              }.toTagMod
+                                                          }.getOrElse(TagMod.empty),
+                                                      )
+                                                  )
+                                              )
+                                          )
+                                      }.toTagMod
+                                  ),
                                 actions = Seq(
                                     PageAction(
                                         name = "Channel",
-                                        id = "add-channel",
-                                        actionForm = <.div(<.h1("TODO"))
+                                        id = "create-channel",
+                                        actionForm =
+                                          <.div(
+                                              <.div(^.className := "form-group row",
+                                                  <.label(^.className := "col-sm-4 col-form-label", "Channel name"),
+                                                  <.div(^.className := "col-sm-8",
+                                                      <.input(^.`type` := "text", ^.`className` := "form-control form-control-sm",
+                                                          bind(s) := State.channelName
+                                                      )
+                                                  )
+                                              ),
+                                              <.div(^.className := "form-group mt-1",
+                                                  <.button(
+                                                      ^.className := "btn btn-sm btn-outline-secondary",
+                                                      data.toggle := "collapse", data.target := "#create-channel",
+                                                      ^.aria.expanded := true, ^.aria.controls := "create-channel",
+                                                      "Cancel"
+                                                  ),
+                                                  <.button(
+                                                      ^.className := "btn btn-sm btn-outline-success float-right",
+                                                      ^.onClick --> createChannel(s.channelName),
+                                                      "Create channel",
+                                                  )
+                                              )
+                                          )
                                     ),
                                     PageAction(
-                                        name = "Chaincode",
-                                        id = "add-chain-code",
-                                        actionForm = <.div(<.h1("TODO"))
+                                        name = "Contract",
+                                        id = "create-contract",
+                                        actionForm = <.div(
+                                            ContractsN(g),
+                                            <.div(^.className := "form-group mt-1",
+                                                <.button(
+                                                    ^.className := "btn btn-sm btn-outline-secondary",
+                                                    data.toggle := "collapse", data.target := "#create-contract",
+                                                    ^.aria.expanded := true, ^.aria.controls := "create-contract",
+                                                    "Cancel"
+                                                ),
+                                                <.button(^.className := "btn btn-sm btn-outline-success float-right",
+//                                                    ^.onClick --> addBox(s.boxCandidate),
+                                                    "Create contract"
+                                                )
+                                            )
+                                        )
                                     )
                                 )
                             ),
                             Page(
-                                name = "Government",
+                                name = "Applications",
                                 content = <.div(),
+                                actions = Seq.empty,
+                            ),
+                            Page(
+                                name = "Events",
+                                content = <.div(),
+                                actions = Seq.empty,
+                            ),
+                            Page(
+                                name = "Government",
+                                content =
+                                  <.div(
+
+                                  ),
                                 actions = Seq(
                                     PageAction(
                                         name = "Invite",
@@ -223,7 +320,10 @@ object Dashboard {
                                     PageAction(
                                         name = "Register",
                                         id = "register-organization",
-                                        actionForm = <.div(<.h1("TODO"))
+                                        actionForm =
+                                          <.div(
+                                              <.h1("TODO")
+                                          )
                                     )
                                 )
                             )

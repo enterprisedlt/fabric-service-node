@@ -6,7 +6,7 @@ import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ReactEventFro
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
-import org.enterprisedlt.fabric.service.node.model.{ComponentCandidate, RegisterBoxManager}
+import org.enterprisedlt.fabric.service.node.model.ComponentCandidate
 import org.enterprisedlt.fabric.service.node.page.form._
 import org.enterprisedlt.fabric.service.node.shared._
 import org.enterprisedlt.fabric.service.node.state.{ApplyFor, GlobalStateAware}
@@ -15,7 +15,7 @@ import org.enterprisedlt.fabric.service.node.util.Html.data
 import org.scalajs.dom.html.Div
 import org.scalajs.dom.raw.{File, FileReader}
 
-import scala.scalajs.js
+import scala.scalajs.js.UndefOr
 
 /**
  * @author Alexey Polubelov
@@ -101,12 +101,10 @@ object Init {
         }
 
         def changeInviteFile(event: ReactEventFromInput): CallbackTo[Unit] = {
-            val file: File = event.target.files(0)
-            if (file != null && file != js.undefined) {
-                $.modState(x => x.copy(inviteFileName = file.name, inviteFile = file))
-            } else {
-                Callback()
-            }
+            val file: UndefOr[File] = event.target.files(0)
+            file.map { f =>
+                $.modState(x => x.copy(inviteFileName = f.name, inviteFile = f))
+            }.getOrElse(Callback())
         }
 
         def addBox(boxCandidate: RegisterBoxManager): Callback = Callback {
@@ -147,7 +145,7 @@ object Init {
                         box = componentCandidate.box,
                         name = s"${componentCandidate.name}.${g.info.orgFullName}",
                         port = componentCandidate.port,
-                        couchDB = null
+                        //                        couchDB = null
                     )
                 }
                 PeerNodes.modify(_ ++ peerConfigs)
@@ -197,8 +195,8 @@ object Init {
                                           <.div(
                                               ^.className := "card",
                                               ^.marginTop := "3px",
+                                              <.div(^.className := "card-header", box.name), //s"${box.name} [${box.information.details}]"),
                                               <.div(^.className := "card-body",
-                                                  <.h5(^.className := "card-title", s"${box.name} [${box.information.details}]"),
                                                   <.table(
                                                       ^.width := "100%",
                                                       <.tbody(
@@ -243,10 +241,10 @@ object Init {
                                                                               <.i(^.className := "fas fa-minus-circle")
                                                                           ),
                                                                       )
-//                                                                      <.td(
-//                                                                          <.i(^.className := "far fa-edit"), //, ^.color := "#996633"),
-//                                                                          <.i(^.className := "fas fa-minus-circle") //, ^.color := "#cc0000"),
-//                                                                      )
+                                                                      //                                                                      <.td(
+                                                                      //                                                                          <.i(^.className := "far fa-edit"), //, ^.color := "#996633"),
+                                                                      //                                                                          <.i(^.className := "fas fa-minus-circle") //, ^.color := "#cc0000"),
+                                                                      //                                                                      )
                                                                   )
                                                               }.toTagMod
                                                           }.getOrElse(TagMod.empty),
@@ -350,7 +348,7 @@ object Init {
                                         name = "Component",
                                         id = "component-form",
                                         <.div(
-                                            ComponentForm(s, State.componentCandidate, CompD(g.info.orgFullName, g.info.boxes)),
+                                            ComponentForm(s, State.componentCandidate, g.info),
                                             <.div(^.className := "form-group mt-1",
                                                 <.button(
                                                     ^.className := "btn btn-sm btn-outline-secondary",

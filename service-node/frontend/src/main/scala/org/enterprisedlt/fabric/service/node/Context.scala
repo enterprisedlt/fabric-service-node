@@ -3,7 +3,7 @@ package org.enterprisedlt.fabric.service.node
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.shared.FabricServiceState
+import org.enterprisedlt.fabric.service.node.shared.{Box, ChainCodeInfo, ContractDescriptor, FabricServiceState, NetworkConfig}
 import org.enterprisedlt.fabric.service.node.state.GlobalStateManager
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -22,17 +22,21 @@ object Context {
         checkUpdateState()
     }
 
-    private def scheduleStateCheck: SetTimeoutHandle = {
+    private def scheduleStateCheck(): Unit = {
         js.timers.setTimeout(stateUpdateInterval) {
             checkUpdateState()
         }
+        println(s"state check scheduled")
     }
 
     private def checkUpdateState(): Unit = {
+        println("checking state ...")
         ServiceNodeRemote.getServiceState.foreach { state =>
+            println(s"Current version is ${lastStateVersion}, got: $state")
             if (state.version != lastStateVersion) {
                 val update = state.stateCode match {
                     case FabricServiceState.NotInitialized =>
+                        println(s"State is NotInitialized")
                         ServiceNodeRemote.listBoxes.map { boxes =>
                             Initializing(
                                 info = BaseInfo(
@@ -46,6 +50,7 @@ object Context {
                         }
 
                     case sm if bootstrapIsInProgress(sm) || joinIsInProgress(sm) =>
+                        println(s"State is Initializing")
                         ServiceNodeRemote.listBoxes.map { boxes =>
                             Initializing(
                                 info = BaseInfo(
@@ -59,11 +64,14 @@ object Context {
                         }
 
                     case FabricServiceState.Ready =>
+                        println(s"State is Ready")
                         for {
+                            network <- ServiceNodeRemote.getNetworkConfig
                             packages <- ServiceNodeRemote.listContractPackages
                             channels <- ServiceNodeRemote.listChannels
                             organizations <- ServiceNodeRemote.listOrganizations
                             contracts <- ServiceNodeRemote.listContracts
+                            chainCodes <- ServiceNodeRemote.listChainCodes
                             boxes <- ServiceNodeRemote.listBoxes
                         } yield {
                             Ready(
@@ -73,21 +81,28 @@ object Context {
                                     orgFullName = state.organizationFullName,
                                     boxes = boxes
                                 ),
+                                network = network,
                                 channels = channels,
                                 packages = packages,
                                 organizations = organizations,
-                                contracts = contracts
+                                contracts = contracts,
+                                chainCodes = chainCodes
                             )
                         }
                 }
+                update.failed.foreach { ex =>
+                    println(s"Update failed:")
+                    ex.printStackTrace()
+                }
                 update.foreach { stateUpdate =>
+                    println(s"Updating state to: $stateUpdate")
                     State.update(_ => stateUpdate)
                     lastStateVersion = state.version
                     // schedule next state check at the end
-                    scheduleStateCheck
+                    scheduleStateCheck()
                 }
             } else {
-                scheduleStateCheck
+                scheduleStateCheck()
             }
         }
     }
@@ -111,10 +126,12 @@ case object Initial extends AppState
 
 @Lenses case class Ready(
     info: BaseInfo,
+    network: NetworkConfig,
     channels: Array[String],
-    packages: Array[String],
+    packages: Array[ContractDescriptor],
     organizations: Array[Organization],
     contracts: Array[Contract],
+    chainCodes: Array[ChainCodeInfo]
 ) extends AppState
 
 @Lenses case class BaseInfo(

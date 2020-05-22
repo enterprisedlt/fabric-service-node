@@ -21,6 +21,6 @@ touch ./test/net/box/hosts
 ./fabric-service-start-dev.sh ./test/net/org1
 ./scripts-template/fabric-service-register-box-manager.sh ./test/net/org1 "default" "http://${BOX_MANAGER_NAME}:${BOX_MANAGER_BIND_PORT}"
 
-# start ORG2
-./fabric-service-start-dev.sh ./test/net/org2
-./scripts-template/fabric-service-register-box-manager.sh ./test/net/org2 "default" "http://${BOX_MANAGER_NAME}:${BOX_MANAGER_BIND_PORT}"
+## start ORG2
+#./fabric-service-start-dev.sh ./test/net/org2
+#./scripts-template/fabric-service-register-box-manager.sh ./test/net/org2 "default" "http://${BOX_MANAGER_NAME}:${BOX_MANAGER_BIND_PORT}"

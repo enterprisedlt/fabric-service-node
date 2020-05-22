@@ -144,32 +144,3 @@ object ContractJoinRequest {
 
     implicit val rw: RW[ContractJoinRequest] = macroRW
 }
-
-@Lenses case class Box(
-    name: String,
-    information: BoxInformation
-)
-
-object Box {
-    implicit val rw: RW[Box] = macroRW
-}
-
-@Lenses case class BoxInformation(
-    externalAddress: String,
-    details: String
-)
-
-object BoxInformation {
-    implicit val rw: RW[BoxInformation] = macroRW
-}
-
-
-@Lenses case class RegisterBoxManager(
-    name: String,
-    url: String
-)
-
-
-object RegisterBoxManager {
-    implicit val rw: RW[RegisterBoxManager] = macroRW
-}

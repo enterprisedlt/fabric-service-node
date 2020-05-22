@@ -16,8 +16,8 @@
 //import scala.language.higherKinds
 //
 ///**
-//  * @author Maxim Fedin
-//  */
+// * @author Maxim Fedin
+// */
 //object Contracts {
 //
 //    @Lenses case class ContractState(
@@ -76,9 +76,9 @@
 //
 //        override def connectLocal: ConnectFunction = ApplyFor(
 //            Seq(
-//                (ChoosePackageLens.when(_.trim.isEmpty) <~~ GlobalState.packages.when(_.nonEmpty)) (_.head),
-//                ((ContractState.participantCandidate / ContractParticipant.mspId).when(_.trim.isEmpty) <~~ GlobalState.organizations.when(_.nonEmpty)) (_.head.name),
-//                ((ContractState.createContractRequest / CreateContractRequest.channelName).when(_.trim.isEmpty) <~~ GlobalState.channels.when(_.nonEmpty)) (_.head)
+//                (ChoosePackageLens.when(_.trim.isEmpty) <~~ Ready.packages.when(_.nonEmpty)) (_.head),
+//                ((ContractState.participantCandidate / ContractParticipant.mspId).when(_.trim.isEmpty) <~~ Ready.organizations.when(_.nonEmpty)) (_.head.name),
+//                ((ContractState.createContractRequest / CreateContractRequest.channelName).when(_.trim.isEmpty) <~~ Ready.channels.when(_.nonEmpty)) (_.head)
 //            )
 //        )
 //
@@ -86,7 +86,7 @@
 //            ServiceNodeRemote.createContract(s.createContractRequest)
 //        }
 //
-//        def renderChannelNameList(s: ContractState, g: GlobalState): VdomTagOf[Select] = {
+//        def renderChannelNameList(s: ContractState, g: Ready): VdomTagOf[Select] = {
 //            <.select(className := "form-control",
 //                id := "componentType",
 //                bind(s) := ContractState.createContractRequest / CreateContractRequest.channelName,
@@ -94,14 +94,14 @@
 //            )
 //        }
 //
-//        def contractChannelNameOptions(s: ContractState, g: GlobalState): TagMod = {
+//        def contractChannelNameOptions(s: ContractState, g: Ready): TagMod = {
 //            g.channels.map { channel =>
 //                option((className := "selected").when(s.createContractRequest.channelName == channel), channel)
 //            }.toTagMod
 //        }
 //
 //
-//        def renderContractOrganizationList(s: ContractState, g: GlobalState): VdomTagOf[Select] = {
+//        def renderContractOrganizationList(s: ContractState, g: Ready): VdomTagOf[Select] = {
 //            <.select(className := "form-control",
 //                id := "componentType",
 //                bind(s) := ContractState.participantCandidate / ContractParticipant.mspId,
@@ -109,13 +109,13 @@
 //            )
 //        }
 //
-//        def contractOrganizationOptions(s: ContractState, g: GlobalState): TagMod = {
+//        def contractOrganizationOptions(s: ContractState, g: Ready): TagMod = {
 //            g.organizations.map { organization =>
 //                option((className := "selected").when(s.participantCandidate.mspId == organization.mspId), organization.mspId)
 //            }.toTagMod
 //        }
 //
-//        def renderContractPackagesList(s: ContractState, g: GlobalState): VdomTagOf[Select] = {
+//        def renderContractPackagesList(s: ContractState, g: Ready): VdomTagOf[Select] = {
 //            <.select(className := "form-control",
 //                id := "componentType",
 //                bind(s) := ChoosePackageLens,
@@ -138,7 +138,7 @@
 //            }.toTagMod
 //        }
 //
-//        def contractPackagesOptions(s: ContractState, g: GlobalState): TagMod = {
+//        def contractPackagesOptions(s: ContractState, g: Ready): TagMod = {
 //            g.packages.map { name =>
 //                option((className := "selected").when(s.chosenPackage == name), name)
 //            }.toTagMod
@@ -150,10 +150,12 @@
 //            $.modState(state)
 //        }
 //
-//        def addParticipantComponent(contractState: ContractState, globalState: GlobalState): CallbackTo[Unit] = {
-//            val default = ContractParticipant(
-//                globalState.organizations.head.mspId,
-//                "")
+//        def addParticipantComponent(contractState: ContractState, Ready: Ready): CallbackTo[Unit] = {
+//            val default =
+//                ContractParticipant(
+//                    Ready.organizations.head.mspId,
+//                    ""
+//                )
 //            $.modState(
 //                addParticipant(contractState) andThen ContractState.participantCandidate.set(default)
 //            )
@@ -191,7 +193,7 @@
 //        }
 //
 //        def renderWithGlobal(s: ContractState, global: AppState): VdomTagOf[Div] = global match {
-//            case g: GlobalState =>
+//            case g: Ready =>
 //                <.div(
 //                    <.h4("Contracts"),
 //                    <.table(^.className := "table table-hover table-sm", ^.id := "initArgs",
@@ -224,7 +226,7 @@
 //                                            ^.className := "btn btn-primary",
 //                                            "Join contract",
 //                                            ^.onClick --> joinContract(contract)
-//                                        ).when(contract.founder != g.mspId)
+//                                        ).when(contract.founder != g.info.mspId)
 //                                    )
 //                                )
 //                            }.toTagMod

@@ -20,10 +20,10 @@ abstract class StatelessForm[T](name: String) extends FieldBinder[T] {
 
     private val component = ScalaComponent.builder[Props](name)
       .stateless
-      .render_P(p => render(p.value, p.callback))
+      .render_P(p => render(p.value)(p.callback))
       .build
 
-    def render(p: T, callback: CallbackFunction): VdomNode
+    def render(p: T)(implicit modState: CallbackFunction): VdomNode
 
     def apply(value: T, callback: CallbackFunction): Unmounted[Props, Unit, Unit] = component(Props(value, callback))
 
@@ -56,10 +56,10 @@ abstract class StatelessFormExt[T, D](name: String) extends FieldBinder[T] {
 
     private val component = ScalaComponent.builder[Props](name)
       .stateless
-      .render_P(p => render(p.value, p.data, p.callback))
+      .render_P(p => render(p.value, p.data)(p.callback))
       .build
 
-    def render(p: T, data: D, callback: CallbackFunction): VdomNode
+    def render(p: T, data: D)(implicit modState: CallbackFunction): VdomNode
 
     def apply(value: T, data: D, callback: CallbackFunction): Unmounted[Props, Unit, Unit] = component(Props(value, data, callback))
 

@@ -9,8 +9,7 @@ import org.enterprisedlt.fabric.service.node.shared.RaftConfig
  */
 object RaftForm extends StatelessForm[RaftConfig]("RaftSettings") {
 
-    override def render(p: RaftConfig, callback: CallbackFunction): VdomNode = {
-        implicit val modState: CallbackFunction = callback
+    override def render(p: RaftConfig)(implicit modState: CallbackFunction): VdomNode =
         <.div(
             <.div(^.className := "form-group row",
                 <.label(^.className := "col-sm-4 col-form-label", "Tick interval"),
@@ -53,5 +52,4 @@ object RaftForm extends StatelessForm[RaftConfig]("RaftSettings") {
                 )
             )
         )
-    }
 }

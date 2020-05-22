@@ -212,7 +212,7 @@ object Join {
             ServiceChannelName,
             ServiceChainCodeName,
             joinResponse.version,
-            "java",
+            CCLanguage.SCALA,
             chainCodePkg)
 
         // fetch current network version

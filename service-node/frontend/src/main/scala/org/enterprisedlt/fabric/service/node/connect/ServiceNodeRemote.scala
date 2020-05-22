@@ -1,15 +1,15 @@
 package org.enterprisedlt.fabric.service.node.connect
 
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.shared.{BootstrapOptions, FabricServiceState, JoinOptions}
+import org.enterprisedlt.fabric.service.node.shared._
 import org.scalajs.dom.ext.Ajax
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object ServiceNodeRemote {
 
     def getOrganisationFullName: Future[String] = Ajax
@@ -53,10 +53,10 @@ object ServiceNodeRemote {
           .map(_ => ())
     }
 
-    def listContractPackages: Future[Array[String]] = Ajax
+    def listContractPackages: Future[Array[ContractDescriptor]] = Ajax
       .get("/admin/list-contract-packages")
       .map(_.responseText)
-      .map(r => upickle.default.read[Array[String]](r))
+      .map(r => upickle.default.read[Array[ContractDescriptor]](r))
 
 
     def listBoxes: Future[Array[Box]] = Ajax
@@ -70,7 +70,6 @@ object ServiceNodeRemote {
           .map(_ => ())
     }
 
-
     def listOrganizations: Future[Array[Organization]] = Ajax
       .get("/service/list-organizations")
       .map(_.responseText)
@@ -82,10 +81,11 @@ object ServiceNodeRemote {
       .map(_.responseText)
       .map(r => upickle.default.read[Array[Contract]](r))
 
-    def listChannels: Future[Array[String]] = Ajax
-      .get("/service/list-channels")
-      .map(_.responseText)
-      .map(r => upickle.default.read[Array[String]](r))
+    def listChannels: Future[Array[String]] =
+        Ajax
+          .get("/service/list-channels")
+          .map(_.responseText)
+          .map(r => upickle.default.read[Array[String]](r))
 
 
     def contractJoin(contractJoinRequest: ContractJoinRequest): Future[String] = {
@@ -98,8 +98,34 @@ object ServiceNodeRemote {
     def registerBox(request: RegisterBoxManager): Future[Box] = {
         val json = upickle.default.write(request)
         Ajax.post("/admin/register-box-manager", json)
-        .map(_.responseText)
-        .map(r => upickle.default.read[Box](r))
+          .map(_.responseText)
+          .map(r => upickle.default.read[Box](r))
 
     }
+
+    def getNetworkConfig: Future[NetworkConfig] =
+        Ajax
+          .get("/admin/network-config")
+          .map(_.responseText)
+          .map { r =>
+              println(s"Got response: $r")
+              val nc = upickle.default.read[NetworkConfig](r)
+              println(s"Deserialized: $nc")
+              nc
+          }
+
+    def listChainCodes: Future[Array[ChainCodeInfo]] =
+        Ajax
+          .get("/service/list-chain-codes")
+          .map(_.responseText)
+          .map(r => upickle.default.read[Array[ChainCodeInfo]](r))
+
+    def createChannel(channelName: String): Future[String] = {
+        val req = upickle.default.write(channelName)
+        Ajax
+          .post("/admin/create-channel", req)
+          .map(_.responseText)
+          .map(r => upickle.default.read[String](r))
+    }
+
 }

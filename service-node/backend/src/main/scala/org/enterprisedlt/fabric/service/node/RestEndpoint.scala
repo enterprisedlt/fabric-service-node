@@ -12,10 +12,10 @@ import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.shared._
 import org.enterprisedlt.fabric.service.node.process.ProcessManager
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
+import org.enterprisedlt.fabric.service.node.shared._
 import org.hyperledger.fabric.sdk.Peer
 import org.slf4j.LoggerFactory
 
@@ -42,6 +42,13 @@ class RestEndpoint(
 
     @Get("/service/state")
     def getState: Either[String, FabricServiceState] = Right(FabricServiceStateHolder.get)
+
+    @Get("/admin/network-config")
+    def getNetworkConfig: Either[String, NetworkConfig] =
+        globalState
+          .toRight("Node is not initialized yet")
+          .map(_.network)
+
 
     @Get("/service/list-channels")
     def listChannels: Either[String, Array[String]] = {
@@ -117,7 +124,7 @@ class RestEndpoint(
         } yield result
     }
 
-    @Get("/admin/create-channel")
+    @Post("/admin/create-channel")
     def createChannel(channel: String): Either[String, String] = {
         logger.info(s"Creating new channel $channel ...")
         for {
@@ -130,7 +137,10 @@ class RestEndpoint(
                     organizationConfig.name
                 ))
             _ <- state.networkManager.addPeerToChannel(channel, state.network.peerNodes.head.name)
-        } yield s"$channel has been created"
+        } yield {
+            FabricServiceStateHolder.incrementVersion()
+            s"$channel has been created"
+        }
     }
 
     @Get("/service/get-block")
@@ -195,15 +205,39 @@ class RestEndpoint(
         } yield result
     }
 
+    @Get("/service/list-chain-codes")
+    def listChainCodes: Either[String, Array[ChainCodeInfo]] =
+        globalState
+          .toRight("Node is not initialized yet")
+          .map(_.networkManager)
+          .map(_.listChainCodes)
+
+
     @Get("/admin/list-contract-packages")
-    def getListContractPackages: Either[String, Array[String]] = {
+    def getListContractPackages: Either[String, Array[ContractDescriptor]] = {
         logger.info("Listing contract packages...")
         val chaincodePath = new File(s"/opt/profile/chain-code/").getAbsoluteFile
         if (!chaincodePath.exists()) chaincodePath.mkdirs()
-        Try(chaincodePath.listFiles().filter(_.getName.endsWith(".tgz"))
-          .map(_.getName)
-          .map(name => name.substring(0, name.length - 4)))
-          .toEither.left.map(_.getMessage)
+        Try(
+            chaincodePath
+              .listFiles()
+              .filter(_.getName.endsWith(".json"))
+              .map(_.getName)
+              .flatMap { packageName =>
+                  Try {
+                      val descriptor = Util.codec.fromJson(
+                          new FileReader(s"/opt/profile/chain-code/$packageName"),
+                          classOf[ContractDeploymentDescriptor]
+                      )
+                      val Array(_, version) = packageName.substring(0, packageName.length - 5).split("-")
+                      ContractDescriptor(
+                          name = descriptor.name,
+                          version = version,
+                          roles = descriptor.roles
+                      )
+                  }.toOption
+              }
+        ).toEither.left.map(_.getMessage)
     }
 
     @Post("/admin/register-box-manager")
@@ -318,7 +352,7 @@ class RestEndpoint(
                     upgradeContractRequest.channelName,
                     upgradeContractRequest.name,
                     upgradeContractRequest.version,
-                    upgradeContractRequest.lang,
+                    deploymentDescriptor.language,
                     chainCodePkg)
             }
             endorsementPolicy <- Util.makeEndorsementPolicy(
@@ -337,7 +371,7 @@ class RestEndpoint(
                 upgradeContractRequest.channelName,
                 upgradeContractRequest.name,
                 upgradeContractRequest.version,
-                upgradeContractRequest.lang,
+                deploymentDescriptor.language,
                 endorsementPolicy = Option(endorsementPolicy),
                 collectionConfig = Option(Util.createCollectionsConfig(collections)),
                 arguments = upgradeContractRequest.initArgs
@@ -346,7 +380,7 @@ class RestEndpoint(
                 logger.info(s"Invoking 'createContract' method...")
                 val contract = UpgradeContract(
                     upgradeContractRequest.name,
-                    upgradeContractRequest.lang,
+                    deploymentDescriptor.language,
                     upgradeContractRequest.contractType,
                     upgradeContractRequest.version,
                     organizationConfig.name,
@@ -387,7 +421,7 @@ class RestEndpoint(
                     contractRequest.channelName,
                     contractRequest.name,
                     contractRequest.version,
-                    contractRequest.lang,
+                    deploymentDescriptor.language,
                     chainCodePkg)
             }
             endorsementPolicy <- Util.makeEndorsementPolicy(
@@ -407,7 +441,7 @@ class RestEndpoint(
                 contractRequest.channelName,
                 contractRequest.name,
                 contractRequest.version,
-                contractRequest.lang,
+                deploymentDescriptor.language,
                 endorsementPolicy = Option(endorsementPolicy),
                 collectionConfig = Option(Util.createCollectionsConfig(collections)),
                 arguments = contractRequest.initArgs
@@ -416,7 +450,7 @@ class RestEndpoint(
                 logger.info(s"Invoking 'createContract' method...")
                 val contract = Contract(
                     contractRequest.name,
-                    contractRequest.lang,
+                    deploymentDescriptor.language,
                     contractRequest.contractType,
                     contractRequest.version,
                     organizationConfig.name,
@@ -462,7 +496,7 @@ class RestEndpoint(
                     ServiceChannelName,
                     contractDetails.name,
                     contractDetails.chainCodeVersion,
-                    "java",
+                    contractDetails.lang,
                     chainCodePkg)
             }
             invokeResultFuture <- network.invokeChainCode(

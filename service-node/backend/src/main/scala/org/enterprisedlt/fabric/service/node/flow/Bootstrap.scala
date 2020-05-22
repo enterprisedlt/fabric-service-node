@@ -9,7 +9,7 @@ import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
 import org.enterprisedlt.fabric.service.node.cryptography.{FabricCryptoMaterial, Orderer, Peer}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
-import org.enterprisedlt.fabric.service.node.model.FabricServiceStateHolder
+import org.enterprisedlt.fabric.service.node.model.{CCLanguage, FabricServiceStateHolder}
 import org.enterprisedlt.fabric.service.node.process._
 import org.enterprisedlt.fabric.service.node.proto._
 import org.enterprisedlt.fabric.service.node.shared.{BootstrapOptions, FabricServiceState}
@@ -173,7 +173,7 @@ object Bootstrap {
             ServiceChannelName,
             ServiceChainCodeName,
             "1.0.0",
-            "java",
+            CCLanguage.SCALA,
             chainCodePkg)
 
         //

@@ -3,16 +3,17 @@ package org.enterprisedlt.fabric.service.node.page.form
 import japgolly.scalajs.react.vdom.VdomNode
 import japgolly.scalajs.react.vdom.all.{className, id, option}
 import japgolly.scalajs.react.vdom.html_<^._
-import org.enterprisedlt.fabric.service.node.model.{Box, ComponentCandidate}
+import org.enterprisedlt.fabric.service.node.BaseInfo
+import org.enterprisedlt.fabric.service.node.model.ComponentCandidate
+import org.enterprisedlt.fabric.service.node.shared.Box
 import org.scalajs.dom.html.Select
 
 /**
  * @author Alexey Polubelov
  */
-object ComponentForm extends StatelessFormExt[ComponentCandidate, CompD]("ComponentForm") {
+object ComponentForm extends StatelessFormExt[ComponentCandidate, BaseInfo]("ComponentForm") {
 
-    override def render(p: ComponentCandidate, data: CompD, callback: CallbackFunction): VdomNode = {
-        implicit val modState: CallbackFunction = callback
+    override def render(p: ComponentCandidate, data: BaseInfo)(implicit modState: CallbackFunction): VdomNode =
         <.div(
             <.div(^.className := "form-group row",
                 <.label(^.`for` := "componentType", ^.className := "col-sm-4 col-form-label", "Type"),
@@ -42,7 +43,6 @@ object ComponentForm extends StatelessFormExt[ComponentCandidate, CompD]("Compon
                 )
             ),
         )
-    }
 
     private def renderComponentType(p: ComponentCandidate)(implicit modState: CallbackFunction): VdomTagOf[Select] = {
         <.select(className := "form-control form-control-sm",
@@ -58,7 +58,7 @@ object ComponentForm extends StatelessFormExt[ComponentCandidate, CompD]("Compon
         }.toTagMod
     }
 
-    def renderBoxesList(p: ComponentCandidate, boxes: Array[Box])(implicit modState: CallbackFunction): VdomTagOf[Select] = {
+    private def renderBoxesList(p: ComponentCandidate, boxes: Array[Box])(implicit modState: CallbackFunction): VdomTagOf[Select] = {
         <.select(className := "form-control form-control-sm",
             id := "componentType",
             bind(p) := ComponentCandidate.box,
@@ -66,7 +66,7 @@ object ComponentForm extends StatelessFormExt[ComponentCandidate, CompD]("Compon
         )
     }
 
-    def boxOptions(p: ComponentCandidate, boxes: Array[Box]): TagMod = {
+    private def boxOptions(p: ComponentCandidate, boxes: Array[Box]): TagMod = {
         boxes.map { box =>
             option((className := "selected").when(p.box == box.name), box.name)
         }.toTagMod
@@ -74,8 +74,3 @@ object ComponentForm extends StatelessFormExt[ComponentCandidate, CompD]("Compon
 
 
 }
-
-case class CompD(
-    orgFullName: String,
-    boxes: Array[Box]
-)

@@ -127,7 +127,7 @@ object OSNConfig {
     box: String,
     name: String,
     port: Int,
-    couchDB: CouchDBConfig
+//    couchDB: CouchDBConfig
 )
 
 object PeerConfig {
@@ -141,6 +141,59 @@ object PeerConfig {
 
 object CouchDBConfig {
     implicit val rw: RW[CouchDBConfig] = macroRW
+}
+
+// ------------------------------------------------------------------------
+case class ChainCodeInfo(
+    name: String,
+    version: String,
+    language: String,
+    channelName: String,
+)
+
+object ChainCodeInfo {
+    implicit val rw: RW[ChainCodeInfo] = macroRW
+}
+
+// ------------------------------------------------------------------------
+@Lenses case class Box(
+    name: String,
+    information: BoxInformation
+)
+
+object Box {
+    implicit val rw: RW[Box] = macroRW
+}
+
+// ------------------------------------------------------------------------
+@Lenses case class BoxInformation(
+    externalAddress: String,
+    details: String
+)
+
+object BoxInformation {
+    implicit val rw: RW[BoxInformation] = macroRW
+}
+
+// ------------------------------------------------------------------------
+@Lenses case class RegisterBoxManager(
+    name: String,
+    url: String
+)
+
+object RegisterBoxManager {
+    implicit val rw: RW[RegisterBoxManager] = macroRW
+}
+
+// ------------------------------------------------------------------------
+case class ContractDescriptor(
+    name: String,
+    version: String,
+    roles: Array[String]
+)
+
+object ContractDescriptor {
+    implicit val rw: RW[ContractDescriptor] = macroRW
 }
 
 // ------------------------------------------------------------------------

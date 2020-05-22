@@ -7,6 +7,7 @@ import java.util.concurrent.TimeUnit
 import org.enterprisedlt.fabric.service.model.{Organization, ServiceVersion}
 import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
+import org.enterprisedlt.fabric.service.node.model.CCLanguage
 import org.enterprisedlt.fabric.service.node.process.ProcessManager
 import org.enterprisedlt.fabric.service.node.shared.NetworkConfig
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
@@ -76,7 +77,7 @@ class NetworkMonitor(
                 ServiceChannelName,
                 ServiceChainCodeName,
                 chainCodeVersion,
-                "java",
+                CCLanguage.SCALA,
                 chainCodePkg)
 
             // fetch current network version

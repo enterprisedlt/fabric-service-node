@@ -2,15 +2,14 @@ package org.enterprisedlt.fabric.service.node.page.form
 
 import japgolly.scalajs.react.vdom.VdomNode
 import japgolly.scalajs.react.vdom.html_<^._
-import org.enterprisedlt.fabric.service.node.model.RegisterBoxManager
+import org.enterprisedlt.fabric.service.node.shared.RegisterBoxManager
 
 /**
  * @author Alexey Polubelov
  */
 object ServerForm extends StatelessForm[RegisterBoxManager]("ServerForm") {
 
-    override def render(p: RegisterBoxManager, callback: CallbackFunction): VdomNode = {
-        implicit val modState: CallbackFunction = callback
+    override def render(p: RegisterBoxManager)(implicit modState: CallbackFunction): VdomNode =
         <.div(
             <.div(^.className := "form-group row",
                 <.label(^.`for` := "server-name", ^.className := "col-sm-4 col-form-label", "Name"),
@@ -27,5 +26,4 @@ object ServerForm extends StatelessForm[RegisterBoxManager]("ServerForm") {
                 )
             ),
         )
-    }
 }

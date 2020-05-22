@@ -9,7 +9,7 @@ import com.google.protobuf.ByteString
 import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
 import org.enterprisedlt.fabric.service.node.model.{CCLanguage, JoinRequest}
 import org.enterprisedlt.fabric.service.node.proto._
-import org.enterprisedlt.fabric.service.node.shared.{OSNConfig, PeerConfig}
+import org.enterprisedlt.fabric.service.node.shared.{ChainCodeInfo, OSNConfig, PeerConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope}
 import org.hyperledger.fabric.protos.common.Configtx
 import org.hyperledger.fabric.protos.common.Configtx.ConfigUpdate
@@ -48,6 +48,7 @@ class FabricNetworkManager(
     private val peerByName = TrieMap.empty[String, PeerConfig]
     private val osnByName = TrieMap(bootstrapOsn.name -> bootstrapOsn)
     private val channels = TrieMap.empty[String, Channel]
+    private val chainCodes = TrieMap.empty[String, ChainCodeInfo]
 
     // ---------------------------------------------------------------------------------------------------------------
     private lazy val systemChannel: Channel = connectToSystemChannel
@@ -164,7 +165,9 @@ class FabricNetworkManager(
                   logger.debug(s"installing $chainCodeName chaincode with $version ")
                   installProposal.setProposalWaitTime(TimeUnit.MINUTES.toMillis(5)) // TODO
                   //TODO: will install to all known peers in channel, but probably this has to be configurable thru parameters
-                  fabricClient.sendInstallProposal(installProposal, channel.getPeers)
+                  val result = fabricClient.sendInstallProposal(installProposal, channel.getPeers)
+                  chainCodes.put(s"$channelName/$chainCodeName", ChainCodeInfo(chainCodeName, version, lang, channelName))
+                  result
               }
           }
     }
@@ -236,6 +239,7 @@ class FabricNetworkManager(
                       val te = channel
                         .sendTransaction(toSend, admin)
                         .get(5, TimeUnit.MINUTES)
+                      chainCodes.put(s"$channelName/$chainCodeName", ChainCodeInfo(chainCodeName, version, lang, channelName))
                       Right(te)
                   }
               }
@@ -246,7 +250,7 @@ class FabricNetworkManager(
     //        val endorsementPolicy = policyAnyOf(listMembers(client, channel, user))
     def upgradeChainCode(
         channelName: String,
-        ccName: String,
+        chainCodeName: String,
         version: String,
         lang: String,
         endorsementPolicy: Option[ChaincodeEndorsementPolicy] = None,
@@ -258,7 +262,7 @@ class FabricNetworkManager(
               val upgradeProposalRequest = fabricClient.newUpgradeProposalRequest
               val chaincodeID =
                   ChaincodeID.newBuilder()
-                    .setName(ccName)
+                    .setName(chainCodeName)
                     .setVersion(version)
                     .build
               upgradeProposalRequest.setChaincodeID(chaincodeID)
@@ -309,10 +313,15 @@ class FabricNetworkManager(
                   val te = channel
                     .sendTransaction(toSend, admin)
                     .get(5, TimeUnit.MINUTES)
+                  chainCodes.put(s"$channelName/$chainCodeName", ChainCodeInfo(chainCodeName, version, lang, channelName))
                   Right(te)
               }
           }
     }
+
+    //=========================================================================
+    def listChainCodes: Array[ChainCodeInfo] =
+        chainCodes.values.toArray
 
     //=========================================================================
     def queryChainCode

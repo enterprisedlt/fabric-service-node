@@ -9,8 +9,7 @@ import org.enterprisedlt.fabric.service.node.shared.BlockConfig
  */
 object BlockForm extends StatelessForm[BlockConfig]("BlockSettings") {
 
-    override def render(p: BlockConfig, callback: CallbackFunction): VdomNode = {
-        implicit val modState: CallbackFunction = callback
+    override def render(p: BlockConfig)(implicit modState: CallbackFunction): VdomNode =
         <.div(
             <.div(^.className := "form-group row",
                 <.label(^.className := "col-sm-4 col-form-label", "Batch timeout"),
@@ -45,5 +44,4 @@ object BlockForm extends StatelessForm[BlockConfig]("BlockSettings") {
                 )
             )
         )
-    }
 }
