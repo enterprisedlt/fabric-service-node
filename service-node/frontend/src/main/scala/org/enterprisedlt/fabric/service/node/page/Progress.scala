@@ -1,6 +1,7 @@
 package org.enterprisedlt.fabric.service.node.page
 
 import japgolly.scalajs.react.ScalaComponent
+import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
 import org.enterprisedlt.fabric.service.node.shared.FabricServiceState
 import org.enterprisedlt.fabric.service.node.{Context, Initializing}
@@ -93,5 +94,5 @@ object Progress {
       }
       .build
 
-    def apply(state: Initializing) = component(state)
+    def apply(state: Initializing): Unmounted[Initializing, Unit, Unit] = component(state)
 }

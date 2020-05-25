@@ -10,10 +10,10 @@ import scala.util.Try
 /**
  * @author Alexey Polubelov
  */
-trait FieldBinder[S] {
-    def bind(v: S)(implicit modState: (S => S) => Callback): Bind = new Bind(v, modState)
+trait FieldBinder {
+    def bind[S](v: S)(implicit modState: (S => S) => Callback): Bind[S] = new Bind(v, modState)
 
-    class Bind(s: S, modState: (S => S) => Callback) {
+    class Bind[S](s: S, modState: (S => S) => Callback) {
 
         private def mapInputTo[X](l: GetSetModifyFunctions[S, X])(converter: AsX[X])(event: ReactEventFromInput): Callback = {
             val v: String = event.target.value
@@ -48,10 +48,8 @@ trait FieldBinder[S] {
 
 }
 
-trait StateFieldBinder[S] extends FieldBinder[S] {
+trait StateFieldBinder[S] extends FieldBinder {
     def $: BackendScope[_, S]
-
-    def bindState[X](mf: GetSetModifyFunctions[S, X]): (X => X) => Callback = x => $.modState(mf.modify(x))
 
     implicit val modState: (S => S) => Callback = $.modState
 }

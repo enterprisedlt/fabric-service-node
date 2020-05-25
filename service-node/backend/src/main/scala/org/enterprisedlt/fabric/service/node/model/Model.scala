@@ -81,6 +81,7 @@ case class ContractDeploymentDescriptor(
     language: String,
     roles: Array[String],
     initMethod: String,
+    initArgsNames: Array[String],
     warmUpMethod: String,
     endorsement: String,
     collections: Array[ContractCollectionDescriptor]
@@ -89,29 +90,6 @@ case class ContractDeploymentDescriptor(
 case class ContractCollectionDescriptor(
     name: String,
     members: Array[String]
-)
-
-case class CreateContractRequest(
-    name: String,
-    version: String,
-    contractType: String,
-    channelName: String,
-    parties: Array[ContractParticipant],
-    initArgs: Array[String]
-)
-
-case class UpgradeContractRequest(
-    name: String,
-    version: String,
-    contractType: String,
-    channelName: String,
-    parties: Array[ContractParticipant],
-    initArgs: Array[String]
-)
-
-case class ContractParticipant(
-    mspId: String,
-    role: String
 )
 
 case class ContractJoinRequest(

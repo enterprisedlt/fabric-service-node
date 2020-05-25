@@ -12,6 +12,22 @@
         {
             font-size: 14px !important;
         }
+        .h-separator {
+            display: flex;
+            align-items: center;
+            text-align: center;
+        }
+        .h-separator::before, .h-separator::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid LightGray;
+        }
+        .h-separator::before {
+            margin-right: .25em;
+        }
+        .h-separator::after {
+            margin-left: .25em;
+        }
     </style>
 </head>
 <body>

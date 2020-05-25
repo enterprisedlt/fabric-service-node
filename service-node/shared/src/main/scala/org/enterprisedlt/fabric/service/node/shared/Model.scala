@@ -127,7 +127,7 @@ object OSNConfig {
     box: String,
     name: String,
     port: Int,
-//    couchDB: CouchDBConfig
+    //    couchDB: CouchDBConfig
 )
 
 object PeerConfig {
@@ -188,8 +188,8 @@ object RegisterBoxManager {
 // ------------------------------------------------------------------------
 case class ContractDescriptor(
     name: String,
-    version: String,
-    roles: Array[String]
+    roles: Array[String],
+    initArgsNames: Array[String],
 )
 
 object ContractDescriptor {
@@ -197,3 +197,39 @@ object ContractDescriptor {
 }
 
 // ------------------------------------------------------------------------
+@Lenses case class CreateContractRequest(
+    name: String,
+    version: String,
+    contractType: String,
+    channelName: String,
+    parties: Array[ContractParticipant],
+    initArgs: Array[String]
+)
+
+object CreateContractRequest {
+    implicit val rw: RW[CreateContractRequest] = macroRW
+}
+
+// ------------------------------------------------------------------------
+case class UpgradeContractRequest(
+    name: String,
+    version: String,
+    contractType: String,
+    channelName: String,
+    parties: Array[ContractParticipant],
+    initArgs: Array[String]
+)
+
+object UpgradeContractRequest {
+    implicit val rw: RW[UpgradeContractRequest] = macroRW
+}
+
+// ------------------------------------------------------------------------
+@Lenses case class ContractParticipant(
+    mspId: String,
+    role: String
+)
+
+object ContractParticipant {
+    implicit val rw: RW[ContractParticipant] = macroRW
+}

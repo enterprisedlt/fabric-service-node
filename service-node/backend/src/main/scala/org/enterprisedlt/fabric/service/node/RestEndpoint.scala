@@ -229,11 +229,11 @@ class RestEndpoint(
                           new FileReader(s"/opt/profile/chain-code/$packageName"),
                           classOf[ContractDeploymentDescriptor]
                       )
-                      val Array(_, version) = packageName.substring(0, packageName.length - 5).split("-")
+                      val name = packageName.substring(0, packageName.length - 5)
                       ContractDescriptor(
-                          name = descriptor.name,
-                          version = version,
-                          roles = descriptor.roles
+                          name = name,
+                          roles = descriptor.roles,
+                          initArgsNames = descriptor.initArgsNames
                       )
                   }.toOption
               }
@@ -394,7 +394,10 @@ class RestEndpoint(
                     Util.codec.toJson(contract))
             }
             r <- Try(response.get()).toEither.left.map(_.getMessage)
-        } yield s"Upgrading contract ${upgradeContractRequest.contractType} has been completed successfully $r"
+        } yield {
+            FabricServiceStateHolder.incrementVersion();
+            s"Upgrading contract ${upgradeContractRequest.contractType} has been completed successfully $r"
+        }
     }
 
 
@@ -406,8 +409,8 @@ class RestEndpoint(
         for {
             state <- globalState.toRight("Node is not initialized yet")
             _ = logger.info(s"[ $organizationFullName ] - Preparing ${contractRequest.name} chain code ...")
-            filesBaseName = s"${contractRequest.contractType}-${contractRequest.version}"
-            chainCodeName = s"${contractRequest.name}-${contractRequest.version}"
+            filesBaseName = s"${contractRequest.contractType}" // -${contractRequest.version}
+            chainCodeName = s"${contractRequest.name}-${contractRequest.version}" //
             deploymentDescriptor <- Try(Util.codec.fromJson(
                 new FileReader(s"/opt/profile/chain-code/$filesBaseName.json"),
                 classOf[ContractDeploymentDescriptor]
@@ -422,7 +425,8 @@ class RestEndpoint(
                     contractRequest.name,
                     contractRequest.version,
                     deploymentDescriptor.language,
-                    chainCodePkg)
+                    chainCodePkg
+                )
             }
             endorsementPolicy <- Util.makeEndorsementPolicy(
                 deploymentDescriptor.endorsement,
@@ -464,7 +468,10 @@ class RestEndpoint(
                     Util.codec.toJson(contract))
             }
             r <- Try(response.get()).toEither.left.map(_.getMessage)
-        } yield s"Creating contract ${contractRequest.contractType} has been completed successfully $r"
+        } yield {
+            FabricServiceStateHolder.incrementVersion();
+            s"Creating contract ${contractRequest.contractType} has been completed successfully $r"
+        }
     }
 
 

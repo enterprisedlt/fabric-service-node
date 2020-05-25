@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node.util
 
-import japgolly.scalajs.react.vdom.html_<^.VdomAttr
+import japgolly.scalajs.react.vdom.html_<^._
 
 /**
  * @author Alexey Polubelov
@@ -25,4 +25,7 @@ object Html {
         def dismiss: VdomAttr[Any] = VdomAttr("data-dismiss")
     }
 
+//    object HSeparator {
+//        def apply(text: String): VdomTagOf[Div] = <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i(text))
+//    }
 }

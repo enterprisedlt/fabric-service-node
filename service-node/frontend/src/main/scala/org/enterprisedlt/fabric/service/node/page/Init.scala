@@ -299,9 +299,13 @@ object Init {
                                                 )
                                             ),
                                             <.div(^.id := "boot-options-advanced", ^.className := "collapse",
-                                                <.hr(),
+                                                <.div(^.className := "form-group row",
+                                                    <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Block settings"))
+                                                ),
                                                 BlockForm(s, State.block),
-                                                <.hr(),
+                                                <.div(^.className := "form-group row",
+                                                    <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Raft settings"))
+                                                ),
                                                 RaftForm(s, State.raft)
                                             ),
                                             <.div(^.className := "form-group mt-1",
