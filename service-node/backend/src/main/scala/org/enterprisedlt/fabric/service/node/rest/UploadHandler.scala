@@ -64,11 +64,9 @@ class UploadHandler(
 
 
     private def processParts(request: HttpServletRequest, response: HttpServletResponse, outputDir: Path): Unit = {
-        val parts = request.getParts.iterator()
-        while (!parts.hasNext) {
-            val part = parts.next()
+        request.getParts.forEach { part =>
             val filename = part.getSubmittedFileName
-            logger.info(s"Got Part ${part.getName} with size = ${part.getSize}, contentType = ${part.getContentType}, submittedFileName ${filename}")
+            logger.info(s"Got Part ${part.getName} with size = ${part.getSize}, contentType = ${part.getContentType}, submittedFileName $filename")
             if (filename.nonEmpty) {
                 val outputFile = outputDir.resolve(filename)
                 val is = part.getInputStream
