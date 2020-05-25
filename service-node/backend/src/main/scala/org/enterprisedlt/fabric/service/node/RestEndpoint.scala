@@ -202,12 +202,6 @@ class RestEndpoint(
         } yield result
     }
 
-    @Get("/admin/upload-contract-package")
-    def uploadContractPackage() = {
-        logger.info("Uploading contract package...")
-
-    }
-
     @Get("/admin/list-contract-packages")
     def getListContractPackages: Either[String, Array[String]] = {
         logger.info("Listing contract packages...")

@@ -62,10 +62,11 @@ object ServiceNode extends App {
         hostsManager = new HostsManager("/opt/profile/hosts", ServiceExternalAddress.map(_.host)),
         ProfilePath, processManager, serviceState
     )
+    private val fileUploadEndpoint = new FilesUploadEndpoint()
     //TODO: make web app optional, based on configuration
     private val server =
         createServer(
-            ServiceBindPort, cryptoManager, restEndpoint,
+            ServiceBindPort, cryptoManager, restEndpoint, fileUploadEndpoint,
             "/opt/profile/webapp",
             "/opt/service/admin-console"
         )
@@ -98,7 +99,7 @@ object ServiceNode extends App {
         })
     }
 
-    private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: AnyRef, webAppResource: String, adminConsole: String): Server = {
+    private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: AnyRef, fileUploadEndpoint: AnyRef, webAppResource: String, adminConsole: String): Server = {
         val server = new Server()
 
         val connector = createTLSConnector(bindPort, server, cryptography)
@@ -125,6 +126,15 @@ object ServiceNode extends App {
                 endpoint
             )
         )
+
+        val fileEnpointContext = new ContextHandler("/")
+        fileEnpointContext.setHandler(
+            new FilesUploadEndpoint(
+                Util.createCodec,
+                fileUploadEndpoint
+            )
+        )
+
 
         // add serving for web app:
         Util.mkDirs(webAppResource)
@@ -157,7 +167,7 @@ object ServiceNode extends App {
         }
         webSocketContext.setHandler(wsHandler)
 
-        security.setHandler(new ContextHandlerCollection(webAppContext, adminAppContext, webSocketContext, endpointContext))
+        security.setHandler(new ContextHandlerCollection(webAppContext, adminAppContext, webSocketContext, fileEnpointContext, endpointContext))
         server.setHandler(security)
         server
     }
