@@ -213,6 +213,15 @@ object Util {
     //=========================================================================
     def mkDirs(path: String): Boolean = new File(path).mkdirs()
 
+
+    def ensureDirExists(path: String): Unit = {
+        val dir = new File(path)
+        if (!dir.exists()) {
+            Util.mkDirs(path)
+        }
+
+    }
+
     //=========================================================================
     def writeTextFile(filePath: String, content: String): Unit = {
         val writer = new FileWriter(filePath)
@@ -298,12 +307,12 @@ object Util {
 
     def getServerInfo: String = {
         val si = new SystemInfo()
-        val  hal = si.getHardware
-        val oneGb = 1024*1024*1024
+        val hal = si.getHardware
+        val oneGb = 1024 * 1024 * 1024
         val available = hal.getMemory.getTotal
         val total = (available * 1d) / oneGb
         val coreCount = hal.getProcessor.getLogicalProcessorCount
-        val oneGhz = 1000*1000*1000
+        val oneGhz = 1000 * 1000 * 1000
         val freq = (hal.getProcessor.getProcessorIdentifier.getVendorFreq * 1d) / oneGhz
         s"${coreCount}Core ${freq.formatted("%.2f")}GHz ${total.formatted("%.2f")}Gb"
     }

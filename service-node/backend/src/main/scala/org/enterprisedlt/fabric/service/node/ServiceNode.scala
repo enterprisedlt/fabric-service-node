@@ -17,7 +17,7 @@ import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
 import org.enterprisedlt.fabric.service.node.model.FabricServiceState
 import org.enterprisedlt.fabric.service.node.process.ProcessManager
-import org.enterprisedlt.fabric.service.node.rest.JsonRestEndpoint
+import org.enterprisedlt.fabric.service.node.rest.{FileUploadEndpoint, JsonRestEndpoint, UploadHandler}
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.slf4j.LoggerFactory
 
@@ -62,11 +62,11 @@ object ServiceNode extends App {
         hostsManager = new HostsManager("/opt/profile/hosts", ServiceExternalAddress.map(_.host)),
         ProfilePath, processManager, serviceState
     )
-    private val fileUploadEndpoint = new FilesUploadEndpoint()
+    val filesUploadEndpoint: Array[FileUploadEndpoint] = Array(FileUploadEndpoint("/upload", "/upload"))
     //TODO: make web app optional, based on configuration
     private val server =
         createServer(
-            ServiceBindPort, cryptoManager, restEndpoint, fileUploadEndpoint,
+            ServiceBindPort, cryptoManager, restEndpoint, filesUploadEndpoint,
             "/opt/profile/webapp",
             "/opt/service/admin-console"
         )
@@ -99,7 +99,7 @@ object ServiceNode extends App {
         })
     }
 
-    private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: AnyRef, fileUploadEndpoint: AnyRef, webAppResource: String, adminConsole: String): Server = {
+    private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: AnyRef, filesUploadEndpoint: Array[FileUploadEndpoint], webAppResource: String, adminConsole: String): Server = {
         val server = new Server()
 
         val connector = createTLSConnector(bindPort, server, cryptography)
@@ -129,9 +129,9 @@ object ServiceNode extends App {
 
         val fileEnpointContext = new ContextHandler("/")
         fileEnpointContext.setHandler(
-            new FilesUploadEndpoint(
+            new UploadHandler(
+                filesUploadEndpoint,
                 Util.createCodec,
-                fileUploadEndpoint
             )
         )
 
