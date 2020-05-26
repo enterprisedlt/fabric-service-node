@@ -11,23 +11,20 @@ import org.eclipse.jetty.util.IO
 import org.enterprisedlt.fabric.service.node.Util
 import org.slf4j.LoggerFactory
 
+import scala.util.Try
+
 /**
  * @author Alexey Polubelov
  */
 
 
 class UploadHandler(
+    multipartConfig: MultipartConfigElement,
     endpoints: Array[FileUploadEndpoint],
     createCodec: () => ServerCodec,
 ) extends AbstractHandler {
 
     private val logger = LoggerFactory.getLogger(this.getClass)
-
-    val tmpLocation: String = "/location" // the directory location where files will be stored
-    val maxFileSize: Int = 100 * 1024 * 1024 // the maximum size allowed for uploaded files
-    val maxRequestSize: Int = 100 * 1024 * 1024 // the maximum size allowed for multipart/form-data requests
-    val fileSizeThreshold: Int = 1024 // the size threshold after which files will be written to disk
-    val multipartConfig: MultipartConfigElement = new MultipartConfigElement(tmpLocation, maxFileSize, maxRequestSize, fileSizeThreshold);
 
 
     override def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {
@@ -56,28 +53,38 @@ class UploadHandler(
               .head
               .location
             Util.ensureDirExists(storeLocation)
-            processParts(request, response, Paths.get(storeLocation))
+            processParts(request, response, Paths.get(storeLocation)) match {
+                case Right(_) => response.setStatus(HttpServletResponse.SC_OK)
+                case Left(msg) =>
+                    logger.info(s"Internal error: $msg")
+                    response.getWriter.println(s"Internal error: $msg")
+                    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+            }
+
         }
         else
             response.setStatus(HttpServletResponse.SC_NOT_FOUND)
     }
 
 
-    private def processParts(request: HttpServletRequest, response: HttpServletResponse, outputDir: Path): Unit = {
+    private def processParts(request: HttpServletRequest, response: HttpServletResponse, outputDir: Path): Either[String, Unit] = {
         request.getParts.forEach { part =>
             val filename = part.getSubmittedFileName
-            logger.info(s"Got Part ${part.getName} with size = ${part.getSize}, contentType = ${part.getContentType}, submittedFileName $filename")
-            if (filename.nonEmpty) {
-                val outputFile = outputDir.resolve(filename)
-                val is = part.getInputStream
-                val os = Files.newOutputStream(outputFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
-                try {
+            if (Option(filename).nonEmpty) {
+                Try {
+                    logger.info(s"Got Part ${part.getName} with size = ${part.getSize}, contentType = ${part.getContentType}, submittedFileName $filename")
+                    val outputFile = outputDir.resolve(filename)
+                    val is = part.getInputStream
+                    val os = Files.newOutputStream(outputFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
                     IO.copy(is, os)
                     logger.info(s"Saved Part ${part.getName} to ${outputFile.toString}")
-                }
+                    is.close()
+                    os.close()
+                }.toEither.left.map(_.getMessage)
             }
         }
         response.setContentType(MimeTypes.Type.TEXT_PLAIN.asString())
         response.setCharacterEncoding("utf-8")
+        Right(())
     }
 }

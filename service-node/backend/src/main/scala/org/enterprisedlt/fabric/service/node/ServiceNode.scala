@@ -3,6 +3,7 @@ package org.enterprisedlt.fabric.service.node
 import java.security.Security
 import java.util.concurrent.atomic.AtomicReference
 
+import javax.servlet.MultipartConfigElement
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.eclipse.jetty.http.HttpVersion
 import org.eclipse.jetty.security.{ConstraintMapping, ConstraintSecurityHandler}
@@ -128,10 +129,17 @@ object ServiceNode extends App {
         )
 
         val fileEnpointContext = new ContextHandler("/")
+
+        val tmpLocation: String = "/tmp/files/" // the directory location where files will be stored
+        val maxFileSize: Int = 100 * 1024 * 1024 // the maximum size allowed for uploaded files
+        val maxRequestSize: Int = 100 * 1024 * 1024 // the maximum size allowed for multipart/form-data requests
+        val fileSizeThreshold: Int = 1024 // the size threshold after which files will be written to disk
+        val multipartConfig: MultipartConfigElement = new MultipartConfigElement(tmpLocation, maxFileSize, maxRequestSize, fileSizeThreshold);
         fileEnpointContext.setHandler(
             new UploadHandler(
+                multipartConfig,
                 filesUploadEndpoint,
-                Util.createCodec,
+                Util.createCodec
             )
         )
 
