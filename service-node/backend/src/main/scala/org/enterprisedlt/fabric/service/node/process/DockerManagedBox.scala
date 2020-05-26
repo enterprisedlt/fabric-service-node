@@ -20,6 +20,7 @@ import org.enterprisedlt.fabric.service.model.KnownHostRecord
 import org.enterprisedlt.fabric.service.node.configuration.DockerConfig
 import org.enterprisedlt.fabric.service.node.model.BoxInformation
 import org.enterprisedlt.fabric.service.node.rest.JsonRestClient
+import org.enterprisedlt.fabric.service.node.shared.BoxInformation
 import org.enterprisedlt.fabric.service.node.{HostsManager, Util}
 import org.slf4j.LoggerFactory
 

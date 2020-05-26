@@ -19,23 +19,9 @@ object BootstrapOptions {
     val Defaults: BootstrapOptions =
         new BootstrapOptions(
             networkName = "test_net",
-            block = BlockConfig(
-                maxMessageCount = 150,
-                absoluteMaxBytes = 103809024,
-                preferredMaxBytes = 524288,
-                batchTimeOut = "1s"
-            ),
-            raft = RaftConfig(
-                tickInterval = "500ms",
-                electionTick = 10,
-                heartbeatTick = 1,
-                maxInflightBlocks = 5,
-                snapshotIntervalSize = 20971520
-            ),
-            network = NetworkConfig(
-                orderingNodes = Array.empty[OSNConfig],
-                peerNodes = Array.empty[PeerConfig]
-            )
+            block = BlockConfig.Default,
+            raft = RaftConfig.Default,
+            network = NetworkConfig.Default
         )
 
     implicit val rw: RW[BootstrapOptions] = macroRW
@@ -51,10 +37,7 @@ object BootstrapOptions {
 object JoinOptions {
     val Defaults: JoinOptions =
         JoinOptions(
-            network = NetworkConfig(
-                orderingNodes = Array.empty[OSNConfig],
-                peerNodes = Array.empty[PeerConfig]
-            ),
+            network = NetworkConfig.Default,
             invite = Invite(
                 networkName = "",
                 address = "",
@@ -73,6 +56,12 @@ object JoinOptions {
 )
 
 object BlockConfig {
+    val Default: BlockConfig = BlockConfig(
+        maxMessageCount = 150,
+        absoluteMaxBytes = 103809024,
+        preferredMaxBytes = 524288,
+        batchTimeOut = "1s"
+    )
     implicit val rw: RW[BlockConfig] = macroRW
 }
 
@@ -86,6 +75,13 @@ object BlockConfig {
 )
 
 object RaftConfig {
+    val Default: RaftConfig = RaftConfig(
+        tickInterval = "500ms",
+        electionTick = 10,
+        heartbeatTick = 1,
+        maxInflightBlocks = 5,
+        snapshotIntervalSize = 20971520
+    )
     implicit val rw: RW[RaftConfig] = macroRW
 }
 
@@ -96,6 +92,11 @@ object RaftConfig {
 )
 
 object NetworkConfig {
+    val Default: NetworkConfig = NetworkConfig(
+        orderingNodes = Array.empty[OSNConfig],
+        peerNodes = Array.empty[PeerConfig]
+    )
+
     implicit val rw: RW[NetworkConfig] = macroRW
 }
 
@@ -126,7 +127,7 @@ object OSNConfig {
     box: String,
     name: String,
     port: Int,
-    couchDB: CouchDBConfig
+    //    couchDB: CouchDBConfig
 )
 
 object PeerConfig {
@@ -140,6 +141,129 @@ object PeerConfig {
 
 object CouchDBConfig {
     implicit val rw: RW[CouchDBConfig] = macroRW
+}
+
+// ------------------------------------------------------------------------
+case class ChainCodeInfo(
+    name: String,
+    version: String,
+    language: String,
+    channelName: String,
+)
+
+object ChainCodeInfo {
+    implicit val rw: RW[ChainCodeInfo] = macroRW
+}
+
+// ------------------------------------------------------------------------
+@Lenses case class Box(
+    name: String,
+    information: BoxInformation
+)
+
+object Box {
+    implicit val rw: RW[Box] = macroRW
+}
+
+// ------------------------------------------------------------------------
+@Lenses case class BoxInformation(
+    externalAddress: String,
+    details: String
+)
+
+object BoxInformation {
+    implicit val rw: RW[BoxInformation] = macroRW
+}
+
+// ------------------------------------------------------------------------
+@Lenses case class RegisterBoxManager(
+    name: String,
+    url: String
+)
+
+object RegisterBoxManager {
+    implicit val rw: RW[RegisterBoxManager] = macroRW
+}
+
+// ------------------------------------------------------------------------
+case class ContractDescriptor(
+    name: String,
+    roles: Array[String],
+    initArgsNames: Array[String],
+)
+
+object ContractDescriptor {
+    implicit val rw: RW[ContractDescriptor] = macroRW
+}
+
+// ------------------------------------------------------------------------
+@Lenses case class CreateContractRequest(
+    name: String,
+    version: String,
+    contractType: String,
+    channelName: String,
+    parties: Array[ContractParticipant],
+    initArgs: Array[String]
+)
+
+object CreateContractRequest {
+    implicit val rw: RW[CreateContractRequest] = macroRW
+}
+
+// ------------------------------------------------------------------------
+case class UpgradeContractRequest(
+    name: String,
+    version: String,
+    contractType: String,
+    channelName: String,
+    parties: Array[ContractParticipant],
+    initArgs: Array[String]
+)
+
+object UpgradeContractRequest {
+    implicit val rw: RW[UpgradeContractRequest] = macroRW
+}
+
+// ------------------------------------------------------------------------
+@Lenses case class ContractParticipant(
+    mspId: String,
+    role: String
+)
+
+object ContractParticipant {
+    implicit val rw: RW[ContractParticipant] = macroRW
+}
+
+// ------------------------------------------------------------------------
+case class Events(
+    messages: Array[PrivateMessageEvent],
+    contractInvitations: Array[ContractInvitation]
+)
+
+object Events {
+    implicit val rw: RW[Events] = macroRW
+}
+
+// ------------------------------------------------------------------------
+case class PrivateMessageEvent(
+
+)
+
+object PrivateMessageEvent {
+    implicit val rw: RW[PrivateMessageEvent] = macroRW
+}
+
+// ------------------------------------------------------------------------
+case class ContractInvitation(
+    initiator: String,
+    name: String,
+    chainCodeName: String,
+    chainCodeVersion: String,
+    participants: Array[String],
+)
+
+object ContractInvitation {
+    implicit val rw: RW[ContractInvitation] = macroRW
 }
 
 // ------------------------------------------------------------------------

@@ -11,7 +11,7 @@ set -e
 export BOX_MANAGER_BIND_PORT=3070
 export FABRIC_SERVICE_NETWORK="fabric_service"
 export BOX_MANAGER_NAME="single-box-mngr"
-
+# http://single-box-mngr:3070
 mkdir -p ./test/net/box
 touch ./test/net/box/hosts
 

@@ -10,23 +10,21 @@ import scala.util.Try
 /**
  * @author Alexey Polubelov
  */
-trait FieldBinder[S] {
-    def $: BackendScope[_, S]
+trait FieldBinder {
+    def bind[S](v: S)(implicit modState: (S => S) => Callback): Bind[S] = new Bind(v, modState)
 
-    def bind(v: S): Bind = new Bind(v)
+    class Bind[S](s: S, modState: (S => S) => Callback) {
 
-    private def mapInputTo[X](l: GetSetModifyFunctions[S, X])(converter: AsX[X])(event: ReactEventFromInput): Callback = {
-        val v: String = event.target.value
-        // try convert, if not simply ignore
-        converter
-          .option(v)
-          .map { x =>
-              $.modState(l.set(x))
-          }
-          .getOrElse(Callback(println(s"Invalid value: $v")))
-    }
-
-    class Bind(s: S) {
+        private def mapInputTo[X](l: GetSetModifyFunctions[S, X])(converter: AsX[X])(event: ReactEventFromInput): Callback = {
+            val v: String = event.target.value
+            // try convert, if not simply ignore
+            converter
+              .option(v)
+              .map { x =>
+                  modState(l.set(x))
+              }
+              .getOrElse(Callback(println(s"Invalid value: $v")))
+        }
 
         def :=[X](l: Lens[S, X])(implicit converter: AsX[X]): TagMod = {
             this.:=(new LensWrapper(l))
@@ -48,5 +46,11 @@ trait FieldBinder[S] {
     implicit val String2String: AsX[String] = (v: String) => Option(v)
     implicit val String2Int: AsX[Int] = (v: String) => Try(v.toInt).toOption
 
+}
+
+trait StateFieldBinder[S] extends FieldBinder {
+    def $: BackendScope[_, S]
+
+    implicit val modState: (S => S) => Callback = $.modState
 }
 

@@ -17,17 +17,10 @@ import upickle.default.{macroRW, ReadWriter => RW}
 object ComponentCandidate {
     val OSN = "OSN"
     val Peer = "Peer"
+    val Types = Seq(OSN, Peer)
+
     implicit val rw: RW[ComponentCandidate] = macroRW
 }
-
-case class FabricServiceState(
-    stateCode: Int
-)
-
-object FabricServiceState {
-    implicit val rw: RW[FabricServiceState] = macroRW
-}
-
 
 @Lenses case class JoinRequest(
     organization: Organization,
@@ -35,26 +28,11 @@ object FabricServiceState {
 )
 
 object JoinRequest {
-    val Defaults = new JoinRequest(
-        organization = Organization(
-            mspId = "",
-            name = "",
-            memberNumber = 0,
-            knownHosts = Array.empty[KnownHostRecord]
-        ),
-        organizationCertificates = OrganizationCertificates(
-            caCerts = Array.empty[String],
-            tlsCACerts = Array.empty[String],
-            adminCerts = Array.empty[String]
-        )
-    )
-
     implicit val rw: RW[JoinRequest] = macroRW
 }
 
 @Lenses case class Organization(
     mspId: String,
-    name: String,
     memberNumber: Long,
     knownHosts: Array[KnownHostRecord]
 )
@@ -81,44 +59,6 @@ object KnownHostRecord {
 
 object OrganizationCertificates {
     implicit val rw: RW[OrganizationCertificates] = macroRW
-}
-
-
-@Lenses case class CreateContractRequest(
-    name: String,
-    version: String,
-    lang: String,
-    contractType: String,
-    channelName: String,
-    parties: Array[ContractParticipant],
-    initArgs: Array[String]
-)
-
-object CreateContractRequest {
-
-    val Defaults: CreateContractRequest = CreateContractRequest(
-        name = "",
-        version = "",
-        lang = "java",
-        contractType = "",
-        channelName = "",
-        parties = Array.empty[ContractParticipant],
-        initArgs = Array.empty[String]
-    )
-
-    implicit val rw: RW[CreateContractRequest] = macroRW
-    val ChaincodeLanguages = Seq("java", "scala", "go", "node")
-
-}
-
-
-@Lenses case class ContractParticipant(
-    mspId: String,
-    role: String
-)
-
-object ContractParticipant {
-    implicit val rw: RW[ContractParticipant] = macroRW
 }
 
 
@@ -150,37 +90,4 @@ object ContractJoinRequest {
     )
 
     implicit val rw: RW[ContractJoinRequest] = macroRW
-}
-
-@Lenses case class Box(
-    name: String,
-    information: BoxInformation
-)
-
-object Box {
-    implicit val rw: RW[Box] = macroRW
-}
-
-@Lenses case class BoxInformation(
-    externalAddress: String,
-    details: String
-)
-
-object BoxInformation {
-    implicit val rw: RW[BoxInformation] = macroRW
-}
-
-
-@Lenses case class RegisterBoxManager(
-    name: String,
-    url: String
-)
-
-
-object RegisterBoxManager {
-    val Defaults: RegisterBoxManager = RegisterBoxManager(
-        name = "",
-        url = ""
-    )
-    implicit val rw: RW[RegisterBoxManager] = macroRW
 }

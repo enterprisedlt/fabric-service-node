@@ -1,8 +1,8 @@
 package org.enterprisedlt.fabric.service.node.process
 
 import org.enterprisedlt.fabric.service.model.KnownHostRecord
-import org.enterprisedlt.fabric.service.node.model.Box
 import org.enterprisedlt.fabric.service.node.rest.JsonRestClient
+import org.enterprisedlt.fabric.service.node.shared.Box
 import org.slf4j.LoggerFactory
 
 import scala.collection.concurrent.TrieMap

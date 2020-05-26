@@ -78,8 +78,10 @@ case class DeleteMessageRequest(
 
 case class ContractDeploymentDescriptor(
     name: String,
+    language: String,
     roles: Array[String],
     initMethod: String,
+    initArgsNames: Array[String],
     warmUpMethod: String,
     endorsement: String,
     collections: Array[ContractCollectionDescriptor]
@@ -88,31 +90,6 @@ case class ContractDeploymentDescriptor(
 case class ContractCollectionDescriptor(
     name: String,
     members: Array[String]
-)
-
-case class CreateContractRequest(
-    name: String,
-    version: String,
-    lang: String,
-    contractType: String,
-    channelName: String,
-    parties: Array[ContractParticipant],
-    initArgs: Array[String]
-)
-
-case class UpgradeContractRequest(
-    name: String,
-    version: String,
-    lang: String,
-    contractType: String,
-    channelName: String,
-    parties: Array[ContractParticipant],
-    initArgs: Array[String]
-)
-
-case class ContractParticipant(
-    mspId: String,
-    role: String
 )
 
 case class ContractJoinRequest(
@@ -141,38 +118,28 @@ case class OsnCertificates(
     serverTlsCert: String
 )
 
-case class RegisterBoxManager(
-    name: String,
-    url: String
-)
-
-case class Box(
-    name: String,
-    information: BoxInformation
-)
-
-case class BoxInformation(
-    externalAddress: String,
-    details: String
-)
-
 object CCLanguage {
+
+    val GO = "GO"
+    val JAVA = "JAVA"
+    val SCALA = "SCALA"
+    val JS = "NODE"
 
     object GoLang {
         def unapply(arg: String): Option[Type] = Option(arg).filter { name =>
-            name.equalsIgnoreCase("GO") || name.equalsIgnoreCase("GO_LANG")
+            name.equalsIgnoreCase(GO) || name.equalsIgnoreCase("GO_LANG")
         }.map(_ => Type.GO_LANG)
     }
 
     object JVM {
         def unapply(arg: String): Option[Type] = Option(arg).filter { name =>
-            name.equalsIgnoreCase("JAVA") || name.equalsIgnoreCase("SCALA")
+            name.equalsIgnoreCase(JAVA) || name.equalsIgnoreCase(SCALA)
         }.map(_ => Type.JAVA)
     }
 
     object NodeJS {
         def unapply(arg: String): Option[Type] = Option(arg).filter { name =>
-            name.equalsIgnoreCase("NODE")
+            name.equalsIgnoreCase(JS)
         }.map(_ => Type.NODE)
     }
 
