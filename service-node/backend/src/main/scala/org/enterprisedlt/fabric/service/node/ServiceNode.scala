@@ -63,7 +63,10 @@ object ServiceNode extends App {
         hostsManager = new HostsManager("/opt/profile/hosts", ServiceExternalAddress.map(_.host)),
         ProfilePath, processManager, serviceState
     )
-    val filesUploadEndpoint: Array[FileUploadEndpoint] = Array(FileUploadEndpoint("/upload", "/upload"))
+    val filesUploadEndpoint: Array[FileUploadEndpoint] = Array(
+        FileUploadEndpoint("/admin/upload-chaincode", "/opt/profile/chain-code"),
+        FileUploadEndpoint("/admin/upload-custom-component", "/opt/profile/components")
+    )
     //TODO: make web app optional, based on configuration
     private val server =
         createServer(
@@ -129,7 +132,6 @@ object ServiceNode extends App {
         )
 
         val fileEnpointContext = new ContextHandler("/")
-
         val tmpLocation: String = "/tmp/files/" // the directory location where files will be stored
         val maxFileSize: Int = 100 * 1024 * 1024 // the maximum size allowed for uploaded files
         val maxRequestSize: Int = 100 * 1024 * 1024 // the maximum size allowed for multipart/form-data requests

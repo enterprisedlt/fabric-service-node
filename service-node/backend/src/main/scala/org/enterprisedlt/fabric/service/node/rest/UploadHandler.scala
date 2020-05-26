@@ -29,15 +29,9 @@ class UploadHandler(
 
     override def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {
         RestEndpointContext.set(RestEndpointContext(request, response))
-        request.getMethod match {
-            case "POST" =>
-                request.setAttribute(Request.MULTIPART_CONFIG_ELEMENT, multipartConfig)
-                processRequest(endpoints, request, response)
-
-            case methodName =>
-                response.getWriter.println(s"Unsupported method type $methodName")
-                response.setStatus(HttpServletResponse.SC_METHOD_NOT_ALLOWED)
-
+        if (request.getMethod == "POST" && endpoints.exists(_.uri == request.getPathInfo)) {
+            request.setAttribute(Request.MULTIPART_CONFIG_ELEMENT, multipartConfig)
+            processRequest(endpoints, request, response)
         }
         RestEndpointContext.clean()
         baseRequest.setHandled(true)
@@ -68,10 +62,10 @@ class UploadHandler(
 
 
     private def processParts(request: HttpServletRequest, response: HttpServletResponse, outputDir: Path): Either[String, Unit] = {
-        request.getParts.forEach { part =>
-            val filename = part.getSubmittedFileName
-            if (Option(filename).nonEmpty) {
-                Try {
+        Try {
+            request.getParts.forEach { part =>
+                val filename = part.getSubmittedFileName
+                if (Option(filename).nonEmpty) {
                     logger.info(s"Got Part ${part.getName} with size = ${part.getSize}, contentType = ${part.getContentType}, submittedFileName $filename")
                     val outputFile = outputDir.resolve(filename)
                     val is = part.getInputStream
@@ -80,11 +74,17 @@ class UploadHandler(
                     logger.info(s"Saved Part ${part.getName} to ${outputFile.toString}")
                     is.close()
                     os.close()
-                }.toEither.left.map(_.getMessage)
+                }
             }
+        }.toEither match {
+            case Right(_) =>
+                response.setContentType(MimeTypes.Type.TEXT_PLAIN.asString())
+                response.setCharacterEncoding("utf-8")
+                Right(())
+
+            case Left(msg) =>
+                Left(msg.getMessage)
         }
-        response.setContentType(MimeTypes.Type.TEXT_PLAIN.asString())
-        response.setCharacterEncoding("utf-8")
-        Right(())
+
     }
 }
