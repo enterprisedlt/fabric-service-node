@@ -15,23 +15,28 @@ trait ContractOperations {
     @ContractOperation(OperationType.Invoke)
     def createContract(contract: Contract): ContractResult[Unit] =
         getOwnOrganization
-          .flatMap { founderOrg =>
+          .flatMap { founder =>
               for {
                   _ <- Option(contract.name).filter(_.nonEmpty).toRight("Contract name must be non empty")
-                  _ <- Option(contract.chainCodeName).filter(_.nonEmpty).toRight("Chaincode name must be non empty")
-                  _ <- Option(contract.chainCodeVersion).filter(_.nonEmpty).toRight("Chaincode version must be non empty")
-                  participantsList <- Option(contract.participants).filter(_.nonEmpty).toRight("Participants list must be non empty")
+                  _ <- Option(contract.contractType).filter(_.nonEmpty).toRight("ContractType must be non empty")
+                  _ <- Option(contract.version).filter(_.nonEmpty).toRight("Contract version must be non empty")
+                  participants <- Option(contract.participants).filter(_.nonEmpty).toRight("Participants list must be non empty")
               } yield {
-                  participantsList
-                    .filter(e => e != founderOrg.name)
-                    .foreach { orgFromList =>
-                        OperationContext.store.get[Organization](orgFromList)
+                  participants
+                    .filter(_ != founder.mspId)
+                    .foreach { participantId =>
+                        OperationContext.store.get[Organization](participantId)
                           .map { participant =>
                               //                              logger.debug(s"putting in to coll ${CollectionsHelper.collectionNameFor(founderOrg, participant)} ${contract}")
-                              OperationContext.privateStore(
-                                  CollectionsHelper.collectionNameFor(founderOrg, participant))
-                                .put(contract.name, contract.copy(founder = founderOrg.name,
-                                    timestamp = OperationContext.transaction.timestamp.getEpochSecond))
+                              OperationContext
+                                .privateStore(CollectionsHelper.collectionNameFor(founder, participant))
+                                .put(
+                                    contract.name,
+                                    contract.copy(
+                                        founder = founder.mspId,
+                                        timestamp = OperationContext.transaction.timestamp.getEpochSecond
+                                    )
+                                )
                           }
                     }
               }
@@ -49,13 +54,13 @@ trait ContractOperations {
                   participantsList <- Option(upgradeContract.participants).filter(_.nonEmpty).toRight("Participants list must be non empty")
               } yield {
                   participantsList
-                    .filter(e => e != founderOrg.name)
+                    .filter(e => e != founderOrg.mspId)
                     .foreach { orgFromList =>
                         OperationContext.store.get[Organization](orgFromList)
                           .map { participant =>
                               OperationContext.privateStore(
                                   CollectionsHelper.collectionNameFor(founderOrg, participant))
-                                .put[UpgradeContract](upgradeContract.name, upgradeContract.copy(founder = founderOrg.name,
+                                .put[UpgradeContract](upgradeContract.name, upgradeContract.copy(founder = founderOrg.mspId,
                                     timestamp = OperationContext.transaction.timestamp.getEpochSecond))
                           }
                     }
@@ -85,7 +90,7 @@ trait ContractOperations {
                   r <- OperationContext.privateStore(
                       CollectionsHelper.collectionNameFor(org, contractFounderOrg))
                     .get[Contract](contractNameValue)
-                    .toRight(s"No contract with name $contractNameValue from ${contractFounderOrg.name} org")
+                    .toRight(s"No contract with name $contractNameValue from ${contractFounderOrg.mspId} org")
               } yield r
           }
 

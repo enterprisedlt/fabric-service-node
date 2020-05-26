@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node.endorsement
 
-import org.enterprisedlt.fabric.service.node.model._
+import org.enterprisedlt.fabric.service.node.shared.ContractParticipant
 import org.scalatest._
 import org.scalatest.matchers.should.Matchers._
 

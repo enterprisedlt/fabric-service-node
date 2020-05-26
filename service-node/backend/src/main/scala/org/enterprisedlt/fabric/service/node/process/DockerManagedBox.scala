@@ -17,7 +17,7 @@ import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientImpl}
 import com.github.dockerjava.okhttp.OkHttpDockerCmdExecFactory
 import org.enterprisedlt.fabric.service.model.KnownHostRecord
 import org.enterprisedlt.fabric.service.node.configuration.DockerConfig
-import org.enterprisedlt.fabric.service.node.model.BoxInformation
+import org.enterprisedlt.fabric.service.node.shared.BoxInformation
 import org.enterprisedlt.fabric.service.node.{HostsManager, Util}
 import org.slf4j.LoggerFactory
 
@@ -86,7 +86,7 @@ class DockerManagedBox(
 
     override def startOrderingNode(request: StartOSNRequest): Either[String, String] = {
         logger.info(s"Starting ${request.component.fullName} ...")
-        pullImageIfNeeded("hyperledger/fabric-orderer","1.4.2")
+        pullImageIfNeeded("hyperledger/fabric-orderer", "1.4.2")
         //        if (checkContainerExistence(osnFullName: String)) {
         //            stopAndRemoveContainer(osnFullName: String)
         //        }
@@ -147,7 +147,7 @@ class DockerManagedBox(
     //=============================================================================
     override def startPeerNode(request: StartPeerRequest): Either[String, String] = {
         val peerFullName = request.component.fullName
-        pullImageIfNeeded("hyperledger/fabric-peer","1.4.2")
+        pullImageIfNeeded("hyperledger/fabric-peer", "1.4.2")
         logger.info(s"Starting $peerFullName ...")
         //        if (checkContainerExistence(peerFullName: String)) {
         //            stopAndRemoveContainer(peerFullName: String)
@@ -226,7 +226,7 @@ class DockerManagedBox(
     //=============================================================================
     private def startCouchDB(couchDBFullName: String, port: Int): String = {
         logger.info(s"Starting $couchDBFullName ...")
-        pullImageIfNeeded("hyperledger/fabric-couchdb","0.4.18")
+        pullImageIfNeeded("hyperledger/fabric-couchdb", "0.4.18")
         if (checkContainerExistence(couchDBFullName)) {
             stopAndRemoveContainer(couchDBFullName)
         }

@@ -21,6 +21,26 @@ object DataFunction {
 
     trait GetSetModifyFunctions[T, V] extends GetFunction[T, V] with SetFunction[T, V] with ModifyFunction[T, V]
 
+    class ForElement[X](index: Int) extends GetSetModifyFunctions[Array[X], X] {
+        override def modify(mf: X => X): Array[X] => Array[X] = { ar =>
+            val r = ar.clone()
+            r(index) = mf(ar(index))
+            r
+        }
+
+        override def set(v: X): Array[X] => Array[X] = { ar =>
+            val r = ar.clone()
+            r(index) = v
+            r
+        }
+
+        override def get(t: Array[X]): X = t(index)
+    }
+
+    object ForElement {
+        def apply[X](index: Int): ForElement[X] = new ForElement[X](index)
+    }
+
     class LensWrapper[X, Y](l: Lens[X, Y]) extends GetSetModifyFunctions[X, Y] {
         override def set(v: Y): X => X = l.set(v)
 

@@ -1,8 +1,8 @@
 package org.enterprisedlt.fabric.service.node.process
 
 import org.enterprisedlt.fabric.service.model.KnownHostRecord
-import org.enterprisedlt.fabric.service.node.model.BoxInformation
 import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
+import org.enterprisedlt.fabric.service.node.shared.BoxInformation
 
 /**
  * @author Alexey Polubelov

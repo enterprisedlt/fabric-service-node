@@ -21,7 +21,7 @@ import org.bouncycastle.asn1.ASN1ObjectIdentifier
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x500.style.{BCStyle, IETFUtils}
 import org.enterprisedlt.fabric.service.node.endorsement.EndorsementPolicyCompiler
-import org.enterprisedlt.fabric.service.node.model.ContractParticipant
+import org.enterprisedlt.fabric.service.node.shared.ContractParticipant
 import org.enterprisedlt.fabric.service.node.rest.JsonServerCodec
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope, Payload}

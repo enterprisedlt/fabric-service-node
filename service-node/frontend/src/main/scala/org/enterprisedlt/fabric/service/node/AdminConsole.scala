@@ -10,11 +10,11 @@ import org.scalajs.dom.html.Div
 import scala.scalajs.js.annotation.JSExport
 
 /**
-  * @author Alexey Polubelov
-  */
+ * @author Alexey Polubelov
+ */
 object AdminConsole {
 
-    private val rootComponent = ScalaComponent.builder[Unit]("Main")
+    private val rootComponent = ScalaComponent.builder[Unit]("admin-console")
       .renderBackend[MainBackend]
       .componentDidMount($ => Context.State.connect($.backend))
       .build
@@ -24,14 +24,8 @@ object AdminConsole {
             <.div(
                 global match {
                     case Initial => loadingScreen
-                    case gs: GlobalState => gs.mode match {
-                        case InitMode => Init()
-                        case BootstrapMode => Boot()
-                        case JoinMode => Join()
-                        case BootstrapInProgress => BootProgress()
-                        case JoinInProgress => JoinProgress()
-                        case ReadyForUse => Dashboard()
-                    }
+                    case s: Initializing => if (s.inProgress) Progress(s) else Init()
+                    case g: Ready => Dashboard(g)
                 }
             )
     }
@@ -45,7 +39,7 @@ object AdminConsole {
 
     @JSExport
     def main(args: Array[String]): Unit = {
-        Context.initialize
+        Context.initialize()
         rootComponent().renderIntoDOM(dom.document.getElementById("root"))
     }
 }
