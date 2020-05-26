@@ -301,20 +301,20 @@ object Dashboard {
                                         <.form(
                                             <.div(^.className := "form-group row",
                                                 <.label(^.className := "col-sm-4 col-form-label", "Contract"),
-                                                <.div(^.className := "custom-file",
-                                                    <.input(^.`type` := "file", ^.className := "custom-file-input", ^.id := "contract",
-                                                        ^.onChange ==> changeContractFile
-                                                    ),
-                                                    <.label(^.`class` := "custom-file-label", s.contractName)
+                                                <.div(^.className := "input-group input-group-sm col-sm-8",
+                                                    <.div(^.className := "custom-file",
+                                                        <.input(^.`type` := "file", ^.className := "custom-file-input", ^.id := "contract", ^.onChange ==> changeContractFile),
+                                                        <.label(^.`class` := "custom-file-label", s.contractName)
+                                                    )
                                                 )
                                             ),
                                             <.div(^.className := "form-group row",
                                                 <.label(^.className := "col-sm-4 col-form-label", "Descriptor"),
-                                                <.div(^.className := "custom-file",
-                                                    <.input(^.`type` := "file", ^.className := "custom-file-input", ^.id := "descriptor",
-                                                        ^.onChange ==> changeDescriptorFile
-                                                    ),
-                                                    <.label(^.`class` := "custom-file-label", s.descriptorName)
+                                                <.div(^.className := "input-group input-group-sm col-sm-8",
+                                                    <.div(^.className := "custom-file",
+                                                        <.input(^.`type` := "file", ^.className := "custom-file-input", ^.id := "descriptor", ^.onChange ==> changeDescriptorFile),
+                                                        <.label(^.`class` := "custom-file-label", s.descriptorName)
+                                                    )
                                                 )
                                             ),
                                             <.div(^.className := "form-group mt-1",
