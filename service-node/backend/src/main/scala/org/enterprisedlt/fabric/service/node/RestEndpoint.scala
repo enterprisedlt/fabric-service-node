@@ -12,7 +12,6 @@ import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.process.ProcessManager
 import org.enterprisedlt.fabric.service.node.process.{ProcessManager, StartCustomNodeDescriptor, StartCustomNodeRequest}
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
@@ -264,10 +263,8 @@ class RestEndpoint(
         ).toEither.left.map(_.getMessage)
     }
 
+
     @Post("/admin/register-box-manager")
-    def registerBox(request: RegisterBoxManager): Either[String, Box] =
-        processManager.registerBox(request.name, request.url)
-          .map { r => FabricServiceStateHolder.incrementVersion(); r }
     def registerBox(request: RegisterBoxManager): Either[String, Box] = {
         val componentsDistributorAddress = externalAddress
           .map(ea => s"http://${ea.host}:$componentsDistributorBindPort")
