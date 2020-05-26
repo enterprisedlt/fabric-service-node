@@ -7,7 +7,7 @@ import org.enterprisedlt.fabric.service.node.shared.BlockConfig
 /**
  * @author Alexey Polubelov
  */
-object BlockForm extends StatelessForm[BlockConfig]("BlockSettings") {
+object BlockForm extends StatelessForm[BlockConfig]("block-settings") {
 
     override def render(p: BlockConfig)(implicit modState: CallbackFunction): VdomNode =
         <.div(

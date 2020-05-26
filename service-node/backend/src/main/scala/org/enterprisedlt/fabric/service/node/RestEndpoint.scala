@@ -281,7 +281,10 @@ class RestEndpoint(
                 hostsManager,
                 organizationConfig
             )
-        } yield join
+        } yield {
+            FabricServiceStateHolder.incrementVersion()
+            join
+        }
     }
 
 
@@ -395,7 +398,7 @@ class RestEndpoint(
             }
             r <- Try(response.get()).toEither.left.map(_.getMessage)
         } yield {
-            FabricServiceStateHolder.incrementVersion();
+            FabricServiceStateHolder.incrementVersion()
             s"Upgrading contract ${upgradeContractRequest.contractType} has been completed successfully $r"
         }
     }
@@ -453,23 +456,25 @@ class RestEndpoint(
             response <- {
                 logger.info(s"Invoking 'createContract' method...")
                 val contract = Contract(
-                    contractRequest.name,
-                    deploymentDescriptor.language,
-                    contractRequest.contractType,
-                    contractRequest.version,
-                    organizationConfig.name,
-                    contractRequest.parties.map(_.mspId),
-                    Instant.now.toEpochMilli
+                    founder = organizationConfig.name,
+                    name = contractRequest.name,
+                    channel = contractRequest.channelName,
+                    lang = deploymentDescriptor.language,
+                    contractType = contractRequest.contractType,
+                    version = contractRequest.version,
+                    participants = contractRequest.parties.map(_.mspId),
+                    timestamp = Instant.now.toEpochMilli
                 )
                 state.networkManager.invokeChainCode(
                     ServiceChannelName,
                     ServiceChainCodeName,
                     "createContract",
-                    Util.codec.toJson(contract))
+                    Util.codec.toJson(contract)
+                )
             }
             r <- Try(response.get()).toEither.left.map(_.getMessage)
         } yield {
-            FabricServiceStateHolder.incrementVersion();
+            FabricServiceStateHolder.incrementVersion()
             s"Creating contract ${contractRequest.contractType} has been completed successfully $r"
         }
     }
@@ -493,16 +498,16 @@ class RestEndpoint(
                   .toEither.left.map(_.getMessage)
             }
             file <- {
-                val path = s"/opt/profile/chain-code/${contractDetails.chainCodeName}-${contractDetails.chainCodeVersion}.tgz"
-                Option(new File(path)).filter(_.exists()).toRight(s"File  doesn't exist ")
+                val path = s"/opt/profile/chain-code/${contractDetails.contractType}.tgz"
+                Option(new File(path)).filter(_.exists()).toRight(s"File $path does not exist ")
             }
             _ <- {
                 val chainCodePkg = new BufferedInputStream(new FileInputStream(file))
-                logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.chainCodeName}:${contractDetails.chainCodeVersion} chaincode ...")
+                logger.info(s"[ $organizationFullName ] - Installing ${contractDetails.contractType}:${contractDetails.version} chaincode ...")
                 network.installChainCode(
-                    ServiceChannelName,
+                    contractDetails.channel,
                     contractDetails.name,
-                    contractDetails.chainCodeVersion,
+                    contractDetails.version,
                     contractDetails.lang,
                     chainCodePkg)
             }
@@ -609,6 +614,16 @@ class RestEndpoint(
         } yield result
     }
 
+    @Get("/service/get-events")
+    def getEvents: Either[String, Events] = {
+        logger.info(s"Querying events for ${organizationConfig.name}...")
+        globalState
+          .toRight("Node is not initialized yet")
+          .map(_.eventsMonitor.getEvents)
+    }
+
+    // ================================================================================================================
+
     private val _globalState = new AtomicReference[GlobalState]()
 
     private def globalState: Option[GlobalState] = Option(_globalState.get())
@@ -616,11 +631,16 @@ class RestEndpoint(
     private def init(globalState: GlobalState): Unit = this._globalState.set(globalState)
 
 
+    def cleanup(): Unit = {
+        globalState.foreach { state =>
+            state.eventsMonitor.shutdown()
+        }
+    }
 }
 
 case class GlobalState(
     networkManager: FabricNetworkManager,
-    //    processManager: DockerManagedBox,
     network: NetworkConfig,
-    networkName: String
+    networkName: String,
+    eventsMonitor: EventsMonitor,
 )

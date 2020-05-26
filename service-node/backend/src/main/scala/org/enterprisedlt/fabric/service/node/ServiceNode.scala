@@ -100,6 +100,7 @@ object ServiceNode extends App {
         Runtime.getRuntime.addShutdownHook(new Thread("shutdown-hook") {
             override def run(): Unit = {
                 logger.info("Shutting down...")
+                restEndpoint.cleanup()
                 server.stop()
                 logger.info("Shutdown complete.")
             }

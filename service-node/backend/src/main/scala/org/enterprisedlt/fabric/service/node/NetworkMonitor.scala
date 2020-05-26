@@ -7,7 +7,7 @@ import java.util.concurrent.TimeUnit
 import org.enterprisedlt.fabric.service.model.{Organization, ServiceVersion}
 import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
 import org.enterprisedlt.fabric.service.node.flow.Constant._
-import org.enterprisedlt.fabric.service.node.model.CCLanguage
+import org.enterprisedlt.fabric.service.node.model.{CCLanguage, FabricServiceStateHolder}
 import org.enterprisedlt.fabric.service.node.process.ProcessManager
 import org.enterprisedlt.fabric.service.node.shared.NetworkConfig
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
@@ -96,6 +96,7 @@ class NetworkMonitor(
             }
             hostsManager.updateHosts(organization.knownHosts)
             processManager.updateKnownHosts(organization.knownHosts)
+            FabricServiceStateHolder.incrementVersion()
         } else {
             logger.info("Skipping upgrade from self")
         }

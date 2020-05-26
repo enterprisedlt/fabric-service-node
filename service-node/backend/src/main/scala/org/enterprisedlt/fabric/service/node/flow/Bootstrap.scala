@@ -182,7 +182,6 @@ object Bootstrap {
         val organization =
             Organization(
                 mspId = organizationConfig.name,
-                name = organizationConfig.name,
                 memberNumber = 1,
                 knownHosts = knownHosts
             )
@@ -195,7 +194,7 @@ object Bootstrap {
         network.instantiateChainCode(
             ServiceChannelName, ServiceChainCodeName,
             "1.0.0", // {chainCodeVersion}.{networkVersion},
-            "java",
+            CCLanguage.SCALA,
             arguments = Array(
                 Util.codec.toJson(organization),
                 Util.codec.toJson(serviceVersion)
@@ -208,6 +207,7 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Bootstrap done.")
         FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.Ready))
-        GlobalState(network, bootstrapOptions.network, bootstrapOptions.networkName)
+        val eventsMonitor = new EventsMonitor(1000, network).startup()
+        GlobalState(network, bootstrapOptions.network, bootstrapOptions.networkName, eventsMonitor)
     }
 }

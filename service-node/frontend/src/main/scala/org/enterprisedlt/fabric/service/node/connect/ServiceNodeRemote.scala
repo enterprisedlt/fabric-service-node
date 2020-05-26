@@ -108,10 +108,7 @@ object ServiceNodeRemote {
           .get("/admin/network-config")
           .map(_.responseText)
           .map { r =>
-              println(s"Got response: $r")
-              val nc = upickle.default.read[NetworkConfig](r)
-              println(s"Deserialized: $nc")
-              nc
+              upickle.default.read[NetworkConfig](r)
           }
 
     def listChainCodes: Future[Array[ChainCodeInfo]] =
@@ -127,5 +124,11 @@ object ServiceNodeRemote {
           .map(_.responseText)
           .map(r => upickle.default.read[String](r))
     }
+
+    def listEvents: Future[Events] =
+        Ajax
+          .get("/service/get-events")
+          .map(_.responseText)
+          .map(r => upickle.default.read[Events](r))
 
 }

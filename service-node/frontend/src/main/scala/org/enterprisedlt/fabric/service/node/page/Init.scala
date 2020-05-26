@@ -16,7 +16,7 @@ import org.scalajs.dom.html.Div
 import org.scalajs.dom.raw.{File, FileReader}
 
 import scala.scalajs.js.UndefOr
-
+import scala.concurrent.ExecutionContext.Implicits.global
 /**
  * @author Alexey Polubelov
  */
@@ -37,7 +37,7 @@ object Init {
         inviteFile: File,
     )
 
-    private val component = ScalaComponent.builder[Unit]("Initial")
+    private val component = ScalaComponent.builder[Unit]("initial-screen")
       .initialState(
           State(
               boxCandidate = RegisterBoxManager(
@@ -107,8 +107,8 @@ object Init {
             }.getOrElse(Callback())
         }
 
-        def addBox(boxCandidate: RegisterBoxManager): Callback = Callback {
-            ServiceNodeRemote.registerBox(boxCandidate)
+        def addBox(boxCandidate: RegisterBoxManager)(f: Callback): Callback = Callback.future {
+            ServiceNodeRemote.registerBox(boxCandidate).map(_ => f)
         }
 
         def addNetworkComponents(components: Seq[ComponentCandidate], g: Initializing): CallbackTo[Unit] = {
@@ -258,120 +258,124 @@ object Init {
                                     PageAction(
                                         name = "Join",
                                         id = "join-form",
-                                        Seq(
-                                            <.div(^.className := "form-group row",
-                                                <.label(^.className := "col-sm-4 col-form-label", "Invite"),
-                                                <.div(^.className := "input-group input-group-sm col-sm-8",
-                                                    <.div(^.className := "custom-file",
-                                                        <.input(^.`type` := "file",
-                                                            ^.className := "custom-file-input", ^.id := "inviteInput",
-                                                            ^.onChange ==> changeInviteFile
-                                                        ),
-                                                        <.label(^.`class` := "custom-file-label", s.inviteFileName)
+                                        actionForm = _ =>
+                                            Seq(
+                                                <.div(^.className := "form-group row",
+                                                    <.label(^.className := "col-sm-4 col-form-label", "Invite"),
+                                                    <.div(^.className := "input-group input-group-sm col-sm-8",
+                                                        <.div(^.className := "custom-file",
+                                                            <.input(^.`type` := "file",
+                                                                ^.className := "custom-file-input", ^.id := "inviteInput",
+                                                                ^.onChange ==> changeInviteFile
+                                                            ),
+                                                            <.label(^.`class` := "custom-file-label", s.inviteFileName)
+                                                        )
+                                                    )
+                                                ),
+                                                <.div(^.className := "form-group mt-1",
+                                                    <.button(
+                                                        ^.className := "btn btn-sm btn-outline-secondary",
+                                                        data.toggle := "collapse", data.target := "#join-form",
+                                                        ^.aria.expanded := true, ^.aria.controls := "join-form",
+                                                        "Cancel"
+                                                    ),
+                                                    <.button(
+                                                        ^.className := "btn btn-sm btn-outline-success float-right",
+                                                        ^.onClick --> goJoinProgress(s),
+                                                        "Join consortium"
                                                     )
                                                 )
-                                            ),
-                                            <.div(^.className := "form-group mt-1",
-                                                <.button(
-                                                    ^.className := "btn btn-sm btn-outline-secondary",
-                                                    data.toggle := "collapse", data.target := "#join-form",
-                                                    ^.aria.expanded := true, ^.aria.controls := "join-form",
-                                                    "Cancel"
-                                                ),
-                                                <.button(
-                                                    ^.className := "btn btn-sm btn-outline-success float-right",
-                                                    ^.onClick --> goJoinProgress(s),
-                                                    "Join consortium"
-                                                )
-                                            )
-                                        ).toTagMod
+                                            ).toTagMod
                                     ),
                                     PageAction(
                                         name = "Bootstrap",
                                         id = "bootstrap-form",
-                                        Seq(
-                                            <.div(^.className := "form-group row",
-                                                <.label(^.className := "col-sm-4 col-form-label", "Consortium"),
-                                                <.div(^.className := "col-sm-8",
-                                                    <.input(^.`type` := "text", ^.`className` := "form-control form-control-sm",
-                                                        bind(s) := State.networkName
+                                        actionForm = _ =>
+                                            Seq(
+                                                <.div(^.className := "form-group row",
+                                                    <.label(^.className := "col-sm-4 col-form-label", "Consortium"),
+                                                    <.div(^.className := "col-sm-8",
+                                                        <.input(^.`type` := "text", ^.`className` := "form-control form-control-sm",
+                                                            bind(s) := State.networkName
+                                                        )
+                                                    )
+                                                ),
+                                                <.div(^.id := "boot-options-advanced", ^.className := "collapse",
+                                                    <.div(^.className := "form-group row",
+                                                        <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Block settings"))
+                                                    ),
+                                                    BlockForm(s, State.block),
+                                                    <.div(^.className := "form-group row",
+                                                        <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Raft settings"))
+                                                    ),
+                                                    RaftForm(s, State.raft)
+                                                ),
+                                                <.div(^.className := "form-group mt-1",
+                                                    <.button(
+                                                        ^.className := "btn btn-sm btn-outline-secondary",
+                                                        data.toggle := "collapse", data.target := "#bootstrap-form",
+                                                        ^.aria.expanded := true, ^.aria.controls := "bootstrap-form",
+                                                        "Cancel"
+                                                    ),
+                                                    <.button(
+                                                        ^.className := "btn btn-sm btn-outline-secondary",
+                                                        data.toggle := "collapse", data.target := "#boot-options-advanced",
+                                                        ^.aria.expanded := false, ^.aria.controls := "boot-options-advanced",
+                                                        "Advanced"),
+
+                                                    <.button(^.className := "btn btn-sm btn-outline-success float-right",
+                                                        ^.onClick --> goBootProgress(s),
+                                                        "Bootstrap"
                                                     )
                                                 )
-                                            ),
-                                            <.div(^.id := "boot-options-advanced", ^.className := "collapse",
-                                                <.div(^.className := "form-group row",
-                                                    <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Block settings"))
-                                                ),
-                                                BlockForm(s, State.block),
-                                                <.div(^.className := "form-group row",
-                                                    <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Raft settings"))
-                                                ),
-                                                RaftForm(s, State.raft)
-                                            ),
-                                            <.div(^.className := "form-group mt-1",
-                                                <.button(
-                                                    ^.className := "btn btn-sm btn-outline-secondary",
-                                                    data.toggle := "collapse", data.target := "#bootstrap-form",
-                                                    ^.aria.expanded := true, ^.aria.controls := "bootstrap-form",
-                                                    "Cancel"
-                                                ),
-                                                <.button(
-                                                    ^.className := "btn btn-sm btn-outline-secondary",
-                                                    data.toggle := "collapse", data.target := "#boot-options-advanced",
-                                                    ^.aria.expanded := false, ^.aria.controls := "boot-options-advanced",
-                                                    "Advanced"),
-
-                                                <.button(^.className := "btn btn-sm btn-outline-success float-right",
-                                                    ^.onClick --> goBootProgress(s),
-                                                    "Bootstrap"
-                                                )
-                                            )
-                                        ).toTagMod
+                                            ).toTagMod
                                     ),
                                     PageAction(
                                         name = "Server",
                                         id = "server-form",
-                                        <.div(
-                                            ServerForm(s, State.boxCandidate),
-                                            <.div(^.className := "form-group mt-1",
-                                                <.button(
-                                                    ^.className := "btn btn-sm btn-outline-secondary",
-                                                    data.toggle := "collapse", data.target := "#server-form",
-                                                    ^.aria.expanded := true, ^.aria.controls := "server-form",
-                                                    "Cancel"
-                                                ),
-                                                <.button(
-                                                    ^.className := "btn btn-sm btn-outline-success float-right",
-                                                    ^.onClick --> addBox(s.boxCandidate),
-                                                    "Add server"
+                                        actionForm = progress =>
+                                            <.div(
+                                                ServerForm(s, State.boxCandidate),
+                                                <.div(^.className := "form-group mt-1",
+                                                    <.button(
+                                                        ^.className := "btn btn-sm btn-outline-secondary",
+                                                        data.toggle := "collapse", data.target := "#server-form",
+                                                        ^.aria.expanded := true, ^.aria.controls := "server-form",
+                                                        "Cancel"
+                                                    ),
+                                                    <.button(
+                                                        ^.className := "btn btn-sm btn-outline-success float-right",
+                                                        ^.onClick --> progress(addBox(s.boxCandidate)),
+                                                        "Add server"
+                                                    )
                                                 )
                                             )
-                                        )
                                     ),
                                     PageAction(
                                         name = "Component",
                                         id = "component-form",
-                                        <.div(
-                                            ComponentForm(s, State.componentCandidate, g.info),
-                                            <.div(^.className := "form-group mt-1",
-                                                <.button(
-                                                    ^.className := "btn btn-sm btn-outline-secondary",
-                                                    data.toggle := "collapse", data.target := "#component-form",
-                                                    ^.aria.expanded := true, ^.aria.controls := "component-form",
-                                                    "Cancel"
-                                                ),
-                                                <.button(
-                                                    ^.className := "btn btn-sm btn-outline-secondary",
-                                                    ^.onClick --> addDefaultComponents(g),
-                                                    "Default components",
-                                                ),
-                                                <.button(
-                                                    ^.className := "btn btn-sm btn-outline-success float-right",
-                                                    ^.onClick --> addNetworkComponents(Seq(s.componentCandidate), g),
-                                                    "Add component",
+                                        actionForm = _ =>
+                                            <.div(
+                                                ComponentForm(s, State.componentCandidate, g.info),
+                                                <.div(^.className := "form-group mt-1",
+                                                    <.button(
+                                                        ^.className := "btn btn-sm btn-outline-secondary",
+                                                        data.toggle := "collapse", data.target := "#component-form",
+                                                        ^.aria.expanded := true, ^.aria.controls := "component-form",
+                                                        "Cancel"
+                                                    ),
+                                                    <.button(
+                                                        ^.className := "btn btn-sm btn-outline-secondary",
+                                                        ^.onClick --> addDefaultComponents(g),
+                                                        "Default components",
+                                                    ),
+                                                    <.button(
+                                                        ^.className := "btn btn-sm btn-outline-success float-right",
+                                                        ^.onClick --> addNetworkComponents(Seq(s.componentCandidate), g),
+                                                        "Add component",
+                                                    )
                                                 )
                                             )
-                                        )
                                     )
                                 ),
                             ),

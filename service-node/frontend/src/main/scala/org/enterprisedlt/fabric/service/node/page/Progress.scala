@@ -64,7 +64,7 @@ object Progress {
         }
     }
 
-    private val component = ScalaComponent.builder[Initializing]("Progress")
+    private val component = ScalaComponent.builder[Initializing]("progress-screen")
       .render_P { state =>
           <.div(
               FSNSPA(

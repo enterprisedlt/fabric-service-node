@@ -78,7 +78,6 @@ object Join {
         val joinRequest = JoinRequest(
             organization = Organization(
                 mspId = organizationConfig.name,
-                name = organizationConfig.name,
                 memberNumber = 0,
                 knownHosts = knownHosts
             ),
@@ -229,7 +228,8 @@ object Join {
                 FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.JoinSettingUpBlockListener))
                 network.setupBlockListener(ServiceChannelName, new NetworkMonitor(organizationConfig, joinOptions.network, network, processManager, hostsManager, serviceVersion))
                 FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.Ready))
-                GlobalState(network, joinOptions.network, joinOptions.invite.networkName)
+                val eventsMonitor = new EventsMonitor(1000, network).startup()
+                GlobalState(network, joinOptions.network, joinOptions.invite.networkName, eventsMonitor)
         }
     }
 
@@ -242,8 +242,8 @@ object Join {
         organizationConfig: OrganizationConfig
     ): Either[String, JoinResponse] = {
 
-        logger.info(s"Joining ${joinRequest.organization.name} to network ...")
-        logger.info(s"Joining ${joinRequest.organization.name} to consortium ...")
+        logger.info(s"Joining ${joinRequest.organization.mspId} to network ...")
+        logger.info(s"Joining ${joinRequest.organization.mspId} to consortium ...")
         state.networkManager.joinToNetwork(joinRequest)
         logger.info("Joining to channel 'service' ...")
 

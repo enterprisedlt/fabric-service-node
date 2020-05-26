@@ -21,11 +21,11 @@ import scala.language.higherKinds
     participantCandidate: ContractParticipant,
 )
 
-object CreateContract extends StateFullFormExt[CreateContractRequest, Ready, ContractState]("ContractForm") {
+object CreateContract extends StateFullFormExt[CreateContractRequest, Ready, ContractState]("create-contract-form") {
 
     private def stateFor(ct: String, data: Ready) = {
         val firstMSPId = data.organizations.headOption.map(_.mspId).getOrElse("")
-        data.packages.find(_.name == ct).map { descriptor =>
+        data.contractPackages.find(_.name == ct).map { descriptor =>
             ContractState(
                 roles = descriptor.roles,
                 initArgsNames = descriptor.initArgsNames,
@@ -74,7 +74,7 @@ object CreateContract extends StateFullFormExt[CreateContractRequest, Ready, Con
                     <.select(className := "form-control",
                         ^.value := p.contractType,
                         ^.onChange ==> onPackageChange(s, data),
-                        data.packages.map { cPackage =>
+                        data.contractPackages.map { cPackage =>
                             val label = cPackage.name
                             val selected = p.contractType
                             option((className := "selected").when(selected == label), label)

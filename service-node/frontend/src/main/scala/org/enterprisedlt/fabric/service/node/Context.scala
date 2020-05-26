@@ -3,12 +3,11 @@ package org.enterprisedlt.fabric.service.node
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.shared.{Box, ChainCodeInfo, ContractDescriptor, FabricServiceState, NetworkConfig}
+import org.enterprisedlt.fabric.service.node.shared._
 import org.enterprisedlt.fabric.service.node.state.GlobalStateManager
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js
-import scala.scalajs.js.timers.SetTimeoutHandle
 
 /**
  * @author Alexey Polubelov
@@ -26,17 +25,17 @@ object Context {
         js.timers.setTimeout(stateUpdateInterval) {
             checkUpdateState()
         }
-        println(s"state check scheduled")
+        //        println(s"state check scheduled")
     }
 
     private def checkUpdateState(): Unit = {
-        println("checking state ...")
+        //        println("checking state ...")
         ServiceNodeRemote.getServiceState.foreach { state =>
-            println(s"Current version is ${lastStateVersion}, got: $state")
+            //            println(s"Current version is $lastStateVersion, got: $state")
             if (state.version != lastStateVersion) {
                 val update = state.stateCode match {
                     case FabricServiceState.NotInitialized =>
-                        println(s"State is NotInitialized")
+                        //                        println(s"State is NotInitialized")
                         ServiceNodeRemote.listBoxes.map { boxes =>
                             Initializing(
                                 info = BaseInfo(
@@ -50,7 +49,7 @@ object Context {
                         }
 
                     case sm if bootstrapIsInProgress(sm) || joinIsInProgress(sm) =>
-                        println(s"State is Initializing")
+                        //                        println(s"State is Initializing")
                         ServiceNodeRemote.listBoxes.map { boxes =>
                             Initializing(
                                 info = BaseInfo(
@@ -64,15 +63,15 @@ object Context {
                         }
 
                     case FabricServiceState.Ready =>
-                        println(s"State is Ready")
+                        //                        println(s"State is Ready")
                         for {
                             network <- ServiceNodeRemote.getNetworkConfig
                             packages <- ServiceNodeRemote.listContractPackages
                             channels <- ServiceNodeRemote.listChannels
                             organizations <- ServiceNodeRemote.listOrganizations
-                            contracts <- ServiceNodeRemote.listContracts
                             chainCodes <- ServiceNodeRemote.listChainCodes
                             boxes <- ServiceNodeRemote.listBoxes
+                            events <- ServiceNodeRemote.listEvents
                         } yield {
                             Ready(
                                 info = BaseInfo(
@@ -83,10 +82,10 @@ object Context {
                                 ),
                                 network = network,
                                 channels = channels,
-                                packages = packages,
+                                contractPackages = packages,
                                 organizations = organizations,
-                                contracts = contracts,
-                                chainCodes = chainCodes
+                                chainCodes = chainCodes,
+                                events = events
                             )
                         }
                 }
@@ -95,7 +94,7 @@ object Context {
                     ex.printStackTrace()
                 }
                 update.foreach { stateUpdate =>
-                    println(s"Updating state to: $stateUpdate")
+                    //                    println(s"Updating state to: $stateUpdate")
                     State.update(_ => stateUpdate)
                     lastStateVersion = state.version
                     // schedule next state check at the end
@@ -128,10 +127,10 @@ case object Initial extends AppState
     info: BaseInfo,
     network: NetworkConfig,
     channels: Array[String],
-    packages: Array[ContractDescriptor],
+    contractPackages: Array[ContractDescriptor],
     organizations: Array[Organization],
-    contracts: Array[Contract],
-    chainCodes: Array[ChainCodeInfo]
+    chainCodes: Array[ChainCodeInfo],
+    events: Events,
 ) extends AppState
 
 @Lenses case class BaseInfo(

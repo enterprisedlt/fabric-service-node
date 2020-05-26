@@ -14,7 +14,7 @@ import scala.scalajs.js.annotation.JSExport
  */
 object AdminConsole {
 
-    private val rootComponent = ScalaComponent.builder[Unit]("Main")
+    private val rootComponent = ScalaComponent.builder[Unit]("admin-console")
       .renderBackend[MainBackend]
       .componentDidMount($ => Context.State.connect($.backend))
       .build

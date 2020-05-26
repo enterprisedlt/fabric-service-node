@@ -233,3 +233,37 @@ object UpgradeContractRequest {
 object ContractParticipant {
     implicit val rw: RW[ContractParticipant] = macroRW
 }
+
+// ------------------------------------------------------------------------
+case class Events(
+    messages: Array[PrivateMessageEvent],
+    contractInvitations: Array[ContractInvitation]
+)
+
+object Events {
+    implicit val rw: RW[Events] = macroRW
+}
+
+// ------------------------------------------------------------------------
+case class PrivateMessageEvent(
+
+)
+
+object PrivateMessageEvent {
+    implicit val rw: RW[PrivateMessageEvent] = macroRW
+}
+
+// ------------------------------------------------------------------------
+case class ContractInvitation(
+    initiator: String,
+    name: String,
+    chainCodeName: String,
+    chainCodeVersion: String,
+    participants: Array[String],
+)
+
+object ContractInvitation {
+    implicit val rw: RW[ContractInvitation] = macroRW
+}
+
+// ------------------------------------------------------------------------

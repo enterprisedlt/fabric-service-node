@@ -28,26 +28,11 @@ object ComponentCandidate {
 )
 
 object JoinRequest {
-    val Defaults = new JoinRequest(
-        organization = Organization(
-            mspId = "",
-            name = "",
-            memberNumber = 0,
-            knownHosts = Array.empty[KnownHostRecord]
-        ),
-        organizationCertificates = OrganizationCertificates(
-            caCerts = Array.empty[String],
-            tlsCACerts = Array.empty[String],
-            adminCerts = Array.empty[String]
-        )
-    )
-
     implicit val rw: RW[JoinRequest] = macroRW
 }
 
 @Lenses case class Organization(
     mspId: String,
-    name: String,
     memberNumber: Long,
     knownHosts: Array[KnownHostRecord]
 )

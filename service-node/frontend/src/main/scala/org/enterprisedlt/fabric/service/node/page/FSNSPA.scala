@@ -21,19 +21,47 @@ object FSNSPA {
     )
 
     case class State(
-        activePage: Int
+        activePage: Int,
+        progress: Array[Array[Boolean]]
     )
 
     private val component = ScalaComponent.builder[Props]("Initial")
-      .initialState(State(0))
+      .initialStateFromProps(p =>
+          State(
+              activePage = 0,
+              p.pages.zipWithIndex.map { case (_, i) => Array.fill(p.pages(i).actions.size)(false) }.toArray)
+      )
       .renderBackend[Backend]
       .componentWillMount($ => Context.State.connectP($.backend))
+      .componentWillUnmount($ => Context.State.disconnectP($.backend))
       .build
 
     class Backend(val $: BackendScope[Props, State]) extends GlobalStateAwareP[AppState, State, Props] {
 
         def switchTo(page: Int): CallbackTo[Unit] = {
             $.modState(s => s.copy(activePage = page))
+        }
+
+        def withProgress(pageIndex: Int, actionIndex: Int)(action: CallbackTo[Unit] => CallbackTo[Unit]): CallbackTo[Unit] = {
+            $.modState { s =>
+                println(s"Item $pageIndex:$actionIndex is in progress now")
+                s.copy(
+                    progress = {
+                        s.progress(pageIndex)(actionIndex) = true
+                        s.progress
+                    }
+                )
+            } >> action(
+                $.modState { s =>
+                    println(s"Item $pageIndex:$actionIndex is complete now")
+                    s.copy(
+                        progress = {
+                            s.progress(pageIndex)(actionIndex) = false
+                            s.progress
+                        }
+                    )
+                }
+            )
         }
 
         override def renderWithGlobal(s: State, p: Props, g: AppState): VdomTagOf[Div] = {
@@ -88,10 +116,13 @@ object FSNSPA {
                         )
                     ).when(activePage.actions.nonEmpty),
                     <.div(^.width := "500px", ^.id := "action-forms",
-                        activePage.actions.map { action =>
+                        activePage.actions.zipWithIndex.map { case (action, index) =>
                             <.div(^.className := "collapse", ^.id := action.id, data.parent := "#action-forms",
                                 <.div(^.className := "card card-body",
-                                    action.actionForm
+                                    <.div(^.className := "d-flex justify-content-center align-content-lg-center",
+                                        <.div(^.className := "spinner-border spinner-border-lg")
+                                    ).when(s.progress(s.activePage)(index)),
+                                    action.actionForm(withProgress(s.activePage, index)).when(!s.progress(s.activePage)(index)),
                                 )
                             )
                         }.toTagMod
@@ -118,5 +149,5 @@ case class Page(
 case class PageAction(
     name: String,
     id: String,
-    actionForm: TagMod
+    actionForm: ((CallbackTo[Unit] => CallbackTo[Unit]) => CallbackTo[Unit]) => TagMod
 )
