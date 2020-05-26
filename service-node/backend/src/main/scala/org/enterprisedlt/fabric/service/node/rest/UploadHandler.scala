@@ -26,15 +26,15 @@ class UploadHandler(
 
     private val logger = LoggerFactory.getLogger(this.getClass)
 
-
     override def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {
-        RestEndpointContext.set(RestEndpointContext(request, response))
         if (request.getMethod == "POST" && endpoints.exists(_.uri == request.getPathInfo)) {
+            RestEndpointContext.set(RestEndpointContext(request, response))
             request.setAttribute(Request.MULTIPART_CONFIG_ELEMENT, multipartConfig)
             processRequest(endpoints, request, response)
+            RestEndpointContext.clean()
+            baseRequest.setHandled(true)
         }
-        RestEndpointContext.clean()
-        baseRequest.setHandled(true)
+
     }
 
     private def processRequest(

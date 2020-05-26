@@ -1,7 +1,6 @@
 package org.enterprisedlt.fabric.service.node
 
 import java.security.Security
-import java.util.concurrent.atomic.AtomicReference
 
 import javax.servlet.MultipartConfigElement
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -19,7 +18,6 @@ import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
 import org.enterprisedlt.fabric.service.node.model.FabricServiceStateHolder
 import org.enterprisedlt.fabric.service.node.process.ProcessManager
 import org.enterprisedlt.fabric.service.node.rest.{FileUploadEndpoint, JsonRestEndpoint, UploadHandler}
-import org.enterprisedlt.fabric.service.node.rest.JsonRestEndpoint
 import org.enterprisedlt.fabric.service.node.shared.FabricServiceState
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.slf4j.LoggerFactory
