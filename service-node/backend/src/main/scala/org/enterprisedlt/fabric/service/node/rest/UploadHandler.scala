@@ -1,6 +1,5 @@
 package org.enterprisedlt.fabric.service.node.rest
 
-import java.io.File
 import java.nio.file.{Files, Paths, StandardOpenOption}
 
 import javax.servlet.MultipartConfigElement
@@ -28,15 +27,15 @@ class UploadHandler(
     private val multipartConfig: MultipartConfigElement = new MultipartConfigElement(tmpLocation, maxFileSize, maxRequestSize, fileSizeThreshold);
 
     override def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {
-        endpoints
-          .find(_.uri == request.getPathInfo)
-          .foreach { endpoint =>
-              if (request.getMethod == "POST") {
+        if (request.getMethod == "POST") {
+            endpoints
+              .find(_.uri == request.getPathInfo)
+              .foreach { endpoint =>
                   request.setAttribute(Request.MULTIPART_CONFIG_ELEMENT, multipartConfig)
                   processRequest(endpoint, request, response)
                   baseRequest.setHandled(true)
               }
-          }
+        }
     }
 
     private def processRequest(

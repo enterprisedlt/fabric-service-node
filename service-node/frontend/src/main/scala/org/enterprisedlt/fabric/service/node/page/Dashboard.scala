@@ -502,20 +502,14 @@ object Dashboard {
         }
 
         def createChannel(channelName: String)(r: Callback): Callback = Callback.future {
-            ServiceNodeRemote.createChannel(channelName).map(_ => Callback {
-                println("create channel call back done")
-            }).map(_ => r)
+            ServiceNodeRemote.createChannel(channelName).map(_ => r)
         }
 
         def uploadContract(s: State)(r: Callback): Callback = Callback.future {
             val formData = new FormData
-            formData
-              .append("contractFile", s.contractFile)
-            formData
-              .append("descriptorFile", s.descriptorFile)
-            ServiceNodeRemote.uploadContract(formData).map(_ => Callback {
-                println("upload chaincode call back done")
-            }).map(_ => r)
+            formData.append("contractFile", s.contractFile)
+            formData.append("descriptorFile", s.descriptorFile)
+            ServiceNodeRemote.uploadContract(formData).map(_ => r)
         }
 
 
