@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node.rest
 
-import java.nio.file.{Files, Path, Paths, StandardOpenOption}
+import java.nio.file.{Files, Paths, StandardOpenOption}
 
 import javax.servlet.MultipartConfigElement
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
@@ -19,49 +19,38 @@ import scala.util.Try
 
 
 class UploadHandler(
-    multipartConfig: MultipartConfigElement,
-    endpoints: Array[FileUploadEndpoint],
-    createCodec: () => ServerCodec,
+    tmpLocation: String,
+    maxFileSize: Int,
+    maxRequestSize: Int,
+    fileSizeThreshold: Int,
+    endpoints: Array[FileUploadEndpoint]
 ) extends AbstractHandler {
 
     private val logger = LoggerFactory.getLogger(this.getClass)
+    private val multipartConfig: MultipartConfigElement = new MultipartConfigElement(tmpLocation, maxFileSize, maxRequestSize, fileSizeThreshold);
 
     override def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {
-        if (request.getMethod == "POST" && endpoints.exists(_.uri == request.getPathInfo)) {
-            RestEndpointContext.set(RestEndpointContext(request, response))
-            request.setAttribute(Request.MULTIPART_CONFIG_ELEMENT, multipartConfig)
-            processRequest(endpoints, request, response)
-            RestEndpointContext.clean()
-            baseRequest.setHandled(true)
-        }
+        endpoints
+          .find(_.uri == request.getPathInfo)
+          .foreach { endpoint =>
+              if (request.getMethod == "POST") {
+                  RestEndpointContext.set(RestEndpointContext(request, response))
+                  request.setAttribute(Request.MULTIPART_CONFIG_ELEMENT, multipartConfig)
+                  processRequest(endpoint, request, response)
+                  RestEndpointContext.clean()
+                  baseRequest.setHandled(true)
+              }
+          }
+
 
     }
 
     private def processRequest(
-        endpoints: Array[FileUploadEndpoint],
+        endpoint: FileUploadEndpoint,
         request: HttpServletRequest, response: HttpServletResponse
     ): Unit = {
-        if (endpoints.exists(_.uri == request.getPathInfo)) {
-            val storeLocation = endpoints
-              .filter(_.uri == request.getPathInfo)
-              .head
-              .location
-            Util.ensureDirExists(storeLocation)
-            processParts(request, response, Paths.get(storeLocation)) match {
-                case Right(_) => response.setStatus(HttpServletResponse.SC_OK)
-                case Left(msg) =>
-                    logger.info(s"Internal error: $msg")
-                    response.getWriter.println(s"Internal error: $msg")
-                    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-            }
-
-        }
-        else
-            response.setStatus(HttpServletResponse.SC_NOT_FOUND)
-    }
-
-
-    private def processParts(request: HttpServletRequest, response: HttpServletResponse, outputDir: Path): Either[String, Unit] = {
+        Util.mkDirs(endpoint.fileDir)
+        val outputDir = Paths.get(endpoint.fileDir)
         Try {
             request.getParts.forEach { part =>
                 val filename = part.getSubmittedFileName
@@ -80,11 +69,12 @@ class UploadHandler(
             case Right(_) =>
                 response.setContentType(MimeTypes.Type.TEXT_PLAIN.asString())
                 response.setCharacterEncoding("utf-8")
-                Right(())
+                response.setStatus(HttpServletResponse.SC_OK)
 
             case Left(msg) =>
-                Left(msg.getMessage)
+                logger.info(s"Internal error: $msg")
+                response.getWriter.println(s"Internal error: $msg")
+                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
         }
-
     }
 }

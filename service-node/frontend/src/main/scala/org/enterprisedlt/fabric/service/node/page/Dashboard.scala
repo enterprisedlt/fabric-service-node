@@ -298,7 +298,7 @@ object Dashboard {
                                     name = "Upload",
                                     id = "upload-contract",
                                     actionForm = progress =>
-                                        <.form(
+                                        <.div(
                                             <.div(^.className := "form-group row",
                                                 <.label(^.className := "col-sm-4 col-form-label", "Contract"),
                                                 <.div(^.className := "input-group input-group-sm col-sm-8",

@@ -5,5 +5,5 @@ package org.enterprisedlt.fabric.service.node.rest
  */
 case class FileUploadEndpoint(
     uri: String,
-    location: String
+    fileDir: String
 )

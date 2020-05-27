@@ -214,14 +214,6 @@ object Util {
     def mkDirs(path: String): Boolean = new File(path).mkdirs()
 
 
-    def ensureDirExists(path: String): Unit = {
-        val dir = new File(path)
-        if (!dir.exists()) {
-            Util.mkDirs(path)
-        }
-
-    }
-
     //=========================================================================
     def writeTextFile(filePath: String, content: String): Unit = {
         val writer = new FileWriter(filePath)
