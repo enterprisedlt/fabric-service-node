@@ -7,7 +7,7 @@ import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.page.form.{ComponentForm, CreateContract, RegisterOrganization, ServerForm}
+import org.enterprisedlt.fabric.service.node.page.form.{ComponentFormDashboard, CreateContract, RegisterOrganization, ServerForm}
 import org.enterprisedlt.fabric.service.node.shared.{ContractParticipant, CreateContractRequest, EnvironmentVariable, PortBind, RegisterBoxManager, VolumeBind}
 import org.enterprisedlt.fabric.service.node.util.Html.data
 import org.scalajs.dom
@@ -178,7 +178,7 @@ object Dashboard {
                                     name = "Component",
                                     id = "component-form",
                                     _ => <.div(
-                                        ComponentForm(s, State.componentCandidate, g),
+                                        ComponentFormDashboard(s, State.componentCandidate, g),
                                         <.div(^.className := "form-group mt-1",
                                             <.button(
                                                 ^.className := "btn btn-sm btn-outline-secondary",

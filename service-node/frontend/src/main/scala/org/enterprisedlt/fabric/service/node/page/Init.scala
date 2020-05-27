@@ -367,7 +367,7 @@ object Init {
                                         id = "component-form",
                                         actionForm = _ =>
                                             <.div(
-                                                ComponentForm(s, State.componentCandidate, g.info),
+                                                ComponentFormInit(s, State.componentCandidate, g.info),
                                                 <.div(^.className := "form-group mt-1",
                                                     <.button(
                                                         ^.className := "btn btn-sm btn-outline-secondary",

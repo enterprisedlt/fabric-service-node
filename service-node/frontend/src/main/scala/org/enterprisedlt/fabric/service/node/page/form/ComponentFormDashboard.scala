@@ -8,8 +8,8 @@ import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node.Ready
 import org.enterprisedlt.fabric.service.node.model.ComponentCandidate
 import org.enterprisedlt.fabric.service.node.shared.{Box, EnvironmentVariable}
-import org.scalajs.dom.html.Select
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
+import org.scalajs.dom.html.Select
 
 /**
  * @author Alexey Polubelov
@@ -19,7 +19,7 @@ import org.enterprisedlt.fabric.service.node.util.DataFunction._
     environmentVariable: EnvironmentVariable
 )
 
-object ComponentForm extends StateFullFormExt[ComponentCandidate, Ready, ComponentFormState]("register-component-form") {
+object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready, ComponentFormState]("register-component-form") {
 
     override def initState(c: ComponentCandidate, data: Ready): ComponentFormState = {
         ComponentFormState(
@@ -76,24 +76,18 @@ object ComponentForm extends StateFullFormExt[ComponentCandidate, Ready, Compone
                     }.toTagMod,
                     <.tr(
                         <.td(
-                            <.select(className := "form-control form-control-sm",
-                                bind(s) := ComponentFormState.environmentVariable / EnvironmentVariable.key,
-                                p.environmentVariables.map { envVar =>
-                                    option((className := "selected").when(s.environmentVariable.key == envVar.key), envVar.key)
-                                }.toTagMod
-                            ),
+                            <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
+                                bind(s) := ComponentFormState.environmentVariable / EnvironmentVariable.key
+                            )
                         ),
                         <.td(
-                            <.select(className := "form-control form-control-sm",
-                                bind(s) := ComponentFormState.environmentVariable / EnvironmentVariable.value,
-                                p.environmentVariables.map { envVar =>
-                                    option((className := "selected").when(s.environmentVariable.value == envVar.value), envVar.value)
-                                }.toTagMod
-                            ),
+                            <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
+                                bind(s) := ComponentFormState.environmentVariable / EnvironmentVariable.value
+                            )
                         ),
                         <.td(
                             <.button(^.className := "btn btn-sm btn-outline-success float-right", //^.aria.label="remove">
-                                ^.onClick --> addEnvironmentVariable(s.environmentVariable),
+                                ^.onClick --> addEnvironmentVariable(s),
                                 <.i(^.className := "fas fa-plus-circle")
                             )
                         )
@@ -212,10 +206,11 @@ object ComponentForm extends StateFullFormExt[ComponentCandidate, Ready, Compone
         )
 
 
-    private def addEnvironmentVariable(environmentVariable: EnvironmentVariable)
-      (implicit modState: (ComponentCandidate => ComponentCandidate) => Callback)
+    private def addEnvironmentVariable(s: ComponentFormState)
+      (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
     : CallbackTo[Unit] =
-        modState(ComponentCandidate.environmentVariables.modify(_ :+ environmentVariable))
+        modP(ComponentCandidate.environmentVariables.modify(_ :+ s.environmentVariable)) >>
+          modS(ComponentFormState.environmentVariable.modify(_ => EnvironmentVariable.Defaults))
 
 
     private def renderComponentType(p: ComponentCandidate)(implicit modState: (ComponentCandidate => ComponentCandidate) => Callback): VdomTagOf[Select] = {
