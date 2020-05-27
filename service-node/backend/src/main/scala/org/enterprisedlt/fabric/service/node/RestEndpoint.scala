@@ -12,7 +12,7 @@ import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.process.{ProcessManager, StartCustomNodeDescriptor, StartCustomNodeRequest}
+import org.enterprisedlt.fabric.service.node.process.{CustomComponentRequest, ProcessManager, StartCustomComponentRequest}
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
 import org.enterprisedlt.fabric.service.node.shared._
@@ -50,14 +50,14 @@ class RestEndpoint(
     }
 
     @Post("/admin/start-custom-node")
-    def startCustomNode(descriptor: StartCustomNodeDescriptor): Either[String, String] = {
-        val crypto = cryptoManager.generateCustomComponentCrypto(descriptor.boxName)
-        val request = StartCustomNodeRequest(
+    def startCustomNode(request: CustomComponentRequest): Either[String, String] = {
+        val crypto = cryptoManager.generateCustomComponentCrypto(request.boxName)
+        val startCustomComponentRequest = StartCustomComponentRequest(
             serviceNodeName,
-            descriptor,
+            request,
             crypto
         )
-        processManager.startCustomNode(descriptor.boxName, request)
+        processManager.startCustomNode(request.boxName, startCustomComponentRequest)
     }
 
     @Get("/service/list-boxes")

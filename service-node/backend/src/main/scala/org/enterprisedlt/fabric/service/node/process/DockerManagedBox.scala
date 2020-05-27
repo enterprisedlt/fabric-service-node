@@ -117,53 +117,55 @@ class DockerManagedBox(
     //    }
 
 
-    override def startCustomNode(request: StartCustomNodeRequest): Either[String, String] = {
-        val descriptor = request.descriptor
-        val hostComponentPath = s"$hostPath/components/${descriptor.containerName}"
-        val innerComponentPath = s"$InnerPath/components/${descriptor.containerName}"
-        val distributivesPath = s"$hostPath/distributives/${descriptor.componentType}"
-        val componentNameFolder = new File(s"$InnerPath/distributives/${descriptor.componentType}").getAbsoluteFile
-        //
-        pullImageIfNeeded(request.descriptor.image)
-        logger.info(s"Starting ${descriptor.containerName}...")
+    override def startCustomNode(customComponentRequest: StartCustomComponentRequest): Either[String, String] = {
+        val request = customComponentRequest.request
+        val hostComponentPath = s"$hostPath/components/${request.containerName}"
+        val innerComponentPath = s"$InnerPath/components/${request.containerName}"
+        val componentDistibutivePath = s"$hostPath/distributives/${request.componentType}"
+        logger.info(s"Starting ${request.containerName}...")
         for {
-            _ <- checkComponentTypeExists(request.serviceNodeName, descriptor.componentType, componentNameFolder)
+            _ <- checkComponentTypeExists(customComponentRequest.serviceNodeName, request.componentType, componentDistibutivePath)
+            descriptor <- Try(Util.codec.fromJson(
+                new FileReader(s"$componentDistibutivePath/${request.componentType}.json"),
+                classOf[CustomComponentDescriptor]
+            )).toEither.left.map(_.getMessage)
+            _ <- pullImageIfNeeded(descriptor.image)
             osnContainerId <- Try {
                 Util.mkDirs(innerComponentPath)
-                storeCustomComponentCryptoMaterial(s"$innerComponentPath/crypto", descriptor.componentType, request.crypto)
+                storeCustomComponentCryptoMaterial(s"$innerComponentPath/crypto", request.componentType, customComponentRequest.crypto)
                 // start container
                 val configHost = new HostConfig()
                   .withBinds(
                       (Array(
-                          new Bind(distributivesPath, new Volume("/opt/config")),
+                          new Bind(componentDistibutivePath, new Volume("/opt/config")),
                           new Bind(s"$hostPath/hosts", new Volume("/etc/hosts"))
                       ) ++
-                        descriptor.volumes.map { bind =>
+                        request.volumes.map { bind =>
                             new Bind(s"$hostComponentPath/${bind.externalHost}/", new Volume(bind.internalHost))
                         }
                         ).toList.asJava
                   )
                   .withPortBindings(
-                      descriptor.ports.map { port =>
+                      request.ports.map { port =>
                           new PortBinding(new Binding("0.0.0.0", port.externalPort), new ExposedPort(port.internalPort.toInt, InternetProtocol.TCP))
                       }.toList.asJava
                   )
                   .withNetworkMode(networkName)
                   .withLogConfig(logConfig)
                 val osnContainerId: String = docker.createContainerCmd(descriptor.image.getName)
-                  .withName(descriptor.containerName)
+                  .withName(request.containerName)
                   .withEnv(
-                      descriptor.environmentVariables.map { envVar =>
+                      request.environmentVariables.map { envVar =>
                           s"${envVar.key}=${envVar.value}"
                       }.toList.asJava
                   )
                   .withWorkingDir(descriptor.workingDir)
                   .withCmd(descriptor.command.split(" ").toList.asJava)
-                  .withExposedPorts(descriptor.ports.map(port => new ExposedPort(port.externalPort.toInt, InternetProtocol.TCP)).toList.asJava)
+                  .withExposedPorts(request.ports.map(port => new ExposedPort(port.externalPort.toInt, InternetProtocol.TCP)).toList.asJava)
                   .withHostConfig(configHost)
                   .exec().getId
                 docker.startContainerCmd(osnContainerId).exec
-                logger.info(s"Custom Node ${descriptor.containerName} started, ID: $osnContainerId")
+                logger.info(s"Custom Node ${request.containerName} started, ID: $osnContainerId")
                 osnContainerId
             }.toEither.left.map(_.getMessage)
         } yield osnContainerId
@@ -582,7 +584,8 @@ class DockerManagedBox(
 
     // =================================================================================================================
 
-    private def checkComponentTypeExists(serviceNodeName: String, componentType: String, componentNameFolder: File): Either[String, Unit] = {
+    private def checkComponentTypeExists(serviceNodeName: String, componentType: String, distributivesPath: String): Either[String, Unit] = {
+        val componentNameFolder = new File(distributivesPath).getAbsoluteFile
         if (componentNameFolder.exists()) {
             logger.info(s"Component type $componentType is already exists on a box manager")
             Right(())
@@ -595,7 +598,7 @@ class DockerManagedBox(
 
     private def getServiceNodeComponent(serviceNodeName: String, componentType: String, componentNameFolder: File): Either[String, Unit] = {
         for {
-            distributorClient <- distributorClients.get(serviceNodeName).toRight(s"Service node ${serviceNodeName} is not registered in box manager")
+            distributorClient <- distributorClients.get(serviceNodeName).toRight(s"Service node $serviceNodeName is not registered in box manager")
             distributiveBase64 <- distributorClient.getComponentTypeDistributive(componentType)
             distributive <- Try(Base64.getDecoder.decode(distributiveBase64)).toEither.left.map(_.getMessage)
             _ <- Util.untarFile(distributive, componentNameFolder.getAbsolutePath)

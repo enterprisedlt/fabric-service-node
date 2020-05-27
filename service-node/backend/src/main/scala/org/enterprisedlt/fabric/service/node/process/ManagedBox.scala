@@ -16,7 +16,7 @@ trait ManagedBox {
 //    def registerCustomNodeComponentType(serviceNodeName: String, componentName: String): Either[String, String]
 
     @Post("/start-custom-node")
-    def startCustomNode(request: StartCustomNodeRequest): Either[String, String]
+    def startCustomNode(request: StartCustomComponentRequest): Either[String, String]
 
     @Post("/start-ordering-node")
     def startOrderingNode(request: StartOSNRequest): Either[String, String]

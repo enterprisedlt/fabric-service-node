@@ -5,21 +5,25 @@ package org.enterprisedlt.fabric.service.node.process
  */
 // =================================================================================================================
 
-case class StartCustomNodeDescriptor(
-    boxName: String,
-    componentType: String,
-    containerName: String,
+case class CustomComponentDescriptor(
     image: Image,
-    environmentVariables: Array[EnvironmentVariable],
-    ports: Array[PortBind],
-    volumes: Array[VolumeBind],
     command: String,
     workingDir: String
 )
 
-case class StartCustomNodeRequest(
+
+case class CustomComponentRequest(
+    boxName: String,
+    componentType: String,
+    containerName: String,
+    environmentVariables: Array[EnvironmentVariable],
+    ports: Array[PortBind],
+    volumes: Array[VolumeBind],
+)
+
+case class StartCustomComponentRequest(
     serviceNodeName: String,
-    descriptor: StartCustomNodeDescriptor,
+    request: CustomComponentRequest,
     crypto: CustomComponentCerts
 )
 
