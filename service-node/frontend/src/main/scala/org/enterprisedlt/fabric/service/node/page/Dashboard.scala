@@ -303,8 +303,10 @@ object Dashboard {
                                                 <.label(^.className := "col-sm-4 col-form-label", "Contract"),
                                                 <.div(^.className := "input-group input-group-sm col-sm-8",
                                                     <.div(^.className := "custom-file",
-                                                        <.input(^.`type` := "file", ^.className := "custom-file-input", ^.id := "contract", ^.onChange ==> changeContractFile),
-                                                        <.label(^.`class` := "custom-file-label", s.contractName)
+                                                        <.input(^.`type` := "file", ^.className := "custom-file-input",
+                                                            ^.onChange ==> changeContractFile
+                                                        ),
+                                                        <.label(^.className := "custom-file-label", s.contractName)
                                                     )
                                                 )
                                             ),
@@ -312,8 +314,10 @@ object Dashboard {
                                                 <.label(^.className := "col-sm-4 col-form-label", "Descriptor"),
                                                 <.div(^.className := "input-group input-group-sm col-sm-8",
                                                     <.div(^.className := "custom-file",
-                                                        <.input(^.`type` := "file", ^.className := "custom-file-input", ^.id := "descriptor", ^.onChange ==> changeDescriptorFile),
-                                                        <.label(^.`class` := "custom-file-label", s.descriptorName)
+                                                        <.input(^.`type` := "file", ^.className := "custom-file-input",
+                                                            ^.onChange ==> changeDescriptorFile
+                                                        ),
+                                                        <.label(^.className := "custom-file-label", s.descriptorName)
                                                     )
                                                 )
                                             ),

@@ -1,5 +1,6 @@
 package org.enterprisedlt.fabric.service.node.rest
 
+import java.io.File
 import java.nio.file.{Files, Paths, StandardOpenOption}
 
 import javax.servlet.MultipartConfigElement
@@ -14,10 +15,8 @@ import org.slf4j.LoggerFactory
 import scala.util.Try
 
 /**
- * @author Alexey Polubelov
+ * @author Maxim Fedin
  */
-
-
 class UploadHandler(
     tmpLocation: String,
     maxFileSize: Int,
@@ -25,7 +24,6 @@ class UploadHandler(
     fileSizeThreshold: Int,
     endpoints: Array[FileUploadEndpoint]
 ) extends AbstractHandler {
-
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val multipartConfig: MultipartConfigElement = new MultipartConfigElement(tmpLocation, maxFileSize, maxRequestSize, fileSizeThreshold);
 
@@ -34,15 +32,11 @@ class UploadHandler(
           .find(_.uri == request.getPathInfo)
           .foreach { endpoint =>
               if (request.getMethod == "POST") {
-                  RestEndpointContext.set(RestEndpointContext(request, response))
                   request.setAttribute(Request.MULTIPART_CONFIG_ELEMENT, multipartConfig)
                   processRequest(endpoint, request, response)
-                  RestEndpointContext.clean()
                   baseRequest.setHandled(true)
               }
           }
-
-
     }
 
     private def processRequest(
@@ -53,14 +47,13 @@ class UploadHandler(
         val outputDir = Paths.get(endpoint.fileDir)
         Try {
             request.getParts.forEach { part =>
-                val filename = part.getSubmittedFileName
-                if (Option(filename).nonEmpty) {
-                    logger.info(s"Got Part ${part.getName} with size = ${part.getSize}, contentType = ${part.getContentType}, submittedFileName $filename")
+                Option(part.getSubmittedFileName).foreach { filename =>
+                    logger.debug(s"Got Part ${part.getName} with size = ${part.getSize}, contentType = ${part.getContentType}, submittedFileName $filename")
                     val outputFile = outputDir.resolve(filename)
                     val is = part.getInputStream
                     val os = Files.newOutputStream(outputFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
                     IO.copy(is, os)
-                    logger.info(s"Saved Part ${part.getName} to ${outputFile.toString}")
+                    logger.debug(s"Saved Part ${part.getName} to ${outputFile.toString}")
                     is.close()
                     os.close()
                 }
@@ -71,9 +64,10 @@ class UploadHandler(
                 response.setCharacterEncoding("utf-8")
                 response.setStatus(HttpServletResponse.SC_OK)
 
-            case Left(msg) =>
-                logger.info(s"Internal error: $msg")
-                response.getWriter.println(s"Internal error: $msg")
+            case Left(ex) =>
+                val msg = s"Unable to process file: ${ex.getMessage}"
+                logger.warn(msg, ex)
+                response.getWriter.println(msg)
                 response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
         }
     }
