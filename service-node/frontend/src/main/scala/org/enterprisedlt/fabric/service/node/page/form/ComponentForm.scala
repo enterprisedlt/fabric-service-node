@@ -9,6 +9,7 @@ import org.enterprisedlt.fabric.service.node.Ready
 import org.enterprisedlt.fabric.service.node.model.ComponentCandidate
 import org.enterprisedlt.fabric.service.node.shared.{Box, EnvironmentVariable}
 import org.scalajs.dom.html.Select
+import org.enterprisedlt.fabric.service.node.util.DataFunction._
 
 /**
  * @author Alexey Polubelov
@@ -27,7 +28,7 @@ object ComponentForm extends StateFullFormExt[ComponentCandidate, Ready, Compone
     }
 
     override def render(s: ComponentFormState, p: ComponentCandidate, data: Ready)
-      (implicit modS: (ComponentFormState => ComponentFormState) => Callback, modP: (ComponentCandidate => ComponentCandidate) => Callback)
+      (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
     : VdomNode =
         <.div(
             <.div(^.className := "form-group row",
