@@ -15,8 +15,9 @@ import org.enterprisedlt.fabric.service.node.util.Html.data
 import org.scalajs.dom.html.Div
 import org.scalajs.dom.raw.{File, FileReader}
 
-import scala.scalajs.js.UndefOr
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.scalajs.js.UndefOr
+
 /**
  * @author Alexey Polubelov
  */
@@ -48,7 +49,11 @@ object Init {
                   box = "",
                   name = "",
                   port = 0,
-                  componentType = ComponentCandidate.Types.head
+                  componentType = ComponentCandidate.Types.head,
+                  //
+                  environmentVariables = Array.empty[EnvironmentVariable],
+                  ports = Array.empty[PortBind],
+                  volumes = Array.empty[VolumeBind]
               ),
               //
               network = NetworkConfig.Default,
@@ -124,14 +129,20 @@ object Init {
                         componentType = ComponentCandidate.OSN,
                         name = name,
                         box = defaultBox,
-                        port = 7001 + index
+                        port = 7001 + index,
+                        environmentVariables = Array.empty[EnvironmentVariable],
+                        ports = Array.empty[PortBind],
+                        volumes = Array.empty[VolumeBind]
                     )
                 } :+
                   ComponentCandidate(
                       componentType = ComponentCandidate.Peer,
                       name = "peer0",
                       box = defaultBox,
-                      port = 7010
+                      port = 7010,
+                      environmentVariables = Array.empty[EnvironmentVariable],
+                      ports = Array.empty[PortBind],
+                      volumes = Array.empty[VolumeBind]
                   )
 
             addNetworkComponents(components, g)

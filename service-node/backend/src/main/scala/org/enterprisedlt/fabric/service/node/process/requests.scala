@@ -1,5 +1,7 @@
 package org.enterprisedlt.fabric.service.node.process
 
+import org.enterprisedlt.fabric.service.node.shared.{EnvironmentVariable, PortBind, VolumeBind}
+
 /**
  * @author Alexey Polubelov
  */
@@ -35,20 +37,7 @@ case class Image(
     def getName = s"$name:$tag"
 }
 
-case class PortBind(
-    externalPort: String,
-    internalPort: String
-)
 
-case class VolumeBind(
-    externalHost: String,
-    internalHost: String
-)
-
-case class EnvironmentVariable(
-    key: String,
-    value: String
-)
 
 
 case class StartOSNRequest(

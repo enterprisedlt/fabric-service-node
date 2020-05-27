@@ -266,4 +266,38 @@ object ContractInvitation {
     implicit val rw: RW[ContractInvitation] = macroRW
 }
 
+
+@Lenses case class PortBind(
+    externalPort: String,
+    internalPort: String
+)
+
+object PortBind {
+    implicit val rw: RW[PortBind] = macroRW
+}
+
+@Lenses case class VolumeBind(
+    externalHost: String,
+    internalHost: String
+)
+
+object VolumeBind {
+    implicit val rw: RW[VolumeBind] = macroRW
+}
+
+@Lenses case class EnvironmentVariable(
+    key: String,
+    value: String
+)
+
+object EnvironmentVariable {
+    val Defaults: EnvironmentVariable =
+        new EnvironmentVariable(
+            key = "",
+            value = ""
+        )
+
+    implicit val rw: RW[EnvironmentVariable] = macroRW
+}
+
 // ------------------------------------------------------------------------

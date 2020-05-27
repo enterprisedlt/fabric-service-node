@@ -8,7 +8,7 @@ import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.page.form.{ComponentForm, CreateContract, RegisterOrganization, ServerForm}
-import org.enterprisedlt.fabric.service.node.shared.{ContractParticipant, CreateContractRequest, RegisterBoxManager}
+import org.enterprisedlt.fabric.service.node.shared.{ContractParticipant, CreateContractRequest, EnvironmentVariable, PortBind, RegisterBoxManager, VolumeBind}
 import org.enterprisedlt.fabric.service.node.util.Html.data
 import org.scalajs.dom
 import org.scalajs.dom.html.Div
@@ -52,7 +52,10 @@ object Dashboard {
                   box = g.info.boxes.headOption.map(_.name).getOrElse(""),
                   name = "",
                   port = 0,
-                  componentType = ComponentCandidate.Types.head
+                  componentType = ComponentCandidate.Types.head,
+                  environmentVariables = Array.empty[EnvironmentVariable],
+                  ports = Array.empty[PortBind],
+                  volumes = Array.empty[VolumeBind]
               ),
               channelName = "",
               createContractRequest = CreateContractRequest(
