@@ -2,7 +2,7 @@ package org.enterprisedlt.fabric.service.node.page
 
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
-import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ScalaComponent}
+import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ReactEventFromInput, ScalaComponent}
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
@@ -11,11 +11,13 @@ import org.enterprisedlt.fabric.service.node.page.form.{ComponentForm, CreateCon
 import org.enterprisedlt.fabric.service.node.shared.{ContractParticipant, CreateContractRequest, RegisterBoxManager}
 import org.enterprisedlt.fabric.service.node.util.Html.data
 import org.scalajs.dom
+import org.scalajs.dom.FormData
 import org.scalajs.dom.html.Div
-import org.scalajs.dom.raw.{Blob, HTMLLinkElement, URL}
+import org.scalajs.dom.raw.{Blob, File, HTMLLinkElement, URL}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js
+import scala.scalajs.js.UndefOr
 
 /**
  * @author Alexey Polubelov
@@ -30,9 +32,13 @@ object Dashboard {
         // Network
         channelName: String,
         createContractRequest: CreateContractRequest,
+        contractFile: File,
+        contractName: String,
+        descriptorFile: File,
+        descriptorName: String,
 
         // Goverment
-        registerOrganizationRequest: JoinRequest,
+        registerOrganizationRequest: JoinRequest
 
         //        block: BlockConfig,
         //        raft: RaftConfig,
@@ -63,6 +69,10 @@ object Dashboard {
                   parties = Array.empty[ContractParticipant],
                   initArgs = defaultPackage.map(p => Array.fill(p.initArgsNames.length)("")).getOrElse(Array.empty[String])
               ),
+              contractFile = null,
+              contractName = "",
+              descriptorFile = null,
+              descriptorName = "",
               //
               registerOrganizationRequest = JoinRequest(
                   organization = Organization(
@@ -283,7 +293,49 @@ object Dashboard {
                                                 )
                                             )
                                         )
-                                )
+                                ),
+                                PageAction(
+                                    name = "Upload",
+                                    id = "upload-contract",
+                                    actionForm = progress =>
+                                        <.div(
+                                            <.div(^.className := "form-group row",
+                                                <.label(^.className := "col-sm-4 col-form-label", "Contract"),
+                                                <.div(^.className := "input-group input-group-sm col-sm-8",
+                                                    <.div(^.className := "custom-file",
+                                                        <.input(^.`type` := "file", ^.className := "custom-file-input",
+                                                            ^.onChange ==> changeContractFile
+                                                        ),
+                                                        <.label(^.className := "custom-file-label", s.contractName)
+                                                    )
+                                                )
+                                            ),
+                                            <.div(^.className := "form-group row",
+                                                <.label(^.className := "col-sm-4 col-form-label", "Descriptor"),
+                                                <.div(^.className := "input-group input-group-sm col-sm-8",
+                                                    <.div(^.className := "custom-file",
+                                                        <.input(^.`type` := "file", ^.className := "custom-file-input",
+                                                            ^.onChange ==> changeDescriptorFile
+                                                        ),
+                                                        <.label(^.className := "custom-file-label", s.descriptorName)
+                                                    )
+                                                )
+                                            ),
+                                            <.div(^.className := "form-group mt-1",
+                                                <.button(
+                                                    ^.className := "btn btn-sm btn-outline-secondary",
+                                                    data.toggle := "collapse", data.target := "#upload-contract",
+                                                    ^.aria.expanded := true, ^.aria.controls := "upload-contract",
+                                                    "Cancel"
+                                                ),
+                                                <.button(
+                                                    ^.className := "btn btn-sm btn-outline-success float-right",
+                                                    ^.onClick --> progress(uploadContract(s)),
+                                                    "Upload contract",
+                                                )
+                                            )
+                                        )
+                                ),
                             )
                         ),
                         Page(
@@ -418,6 +470,21 @@ object Dashboard {
             }
         }
 
+        def changeDescriptorFile(event: ReactEventFromInput): CallbackTo[Unit] = {
+            val file: UndefOr[File] = event.target.files(0)
+            file.map { f =>
+                $.modState(x => x.copy(descriptorName = f.name, descriptorFile = f))
+            }.getOrElse(Callback())
+        }
+
+        def changeContractFile(event: ReactEventFromInput): CallbackTo[Unit] = {
+            val file: UndefOr[File] = event.target.files(0)
+            file.map { f =>
+                $.modState(x => x.copy(contractName = f.name, contractFile = f))
+            }.getOrElse(Callback())
+        }
+
+
         def addBox(boxCandidate: RegisterBoxManager)(r: Callback): Callback = Callback.future {
             ServiceNodeRemote.registerBox(boxCandidate).map(_ => r)
         }
@@ -435,10 +502,16 @@ object Dashboard {
         }
 
         def createChannel(channelName: String)(r: Callback): Callback = Callback.future {
-            ServiceNodeRemote.createChannel(channelName).map(_ => Callback{
-                println("create channel call back done")
-            }).map(_ => r)
+            ServiceNodeRemote.createChannel(channelName).map(_ => r)
         }
+
+        def uploadContract(s: State)(r: Callback): Callback = Callback.future {
+            val formData = new FormData
+            formData.append("contractFile", s.contractFile)
+            formData.append("descriptorFile", s.descriptorFile)
+            ServiceNodeRemote.uploadContract(formData).map(_ => r)
+        }
+
 
         def createContract(request: CreateContractRequest)(r: Callback): Callback = Callback.future {
             ServiceNodeRemote.createContract(request).map(_ => r)

@@ -2,6 +2,7 @@ package org.enterprisedlt.fabric.service.node.connect
 
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.shared._
+import org.scalajs.dom.FormData
 import org.scalajs.dom.ext.Ajax
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -11,6 +12,13 @@ import scala.concurrent.Future
  * @author Alexey Polubelov
  */
 object ServiceNodeRemote {
+    def uploadContract(inputData: FormData): Future[Unit] = {
+        Ajax
+          .post(url = "/admin/upload-chaincode", data = inputData)
+          .map(_.responseText)
+          .map { _ => () }
+    }
+
 
     def getOrganisationFullName: Future[String] = Ajax
       .get("/service/organization-full-name")
