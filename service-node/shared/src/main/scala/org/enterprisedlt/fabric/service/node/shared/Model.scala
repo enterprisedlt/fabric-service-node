@@ -273,6 +273,11 @@ object ContractInvitation {
 )
 
 object PortBind {
+    val Defaults: PortBind =
+        new PortBind(
+            externalPort = "",
+            internalPort = ""
+        )
     implicit val rw: RW[PortBind] = macroRW
 }
 
@@ -282,6 +287,13 @@ object PortBind {
 )
 
 object VolumeBind {
+    val Defaults: VolumeBind =
+        new VolumeBind(
+            externalHost = "",
+            internalHost = ""
+        )
+
+
     implicit val rw: RW[VolumeBind] = macroRW
 }
 
