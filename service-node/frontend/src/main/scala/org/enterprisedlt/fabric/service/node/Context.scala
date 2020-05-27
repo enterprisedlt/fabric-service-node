@@ -72,6 +72,7 @@ object Context {
                             chainCodes <- ServiceNodeRemote.listChainCodes
                             boxes <- ServiceNodeRemote.listBoxes
                             events <- ServiceNodeRemote.listEvents
+                            componentTypes <- ServiceNodeRemote.listComponentTypes
                         } yield {
                             Ready(
                                 info = BaseInfo(
@@ -85,7 +86,8 @@ object Context {
                                 contractPackages = packages,
                                 organizations = organizations,
                                 chainCodes = chainCodes,
-                                events = events
+                                events = events,
+                                componentTypes = componentTypes
                             )
                         }
                 }
@@ -131,6 +133,7 @@ case object Initial extends AppState
     organizations: Array[Organization],
     chainCodes: Array[ChainCodeInfo],
     events: Events,
+    componentTypes: Array[String]
 ) extends AppState
 
 @Lenses case class BaseInfo(

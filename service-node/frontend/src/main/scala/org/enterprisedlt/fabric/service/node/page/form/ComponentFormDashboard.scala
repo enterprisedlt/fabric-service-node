@@ -38,7 +38,7 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
         <.div(
             <.div(^.className := "form-group row",
                 <.label(^.`for` := "componentType", ^.className := "col-sm-4 col-form-label", "Type"),
-                <.div(^.className := "col-sm-8", renderComponentType(p))
+                <.div(^.className := "col-sm-8", renderComponentType(p, data.componentTypes))
             ),
             <.div(^.className := "form-group row",
                 <.label(^.`for` := "componentBox", ^.className := "col-sm-4 col-form-label", "Server"),
@@ -238,16 +238,16 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
           modS(ComponentFormState.environmentVariable.modify(_ => EnvironmentVariable.Defaults))
 
 
-    private def renderComponentType(p: ComponentCandidate)(implicit modState: (ComponentCandidate => ComponentCandidate) => Callback): VdomTagOf[Select] = {
+    private def renderComponentType(p: ComponentCandidate, componentTypes: Array[String])(implicit modState: (ComponentCandidate => ComponentCandidate) => Callback): VdomTagOf[Select] = {
         <.select(className := "form-control form-control-sm",
             id := "componentType",
             bind(p) := ComponentCandidate.componentType,
-            componentTypeOptions(p)
+            componentTypeOptions(p,componentTypes)
         )
     }
 
-    private def componentTypeOptions(p: ComponentCandidate): TagMod = {
-        ComponentCandidate.Types.map { name =>
+    private def componentTypeOptions(p: ComponentCandidate, componentTypes: Array[String]): TagMod = {
+        (ComponentCandidate.Types ++ componentTypes).map { name =>
             option((className := "selected").when(p.componentType == name), name)
         }.toTagMod
     }

@@ -12,6 +12,13 @@ import scala.concurrent.Future
  */
 object ServiceNodeRemote {
 
+    def addCustomComponent(component: ComponentCandidate): Future[Unit] = {
+        val json = upickle.default.write(component)
+        Ajax
+          .post("/admin/start-custom-node", json)
+          .map { _ => () }
+    }
+
     def getOrganisationFullName: Future[String] = Ajax
       .get("/service/organization-full-name")
       .map(_.responseText)
@@ -130,5 +137,12 @@ object ServiceNodeRemote {
           .get("/service/get-events")
           .map(_.responseText)
           .map(r => upickle.default.read[Events](r))
+
+
+    def listComponentTypes: Future[Array[String]] =
+        Ajax
+          .get("/admin/list-custom-node-component-types")
+          .map(_.responseText)
+          .map(r => upickle.default.read[Array[String]](r))
 
 }

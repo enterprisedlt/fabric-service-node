@@ -2,13 +2,13 @@ package org.enterprisedlt.fabric.service.node.page
 
 import japgolly.scalajs.react.component.Scala.Unmounted
 import japgolly.scalajs.react.vdom.html_<^._
-import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ScalaComponent}
+import japgolly.scalajs.react.{BackendScope, Callback, ScalaComponent}
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.page.form.{ComponentFormDashboard, CreateContract, RegisterOrganization, ServerForm}
-import org.enterprisedlt.fabric.service.node.shared.{ContractParticipant, CreateContractRequest, EnvironmentVariable, PortBind, RegisterBoxManager, VolumeBind}
+import org.enterprisedlt.fabric.service.node.shared._
 import org.enterprisedlt.fabric.service.node.util.Html.data
 import org.scalajs.dom
 import org.scalajs.dom.html.Div
@@ -188,9 +188,8 @@ object Dashboard {
                                             ),
                                             <.button(
                                                 ^.className := "btn btn-sm btn-outline-success float-right",
-                                                ^.onClick --> addNetworkComponents(Seq(s.componentCandidate), g),
+                                                ^.onClick --> addCustomComponent(s.componentCandidate),
                                                 "Add component",
-                                                ^.disabled := true //TODO
                                             )
                                         )
                                     )
@@ -425,10 +424,8 @@ object Dashboard {
             ServiceNodeRemote.registerBox(boxCandidate).map(_ => r)
         }
 
-        def addNetworkComponents(components: Seq[ComponentCandidate], g: Ready): CallbackTo[Unit] = {
-            //TODO: implement
-            println("not yet :(")
-            Callback()
+        def addCustomComponent(component: ComponentCandidate): Callback =  Callback.future {
+            ServiceNodeRemote.addCustomComponent(component).map(_ => Callback())
         }
 
         def createInvite: Callback = Callback {

@@ -51,13 +51,13 @@ class RestEndpoint(
 
     @Post("/admin/start-custom-node")
     def startCustomNode(request: CustomComponentRequest): Either[String, String] = {
-        val crypto = cryptoManager.generateCustomComponentCrypto(request.boxName)
+        val crypto = cryptoManager.generateCustomComponentCrypto(request.box)
         val startCustomComponentRequest = StartCustomComponentRequest(
             serviceNodeName,
             request,
             crypto
         )
-        processManager.startCustomNode(request.boxName, startCustomComponentRequest)
+        processManager.startCustomNode(request.box, startCustomComponentRequest)
     }
 
     @Get("/service/list-boxes")

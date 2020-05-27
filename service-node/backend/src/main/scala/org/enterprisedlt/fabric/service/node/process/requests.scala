@@ -15,9 +15,9 @@ case class CustomComponentDescriptor(
 
 
 case class CustomComponentRequest(
-    boxName: String,
+    box: String,
+    name: String,
     componentType: String,
-    containerName: String,
     environmentVariables: Array[EnvironmentVariable],
     ports: Array[PortBind],
     volumes: Array[VolumeBind],

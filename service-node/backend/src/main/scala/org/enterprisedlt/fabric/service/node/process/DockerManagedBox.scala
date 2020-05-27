@@ -119,10 +119,10 @@ class DockerManagedBox(
 
     override def startCustomNode(customComponentRequest: StartCustomComponentRequest): Either[String, String] = {
         val request = customComponentRequest.request
-        val hostComponentPath = s"$hostPath/components/${request.containerName}"
-        val innerComponentPath = s"$InnerPath/components/${request.containerName}"
+        val hostComponentPath = s"$hostPath/components/${request.name}"
+        val innerComponentPath = s"$InnerPath/components/${request.name}"
         val componentDistibutivePath = s"$hostPath/distributives/${request.componentType}"
-        logger.info(s"Starting ${request.containerName}...")
+        logger.info(s"Starting ${request.name}...")
         for {
             _ <- checkComponentTypeExists(customComponentRequest.serviceNodeName, request.componentType, componentDistibutivePath)
             descriptor <- Try(Util.codec.fromJson(
@@ -153,7 +153,7 @@ class DockerManagedBox(
                   .withNetworkMode(networkName)
                   .withLogConfig(logConfig)
                 val osnContainerId: String = docker.createContainerCmd(descriptor.image.getName)
-                  .withName(request.containerName)
+                  .withName(request.name)
                   .withEnv(
                       request.environmentVariables.map { envVar =>
                           s"${envVar.key}=${envVar.value}"
@@ -165,7 +165,7 @@ class DockerManagedBox(
                   .withHostConfig(configHost)
                   .exec().getId
                 docker.startContainerCmd(osnContainerId).exec
-                logger.info(s"Custom Node ${request.containerName} started, ID: $osnContainerId")
+                logger.info(s"Custom Node ${request.name} started, ID: $osnContainerId")
                 osnContainerId
             }.toEither.left.map(_.getMessage)
         } yield osnContainerId
