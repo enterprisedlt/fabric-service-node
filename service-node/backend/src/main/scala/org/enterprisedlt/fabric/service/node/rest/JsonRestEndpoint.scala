@@ -7,9 +7,8 @@ import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.eclipse.jetty.http.MimeTypes
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
-import org.enterprisedlt.fabric.service.node.model.FabricServiceStateHolder
-import org.slf4j.LoggerFactory
 import org.enterprisedlt.fabric.service.node.UnitsHelper._
+import org.slf4j.LoggerFactory
 
 /**
  * @author Alexey Polubelov
@@ -53,7 +52,7 @@ class JsonRestEndpoint(
               .map { m =>
                   (
                     m.getAnnotation(classOf[PostMultipart]).value(),
-                    createUploadHandler(spec, m, mkPostMultipartParams)
+                    createUploadHandler(spec, m)
                   )
               }
         }
@@ -111,18 +110,17 @@ class JsonRestEndpoint(
     }
 
 
-    private def createUploadHandler(o: AnyRef, m: Method, parametersFunction: ExtractParametersFunction): (HttpServletRequest, HttpServletResponse) => Unit = {
+    private def createUploadHandler(o: AnyRef, m: Method): (HttpServletRequest, HttpServletResponse) => Unit = {
         logger.info(s"Creating handler for: ${m.getName}")
         val eClazz = classOf[Either[String, Any]]
         m.getReturnType match {
             case x if x.isAssignableFrom(eClazz) =>
                 val f: (HttpServletRequest, HttpServletResponse) => Unit = { (request, response) =>
                     try {
-                        val codec = createCodec()
-                        val params: Seq[AnyRef] = parametersFunction(m, request, codec)
+                        request.setAttribute(Request.MULTIPART_CONFIG_ELEMENT, multipartConfig)
+                        val params: Seq[AnyRef] = mkPostMultipartParams(m, request)
                         m.invoke(o, params: _*) match {
                             case Right(_) =>
-                                FabricServiceStateHolder.incrementVersion()
                                 response.setContentType(MimeTypes.Type.TEXT_PLAIN.asString())
                                 response.setCharacterEncoding("utf-8")
                                 response.setStatus(HttpServletResponse.SC_OK)
@@ -162,7 +160,7 @@ class JsonRestEndpoint(
         }
     }
 
-    private def mkPostMultipartParams(m: Method, request: HttpServletRequest, codec: ServerCodec): Seq[AnyRef] = {
+    private def mkPostMultipartParams(m: Method, request: HttpServletRequest): Seq[AnyRef] = {
         m.getParameters.headOption.map { _ =>
             request.getParts
         }.toSeq
@@ -176,7 +174,6 @@ class JsonRestEndpoint(
                 processRequest(GetBindings, request, response)
 
             case "POST" =>
-                request.setAttribute(Request.MULTIPART_CONFIG_ELEMENT, multipartConfig)
                 processRequest(PostBindings, request, response)
 
             case methodName =>
