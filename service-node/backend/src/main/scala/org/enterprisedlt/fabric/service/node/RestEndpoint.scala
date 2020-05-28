@@ -60,6 +60,7 @@ class RestEndpoint(
                     os.close()
                 }
             }
+            FabricServiceStateHolder.incrementVersion()
         }.toEither.left.map(_.getMessage)
     }
 
@@ -82,6 +83,7 @@ class RestEndpoint(
                     os.close()
                 }
             }
+            FabricServiceStateHolder.incrementVersion()
         }.toEither.left.map(_.getMessage)
     }
 
