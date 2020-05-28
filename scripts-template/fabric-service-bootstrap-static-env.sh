@@ -23,6 +23,7 @@ export BOX_MANAGER_NAME="single-box-mngr"
 mkdir -p ${PROFILE_PATH}/box
 touch ${PROFILE_PATH}/box/hosts
 
+docker network inspect $FABRIC_SERVICE_NETWORK >/dev/null || docker network create --driver bridge $FABRIC_SERVICE_NETWORK
 fabric-service-box-manager-start.sh ${PROFILE_PATH}/box
 #
 # Bootstrap first organization

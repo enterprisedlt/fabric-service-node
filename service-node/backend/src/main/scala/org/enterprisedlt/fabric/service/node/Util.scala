@@ -40,6 +40,7 @@ import oshi.SystemInfo
 
 import scala.collection.JavaConverters._
 import scala.util.Try
+import scala.language.postfixOps
 
 /**
  * @author Alexey Polubelov
@@ -218,6 +219,7 @@ object Util {
     //=========================================================================
     def mkDirs(path: String): Boolean = new File(path).mkdirs()
 
+
     //=========================================================================
     def writeTextFile(filePath: String, content: String): Unit = {
         val writer = new FileWriter(filePath)
@@ -301,15 +303,15 @@ object Util {
 
     def parsePeriod(periodString: String): Period = Period.parse(periodString)
 
+    import UnitsHelper._
+
     def getServerInfo: String = {
         val si = new SystemInfo()
         val hal = si.getHardware
-        val oneGb = 1024 * 1024 * 1024
         val available = hal.getMemory.getTotal
-        val total = (available * 1d) / oneGb
+        val total = (available * 1d) / (1 GByte)
         val coreCount = hal.getProcessor.getLogicalProcessorCount
-        val oneGhz = 1000 * 1000 * 1000
-        val freq = (hal.getProcessor.getProcessorIdentifier.getVendorFreq * 1d) / oneGhz
+        val freq = (hal.getProcessor.getProcessorIdentifier.getVendorFreq * 1d) / (1 GHz)
         s"${coreCount}Core ${freq.formatted("%.2f")}GHz ${total.formatted("%.2f")}Gb"
     }
 
@@ -361,4 +363,22 @@ case class PrivateCollectionConfiguration(
     maxPeersToSpread: Int = 0 // can be disseminated before commit
 )
 
+object UnitsHelper {
+
+    implicit class UnitsSuffix(v: Int) {
+        def KByte: Int = v * 1024
+
+        def MByte: Int = v * 1024 * 1024
+
+        def GByte: Int = v * 1024 * 1024 * 1024
+
+        def KHz: Int = v * 1000
+
+        def MHz: Int = v * 1000 * 1000
+
+        def GHz: Int = v * 1000 * 1000 * 1000
+
+    }
+
+}
 
