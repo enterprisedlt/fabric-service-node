@@ -2,11 +2,14 @@ package org.enterprisedlt.fabric.service.node.rest
 
 import java.lang.reflect.Method
 
+import javax.servlet.MultipartConfigElement
 import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
 import org.eclipse.jetty.http.MimeTypes
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
+import org.enterprisedlt.fabric.service.node.model.FabricServiceStateHolder
 import org.slf4j.LoggerFactory
+import org.enterprisedlt.fabric.service.node.UnitsHelper._
 
 /**
  * @author Alexey Polubelov
@@ -16,6 +19,11 @@ class JsonRestEndpoint(
     endpoints: AnyRef*
 ) extends AbstractHandler {
     private val logger = LoggerFactory.getLogger(this.getClass)
+    private val tmpLocation = "/opt/profile/work/upload-parts" // the directory location where files will be stored
+    private val maxFileSize = 500 MByte // the maximum size allowed for uploaded files
+    private val maxRequestSize = 500 MByte // the maximum size allowed for multipart/form-data requests
+    private val fileSizeThreshold = 1 MByte // the size threshold after which files will be written to disk
+    private val multipartConfig: MultipartConfigElement = new MultipartConfigElement(tmpLocation, maxFileSize, maxRequestSize, fileSizeThreshold)
 
     private val GetBindings = endpoints.flatMap { spec =>
         scanMethods(spec.getClass)
@@ -28,16 +36,28 @@ class JsonRestEndpoint(
           }
     }.toMap
 
-    private val PostBindings = endpoints.flatMap { spec =>
-        scanMethods(spec.getClass)
-          .filter(_.isAnnotationPresent(classOf[Post]))
-          .map { m =>
-              (
-                m.getAnnotation(classOf[Post]).value(),
-                createHandler(spec, m, mkPostParams)
-              )
-          }
-    }.toMap
+    private val PostBindings = (
+      endpoints.flatMap { spec =>
+          scanMethods(spec.getClass)
+            .filter(_.isAnnotationPresent(classOf[Post]))
+            .map { m =>
+                (
+                  m.getAnnotation(classOf[Post]).value(),
+                  createHandler(spec, m, mkPostParams)
+                )
+            }
+      } ++
+        endpoints.flatMap { spec =>
+            scanMethods(spec.getClass)
+              .filter(_.isAnnotationPresent(classOf[PostMultipart]))
+              .map { m =>
+                  (
+                    m.getAnnotation(classOf[PostMultipart]).value(),
+                    createUploadHandler(spec, m, mkPostMultipartParams)
+                  )
+              }
+        }
+      ).toMap
 
     private def scanMethods(c: Class[_]): Array[Method] = {
         c.getMethods ++
@@ -90,6 +110,45 @@ class JsonRestEndpoint(
         }
     }
 
+
+    private def createUploadHandler(o: AnyRef, m: Method, parametersFunction: ExtractParametersFunction): (HttpServletRequest, HttpServletResponse) => Unit = {
+        logger.info(s"Creating handler for: ${m.getName}")
+        val eClazz = classOf[Either[String, Any]]
+        m.getReturnType match {
+            case x if x.isAssignableFrom(eClazz) =>
+                val f: (HttpServletRequest, HttpServletResponse) => Unit = { (request, response) =>
+                    try {
+                        val codec = createCodec()
+                        val params: Seq[AnyRef] = parametersFunction(m, request, codec)
+                        m.invoke(o, params: _*) match {
+                            case Right(_) =>
+                                FabricServiceStateHolder.incrementVersion()
+                                response.setContentType(MimeTypes.Type.TEXT_PLAIN.asString())
+                                response.setCharacterEncoding("utf-8")
+                                response.setStatus(HttpServletResponse.SC_OK)
+
+                            case Left(ex) =>
+                                val msg = s"Unable to process file: ${ex}"
+                                logger.warn(msg, ex)
+                                response.getWriter.println(msg)
+                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                        }
+                    } catch {
+                        case ex: Throwable =>
+                            logger.error(s"Exception during execution of ${m.getName}", ex)
+                            response.setContentType(MimeTypes.Type.TEXT_PLAIN.asString())
+                            response.getWriter.println(ex.getMessage)
+                            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                    }
+                }
+                logger.info(s"Added endpoint for ${m.getName}")
+                f
+            case other =>
+                throw new Exception(s"Unsupported return type ${other.getCanonicalName} the only supported return type is Either[String, Any+]")
+        }
+    }
+
+
     private def mkPostParams(m: Method, request: HttpServletRequest, codec: ServerCodec): Seq[AnyRef] = {
         m.getParameters.headOption.map { p =>
             codec.readParameter(request.getReader, p.getType).asInstanceOf[AnyRef]
@@ -103,6 +162,13 @@ class JsonRestEndpoint(
         }
     }
 
+    private def mkPostMultipartParams(m: Method, request: HttpServletRequest, codec: ServerCodec): Seq[AnyRef] = {
+        m.getParameters.headOption.map { _ =>
+            request.getParts
+        }.toSeq
+    }
+
+
     override def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {
         RestEndpointContext.set(RestEndpointContext(request, response))
         request.getMethod match {
@@ -110,6 +176,7 @@ class JsonRestEndpoint(
                 processRequest(GetBindings, request, response)
 
             case "POST" =>
+                request.setAttribute(Request.MULTIPART_CONFIG_ELEMENT, multipartConfig)
                 processRequest(PostBindings, request, response)
 
             case methodName =>
