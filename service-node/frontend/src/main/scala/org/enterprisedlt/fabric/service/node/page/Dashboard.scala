@@ -201,7 +201,7 @@ object Dashboard {
                                             ),
                                             <.button(
                                                 ^.className := "btn btn-sm btn-outline-success float-right",
-                                                ^.onClick --> addCustomComponent(s.componentCandidate),
+                                                ^.onClick --> addCustomComponent(s.componentCandidate, g.info.orgFullName),
                                                 "Add component",
                                             )
                                         )
@@ -532,8 +532,9 @@ object Dashboard {
             ServiceNodeRemote.registerBox(boxCandidate).map(_ => r)
         }
 
-        def addCustomComponent(component: ComponentCandidate): Callback = Callback.future {
-            ServiceNodeRemote.addCustomComponent(component).map(_ => Callback())
+        def addCustomComponent(component: ComponentCandidate, orgFullName: String): Callback = Callback.future {
+            val updatedComponent = component.copy(name = s"${component.name}.$orgFullName")
+            ServiceNodeRemote.addCustomComponent(updatedComponent).map(_ => Callback())
         }
 
         def createInvite: Callback = Callback {
