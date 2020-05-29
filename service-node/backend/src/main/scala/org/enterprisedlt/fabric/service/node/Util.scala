@@ -11,7 +11,7 @@ import com.google.gson.{Gson, GsonBuilder}
 import com.google.protobuf.{ByteString, MessageLite}
 import javax.security.auth.x500.X500Principal
 import javax.servlet.ServletRequest
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveInputStream}
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.apache.commons.compress.utils.IOUtils
 import org.apache.http.client.methods.HttpPost
@@ -24,8 +24,8 @@ import org.bouncycastle.asn1.ASN1ObjectIdentifier
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x500.style.{BCStyle, IETFUtils}
 import org.enterprisedlt.fabric.service.node.endorsement.EndorsementPolicyCompiler
-import org.enterprisedlt.fabric.service.node.shared.ContractParticipant
 import org.enterprisedlt.fabric.service.node.rest.JsonServerCodec
+import org.enterprisedlt.fabric.service.node.shared.ContractParticipant
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope, Payload}
 import org.hyperledger.fabric.protos.common.Configtx
@@ -39,8 +39,9 @@ import org.slf4j.{Logger, LoggerFactory}
 import oshi.SystemInfo
 
 import scala.collection.JavaConverters._
-import scala.util.Try
 import scala.language.postfixOps
+import scala.reflect.{ClassTag, classTag}
+import scala.util.Try
 
 /**
  * @author Alexey Polubelov
@@ -334,10 +335,43 @@ object Util {
                         IOUtils.copy(tarIn, new FileOutputStream(outputFile))
                 }
             }
+            bais.close()
+            gzIn.close()
             tarIn.close()
             logger.debug("Untar completed successfully")
         }.toEither.left.map(_.getMessage)
     }
+
+    def getFileFromTar[T: ClassTag](tarFile: Array[Byte], filename: String): Either[String, T] = {
+        Try {
+            val bais = new ByteArrayInputStream(tarFile)
+            val gzIn = new GzipCompressorInputStream(bais)
+            val tarIn = new TarArchiveInputStream(gzIn)
+            val tarIterator = new TarIterator(tarIn)
+            //
+            val x = findFileInTar[T](tarIterator,filename)
+            bais.close()
+            gzIn.close()
+            tarIn.close()
+            x
+        }.toEither.left.map(_.getMessage).joinRight
+    }
+
+    def findFileInTar[T: ClassTag](tarIterator: TarIterator, filename: String): Either[String, T] =
+        tarIterator
+          .find(_.getFile.getName == filename)
+          .map { file =>
+              Util.codec.fromJson(new FileReader(file.getFile), classTag[T].runtimeClass)
+          }.toRight("No file has been found")
+          .right.map(_.asInstanceOf[T])
+}
+
+class TarIterator(tarIn: TarArchiveInputStream) extends Iterator[TarArchiveEntry] {
+
+    override def hasNext: Boolean = tarIn.getNextTarEntry == null
+
+    override def next(): TarArchiveEntry = tarIn.getNextTarEntry
+
 }
 
 object ConversionHelper {

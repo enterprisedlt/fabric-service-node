@@ -14,8 +14,6 @@ import org.scalatest._
  */
 class UtilTest extends FunSuite {
 
-
-
     def tarFile(file: File): File = {
         val tarZippedFile: File = File.createTempFile("tar-zipped-file", ".tgz")
         val tarOut = new TarArchiveOutputStream(
@@ -52,6 +50,27 @@ class UtilTest extends FunSuite {
         //
         assert(unzippedFileContent == initialFileContent)
     }
+
+//
+//    test("getFileFromTar should work fine") {
+//
+//        val initialMessage = "Test message"
+//        val tempFolder = Files.createTempDirectory("temp-dir").toFile
+//        val initialFile = File.createTempFile("test", ".txt", tempFolder)
+//        initialFile.deleteOnExit()
+//        //
+//        val out = new FileOutputStream(initialFile)
+//        out.write(initialMessage.getBytes(StandardCharsets.UTF_8))
+//        out.close()
+//        //
+//        val zippedFile: File = tarFile(initialFile)
+//        val zippedFileBytes = Files.readAllBytes(Paths.get(zippedFile.getPath))
+//        //
+//        val text = Util.getFileFromTar[String](zippedFileBytes, "test.txt")
+//
+//        assert(text.right.get === initialMessage)
+//
+//    }
 
 
 }

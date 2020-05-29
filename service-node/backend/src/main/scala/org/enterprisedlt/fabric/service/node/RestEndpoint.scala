@@ -15,7 +15,7 @@ import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.process.{CustomComponentRequest, ProcessManager, StartCustomComponentRequest}
+import org.enterprisedlt.fabric.service.node.process.{CustomComponentDescriptor, CustomComponentRequest, ProcessManager, StartCustomComponentRequest}
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.enterprisedlt.fabric.service.node.rest.{Get, Post, PostMultipart}
 import org.enterprisedlt.fabric.service.node.shared._
@@ -66,25 +66,37 @@ class RestEndpoint(
 
 
     @PostMultipart("/admin/upload-custom-component")
-    def uploadCustomComponent(multipart: java.util.Collection[Part]): Either[String, Unit] = {
+    def uploadCustomComponent(multipart: java.util.Collection[Part]): Either[String, String] = {
         val fileDir = "/opt/profile/components"
         Util.mkDirs(fileDir)
         val outputDir = Paths.get(fileDir)
-        Try {
-            multipart.forEach { part =>
-                Option(part.getSubmittedFileName).foreach { filename =>
-                    logger.debug(s"Got Part ${part.getName} with size = ${part.getSize}, contentType = ${part.getContentType}, submittedFileName $filename")
+        val customComponentsPath = new File("/opt/profile/components").getAbsoluteFile
+        for {
+            tgzPart <- multipart
+              .iterator()
+              .asScala
+              .find(_.getSubmittedFileName.endsWith(".tgz"))
+              .toRight("No tgz in multipart")
+            _ <- Try {
+                Option(tgzPart.getSubmittedFileName).map { filename =>
+                    logger.info(s"Got Part ${tgzPart.getName} with size = ${tgzPart.getSize}, contentType = ${tgzPart.getContentType}, submittedFileName $filename")
                     val outputFile = outputDir.resolve(filename)
-                    val is = part.getInputStream
+                    val is = tgzPart.getInputStream
                     val os = Files.newOutputStream(outputFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
                     IO.copy(is, os)
-                    logger.debug(s"Saved Part ${part.getName} to ${outputFile.toString}")
+                    logger.info(s"Saved Part ${tgzPart.getName} to ${outputFile.toString}")
                     is.close()
                     os.close()
                 }
-            }
+            }.toEither.left.map(_.getMessage)
+            filename = tgzPart.getSubmittedFileName.split(".")(0)
+            file <- customComponentsPath.listFiles().find(_.getName == s"$filename.tgz").toRight(s"File $filename.tgz doesn't exist")
+            tarByteArray = Files.readAllBytes(file.toPath)
+            descriptor <- Util.getFileFromTar[CustomComponentDescriptor](tarByteArray, s"$filename.json")
+        } yield {
             FabricServiceStateHolder.incrementVersion()
-        }.toEither.left.map(_.getMessage)
+            s"Descriptor is ${descriptor}"
+        }
     }
 
 
