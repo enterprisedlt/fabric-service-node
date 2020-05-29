@@ -89,7 +89,7 @@ class RestEndpoint(
                     os.close()
                 }
             }.toEither.left.map(_.getMessage)
-            filename = tgzPart.getSubmittedFileName.split(".")(0)
+            filename = tgzPart.getSubmittedFileName.split('.')(0)
             file <- customComponentsPath.listFiles().find(_.getName == s"$filename.tgz").toRight(s"File $filename.tgz doesn't exist")
             tarByteArray = Files.readAllBytes(file.toPath)
             descriptor <- Util.getFileFromTar[CustomComponentDescriptor](tarByteArray, s"$filename.json")
