@@ -42,6 +42,7 @@ import scala.collection.JavaConverters._
 import scala.language.postfixOps
 import scala.reflect.{ClassTag, classTag}
 import scala.util.Try
+import scala.util.control.NonFatal
 
 /**
  * @author Alexey Polubelov
@@ -342,20 +343,19 @@ object Util {
         }.toEither.left.map(_.getMessage)
     }
 
-    def getFileFromTar[T: ClassTag](tarFile: Array[Byte], filename: String): Either[String, T] = {
-        Try {
-            val bais = new ByteArrayInputStream(tarFile)
-            val gzIn = new GzipCompressorInputStream(bais)
-            val tarIn = new TarArchiveInputStream(gzIn)
-            val tarIterator = new TarIterator(tarIn)
-            //
-            val x = findFileInTar[T](tarIterator,filename)
-            bais.close()
-            gzIn.close()
-            tarIn.close()
-            x
-        }.toEither.left.map(_.getMessage).joinRight
-    }
+    def getFileFromTar[T: ClassTag](tarFile: Array[Byte], filename: String): Either[String, T] =
+        withResources(
+            new TarIterator(
+                new TarArchiveInputStream(
+                    new GzipCompressorInputStream(
+                        new ByteArrayInputStream(tarFile)
+                    )
+                )
+            )
+        ) { tarIterator =>
+            findFileInTar[T](tarIterator, filename)
+        }
+
 
     def findFileInTar[T: ClassTag](tarIterator: TarIterator, filename: String): Either[String, T] =
         tarIterator
@@ -364,6 +364,37 @@ object Util {
               Util.codec.fromJson(new FileReader(file.getFile), classTag[T].runtimeClass)
           }.toRight("No file has been found")
           .right.map(_.asInstanceOf[T])
+
+
+    def withResources[T <: AutoCloseable, V](r: => T)(f: T => V): V = {
+        val resource: T = r
+        require(resource != null, "resource is null")
+        var exception: Throwable = null
+        try {
+            f(resource)
+        } catch {
+            case NonFatal(e) =>
+                exception = e
+                throw e
+        } finally {
+            closeAndAddSuppressed(exception, resource)
+        }
+    }
+
+    private def closeAndAddSuppressed(e: Throwable,
+        resource: AutoCloseable): Unit = {
+        if (e != null) {
+            try {
+                resource.close()
+            } catch {
+                case NonFatal(suppressed) =>
+                    e.addSuppressed(suppressed)
+            }
+        } else {
+            resource.close()
+        }
+    }
+
 }
 
 class TarIterator(tarIn: TarArchiveInputStream) extends Iterator[TarArchiveEntry] {
