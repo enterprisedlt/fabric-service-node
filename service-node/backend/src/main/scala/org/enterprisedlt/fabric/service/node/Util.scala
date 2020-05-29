@@ -399,7 +399,7 @@ class TarIterator(tarIn: TarArchiveInputStream) extends Iterator[TarArchiveEntry
 
     override def hasNext: Boolean = tarIn.getNextTarEntry == null
 
-    override def next(): TarArchiveEntry = tarIn.getNextTarEntry
+    override def next(): TarArchiveEntry = tarIn.getCurrentEntry
 
 }
 
