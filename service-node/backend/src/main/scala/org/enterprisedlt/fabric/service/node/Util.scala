@@ -345,20 +345,18 @@ object Util {
 
     def getFileFromTar[T: ClassTag](tarFile: Array[Byte], filename: String): Either[String, T] =
         withResources(
-            new TarIterator(
                 new TarArchiveInputStream(
                     new GzipCompressorInputStream(
                         new ByteArrayInputStream(tarFile)
                     )
                 )
-            )
         ) { tarIterator =>
             findFileInTar[T](tarIterator, filename)
         }
 
 
-    def findFileInTar[T: ClassTag](tarIterator: TarIterator, filename: String): Either[String, T] =
-        tarIterator
+    def findFileInTar[T: ClassTag](tarIterator: TarArchiveInputStream, filename: String): Either[String, T] =
+        new TarIterator(tarIterator)
           .find(_.getFile.getName == filename)
           .map { file =>
               Util.codec.fromJson(new FileReader(file.getFile), classTag[T].runtimeClass)
