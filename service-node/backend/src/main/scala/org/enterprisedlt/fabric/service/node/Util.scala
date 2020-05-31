@@ -41,7 +41,6 @@ import oshi.SystemInfo
 import scala.collection.JavaConverters._
 import scala.language.postfixOps
 import scala.reflect.{ClassTag, classTag}
-import scala.util.Try
 import scala.util.control.NonFatal
 
 /**
@@ -320,13 +319,16 @@ object Util {
 
     //=========================================================================
     def untarFile(file: Array[Byte], destinationDir: String): Either[String, Unit] = {
-        Try {
-            val bais = new ByteArrayInputStream(file)
-            val gzIn = new GzipCompressorInputStream(bais)
-            val tarIn = new TarArchiveInputStream(gzIn)
-            val tarIterator = new TarIterator(tarIn)
-            tarIterator.foreach { entry =>
-                logger.debug(s"Extracting ${entry.getName}")
+        withResources(
+            new TarArchiveInputStream(
+                new GzipCompressorInputStream(
+                    new ByteArrayInputStream(file)
+                )
+            )
+        ) { tarIn =>
+            while (tarIn.getNextTarEntry != null) {
+                val entry = tarIn.getCurrentEntry
+                logger.info(s"Extracting ${entry.getName}")
                 entry match {
                     case entry if entry.isDirectory =>
                         val f = new File(s"$destinationDir/${entry.getName}")
@@ -336,11 +338,8 @@ object Util {
                         IOUtils.copy(tarIn, new FileOutputStream(outputFile))
                 }
             }
-            bais.close()
-            gzIn.close()
-            tarIn.close()
-            logger.debug("Untar completed successfully")
-        }.toEither.left.map(_.getMessage)
+            Right(())
+        }
     }
 
     def getFileFromTar[T: ClassTag](tarFile: Array[Byte], filename: String): Either[String, T] =

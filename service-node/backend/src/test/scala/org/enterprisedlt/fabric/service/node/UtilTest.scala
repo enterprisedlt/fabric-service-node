@@ -30,6 +30,7 @@ class UtilTest extends FunSuite {
 
     test("untarFile method should work fine") {
         val tempFolder = Files.createTempDirectory("temp-dir").toFile
+        val tempZipFolder = Files.createTempDirectory("temp-zip-dir").toFile
         val initialFile = File.createTempFile("test", ".txt", tempFolder)
         initialFile.deleteOnExit()
         //
@@ -40,9 +41,9 @@ class UtilTest extends FunSuite {
         val zippedFile: File = tarFile(initialFile)
         val zippedFileBytes = Files.readAllBytes(Paths.get(zippedFile.getPath))
         //
-        Util.untarFile(zippedFileBytes, tempFolder.getAbsolutePath)
+        Util.untarFile(zippedFileBytes, tempZipFolder.getAbsolutePath)
         //
-        val unzippedFileByteArray = Files.readAllBytes(Paths.get(tempFolder.listFiles().head.getAbsolutePath))
+        val unzippedFileByteArray = Files.readAllBytes(Paths.get(tempZipFolder.listFiles().head.getAbsolutePath))
         val unzippedFileContent = new String(unzippedFileByteArray, StandardCharsets.UTF_8)
         //
         val initialFileByteArray = Files.readAllBytes(Paths.get(initialFile.getPath))
