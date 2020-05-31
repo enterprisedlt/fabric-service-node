@@ -355,16 +355,8 @@ object Util {
             new TarIterator(tarIterator)
               .find(_.name == filename)
               .map { tarRecord =>
-                  val tmpFile = File.createTempFile("tmp", "tmp")
-                  val fos = new FileOutputStream(tmpFile)
-                  try {
-                      IOUtils.copy(tarRecord.tarEntry, new FileOutputStream(tmpFile))
-                      Util.codec.fromJson(new FileReader(tmpFile), classTag[T].runtimeClass)
-                        .asInstanceOf[T]
-                  } finally {
-                      fos.close()
-                      tmpFile.delete()
-                  }
+                  Util.codec.fromJson(new InputStreamReader(tarRecord.tarEntry), classTag[T].runtimeClass)
+                    .asInstanceOf[T]
               }.toRight("No file has been found")
         }
 

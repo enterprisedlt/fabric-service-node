@@ -313,3 +313,28 @@ object EnvironmentVariable {
 }
 
 // ------------------------------------------------------------------------
+case class CustomComponentDescriptor(
+    image: Image,
+    command: String,
+    workingDir: String
+)
+
+object CustomComponentDescriptor {
+
+    implicit val rw: RW[CustomComponentDescriptor] = macroRW
+}
+
+
+
+case class Image(
+    name: String,
+    tag: String = "latest"
+) {
+    def getName = s"$name:$tag"
+}
+
+
+object Image {
+
+    implicit val rw: RW[Image] = macroRW
+}
