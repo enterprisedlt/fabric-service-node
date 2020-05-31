@@ -328,7 +328,7 @@ object Util {
         ) { tarIn =>
             new TarIterator(tarIn)
               .foreach { record =>
-                      record.tarEntry match {
+                  record.tarEntry.getCurrentEntry match {
                       case entry if entry.isDirectory =>
                           val f = new File(s"$destinationDir/${entry.getName}")
                           f.mkdirs()
@@ -355,8 +355,16 @@ object Util {
             new TarIterator(tarIterator)
               .find(_.name == filename)
               .map { tarRecord =>
-                  Util.codec.fromJson(new FileReader(tarRecord.tarEntry.getFile), classTag[T].runtimeClass)
-                    .asInstanceOf[T]
+                  val tmpFile = File.createTempFile("tmp", "tmp")
+                  val fos = new FileOutputStream(tmpFile)
+                  try {
+                      IOUtils.copy(tarRecord.tarEntry, new FileOutputStream(tmpFile))
+                      Util.codec.fromJson(new FileReader(tmpFile), classTag[T].runtimeClass)
+                        .asInstanceOf[T]
+                  } finally {
+                      fos.close()
+                      tmpFile.delete()
+                  }
               }.toRight("No file has been found")
         }
 
@@ -401,14 +409,14 @@ class TarIterator(val input: TarArchiveInputStream) extends Iterator[TarRecord] 
     }
 
     override def next(): TarRecord = if (current == null) null else {
-        TarRecord(current.getName, input.getCurrentEntry)
+        TarRecord(current.getName, input)
     }
 
 }
 
 case class TarRecord(
     name: String,
-    tarEntry: TarArchiveEntry
+    tarEntry: TarArchiveInputStream
 )
 
 

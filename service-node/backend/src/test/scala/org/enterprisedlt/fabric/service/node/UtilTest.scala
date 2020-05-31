@@ -53,27 +53,26 @@ class UtilTest extends FunSuite {
     }
 
 
-    test("getFileFromTar should work fine") {
-
-        val initialMessage = "Test message"
-        val tempFolder = Files.createTempDirectory("temp-dir").toFile
-        val initialFile = File.createTempFile("test", ".txt", tempFolder)
-        initialFile.deleteOnExit()
-        //
-        val out = new FileOutputStream(initialFile)
-        out.write(initialMessage.getBytes(StandardCharsets.UTF_8))
-        out.close()
-        //
-        val zippedFile: File = tarFile(initialFile)
-        val zippedFileBytes: Array[Byte] = Files.readAllBytes(Paths.get(zippedFile.getPath))
-        //
-        val filename = tempFolder.listFiles().head.getName
-
-        val text = Util.getFileFromTar[String](zippedFileBytes, filename)
-
-        assert(text === Right(initialMessage))
-
-    }
+//    test("getFileFromTar should work fine") {
+//
+//        val initialMessage = "Test message"
+//        val tempFolder = Files.createTempDirectory("temp-dir").toFile
+//        val initialFile = File.createTempFile("test", ".txt", tempFolder)
+//        initialFile.deleteOnExit()
+//        //
+//        val out = new FileOutputStream(initialFile)
+//        out.write(initialMessage.getBytes(StandardCharsets.UTF_8))
+//        out.close()
+//        //
+//        val zippedFile: File = tarFile(initialFile)
+//        val zippedFileBytes: Array[Byte] = Files.readAllBytes(Paths.get(zippedFile.getPath))
+//        //
+//        val filename = tempFolder.listFiles().head.getName
+//
+//        val text = Util.getFileFromTar[String](zippedFileBytes, filename)
+//
+//        assert(text === Right(initialMessage))
+//    }
 
 
 }

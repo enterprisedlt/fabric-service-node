@@ -13,11 +13,11 @@ import scala.concurrent.Future
  */
 object ServiceNodeRemote {
 
-    def uploadCustomComponent(inputData: FormData): Future[Unit] = {
+    def uploadCustomComponent(inputData: FormData): Future[String] = {
         Ajax
           .post(url = "/admin/upload-custom-component", data = inputData)
           .map(_.responseText)
-          .map { _ => () }
+          .map(r => upickle.default.read[String](r))
     }
 
 
