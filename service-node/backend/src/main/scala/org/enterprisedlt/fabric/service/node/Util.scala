@@ -324,8 +324,8 @@ object Util {
             val bais = new ByteArrayInputStream(file)
             val gzIn = new GzipCompressorInputStream(bais)
             val tarIn = new TarArchiveInputStream(gzIn)
-            while (tarIn.getNextTarEntry != null) {
-                val entry = tarIn.getCurrentEntry
+            val tarIterator = new TarIterator(tarIn)
+            tarIterator.foreach { entry =>
                 logger.debug(s"Extracting ${entry.getName}")
                 entry match {
                     case entry if entry.isDirectory =>
@@ -345,11 +345,11 @@ object Util {
 
     def getFileFromTar[T: ClassTag](tarFile: Array[Byte], filename: String): Either[String, T] =
         withResources(
-                new TarArchiveInputStream(
-                    new GzipCompressorInputStream(
-                        new ByteArrayInputStream(tarFile)
-                    )
+            new TarArchiveInputStream(
+                new GzipCompressorInputStream(
+                    new ByteArrayInputStream(tarFile)
                 )
+            )
         ) { tarIterator =>
             findFileInTar[T](tarIterator, filename)
         }
