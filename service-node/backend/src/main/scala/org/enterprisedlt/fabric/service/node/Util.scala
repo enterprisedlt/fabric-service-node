@@ -328,8 +328,7 @@ object Util {
         ) { tarIn =>
             new TarIterator(tarIn)
               .foreach { record =>
-                  val entry = record.tarStream.getCurrentEntry
-                  entry match {
+                      record.tarEntry match {
                       case entry if entry.isDirectory =>
                           val f = new File(s"$destinationDir/${entry.getName}")
                           f.mkdirs()
@@ -353,17 +352,13 @@ object Util {
                 )
             )
         ) { tarIterator =>
-            findFileInTar[T](tarIterator, filename)
+            new TarIterator(tarIterator)
+              .find(_.name == filename)
+              .map { tarRecord =>
+                  Util.codec.fromJson(new FileReader(tarRecord.tarEntry.getFile), classTag[T].runtimeClass)
+                    .asInstanceOf[T]
+              }.toRight("No file has been found")
         }
-
-
-    def findFileInTar[T: ClassTag](tarIterator: TarArchiveInputStream, filename: String): Either[String, T] =
-        new TarIterator(tarIterator)
-          .find(_.getFile.getName == filename)
-          .map { file =>
-              Util.codec.fromJson(new FileReader(file.getFile), classTag[T].runtimeClass)
-          }.toRight("No file has been found")
-          .right.map(_.asInstanceOf[T])
 
 
     def withResources[T <: AutoCloseable, V](r: => T)(f: T => V): V = {
@@ -406,14 +401,14 @@ class TarIterator(val input: TarArchiveInputStream) extends Iterator[TarRecord] 
     }
 
     override def next(): TarRecord = if (current == null) null else {
-        TarRecord(current.getName, input)
+        TarRecord(current.getName, input.getCurrentEntry)
     }
 
 }
 
 case class TarRecord(
     name: String,
-    tarStream: TarArchiveInputStream
+    tarEntry: TarArchiveEntry
 )
 
 

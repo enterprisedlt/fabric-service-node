@@ -65,9 +65,11 @@ class UtilTest extends FunSuite {
         out.close()
         //
         val zippedFile: File = tarFile(initialFile)
-        val zippedFileBytes = Files.readAllBytes(Paths.get(zippedFile.getPath))
+        val zippedFileBytes: Array[Byte] = Files.readAllBytes(Paths.get(zippedFile.getPath))
         //
-        val text = Util.getFileFromTar[String](zippedFileBytes, "test.txt")
+        val filename = tempFolder.listFiles().head.getName
+
+        val text = Util.getFileFromTar[String](zippedFileBytes, filename)
 
         assert(text === Right(initialMessage))
 
