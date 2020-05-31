@@ -326,18 +326,21 @@ object Util {
                 )
             )
         ) { tarIn =>
-            while (tarIn.getNextTarEntry != null) {
-                val entry = tarIn.getCurrentEntry
-                logger.info(s"Extracting ${entry.getName}")
-                entry match {
-                    case entry if entry.isDirectory =>
-                        val f = new File(s"$destinationDir/${entry.getName}")
-                        f.mkdirs()
-                    case entry if entry.isFile =>
-                        val outputFile = new File(s"$destinationDir/${entry.getName}")
-                        IOUtils.copy(tarIn, new FileOutputStream(outputFile))
-                }
-            }
+            new TarIterator(tarIn)
+              .foreach { record =>
+                  val entry = record.tarStream.getCurrentEntry
+                  entry match {
+                      case entry if entry.isDirectory =>
+                          val f = new File(s"$destinationDir/${entry.getName}")
+                          f.mkdirs()
+                      case entry if entry.isFile =>
+                          val outputFile = new File(s"$destinationDir/${entry.getName}")
+                          IOUtils.copy(tarIn, new FileOutputStream(outputFile))
+                  }
+
+              }
+
+
             Right(())
         }
     }
@@ -394,13 +397,25 @@ object Util {
 
 }
 
-class TarIterator(tarIn: TarArchiveInputStream) extends Iterator[TarArchiveEntry] {
+class TarIterator(val input: TarArchiveInputStream) extends Iterator[TarRecord] {
+    var current: TarArchiveEntry = _
 
-    override def hasNext: Boolean = tarIn.getNextTarEntry == null
+    override def hasNext: Boolean = {
+        current = input.getNextTarEntry
+        current != null
+    }
 
-    override def next(): TarArchiveEntry = tarIn.getCurrentEntry
+    override def next(): TarRecord = if (current == null) null else {
+        TarRecord(current.getName, input)
+    }
 
 }
+
+case class TarRecord(
+    name: String,
+    tarStream: TarArchiveInputStream
+)
+
 
 object ConversionHelper {
 
