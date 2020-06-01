@@ -7,13 +7,6 @@ import org.enterprisedlt.fabric.service.node.shared.{EnvironmentVariable, PortBi
  */
 // =================================================================================================================
 
-case class CustomComponentDescriptor(
-    image: Image,
-    command: String,
-    workingDir: String
-)
-
-
 case class CustomComponentRequest(
     box: String,
     name: String,
@@ -28,17 +21,6 @@ case class StartCustomComponentRequest(
     request: CustomComponentRequest,
     crypto: CustomComponentCerts
 )
-
-
-case class Image(
-    name: String,
-    tag: String = "latest"
-) {
-    def getName = s"$name:$tag"
-}
-
-
-
 
 case class StartOSNRequest(
     port: Int,

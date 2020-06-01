@@ -15,7 +15,7 @@ import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.process.{CustomComponentDescriptor, CustomComponentRequest, ProcessManager, StartCustomComponentRequest}
+import org.enterprisedlt.fabric.service.node.process.{CustomComponentRequest, ProcessManager, StartCustomComponentRequest}
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
 import org.enterprisedlt.fabric.service.node.rest.{Get, Post, PostMultipart}
 import org.enterprisedlt.fabric.service.node.shared._
@@ -93,9 +93,10 @@ class RestEndpoint(
             file <- customComponentsPath.listFiles().find(_.getName == s"$filename.tgz").toRight(s"File $filename.tgz doesn't exist")
             tarByteArray = Files.readAllBytes(file.toPath)
             descriptor <- Util.getFileFromTar[CustomComponentDescriptor](tarByteArray, s"$filename.json")
+            _ <- addComponentDescriptorToGlobalState(descriptor)
         } yield {
             FabricServiceStateHolder.incrementVersion()
-            s"Descriptor is ${descriptor}"
+            "Success"
         }
     }
 
@@ -110,6 +111,15 @@ class RestEndpoint(
           .map(name => name.substring(0, name.length - 4)))
           .toEither.left.map(_.getMessage)
     }
+
+    @Get("/admin/list-custom-component-descriptors")
+    def listCustomNodeComponentDescriptors: Either[String, Array[CustomComponentDescriptor]] = {
+        logger.info("Listing custom node component descriptors...")
+        globalState
+          .toRight("Node is not initialized yet")
+          .map(_.customComponentDescriptors)
+    }
+
 
     @Post("/admin/start-custom-node")
     def startCustomNode(request: CustomComponentRequest): Either[String, String] = {
@@ -719,6 +729,17 @@ class RestEndpoint(
 
     private def init(globalState: GlobalState): Unit = this._globalState.set(globalState)
 
+    private def addComponentDescriptorToGlobalState(descriptor: CustomComponentDescriptor): Either[String, Unit] = {
+        globalState.map { gs =>
+            val updatedDescriptor = gs.customComponentDescriptors :+ descriptor
+            this._globalState.set(
+                gs.copy(
+                    customComponentDescriptors = updatedDescriptor)
+            )
+            Right(())
+        }.getOrElse(Left("Node is not initialized yet"))
+    }
+
 
     def cleanup(): Unit = {
         globalState.foreach { state =>
@@ -732,4 +753,5 @@ case class GlobalState(
     network: NetworkConfig,
     networkName: String,
     eventsMonitor: EventsMonitor,
+    customComponentDescriptors: Array[CustomComponentDescriptor]
 )

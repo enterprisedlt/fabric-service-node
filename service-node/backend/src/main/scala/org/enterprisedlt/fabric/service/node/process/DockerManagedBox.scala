@@ -19,7 +19,7 @@ import com.github.dockerjava.okhttp.OkHttpDockerCmdExecFactory
 import org.enterprisedlt.fabric.service.model.KnownHostRecord
 import org.enterprisedlt.fabric.service.node.configuration.DockerConfig
 import org.enterprisedlt.fabric.service.node.rest.JsonRestClient
-import org.enterprisedlt.fabric.service.node.shared.BoxInformation
+import org.enterprisedlt.fabric.service.node.shared.{BoxInformation, CustomComponentDescriptor, Image}
 import org.enterprisedlt.fabric.service.node.{HostsManager, Util}
 import org.slf4j.LoggerFactory
 

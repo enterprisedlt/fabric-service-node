@@ -12,7 +12,7 @@ import org.enterprisedlt.fabric.service.node.flow.Constant._
 import org.enterprisedlt.fabric.service.node.model.{CCLanguage, FabricServiceStateHolder}
 import org.enterprisedlt.fabric.service.node.process._
 import org.enterprisedlt.fabric.service.node.proto._
-import org.enterprisedlt.fabric.service.node.shared.{BootstrapOptions, FabricServiceState}
+import org.enterprisedlt.fabric.service.node.shared.{BootstrapOptions, CustomComponentDescriptor, FabricServiceState}
 import org.slf4j.LoggerFactory
 
 /**
@@ -208,6 +208,6 @@ object Bootstrap {
         logger.info(s"[ $organizationFullName ] - Bootstrap done.")
         FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.Ready))
         val eventsMonitor = new EventsMonitor(1000, network).startup()
-        GlobalState(network, bootstrapOptions.network, bootstrapOptions.networkName, eventsMonitor)
+        GlobalState(network, bootstrapOptions.network, bootstrapOptions.networkName, eventsMonitor, Array.empty[CustomComponentDescriptor])
     }
 }

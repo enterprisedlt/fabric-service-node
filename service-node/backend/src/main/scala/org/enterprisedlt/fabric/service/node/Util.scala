@@ -338,8 +338,6 @@ object Util {
                   }
 
               }
-
-
             Right(())
         }
     }
