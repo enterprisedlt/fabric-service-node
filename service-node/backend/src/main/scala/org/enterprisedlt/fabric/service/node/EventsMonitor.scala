@@ -66,7 +66,9 @@ class EventsMonitor(
     def getCustomComponentDescriptors: Array[CustomComponentDescriptor] = {
         val customComponentsPath = new File("/opt/profile/components").getAbsoluteFile
         customComponentsPath
-          .listFiles().flatMap { file =>
+          .listFiles()
+          .filter(_.getName.endsWith(".tgz"))
+          .flatMap { file =>
             logger.info(s"file is ${file.getName}")
             val tarByteArray = Files.readAllBytes(file.toPath)
             val filename = file.getName.split('.')(0)

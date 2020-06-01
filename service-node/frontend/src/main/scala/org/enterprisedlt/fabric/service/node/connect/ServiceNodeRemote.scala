@@ -160,10 +160,4 @@ object ServiceNodeRemote {
           .map(r => upickle.default.read[Events](r))
 
 
-    def listComponentTypes: Future[Array[String]] =
-        Ajax
-          .get("/admin/list-custom-node-component-types")
-          .map(_.responseText)
-          .map(r => upickle.default.read[Array[String]](r))
-
 }

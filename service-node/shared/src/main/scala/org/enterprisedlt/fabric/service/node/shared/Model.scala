@@ -315,6 +315,7 @@ object EnvironmentVariable {
 
 // ------------------------------------------------------------------------
 case class CustomComponentDescriptor(
+    componentType:String,
     image: Image,
     command: String,
     workingDir: String,

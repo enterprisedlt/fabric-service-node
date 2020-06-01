@@ -93,20 +93,6 @@ class RestEndpoint(
         }
     }
 
-
-    @Get("/admin/list-custom-node-component-types")
-    def listCustomNodeComponentTypes: Either[String, Array[String]] = {
-        logger.info("Listing custom node component types...")
-        val componentTypes = new File(s"/opt/profile/components/").getAbsoluteFile
-        if (!componentTypes.exists()) componentTypes.mkdirs()
-        Try(componentTypes.listFiles().filter(_.getName.endsWith(".tgz"))
-          .map(_.getName)
-          .map(name => name.substring(0, name.length - 4)))
-          .toEither.left.map(_.getMessage)
-    }
-
-
-
     @Post("/admin/start-custom-node")
     def startCustomNode(request: CustomComponentRequest): Either[String, String] = {
         val crypto = cryptoManager.generateCustomComponentCrypto(request.box)
