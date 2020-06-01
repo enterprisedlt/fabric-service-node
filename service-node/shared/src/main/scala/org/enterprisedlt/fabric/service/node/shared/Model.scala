@@ -237,7 +237,8 @@ object ContractParticipant {
 // ------------------------------------------------------------------------
 case class Events(
     messages: Array[PrivateMessageEvent],
-    contractInvitations: Array[ContractInvitation]
+    contractInvitations: Array[ContractInvitation],
+    customComponentDescriptors: Array[CustomComponentDescriptor]
 )
 
 object Events {

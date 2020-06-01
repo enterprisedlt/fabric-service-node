@@ -229,7 +229,7 @@ object Join {
                 network.setupBlockListener(ServiceChannelName, new NetworkMonitor(organizationConfig, joinOptions.network, network, processManager, hostsManager, serviceVersion))
                 FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.Ready))
                 val eventsMonitor = new EventsMonitor(1000, network).startup()
-                GlobalState(network, joinOptions.network, joinOptions.invite.networkName, eventsMonitor, Array.empty[CustomComponentDescriptor])
+                GlobalState(network, joinOptions.network, joinOptions.invite.networkName, eventsMonitor)
         }
     }
 
