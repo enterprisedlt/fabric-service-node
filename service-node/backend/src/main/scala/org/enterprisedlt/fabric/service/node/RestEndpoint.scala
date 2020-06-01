@@ -66,7 +66,7 @@ class RestEndpoint(
 
 
     @PostMultipart("/admin/upload-custom-component")
-    def uploadCustomComponent(multipart: java.util.Collection[Part]): Either[String, String] = {
+    def uploadCustomComponent(multipart: java.util.Collection[Part]): Either[String, Unit] = {
         val fileDir = "/opt/profile/components"
         Util.mkDirs(fileDir)
         val outputDir = Paths.get(fileDir)
@@ -96,7 +96,6 @@ class RestEndpoint(
             _ <- addComponentDescriptorToGlobalState(descriptor)
         } yield {
             FabricServiceStateHolder.incrementVersion()
-            "Success"
         }
     }
 

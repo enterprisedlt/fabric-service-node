@@ -316,7 +316,10 @@ object EnvironmentVariable {
 case class CustomComponentDescriptor(
     image: Image,
     command: String,
-    workingDir: String
+    workingDir: String,
+    environmentVariablesDescriptor: Array[EnvironmentVariable],
+    portBindDescriptor: Array[PortBind],
+    volumeBindDescriptor: Array[VolumeBind]
 )
 
 object CustomComponentDescriptor {
