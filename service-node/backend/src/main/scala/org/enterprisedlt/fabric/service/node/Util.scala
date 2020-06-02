@@ -328,7 +328,7 @@ object Util {
         ) { tarIn =>
             new TarIterator(tarIn)
               .foreach { record =>
-                  record.tarEntry.getCurrentEntry match {
+                  record.tarArchiveInputStream.getCurrentEntry match {
                       case entry if entry.isDirectory =>
                           val f = new File(s"$destinationDir/${entry.getName}")
                           f.mkdirs()
@@ -353,7 +353,7 @@ object Util {
             new TarIterator(tarIterator)
               .find(_.name == filename)
               .map { tarRecord =>
-                  Util.codec.fromJson(new InputStreamReader(tarRecord.tarEntry), classTag[T].runtimeClass)
+                  Util.codec.fromJson(new InputStreamReader(tarRecord.tarArchiveInputStream), classTag[T].runtimeClass)
                     .asInstanceOf[T]
               }.toRight("No file has been found")
         }
@@ -406,7 +406,7 @@ class TarIterator(val input: TarArchiveInputStream) extends Iterator[TarRecord] 
 
 case class TarRecord(
     name: String,
-    tarEntry: TarArchiveInputStream
+    tarArchiveInputStream: TarArchiveInputStream
 )
 
 

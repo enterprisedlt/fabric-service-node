@@ -65,7 +65,6 @@ class FileBasedCryptoManager(
             tlsPeer = getOrgCryptoMaterialPem.tlsca.certificate,
             tlsOsn = getOrgCryptoMaterialPem.tlsca.certificate,
             customComponentCerts = customComponentCerts)
-
     }
 
     override def generateComponentCrypto(componentType: Component, componentName: String): ComponentCerts = {

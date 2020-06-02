@@ -233,7 +233,6 @@ object Join {
         }
     }
 
-
     def joinOrgToNetwork(
         state: GlobalState,
         cryptoManager: CryptoManager,

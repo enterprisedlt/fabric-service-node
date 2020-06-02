@@ -12,9 +12,6 @@ trait ManagedBox {
     @Get("/info")
     def getBoxInfo: Either[String, BoxInformation]
 
-//    @Get("/register-custom-node-component-type")
-//    def registerCustomNodeComponentType(serviceNodeName: String, componentName: String): Either[String, String]
-
     @Post("/start-custom-node")
     def startCustomNode(request: StartCustomComponentRequest): Either[String, String]
 

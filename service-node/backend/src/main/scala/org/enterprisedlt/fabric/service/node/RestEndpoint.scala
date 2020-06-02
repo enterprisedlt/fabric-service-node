@@ -702,7 +702,6 @@ class RestEndpoint(
     private def init(globalState: GlobalState): Unit = this._globalState.set(globalState)
 
 
-
     def cleanup(): Unit = {
         globalState.foreach { state =>
             state.eventsMonitor.shutdown()
