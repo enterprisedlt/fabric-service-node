@@ -12,6 +12,8 @@ import com.google.protobuf.{ByteString, MessageLite}
 import javax.security.auth.x500.X500Principal
 import javax.servlet.ServletRequest
 import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveInputStream}
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
+import org.apache.commons.compress.utils.IOUtils
 import org.apache.http.client.methods.HttpPost
 import org.apache.http.conn.ssl.{NoopHostnameVerifier, SSLConnectionSocketFactory, TrustAllStrategy}
 import org.apache.http.entity.{ByteArrayEntity, ContentType}
@@ -343,7 +345,36 @@ object Util {
         }
     }
 
+    def findInTar[T](tarArchiveInputStream: TarArchiveInputStream, filename: String)(f: InputStream => T): Option[T] = {
+        new TarIterator(tarArchiveInputStream)
+          .find(_.name == filename)
+          .map(tarRecord => f(tarRecord.inputStream))
+    }
+
+    def untarFile(file: Array[Byte], destinationDir: String): Either[String, Unit] =
+        withResources(
+            new TarArchiveInputStream(
+                new GzipCompressorInputStream(
+                    new ByteArrayInputStream(file)
+                )
+            )
+        ) { tarIn =>
+            new TarIterator(tarIn)
+              .map(_.inputStream)
+              .foreach { case inputStream: TarArchiveInputStream =>
+                  inputStream.getCurrentEntry match {
+                      case entry if entry.isDirectory =>
+                          val f = new File(s"$destinationDir/${entry.getName}")
+                          f.mkdirs()
+                      case entry if entry.isFile =>
+                          val outputFile = new File(s"$destinationDir/${entry.getName}")
+                          IOUtils.copy(tarIn, new FileOutputStream(outputFile))
+                  }
+              }
+            Right(())
+        }
 }
+
 
 class TarIterator(val input: TarArchiveInputStream) extends Iterator[TarRecord] {
     var current: TarArchiveEntry = _
@@ -361,7 +392,7 @@ class TarIterator(val input: TarArchiveInputStream) extends Iterator[TarRecord] 
 
 case class TarRecord(
     name: String,
-    tarArchiveInputStream: TarArchiveInputStream
+    inputStream: InputStream
 )
 
 

@@ -1,7 +1,7 @@
 package org.enterprisedlt.fabric.service.node
 
-import java.io.{ByteArrayInputStream, File, InputStreamReader}
-import java.nio.file.Files
+import java.io.{File, InputStreamReader}
+import java.nio.file.{Files, Path}
 import java.util.concurrent.atomic.AtomicReference
 
 import com.google.gson.GsonBuilder
@@ -14,7 +14,6 @@ import org.enterprisedlt.fabric.service.node.model.FabricServiceStateHolder
 import org.enterprisedlt.fabric.service.node.shared.{ContractInvitation, CustomComponentDescriptor, Events}
 import org.slf4j.{Logger, LoggerFactory}
 
-import scala.reflect.classTag
 import scala.util.Try
 
 /**
@@ -73,28 +72,24 @@ class EventsMonitor(
           .listFiles()
           .filter(_.getName.endsWith(".tgz"))
           .flatMap { file =>
-            logger.info(s"file is ${file.getName}")
-            val tarByteArray = Files.readAllBytes(file.toPath)
-            val filename = file.getName.split('.')(0)
-            getCustomComponentDescriptorFromTar(tarByteArray, s"$filename.json")
-        }
-    }
-
-    private def getCustomComponentDescriptorFromTar(tarFile: Array[Byte], filename: String): Option[CustomComponentDescriptor] =
-    withResources(
-        new TarArchiveInputStream(
-            new GzipCompressorInputStream(
-                new ByteArrayInputStream(tarFile)
-            )
-        )
-    ) { tarIterator =>
-        new TarIterator(tarIterator)
-          .find(_.name == filename)
-          .map { tarRecord =>
-              Util.codec.fromJson(new InputStreamReader(tarRecord.tarArchiveInputStream), classTag[CustomComponentDescriptor].runtimeClass)
-                .asInstanceOf[CustomComponentDescriptor]
+              logger.info(s"file is ${file.getName}")
+              val filename = s"${file.getName.split('.')(0)}.json"
+              getCustomComponentDescriptorFromTar(file.toPath, filename)
           }
     }
+
+    private def getCustomComponentDescriptorFromTar(filePath: Path, filename: String): Option[CustomComponentDescriptor] =
+        withResources(
+            new TarArchiveInputStream(
+                new GzipCompressorInputStream(
+                    Files.newInputStream(filePath)
+                )
+            )
+        ) { inputStream =>
+            Util.findInTar(inputStream, filename)(descriptorInputStream =>
+                Util.codec.fromJson(new InputStreamReader(descriptorInputStream), classOf[CustomComponentDescriptor])
+            )
+        }
 
     override def run(): Unit = {
         logger.info("Events monitor started")
