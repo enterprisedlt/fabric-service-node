@@ -1,16 +1,20 @@
 package org.enterprisedlt.fabric.service.node
 
-import java.io.File
+import java.io.{ByteArrayInputStream, File, InputStreamReader}
 import java.nio.file.Files
 import java.util.concurrent.atomic.AtomicReference
 
 import com.google.gson.GsonBuilder
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.enterprisedlt.fabric.service.model.Contract
+import org.enterprisedlt.fabric.service.node.Util.withResources
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.model.FabricServiceStateHolder
 import org.enterprisedlt.fabric.service.node.shared.{ContractInvitation, CustomComponentDescriptor, Events}
 import org.slf4j.{Logger, LoggerFactory}
 
+import scala.reflect.classTag
 import scala.util.Try
 
 /**
@@ -72,9 +76,24 @@ class EventsMonitor(
             logger.info(s"file is ${file.getName}")
             val tarByteArray = Files.readAllBytes(file.toPath)
             val filename = file.getName.split('.')(0)
-            Util.getFileFromTar[CustomComponentDescriptor](tarByteArray, s"$filename.json")
-              .toOption
+            getCustomComponentDescriptorFromTar(tarByteArray, s"$filename.json")
         }
+    }
+
+    private def getCustomComponentDescriptorFromTar(tarFile: Array[Byte], filename: String): Option[CustomComponentDescriptor] =
+    withResources(
+        new TarArchiveInputStream(
+            new GzipCompressorInputStream(
+                new ByteArrayInputStream(tarFile)
+            )
+        )
+    ) { tarIterator =>
+        new TarIterator(tarIterator)
+          .find(_.name == filename)
+          .map { tarRecord =>
+              Util.codec.fromJson(new InputStreamReader(tarRecord.tarArchiveInputStream), classTag[CustomComponentDescriptor].runtimeClass)
+                .asInstanceOf[CustomComponentDescriptor]
+          }
     }
 
     override def run(): Unit = {

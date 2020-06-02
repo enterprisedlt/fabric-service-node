@@ -16,11 +16,15 @@ import com.github.dockerjava.api.model._
 import com.github.dockerjava.core.command.PullImageResultCallback
 import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientImpl}
 import com.github.dockerjava.okhttp.OkHttpDockerCmdExecFactory
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
+import org.apache.commons.compress.utils.IOUtils
 import org.enterprisedlt.fabric.service.model.KnownHostRecord
+import org.enterprisedlt.fabric.service.node.Util.withResources
 import org.enterprisedlt.fabric.service.node.configuration.DockerConfig
 import org.enterprisedlt.fabric.service.node.rest.JsonRestClient
 import org.enterprisedlt.fabric.service.node.shared.{BoxInformation, CustomComponentDescriptor, Image}
-import org.enterprisedlt.fabric.service.node.{HostsManager, Util}
+import org.enterprisedlt.fabric.service.node.{HostsManager, TarIterator, Util}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
@@ -580,11 +584,33 @@ class DockerManagedBox(
             distributorClient <- distributorClients.get(serviceNodeName).toRight(s"Service node $serviceNodeName is not registered in box manager")
             distributiveBase64 <- distributorClient.getComponentTypeDistributive(componentType)
             distributive <- Try(Base64.getDecoder.decode(distributiveBase64)).toEither.left.map(_.getMessage)
-            _ <- Util.untarFile(distributive, componentNameFolder.getAbsolutePath)
+            _ <- untarFile(distributive, componentNameFolder.getAbsolutePath)
         } yield {
             logger.info(s"Component type $componentType has been successfully downloaded")
         }
     }
+
+    private def untarFile(file: Array[Byte], destinationDir: String): Either[String, Unit] =
+        withResources(
+            new TarArchiveInputStream(
+                new GzipCompressorInputStream(
+                    new ByteArrayInputStream(file)
+                )
+            )
+        ) { tarIn =>
+            new TarIterator(tarIn)
+              .foreach { record =>
+                  record.tarArchiveInputStream.getCurrentEntry match {
+                      case entry if entry.isDirectory =>
+                          val f = new File(s"$destinationDir/${entry.getName}")
+                          f.mkdirs()
+                      case entry if entry.isFile =>
+                          val outputFile = new File(s"$destinationDir/${entry.getName}")
+                          IOUtils.copy(tarIn, new FileOutputStream(outputFile))
+                  }
+              }
+            Right(())
+        }
 
     // =================================================================================================================
     private class FindInLog(

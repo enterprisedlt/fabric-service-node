@@ -12,8 +12,6 @@ import com.google.protobuf.{ByteString, MessageLite}
 import javax.security.auth.x500.X500Principal
 import javax.servlet.ServletRequest
 import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveInputStream}
-import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
-import org.apache.commons.compress.utils.IOUtils
 import org.apache.http.client.methods.HttpPost
 import org.apache.http.conn.ssl.{NoopHostnameVerifier, SSLConnectionSocketFactory, TrustAllStrategy}
 import org.apache.http.entity.{ByteArrayEntity, ContentType}
@@ -40,7 +38,6 @@ import oshi.SystemInfo
 
 import scala.collection.JavaConverters._
 import scala.language.postfixOps
-import scala.reflect.{ClassTag, classTag}
 import scala.util.control.NonFatal
 
 /**
@@ -316,49 +313,7 @@ object Util {
         s"${coreCount}Core ${freq.formatted("%.2f")}GHz ${total.formatted("%.2f")}Gb"
     }
 
-
     //=========================================================================
-    def untarFile(file: Array[Byte], destinationDir: String): Either[String, Unit] = {
-        withResources(
-            new TarArchiveInputStream(
-                new GzipCompressorInputStream(
-                    new ByteArrayInputStream(file)
-                )
-            )
-        ) { tarIn =>
-            new TarIterator(tarIn)
-              .foreach { record =>
-                  record.tarArchiveInputStream.getCurrentEntry match {
-                      case entry if entry.isDirectory =>
-                          val f = new File(s"$destinationDir/${entry.getName}")
-                          f.mkdirs()
-                      case entry if entry.isFile =>
-                          val outputFile = new File(s"$destinationDir/${entry.getName}")
-                          IOUtils.copy(tarIn, new FileOutputStream(outputFile))
-                  }
-
-              }
-            Right(())
-        }
-    }
-
-    def getFileFromTar[T: ClassTag](tarFile: Array[Byte], filename: String): Either[String, T] =
-        withResources(
-            new TarArchiveInputStream(
-                new GzipCompressorInputStream(
-                    new ByteArrayInputStream(tarFile)
-                )
-            )
-        ) { tarIterator =>
-            new TarIterator(tarIterator)
-              .find(_.name == filename)
-              .map { tarRecord =>
-                  Util.codec.fromJson(new InputStreamReader(tarRecord.tarArchiveInputStream), classTag[T].runtimeClass)
-                    .asInstanceOf[T]
-              }.toRight("No file has been found")
-        }
-
-
     def withResources[T <: AutoCloseable, V](r: => T)(f: T => V): V = {
         val resource: T = r
         require(resource != null, "resource is null")
