@@ -17,6 +17,7 @@ class UtilTest extends FunSuite {
 
     def tarFile(file: File): File = {
         val tarZippedFile: File = File.createTempFile("tar-zipped-file", ".tgz")
+        tarZippedFile.deleteOnExit()
         val tarOut = new TarArchiveOutputStream(
             new GzipCompressorOutputStream(
                 new BufferedOutputStream(
@@ -33,7 +34,8 @@ class UtilTest extends FunSuite {
         val tempFolder = Files.createTempDirectory("temp-dir").toFile
         val tempZipFolder = Files.createTempDirectory("temp-zip-dir").toFile
         val initialFile = File.createTempFile("test", ".txt", tempFolder)
-        initialFile.deleteOnExit()
+        tempFolder.deleteOnExit()
+        tempZipFolder.deleteOnExit()
         //
         val out = new FileOutputStream(initialFile)
         out.write("Test message".getBytes(StandardCharsets.UTF_8))
@@ -59,7 +61,7 @@ class UtilTest extends FunSuite {
         val initialMessageJson = Util.codec.toJson(initialMessage)
         val tempFolder = Files.createTempDirectory("temp-dir").toFile
         val initialFile = File.createTempFile("test", ".txt", tempFolder)
-        initialFile.deleteOnExit()
+        tempFolder.deleteOnExit()
         //
         val out = new FileOutputStream(initialFile)
         out.write(initialMessageJson.getBytes(StandardCharsets.UTF_8))

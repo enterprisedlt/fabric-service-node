@@ -313,7 +313,12 @@ class RestEndpoint(
         val componentsDistributorAddress = externalAddress
           .map(ea => s"http://${ea.host}:$componentsDistributorBindPort")
           .getOrElse(s"http://service.${organizationConfig.name}.${organizationConfig.domain}:$componentsDistributorBindPort")
-        processManager.registerBox(serviceNodeName, componentsDistributorAddress, request.name, request.url)
+        for {
+            box <- processManager.registerBox(serviceNodeName, componentsDistributorAddress, request.name, request.url)
+        } yield {
+            FabricServiceStateHolder.incrementVersion()
+            box
+        }
     }
 
 

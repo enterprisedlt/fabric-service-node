@@ -114,6 +114,7 @@ object ServiceNode extends App {
                 logger.info("Shutting down...")
                 restEndpoint.cleanup()
                 server.stop()
+                componentsDistributorServer.stop()
                 logger.info("Shutdown complete.")
             }
         })

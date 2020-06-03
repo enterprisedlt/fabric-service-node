@@ -3,7 +3,7 @@ package org.enterprisedlt.fabric.service.node.rest
 import java.lang.reflect.Method
 
 import javax.servlet.MultipartConfigElement
-import javax.servlet.http.{HttpServletRequest, HttpServletResponse}
+import javax.servlet.http.{HttpServletRequest, HttpServletResponse, Part}
 import org.eclipse.jetty.http.MimeTypes
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
@@ -112,37 +112,46 @@ class JsonRestEndpoint(
 
     private def createUploadHandler(o: AnyRef, m: Method): (HttpServletRequest, HttpServletResponse) => Unit = {
         logger.info(s"Creating handler for: ${m.getName}")
-        val eClazz = classOf[Either[String, Any]]
-        m.getReturnType match {
-            case x if x.isAssignableFrom(eClazz) =>
-                val f: (HttpServletRequest, HttpServletResponse) => Unit = { (request, response) =>
-                    try {
-                        request.setAttribute(Request.MULTIPART_CONFIG_ELEMENT, multipartConfig)
-                        val params: Seq[AnyRef] = mkPostMultipartParams(m, request)
-                        m.invoke(o, params: _*) match {
-                            case Right(_) =>
-                                response.setContentType(MimeTypes.Type.TEXT_PLAIN.asString())
-                                response.setCharacterEncoding("utf-8")
-                                response.setStatus(HttpServletResponse.SC_OK)
+        val returnTypeClazz = classOf[Either[String, Any]]
+        val parameterClazz = classOf[java.util.Collection[Part]]
+        m.getParameterTypes match {
+            case x if x.length != 1 =>
+                throw new Exception(s"There should be only one supported parameter with type java.util.Collection[Part]")
+            case x if x.head == parameterClazz =>
+                m.getReturnType match {
+                    case x if x.isAssignableFrom(returnTypeClazz) =>
+                        val f: (HttpServletRequest, HttpServletResponse) => Unit = { (request, response) =>
+                            try {
+                                request.setAttribute(Request.MULTIPART_CONFIG_ELEMENT, multipartConfig)
+                                val params: Seq[AnyRef] = request.getParts.toArray.toSeq
+                                m.invoke(o, params: _*) match {
+                                    case Right(_) =>
+                                        response.setContentType(MimeTypes.Type.TEXT_PLAIN.asString())
+                                        response.setCharacterEncoding("utf-8")
+                                        response.setStatus(HttpServletResponse.SC_OK)
 
-                            case Left(ex) =>
-                                val msg = s"Unable to process file: ${ex}"
-                                logger.warn(msg, ex)
-                                response.getWriter.println(msg)
-                                response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                                    case Left(ex) =>
+                                        val msg = s"Unable to process file: ${ex}"
+                                        logger.warn(msg, ex)
+                                        response.getWriter.println(msg)
+                                        response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                                }
+                            } catch {
+                                case ex: Throwable =>
+                                    logger.error(s"Exception during execution of ${m.getName}", ex)
+                                    response.setContentType(MimeTypes.Type.TEXT_PLAIN.asString())
+                                    response.getWriter.println(ex.getMessage)
+                                    response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
+                            }
                         }
-                    } catch {
-                        case ex: Throwable =>
-                            logger.error(s"Exception during execution of ${m.getName}", ex)
-                            response.setContentType(MimeTypes.Type.TEXT_PLAIN.asString())
-                            response.getWriter.println(ex.getMessage)
-                            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
-                    }
+                        logger.info(s"Added endpoint for ${m.getName}")
+                        f
+                    case other =>
+                        throw new Exception(s"Unsupported return type ${other.getCanonicalName} the only supported return type is Either[String, Any+]")
                 }
-                logger.info(s"Added endpoint for ${m.getName}")
-                f
             case other =>
-                throw new Exception(s"Unsupported return type ${other.getCanonicalName} the only supported return type is Either[String, Any+]")
+                throw new Exception(s"Unsupported parameter type ${other.head.getCanonicalName} the only supported parameter type is java.util.Collection[Part]")
+
         }
     }
 
@@ -159,13 +168,6 @@ class JsonRestEndpoint(
             codec.readParameter(v, p.getType).asInstanceOf[AnyRef]
         }
     }
-
-    private def mkPostMultipartParams(m: Method, request: HttpServletRequest): Seq[AnyRef] = {
-        m.getParameters.headOption.map { _ =>
-            request.getParts
-        }.toSeq
-    }
-
 
     override def handle(target: String, baseRequest: Request, request: HttpServletRequest, response: HttpServletResponse): Unit = {
         RestEndpointContext.set(RestEndpointContext(request, response))
