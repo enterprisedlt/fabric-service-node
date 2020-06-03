@@ -54,15 +54,15 @@ class UtilTest extends FunSuite {
     }
 
 
-
     test("getFileFromTar should work fine") {
-        val initialMessage = "\"Test message\""
+        val initialMessage = "Test message"
+        val initialMessageJson = Util.codec.toJson(initialMessage)
         val tempFolder = Files.createTempDirectory("temp-dir").toFile
         val initialFile = File.createTempFile("test", ".txt", tempFolder)
         initialFile.deleteOnExit()
         //
         val out = new FileOutputStream(initialFile)
-        out.write(initialMessage.getBytes(StandardCharsets.UTF_8))
+        out.write(initialMessageJson.getBytes(StandardCharsets.UTF_8))
         out.close()
         //
         val filename = tempFolder.listFiles().head.getName
@@ -74,12 +74,12 @@ class UtilTest extends FunSuite {
                     Files.newInputStream(Paths.get(zippedFile.getPath))
                 )
             )
-        ){ inputStream =>
+        ) { inputStream =>
             Util.findInTar(inputStream, filename)(descriptorInputStream =>
                 Util.codec.fromJson(new InputStreamReader(descriptorInputStream), classOf[String])
             )
         }
-        assert(text === Some(initialMessage.stripPrefix("\"").stripSuffix("\"")))
+        assert(text === Some(initialMessage))
     }
 
 

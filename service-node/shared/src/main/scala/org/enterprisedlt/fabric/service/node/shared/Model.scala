@@ -274,11 +274,6 @@ object ContractInvitation {
 )
 
 object PortBind {
-    val Defaults: PortBind =
-        new PortBind(
-            externalPort = "",
-            internalPort = ""
-        )
     implicit val rw: RW[PortBind] = macroRW
 }
 
@@ -288,13 +283,6 @@ object PortBind {
 )
 
 object VolumeBind {
-    val Defaults: VolumeBind =
-        new VolumeBind(
-            externalHost = "",
-            internalHost = ""
-        )
-
-
     implicit val rw: RW[VolumeBind] = macroRW
 }
 
@@ -304,18 +292,12 @@ object VolumeBind {
 )
 
 object EnvironmentVariable {
-    val Defaults: EnvironmentVariable =
-        new EnvironmentVariable(
-            key = "",
-            value = ""
-        )
-
     implicit val rw: RW[EnvironmentVariable] = macroRW
 }
 
 // ------------------------------------------------------------------------
 case class CustomComponentDescriptor(
-    componentType:String,
+    componentType: String,
     image: Image,
     command: String,
     workingDir: String,
@@ -328,7 +310,6 @@ object CustomComponentDescriptor {
 
     implicit val rw: RW[CustomComponentDescriptor] = macroRW
 }
-
 
 
 case class Image(

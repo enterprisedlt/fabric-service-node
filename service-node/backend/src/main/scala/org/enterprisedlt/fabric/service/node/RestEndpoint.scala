@@ -60,7 +60,6 @@ class RestEndpoint(
                     os.close()
                 }
             }
-            FabricServiceStateHolder.incrementVersion()
         }.toEither.left.map(_.getMessage)
     }
 
@@ -88,9 +87,7 @@ class RestEndpoint(
                     os.close()
                 }
             }.toEither.left.map(_.getMessage)
-        } yield {
-            FabricServiceStateHolder.incrementVersion()
-        }
+        } yield ()
     }
 
     @Post("/admin/start-custom-node")
@@ -173,7 +170,10 @@ class RestEndpoint(
     @Get("/admin/create-user")
     def createUser(name: String): Either[String, Unit] = {
         logger.info(s"Creating new user $name ...")
-        Try(cryptoManager.createFabricUser(name)).toEither.left.map(_.getMessage).right.map(_ => ())
+        Try(cryptoManager.createFabricUser(name))
+          .toEither
+          .map(_ => ())
+          .left.map(_.getMessage)
     }
 
 

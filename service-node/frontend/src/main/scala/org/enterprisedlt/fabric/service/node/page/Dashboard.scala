@@ -190,7 +190,8 @@ object Dashboard {
                                 PageAction(
                                     name = "Component",
                                     id = "component-form",
-                                    _ => <.div(
+                                    _ =>
+                                        <.div(
                                         ComponentFormDashboard(s, State.componentCandidate, g),
                                         <.div(^.className := "form-group mt-1",
                                             <.button(

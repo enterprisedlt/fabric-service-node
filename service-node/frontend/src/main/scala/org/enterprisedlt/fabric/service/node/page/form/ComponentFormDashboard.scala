@@ -26,9 +26,18 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
 
     override def initState(c: ComponentCandidate, data: Ready): ComponentFormState = {
         ComponentFormState(
-            environmentVariable = EnvironmentVariable.Defaults,
-            port = PortBind.Defaults,
-            volume = VolumeBind.Defaults
+            environmentVariable = new EnvironmentVariable(
+                key = "",
+                value = ""
+            ),
+            port = new PortBind(
+                externalPort = "",
+                internalPort = ""
+            ),
+            volume = new VolumeBind(
+                externalHost = "",
+                internalHost = ""
+            )
         )
     }
 
