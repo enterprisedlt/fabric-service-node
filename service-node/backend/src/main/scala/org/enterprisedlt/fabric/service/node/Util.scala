@@ -368,7 +368,10 @@ object Util {
                           f.mkdirs()
                       case entry if entry.isFile =>
                           val outputFile = new File(s"$destinationDir/${entry.getName}")
-                          IOUtils.copy(tarIn, new FileOutputStream(outputFile))
+                          logger.info(s"Untarring file ${entry.getName} into ${destinationDir}")
+                          val fos = new FileOutputStream(outputFile)
+                          IOUtils.copy(inputStream, fos)
+                          fos.close()
                   }
               }
             Right(())

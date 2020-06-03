@@ -212,7 +212,14 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
       (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
     : CallbackTo[Unit] =
         modP(ComponentCandidate.volumes.modify(_ :+ s.volume)) >>
-          modS(ComponentFormState.volume.modify(_ => VolumeBind.Defaults))
+          modS(
+              ComponentFormState.volume.modify(_ =>
+                  VolumeBind(
+                      externalHost = "",
+                      internalHost = ""
+                  )
+              )
+          )
 
 
     private def removePortBind(portBind: PortBind)
@@ -228,7 +235,14 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
       (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
     : CallbackTo[Unit] =
         modP(ComponentCandidate.ports.modify(_ :+ s.port)) >>
-          modS(ComponentFormState.port.modify(_ => PortBind.Defaults))
+          modS(
+              ComponentFormState.port.modify(_ =>
+                  PortBind(
+                      externalPort = "",
+                      internalPort = ""
+                  )
+              )
+          )
 
     private def removeEnvironmentVariable(environmentVariable: EnvironmentVariable)
       (implicit modState: (ComponentCandidate => ComponentCandidate) => Callback)
@@ -244,14 +258,19 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
       (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
     : CallbackTo[Unit] =
         modP(ComponentCandidate.environmentVariables.modify(_ :+ s.environmentVariable)) >>
-          modS(ComponentFormState.environmentVariable.modify(_ => EnvironmentVariable.Defaults))
+          modS(ComponentFormState.environmentVariable.modify(_ =>
+              EnvironmentVariable(
+                  key = "",
+                  value = ""
+              ))
+          )
 
 
     private def renderComponentType(p: ComponentCandidate, componentTypes: Array[String])(implicit modState: (ComponentCandidate => ComponentCandidate) => Callback): VdomTagOf[Select] = {
         <.select(className := "form-control form-control-sm",
             id := "componentType",
             bind(p) := ComponentCandidate.componentType,
-            componentTypeOptions(p,componentTypes)
+            componentTypeOptions(p, componentTypes)
         )
     }
 

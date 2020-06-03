@@ -96,13 +96,14 @@ class DockerManagedBox(
     override def startCustomNode(customComponentRequest: StartCustomComponentRequest): Either[String, String] = {
         val request = customComponentRequest.request
         val hostComponentPath = s"$hostPath/components/${request.name}"
+        val hostDistibutivePath = s"$hostPath/distributives/${request.componentType}"
         val innerComponentPath = s"$InnerPath/components/${request.name}"
-        val componentDistibutivePath = s"$hostPath/distributives/${request.componentType}"
+        val innerDistibutivePath = s"$InnerPath/distributives/${request.componentType}"
         logger.info(s"Starting ${request.name}...")
         for {
-            _ <- checkComponentTypeExists(customComponentRequest.serviceNodeName, request.componentType, componentDistibutivePath)
+            _ <- checkComponentTypeExists(customComponentRequest.serviceNodeName, request.componentType, innerDistibutivePath)
             descriptor <- Try(Util.codec.fromJson(
-                new FileReader(s"$componentDistibutivePath/${request.componentType}.json"),
+                new FileReader(s"$innerDistibutivePath/${request.componentType}.json"),
                 classOf[CustomComponentDescriptor]
             )).toEither.left.map(_.getMessage)
             _ <- pullImageIfNeeded(descriptor.image)
@@ -113,7 +114,7 @@ class DockerManagedBox(
                 val configHost = new HostConfig()
                   .withBinds(
                       (Array(
-                          new Bind(componentDistibutivePath, new Volume("/opt/config")),
+                          new Bind(hostDistibutivePath, new Volume("/opt/config")),
                           new Bind(s"$hostPath/hosts", new Volume("/etc/hosts"))
                       ) ++
                         request.volumes.map { bind =>
@@ -481,7 +482,7 @@ class DockerManagedBox(
 
     private def pullImageIfNeeded(image: Image, forcePull: Boolean = false): Either[String, Unit] = {
         if (!forcePull && findImage(image.getName).isDefined) {
-            logger.info(s"Image $image already exists")
+            logger.debug(s"Image $image already exists")
             Right(())
         } else {
             if (forcePull) logger.info(s"Force pulling image $image")
