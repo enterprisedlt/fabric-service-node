@@ -63,7 +63,7 @@ class RestEndpoint(
                     }
                 }
             }.toEither.left.map(_.getMessage)
-        } yield globalState.eventsMonitor.refresh()
+        } yield globalState.eventsMonitor.updateCustomComponentDescriptors()
 
     }
 
@@ -92,7 +92,7 @@ class RestEndpoint(
                     os.close()
                 }
             }.toEither.left.map(_.getMessage)
-        } yield globalState.eventsMonitor.refresh()
+        } yield globalState.eventsMonitor.updateCustomComponentDescriptors()
     }
 
     @Post("/admin/start-custom-node")

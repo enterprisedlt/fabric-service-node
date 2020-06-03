@@ -30,14 +30,19 @@ class EventsMonitor(
 
     def updateEvents(): Either[String, Unit] = {
         for {
+            _ <- updateContractInvitations()
+            _ <- updateCustomComponentDescriptors()
+        } yield ()
+    }
+
+    def updateContractInvitations(): Either[String, Unit] = {
+        for {
             queryResult <- networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContracts")
             contracts <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
             contractInvitations <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[Contract]])).toEither.left.map(_.getMessage)
-            customComponentDescriptors <- Try(getCustomComponentDescriptors).toEither.left.map(_.getMessage)
         } yield {
             val old = events.get()
-            val next = Events(
-                messages = Array.empty,
+            val next = old.copy(
                 contractInvitations = contractInvitations.map { contract =>
                     ContractInvitation(
                         initiator = contract.founder,
@@ -47,24 +52,32 @@ class EventsMonitor(
                         participants = contract.participants,
                     )
                 },
-                customComponentDescriptors = customComponentDescriptors
             )
             events.set(next)
             logger.info(s"got ${contractInvitations.length} contract records")
-            logger.info(s"got ${customComponentDescriptors.length} component descriptor")
-
-            // TODO: implement more correct diff/check
             if (
-                old.messages.length != next.messages.length ||
-                  old.contractInvitations.length != next.contractInvitations.length ||
-                  old.customComponentDescriptors.length != next.customComponentDescriptors.length
+                old.contractInvitations.length != next.contractInvitations.length
             ) {
                 FabricServiceStateHolder.incrementVersion()
             }
         }
     }
 
-    def refresh(): Unit = FabricServiceStateHolder.incrementVersion()
+    def updateCustomComponentDescriptors(): Either[String, Unit] = {
+        for {
+            customComponentDescriptors <- Try(getCustomComponentDescriptors).toEither.left.map(_.getMessage)
+        } yield {
+            val old = events.get()
+            val next = old.copy(customComponentDescriptors = customComponentDescriptors)
+            events.set(next)
+            logger.info(s"got ${customComponentDescriptors.length} component descriptor")
+            if (
+                old.customComponentDescriptors.length != next.customComponentDescriptors.length
+            ) {
+                FabricServiceStateHolder.incrementVersion()
+            }
+        }
+    }
 
     def getEvents: Events = events.get()
 
