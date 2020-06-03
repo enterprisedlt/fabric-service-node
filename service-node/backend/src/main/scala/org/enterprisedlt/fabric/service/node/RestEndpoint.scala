@@ -47,20 +47,24 @@ class RestEndpoint(
         val fileDir = "/opt/profile/chain-code"
         Util.mkDirs(fileDir)
         val outputDir = Paths.get(fileDir)
-        Try {
-            multipart.forEach { part =>
-                Option(part.getSubmittedFileName).foreach { filename =>
-                    logger.debug(s"Got Part ${part.getName} with size = ${part.getSize}, contentType = ${part.getContentType}, submittedFileName $filename")
-                    val outputFile = outputDir.resolve(filename)
-                    val is = part.getInputStream
-                    val os = Files.newOutputStream(outputFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
-                    IO.copy(is, os)
-                    logger.debug(s"Saved Part ${part.getName} to ${outputFile.toString}")
-                    is.close()
-                    os.close()
+        for {
+            globalState <- globalState.toRight("Node is not initialized yet")
+            _ <- Try {
+                multipart.forEach { part =>
+                    Option(part.getSubmittedFileName).foreach { filename =>
+                        logger.debug(s"Got Part ${part.getName} with size = ${part.getSize}, contentType = ${part.getContentType}, submittedFileName $filename")
+                        val outputFile = outputDir.resolve(filename)
+                        val is = part.getInputStream
+                        val os = Files.newOutputStream(outputFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+                        IO.copy(is, os)
+                        logger.debug(s"Saved Part ${part.getName} to ${outputFile.toString}")
+                        is.close()
+                        os.close()
+                    }
                 }
-            }
-        }.toEither.left.map(_.getMessage)
+            }.toEither.left.map(_.getMessage)
+        } yield globalState.eventsMonitor.refresh()
+
     }
 
 
@@ -70,6 +74,7 @@ class RestEndpoint(
         Util.mkDirs(fileDir)
         val outputDir = Paths.get(fileDir)
         for {
+            globalState <- globalState.toRight("Node is not initialized yet")
             tgzPart <- multipart
               .iterator()
               .asScala
@@ -87,7 +92,7 @@ class RestEndpoint(
                     os.close()
                 }
             }.toEither.left.map(_.getMessage)
-        } yield ()
+        } yield globalState.eventsMonitor.refresh()
     }
 
     @Post("/admin/start-custom-node")

@@ -64,6 +64,8 @@ class EventsMonitor(
         }
     }
 
+    def refresh(): Unit = FabricServiceStateHolder.incrementVersion()
+
     def getEvents: Events = events.get()
 
     def getCustomComponentDescriptors: Array[CustomComponentDescriptor] = {
