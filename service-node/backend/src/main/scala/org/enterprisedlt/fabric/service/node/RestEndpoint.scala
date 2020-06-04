@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicReference
 import com.google.gson.GsonBuilder
 import javax.servlet.http.Part
 import org.eclipse.jetty.util.IO
-import org.enterprisedlt.fabric.service.model.{Contract, Organization, UpgradeContract}
+import org.enterprisedlt.fabric.service.model.{Application, Contract, Organization, UpgradeContract}
 import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
@@ -142,6 +142,22 @@ class RestEndpoint(
           .toRight("Node is not initialized yet")
           .map(_.network)
 
+
+    @Post("/admin/publish-application")
+    def publishApplication(name: String): Either[String, String] = {
+        val application = Application(name)
+        for {
+            state <- globalState.toRight("Node is not initialized yet")
+            _ <- state.networkManager.invokeChainCode(
+                ServiceChannelName,
+                ServiceChainCodeName,
+                "publishApplication",
+                Util.codec.toJson(application))
+        } yield {
+            FabricServiceStateHolder.incrementVersion()
+            s"Application $name has been successfully published"
+        }
+    }
 
     @Get("/service/list-channels")
     def listChannels: Either[String, Array[String]] = {

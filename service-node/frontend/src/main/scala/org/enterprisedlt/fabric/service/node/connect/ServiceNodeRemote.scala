@@ -12,6 +12,12 @@ import scala.concurrent.Future
  * @author Alexey Polubelov
  */
 object ServiceNodeRemote {
+    def publishApplication(applicationName: String): Future[Unit] = {
+        val json = upickle.default.write(applicationName)
+        Ajax
+          .post("/admin/publish-application", json)
+          .map { _ => () }
+    }
 
     def uploadApplication(inputData: FormData): Future[Unit] = {
         Ajax

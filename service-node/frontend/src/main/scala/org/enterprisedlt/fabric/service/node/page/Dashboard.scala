@@ -8,12 +8,12 @@ import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.page.form.{ComponentFormDashboard, CreateContract, RegisterOrganization, ServerForm}
-import org.enterprisedlt.fabric.service.node.shared._
+import org.enterprisedlt.fabric.service.node.shared.{ApplicationEventsMonitor, _}
 import org.enterprisedlt.fabric.service.node.util.Html.data
 import org.scalajs.dom
 import org.scalajs.dom.FormData
 import org.scalajs.dom.html.Div
-import org.scalajs.dom.raw.{Blob, File, HTMLLinkElement, URL}
+import org.scalajs.dom.raw._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js
@@ -449,7 +449,7 @@ object Dashboard {
                                                       <.tr(
                                                           <.td(application.name),
                                                           <.td(application.status),
-                                                          <.td()
+                                                          <.td(applicationButton(application))
                                                       )
                                                   }.toTagMod
                                               )
@@ -653,6 +653,32 @@ object Dashboard {
 
         def joinContract(initiator: String, name: String): Callback = Callback.future {
             ServiceNodeRemote.contractJoin(ContractJoinRequest(name, initiator)).map(Callback(_))
+        }
+
+        def publishApplication(applicationName: String): Callback = Callback.future {
+            ServiceNodeRemote.publishApplication(applicationName).map(Callback(_))
+        }
+
+        def applicationButton(application: ApplicationEventsMonitor): VdomTagOf[HTMLElement] = {
+            application.status match {
+                case status if status == "Installed" =>
+                    <.button(^.className := "btn btn-sm btn-outline-success",
+                        ^.onClick --> publishApplication(application.name),
+                        "Publish application"
+                    )
+
+                case status if status == "Not Installed" =>
+                    <.button(^.className := "btn btn-sm btn-outline-success",
+                        "Install application",
+                        ^.disabled := true //TODO
+                    )
+
+                case status if status == "Published" =>
+                    <.button(^.className := "btn btn-sm btn-outline-success",
+                        "Create",
+                        ^.disabled := true //TODO
+                    )
+            }
         }
     }
 
