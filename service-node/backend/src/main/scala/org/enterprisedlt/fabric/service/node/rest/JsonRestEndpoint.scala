@@ -123,7 +123,11 @@ class JsonRestEndpoint(
                         val f: (HttpServletRequest, HttpServletResponse) => Unit = { (request, response) =>
                             try {
                                 request.setAttribute(Request.MULTIPART_CONFIG_ELEMENT, multipartConfig)
-                                val params: Seq[AnyRef] = request.getParts.toArray.toSeq
+                                val params: Seq[AnyRef] = m
+                                  .getParameters
+                                  .headOption
+                                  .map { _ => request.getParts }
+                                  .toSeq
                                 m.invoke(o, params: _*) match {
                                     case Right(_) =>
                                         response.setContentType(MimeTypes.Type.TEXT_PLAIN.asString())
