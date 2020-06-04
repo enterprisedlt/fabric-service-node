@@ -238,7 +238,8 @@ object ContractParticipant {
 case class Events(
     messages: Array[PrivateMessageEvent],
     contractInvitations: Array[ContractInvitation],
-    customComponentDescriptors: Array[CustomComponentDescriptor]
+    customComponentDescriptors: Array[CustomComponentDescriptor],
+    applications: Array[Application]
 )
 
 object Events {
@@ -323,4 +324,14 @@ case class Image(
 object Image {
 
     implicit val rw: RW[Image] = macroRW
+}
+
+
+case class Application(
+    name: String
+)
+
+object Application {
+
+    implicit val rw: RW[Application] = macroRW
 }

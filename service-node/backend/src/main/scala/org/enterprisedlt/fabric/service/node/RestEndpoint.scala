@@ -42,6 +42,30 @@ class RestEndpoint(
     private val serviceNodeName = s"service.${organizationConfig.name}.${organizationConfig.domain}"
 
 
+    @PostMultipart("/admin/upload-application")
+    def uploadApplication(multipart: java.util.Collection[Part]): Either[String, Unit] = {
+        val fileDir = "/opt/profile/applications"
+        Util.mkDirs(fileDir)
+        val outputDir = Paths.get(fileDir)
+        for {
+            globalState <- globalState.toRight("Node is not initialized yet")
+            _ <- Try {
+                multipart.forEach { part =>
+                    Option(part.getSubmittedFileName).foreach { filename =>
+                        logger.debug(s"Got Part ${part.getName} with size = ${part.getSize}, contentType = ${part.getContentType}, submittedFileName $filename")
+                        val outputFile = outputDir.resolve(filename)
+                        val is = part.getInputStream
+                        val os = Files.newOutputStream(outputFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+                        IO.copy(is, os)
+                        logger.debug(s"Saved Part ${part.getName} to ${outputFile.toString}")
+                        is.close()
+                        os.close()
+                    }
+                }
+            }.toEither.left.map(_.getMessage)
+        } yield globalState.eventsMonitor.updateApplications()
+    }
+
     @PostMultipart("/admin/upload-chaincode")
     def uploadChaincode(multipart: java.util.Collection[Part]): Either[String, Unit] = {
         val fileDir = "/opt/profile/chain-code"

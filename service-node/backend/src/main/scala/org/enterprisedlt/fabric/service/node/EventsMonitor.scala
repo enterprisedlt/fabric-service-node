@@ -32,6 +32,7 @@ class EventsMonitor(
         for {
             _ <- updateContractInvitations()
             _ <- updateCustomComponentDescriptors()
+            _ <- updateApplications()
         } yield ()
     }
 
@@ -63,6 +64,22 @@ class EventsMonitor(
         }
     }
 
+    def updateApplications(): Either[String, Unit] = {
+        for {
+            applications <- Try(getCustomComponentDescriptors).toEither.left.map(_.getMessage)
+        } yield {
+            val old = events.get()
+            val next = old.copy(customComponentDescriptors = customComponentDescriptors)
+            events.set(next)
+            logger.info(s"got ${customComponentDescriptors.length} component descriptor")
+            if (
+                old.customComponentDescriptors.length != next.customComponentDescriptors.length
+            ) {
+                FabricServiceStateHolder.incrementVersion()
+            }
+        }
+    }
+
     def updateCustomComponentDescriptors(): Either[String, Unit] = {
         for {
             customComponentDescriptors <- Try(getCustomComponentDescriptors).toEither.left.map(_.getMessage)
@@ -80,6 +97,18 @@ class EventsMonitor(
     }
 
     def getEvents: Events = events.get()
+
+    def getApplicationDescriptor: Array[CustomComponentDescriptor] = {
+        val customComponentsPath = new File("/opt/profile/applications").getAbsoluteFile
+        customComponentsPath
+          .listFiles()
+          .filter(_.getName.endsWith(".tgz"))
+          .flatMap { file =>
+              logger.info(s"file is ${file.getName}")
+              val filename = s"${file.getName.split('.')(0)}.json"
+              getCustomComponentDescriptorFromTar(file.toPath, filename)
+          }
+    }
 
     def getCustomComponentDescriptors: Array[CustomComponentDescriptor] = {
         val customComponentsPath = new File("/opt/profile/components").getAbsoluteFile
