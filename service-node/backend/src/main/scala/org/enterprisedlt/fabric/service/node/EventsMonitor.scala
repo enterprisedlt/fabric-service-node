@@ -11,7 +11,7 @@ import org.enterprisedlt.fabric.service.model.Contract
 import org.enterprisedlt.fabric.service.node.Util.withResources
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.model.FabricServiceStateHolder
-import org.enterprisedlt.fabric.service.node.shared.{ContractInvitation, CustomComponentDescriptor, Events}
+import org.enterprisedlt.fabric.service.node.shared.{ApplicationDescriptor, ContractInvitation, CustomComponentDescriptor, Events}
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.reflect.{ClassTag, _}
@@ -23,7 +23,7 @@ import scala.util.Try
 class EventsMonitor(
     eventPullingInterval: Long, //Ms
     networkManager: FabricNetworkManager,
-    events: AtomicReference[Events] = new AtomicReference[Events](Events(Array.empty, Array.empty, Array.empty))
+    events: AtomicReference[Events] = new AtomicReference[Events](Events(Array.empty, Array.empty, Array.empty, Array.empty))
 ) extends Thread("EventsMonitor") {
     @volatile private var working = true
     private val logger: Logger = LoggerFactory.getLogger(this.getClass)
@@ -67,12 +67,12 @@ class EventsMonitor(
 
     def updateApplications(): Either[String, Unit] = {
         for {
-            applications <- Try(getCustomComponentDescriptors).toEither.left.map(_.getMessage)
+            applications <- Try(getApplicationDescriptors).toEither.left.map(_.getMessage)
         } yield {
             val old = events.get()
-            val next = old.copy(customComponentDescriptors = customComponentDescriptors)
+            val next = old.copy(applications = applications)
             events.set(next)
-            logger.info(s"got ${customComponentDescriptors.length} component descriptor")
+            logger.info(s"got ${applications.length} component descriptor")
             if (
                 old.customComponentDescriptors.length != next.customComponentDescriptors.length
             ) {
@@ -99,7 +99,7 @@ class EventsMonitor(
 
     def getEvents: Events = events.get()
 
-    def getApplicationDescriptor: Array[CustomComponentDescriptor] = {
+    def getApplicationDescriptors: Array[ApplicationDescriptor] = {
         val customComponentsPath = new File("/opt/profile/applications").getAbsoluteFile
         customComponentsPath
           .listFiles()
@@ -107,7 +107,7 @@ class EventsMonitor(
           .flatMap { file =>
               logger.info(s"file is ${file.getName}")
               val filename = s"${file.getName.split('.')(0)}.json"
-              getCustomComponentDescriptorFromTar(file.toPath, filename)
+              getFileFromTar[ApplicationDescriptor](file.toPath, filename)
           }
     }
 
