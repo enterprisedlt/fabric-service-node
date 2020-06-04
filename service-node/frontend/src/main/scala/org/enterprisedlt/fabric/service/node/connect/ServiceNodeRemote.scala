@@ -12,6 +12,15 @@ import scala.concurrent.Future
  * @author Alexey Polubelov
  */
 object ServiceNodeRemote {
+
+    def uploadCustomComponent(inputData: FormData): Future[Unit] = {
+        Ajax
+          .post(url = "/admin/upload-custom-component", data = inputData)
+          .map(_.responseText)
+          .map { _ => () }
+    }
+
+
     def uploadContract(inputData: FormData): Future[Unit] = {
         Ajax
           .post(url = "/admin/upload-chaincode", data = inputData)
@@ -19,6 +28,13 @@ object ServiceNodeRemote {
           .map { _ => () }
     }
 
+
+    def addCustomComponent(component: ComponentCandidate): Future[Unit] = {
+        val json = upickle.default.write(component)
+        Ajax
+          .post("/admin/start-custom-node", json)
+          .map { _ => () }
+    }
 
     def getOrganisationFullName: Future[String] = Ajax
       .get("/service/organization-full-name")
@@ -66,6 +82,10 @@ object ServiceNodeRemote {
       .map(_.responseText)
       .map(r => upickle.default.read[Array[ContractDescriptor]](r))
 
+    def listCustomComponentDescriptors: Future[Array[CustomComponentDescriptor]] = Ajax
+      .get("/admin/list-custom-component-descriptors")
+      .map(_.responseText)
+      .map(r => upickle.default.read[Array[CustomComponentDescriptor]](r))
 
     def listBoxes: Future[Array[Box]] = Ajax
       .get("/service/list-boxes")
@@ -138,5 +158,6 @@ object ServiceNodeRemote {
           .get("/service/get-events")
           .map(_.responseText)
           .map(r => upickle.default.read[Events](r))
+
 
 }

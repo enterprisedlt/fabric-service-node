@@ -11,7 +11,7 @@ import org.scalajs.dom.html.Select
 /**
  * @author Alexey Polubelov
  */
-object ComponentForm extends StatelessFormExt[ComponentCandidate, BaseInfo]("register-component-form") {
+object ComponentFormInit extends StatelessFormExt[ComponentCandidate, BaseInfo]("component-form-init") {
 
     override def render(p: ComponentCandidate, data: BaseInfo)(implicit modState: CallbackFunction): VdomNode =
         <.div(

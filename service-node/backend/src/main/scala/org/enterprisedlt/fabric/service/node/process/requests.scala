@@ -1,9 +1,27 @@
 package org.enterprisedlt.fabric.service.node.process
 
+import org.enterprisedlt.fabric.service.node.shared.{EnvironmentVariable, PortBind, VolumeBind}
+
 /**
  * @author Alexey Polubelov
  */
 // =================================================================================================================
+
+case class CustomComponentRequest(
+    box: String,
+    name: String,
+    componentType: String,
+    environmentVariables: Array[EnvironmentVariable],
+    ports: Array[PortBind],
+    volumes: Array[VolumeBind],
+)
+
+case class StartCustomComponentRequest(
+    serviceNodeName: String,
+    request: CustomComponentRequest,
+    crypto: CustomComponentCerts
+)
+
 case class StartOSNRequest(
     port: Int,
     genesis: String, //b64
@@ -42,4 +60,10 @@ case class ComponentCryptoMaterialPEM(
 case class CertAndKeyPEM(
     certificate: String,
     key: String
+)
+
+case class CustomComponentCerts(
+    tlsPeer: String,
+    tlsOsn: String,
+    customComponentCerts: CertAndKeyPEM
 )

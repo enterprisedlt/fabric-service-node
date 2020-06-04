@@ -130,7 +130,7 @@ case object Initial extends AppState
     contractPackages: Array[ContractDescriptor],
     organizations: Array[Organization],
     chainCodes: Array[ChainCodeInfo],
-    events: Events,
+    events: Events
 ) extends AppState
 
 @Lenses case class BaseInfo(

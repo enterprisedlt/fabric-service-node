@@ -27,7 +27,7 @@ class ProcessManager {
               Option(boxAddress).filter(_.nonEmpty)
           }
 
-    def registerBox(boxName: String, url: String): Either[String, Box] =
+    def registerBox(serviceNodeName: String, componentsDistributorAddress: String, boxName: String, url: String): Either[String, Box] =
         Try(JsonRestClient.create[ManagedBox](url))
           .toEither.left
           .map { ex =>
@@ -36,13 +36,17 @@ class ProcessManager {
               msg
           }
           .flatMap { boxManager =>
-              boxManager.getBoxInfo.map { boxInformation =>
+              boxManager.registerServiceNode(serviceNodeName, componentsDistributorAddress).map { boxInformation =>
                   val box = Box(boxName, boxInformation)
                   boxes += boxName -> (boxManager, box)
                   box
               }
           }
 
+    def startCustomNode(box: String, request: StartCustomComponentRequest): Either[String, String] =
+        boxes
+          .get(box).toRight(s"Unknown box $box")
+          .flatMap(_._1.startCustomNode(request))
 
     def startOrderingNode(box: String, request: StartOSNRequest): Either[String, String] =
         boxes

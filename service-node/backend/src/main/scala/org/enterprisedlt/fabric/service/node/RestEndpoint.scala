@@ -2,19 +2,22 @@ package org.enterprisedlt.fabric.service.node
 
 import java.io._
 import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Paths, StandardOpenOption}
 import java.time.Instant
 import java.util
 import java.util.concurrent.atomic.AtomicReference
 
 import com.google.gson.GsonBuilder
+import javax.servlet.http.Part
+import org.eclipse.jetty.util.IO
 import org.enterprisedlt.fabric.service.model.{Contract, Organization, UpgradeContract}
 import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.process.ProcessManager
+import org.enterprisedlt.fabric.service.node.process.{CustomComponentRequest, ProcessManager, StartCustomComponentRequest}
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
-import org.enterprisedlt.fabric.service.node.rest.{Get, Post}
+import org.enterprisedlt.fabric.service.node.rest.{Get, Post, PostMultipart}
 import org.enterprisedlt.fabric.service.node.shared._
 import org.hyperledger.fabric.sdk.Peer
 import org.slf4j.LoggerFactory
@@ -27,6 +30,7 @@ import scala.util.Try
  */
 class RestEndpoint(
     bindPort: Int,
+    componentsDistributorBindPort: Int,
     externalAddress: Option[ExternalAddress],
     organizationConfig: OrganizationConfig,
     cryptoManager: CryptoManager,
@@ -35,7 +39,72 @@ class RestEndpoint(
     processManager: ProcessManager,
 ) {
     private val logger = LoggerFactory.getLogger(this.getClass)
+    private val serviceNodeName = s"service.${organizationConfig.name}.${organizationConfig.domain}"
 
+
+    @PostMultipart("/admin/upload-chaincode")
+    def uploadChaincode(multipart: java.util.Collection[Part]): Either[String, Unit] = {
+        val fileDir = "/opt/profile/chain-code"
+        Util.mkDirs(fileDir)
+        val outputDir = Paths.get(fileDir)
+        for {
+            globalState <- globalState.toRight("Node is not initialized yet")
+            _ <- Try {
+                multipart.forEach { part =>
+                    Option(part.getSubmittedFileName).foreach { filename =>
+                        logger.debug(s"Got Part ${part.getName} with size = ${part.getSize}, contentType = ${part.getContentType}, submittedFileName $filename")
+                        val outputFile = outputDir.resolve(filename)
+                        val is = part.getInputStream
+                        val os = Files.newOutputStream(outputFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+                        IO.copy(is, os)
+                        logger.debug(s"Saved Part ${part.getName} to ${outputFile.toString}")
+                        is.close()
+                        os.close()
+                    }
+                }
+            }.toEither.left.map(_.getMessage)
+        } yield globalState.eventsMonitor.updateCustomComponentDescriptors()
+
+    }
+
+
+    @PostMultipart("/admin/upload-custom-component")
+    def uploadCustomComponent(multipart: java.util.Collection[Part]): Either[String, Unit] = {
+        val fileDir = "/opt/profile/components"
+        Util.mkDirs(fileDir)
+        val outputDir = Paths.get(fileDir)
+        for {
+            globalState <- globalState.toRight("Node is not initialized yet")
+            tgzPart <- multipart
+              .iterator()
+              .asScala
+              .find(_.getSubmittedFileName.endsWith(".tgz"))
+              .toRight("No tgz in multipart")
+            _ <- Try {
+                Option(tgzPart.getSubmittedFileName).map { filename =>
+                    logger.info(s"Got Part ${tgzPart.getName} with size = ${tgzPart.getSize}, contentType = ${tgzPart.getContentType}, submittedFileName $filename")
+                    val outputFile = outputDir.resolve(filename)
+                    val is = tgzPart.getInputStream
+                    val os = Files.newOutputStream(outputFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+                    IO.copy(is, os)
+                    logger.info(s"Saved Part ${tgzPart.getName} to ${outputFile.toString}")
+                    is.close()
+                    os.close()
+                }
+            }.toEither.left.map(_.getMessage)
+        } yield globalState.eventsMonitor.updateCustomComponentDescriptors()
+    }
+
+    @Post("/admin/start-custom-node")
+    def startCustomNode(request: CustomComponentRequest): Either[String, String] = {
+        val crypto = cryptoManager.generateCustomComponentCrypto(request.box)
+        val startCustomComponentRequest = StartCustomComponentRequest(
+            serviceNodeName,
+            request,
+            crypto
+        )
+        processManager.startCustomNode(request.box, startCustomComponentRequest)
+    }
 
     @Get("/service/list-boxes")
     def listBoxes: Either[String, Array[Box]] = processManager.listBoxes
@@ -106,7 +175,10 @@ class RestEndpoint(
     @Get("/admin/create-user")
     def createUser(name: String): Either[String, Unit] = {
         logger.info(s"Creating new user $name ...")
-        Try(cryptoManager.createFabricUser(name)).toEither.left.map(_.getMessage)
+        Try(cryptoManager.createFabricUser(name))
+          .toEither
+          .map(_ => ())
+          .left.map(_.getMessage)
     }
 
 
@@ -240,10 +312,19 @@ class RestEndpoint(
         ).toEither.left.map(_.getMessage)
     }
 
+
     @Post("/admin/register-box-manager")
-    def registerBox(request: RegisterBoxManager): Either[String, Box] =
-        processManager.registerBox(request.name, request.url)
-          .map { r => FabricServiceStateHolder.incrementVersion(); r }
+    def registerBox(request: RegisterBoxManager): Either[String, Box] = {
+        val componentsDistributorAddress = externalAddress
+          .map(ea => s"http://${ea.host}:$componentsDistributorBindPort")
+          .getOrElse(s"http://service.${organizationConfig.name}.${organizationConfig.domain}:$componentsDistributorBindPort")
+        for {
+            box <- processManager.registerBox(serviceNodeName, componentsDistributorAddress, request.name, request.url)
+        } yield {
+            FabricServiceStateHolder.incrementVersion()
+            box
+        }
+    }
 
 
     @Post("/admin/bootstrap")
@@ -642,5 +723,5 @@ case class GlobalState(
     networkManager: FabricNetworkManager,
     network: NetworkConfig,
     networkName: String,
-    eventsMonitor: EventsMonitor,
+    eventsMonitor: EventsMonitor
 )

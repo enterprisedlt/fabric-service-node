@@ -4,7 +4,7 @@ import java.security.KeyStore
 import java.security.cert.X509Certificate
 
 import org.enterprisedlt.fabric.service.node.cryptography.{Component, ComponentCerts, UserAccount}
-import org.enterprisedlt.fabric.service.node.process.OrganizationCryptoMaterialPEM
+import org.enterprisedlt.fabric.service.node.process.{CertAndKeyPEM, CustomComponentCerts, OrganizationCryptoMaterialPEM}
 import org.hyperledger.fabric.sdk.User
 
 /**
@@ -13,6 +13,8 @@ import org.hyperledger.fabric.sdk.User
 trait CryptoManager {
 
     def getOrgCryptoMaterialPem: OrganizationCryptoMaterialPEM
+
+    def generateCustomComponentCrypto(componentName:String): CustomComponentCerts
 
     def generateComponentCrypto(componentType: Component, componentName: String): ComponentCerts
 
@@ -26,7 +28,7 @@ trait CryptoManager {
 
     def createServiceTrustStore(password: String): KeyStore
 
-    def createFabricUser(name: String): Unit
+    def createFabricUser(name: String): CertAndKeyPEM
 
     def getFabricUserKeyStore(name: String, password: String): KeyStore
 

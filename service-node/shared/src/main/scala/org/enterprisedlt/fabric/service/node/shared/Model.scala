@@ -236,8 +236,9 @@ object ContractParticipant {
 
 // ------------------------------------------------------------------------
 case class Events(
-    messages: Array[PrivateMessageEvent],
-    contractInvitations: Array[ContractInvitation]
+    messages: Array[PrivateMessageEvent] = Array.empty,
+    contractInvitations: Array[ContractInvitation] = Array.empty,
+    customComponentDescriptors: Array[CustomComponentDescriptor] = Array.empty
 )
 
 object Events {
@@ -266,4 +267,60 @@ object ContractInvitation {
     implicit val rw: RW[ContractInvitation] = macroRW
 }
 
+
+@Lenses case class PortBind(
+    externalPort: String,
+    internalPort: String
+)
+
+object PortBind {
+    implicit val rw: RW[PortBind] = macroRW
+}
+
+@Lenses case class VolumeBind(
+    externalHost: String,
+    internalHost: String
+)
+
+object VolumeBind {
+    implicit val rw: RW[VolumeBind] = macroRW
+}
+
+@Lenses case class EnvironmentVariable(
+    key: String,
+    value: String
+)
+
+object EnvironmentVariable {
+    implicit val rw: RW[EnvironmentVariable] = macroRW
+}
+
 // ------------------------------------------------------------------------
+case class CustomComponentDescriptor(
+    componentType: String,
+    image: Image,
+    command: String,
+    workingDir: String,
+    environmentVariablesDescriptor: Array[EnvironmentVariable],
+    portBindDescriptor: Array[PortBind],
+    volumeBindDescriptor: Array[VolumeBind]
+)
+
+object CustomComponentDescriptor {
+
+    implicit val rw: RW[CustomComponentDescriptor] = macroRW
+}
+
+
+case class Image(
+    name: String,
+    tag: String = "latest"
+) {
+    def getName = s"$name:$tag"
+}
+
+
+object Image {
+
+    implicit val rw: RW[Image] = macroRW
+}

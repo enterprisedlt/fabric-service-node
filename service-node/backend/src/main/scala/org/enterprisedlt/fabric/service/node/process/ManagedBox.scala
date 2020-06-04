@@ -12,6 +12,9 @@ trait ManagedBox {
     @Get("/info")
     def getBoxInfo: Either[String, BoxInformation]
 
+    @Post("/start-custom-node")
+    def startCustomNode(request: StartCustomComponentRequest): Either[String, String]
+
     @Post("/start-ordering-node")
     def startOrderingNode(request: StartOSNRequest): Either[String, String]
 
@@ -32,4 +35,8 @@ trait ManagedBox {
 
     @Post("/update-known-hosts")
     def updateKnownHosts(hosts: Array[KnownHostRecord]): Either[String, Unit]
+
+    @Get("/register-service-node")
+    def registerServiceNode(serviceNodeName: String, serviceNodeUrl: String): Either[String, BoxInformation]
+
 }

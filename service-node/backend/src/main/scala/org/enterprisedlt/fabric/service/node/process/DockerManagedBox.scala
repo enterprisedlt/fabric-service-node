@@ -1,7 +1,8 @@
 package org.enterprisedlt.fabric.service.node.process
 
-import java.io.Closeable
+import java.io.{Closeable, _}
 import java.nio.charset.StandardCharsets
+import java.util.Base64
 import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.{CompletableFuture, TimeUnit}
 
@@ -17,11 +18,14 @@ import com.github.dockerjava.core.{DefaultDockerClientConfig, DockerClientImpl}
 import com.github.dockerjava.okhttp.OkHttpDockerCmdExecFactory
 import org.enterprisedlt.fabric.service.model.KnownHostRecord
 import org.enterprisedlt.fabric.service.node.configuration.DockerConfig
-import org.enterprisedlt.fabric.service.node.shared.BoxInformation
+import org.enterprisedlt.fabric.service.node.rest.JsonRestClient
+import org.enterprisedlt.fabric.service.node.shared.{BoxInformation, CustomComponentDescriptor, Image}
 import org.enterprisedlt.fabric.service.node.{HostsManager, Util}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
+import scala.collection.concurrent.TrieMap
+import scala.collection.mutable
 import scala.util.Try
 
 /**
@@ -56,6 +60,7 @@ class DockerManagedBox(
             details = Util.getServerInfo
         )
     }
+    private lazy val distributorClients: mutable.Map[String, ComponentsDistributor] = TrieMap.empty[String, ComponentsDistributor]
     // =================================================================================================================
     logger.info(s"Initializing ${this.getClass.getSimpleName} ...")
 
@@ -83,10 +88,69 @@ class DockerManagedBox(
 
     //=========================================================================
 
+    override def registerServiceNode(serviceNodeName: String, componentsDistributorUrl: String): Either[String, BoxInformation] = {
+        distributorClients.put(serviceNodeName, JsonRestClient.create[ComponentsDistributor](componentsDistributorUrl))
+        Right(boxInformation)
+    }
+
+    override def startCustomNode(customComponentRequest: StartCustomComponentRequest): Either[String, String] = {
+        val request = customComponentRequest.request
+        val hostComponentPath = s"$hostPath/components/${request.name}"
+        val hostDistibutivePath = s"$hostPath/distributives/${request.componentType}"
+        val innerComponentPath = s"$InnerPath/components/${request.name}"
+        val innerDistibutivePath = s"$InnerPath/distributives/${request.componentType}"
+        logger.info(s"Starting ${request.name}...")
+        for {
+            _ <- checkComponentTypeExists(customComponentRequest.serviceNodeName, request.componentType, innerDistibutivePath)
+            descriptor <- Try(Util.codec.fromJson(
+                new FileReader(s"$innerDistibutivePath/${request.componentType}.json"),
+                classOf[CustomComponentDescriptor]
+            )).toEither.left.map(_.getMessage)
+            _ <- pullImageIfNeeded(descriptor.image)
+            osnContainerId <- Try {
+                Util.mkDirs(innerComponentPath)
+                storeCustomComponentCryptoMaterial(s"$innerComponentPath/crypto", request.componentType, customComponentRequest.crypto)
+                // start container
+                val configHost = new HostConfig()
+                  .withBinds(
+                      (Array(
+                          new Bind(hostDistibutivePath, new Volume("/opt/config")),
+                          new Bind(s"$hostPath/hosts", new Volume("/etc/hosts"))
+                      ) ++
+                        request.volumes.map { bind =>
+                            new Bind(s"$hostComponentPath/${bind.externalHost}/", new Volume(bind.internalHost))
+                        }
+                        ).toList.asJava
+                  )
+                  .withPortBindings(
+                      request.ports.map { port =>
+                          new PortBinding(new Binding("0.0.0.0", port.externalPort), new ExposedPort(port.internalPort.toInt, InternetProtocol.TCP))
+                      }.toList.asJava
+                  )
+                  .withNetworkMode(networkName)
+                  .withLogConfig(logConfig)
+                val osnContainerId: String = docker.createContainerCmd(descriptor.image.getName)
+                  .withName(request.name)
+                  .withEnv(
+                      request.environmentVariables.map { envVar =>
+                          s"${envVar.key}=${envVar.value}"
+                      }.toList.asJava
+                  )
+                  .withWorkingDir(descriptor.workingDir)
+                  .withCmd(descriptor.command.split(" ").toList.asJava)
+                  .withExposedPorts(request.ports.map(port => new ExposedPort(port.externalPort.toInt, InternetProtocol.TCP)).toList.asJava)
+                  .withHostConfig(configHost)
+                  .exec().getId
+                docker.startContainerCmd(osnContainerId).exec
+                logger.info(s"Custom Node ${request.name} started, ID: $osnContainerId")
+                osnContainerId
+            }.toEither.left.map(_.getMessage)
+        } yield osnContainerId
+    }
 
     override def startOrderingNode(request: StartOSNRequest): Either[String, String] = {
         logger.info(s"Starting ${request.component.fullName} ...")
-        pullImageIfNeeded("hyperledger/fabric-orderer", "1.4.2")
+        pullImageIfNeeded(Image("hyperledger/fabric-orderer", "1.4.2"))
         //        if (checkContainerExistence(osnFullName: String)) {
         //            stopAndRemoveContainer(osnFullName: String)
         //        }
@@ -106,7 +170,6 @@ class DockerManagedBox(
                   new Bind(s"$hostComponentPath/data/genesis.block", new Volume("/var/hyperledger/orderer/orderer.genesis.block")),
                   new Bind(s"$hostComponentPath/msp", new Volume("/var/hyperledger/orderer/msp")),
                   new Bind(s"$hostComponentPath/tls", new Volume("/var/hyperledger/orderer/tls")),
-                  //                  new Bind(s"$hostComponentPath/data/ledger", new Volume("/var/hyperledger/production/orderer"))
               )
               .withPortBindings(
                   new PortBinding(new Binding("0.0.0.0", request.port.toString), new ExposedPort(request.port, InternetProtocol.TCP))
@@ -147,7 +210,7 @@ class DockerManagedBox(
     //=============================================================================
     override def startPeerNode(request: StartPeerRequest): Either[String, String] = {
         val peerFullName = request.component.fullName
-        pullImageIfNeeded("hyperledger/fabric-peer", "1.4.2")
+        pullImageIfNeeded(Image("hyperledger/fabric-peer", "1.4.2"))
         logger.info(s"Starting $peerFullName ...")
         //        if (checkContainerExistence(peerFullName: String)) {
         //            stopAndRemoveContainer(peerFullName: String)
@@ -226,7 +289,7 @@ class DockerManagedBox(
     //=============================================================================
     private def startCouchDB(couchDBFullName: String, port: Int): String = {
         logger.info(s"Starting $couchDBFullName ...")
-        pullImageIfNeeded("hyperledger/fabric-couchdb", "0.4.18")
+        pullImageIfNeeded(Image("hyperledger/fabric-couchdb", "0.4.18"))
         if (checkContainerExistence(couchDBFullName)) {
             stopAndRemoveContainer(couchDBFullName)
         }
@@ -417,15 +480,14 @@ class DockerManagedBox(
     }
 
 
-    private def pullImageIfNeeded(imageName: String, imageTag: String = "latest", forcePull: Boolean = false): Either[String, Unit] = {
-        val image = s"$imageName:$imageTag"
-        if (!forcePull && findImage(image).isDefined) {
-            logger.info(s"Image $image already exists")
+    private def pullImageIfNeeded(image: Image, forcePull: Boolean = false): Either[String, Unit] = {
+        if (!forcePull && findImage(image.getName).isDefined) {
+            logger.debug(s"Image $image already exists")
             Right(())
         } else {
             if (forcePull) logger.info(s"Force pulling image $image")
             else logger.info(s"Unable to find image $image locally")
-            pullImage(imageName, imageTag)
+            pullImage(image)
         }
     }
 
@@ -443,13 +505,12 @@ class DockerManagedBox(
     }
 
 
-    private def pullImage(imageName: String, imageTag: String): Either[String, Unit] = {
-        val image = s"$imageName:$imageTag"
+    private def pullImage(image: Image): Either[String, Unit] = {
         try {
             logger.info(s"Pulling image $image...")
             docker
-              .pullImageCmd(imageName)
-              .withTag(imageTag)
+              .pullImageCmd(image.name)
+              .withTag(image.tag)
               .exec(new PullImageResultCallback())
               .awaitCompletion(pullImageTimeout, TimeUnit.MINUTES)
             logger.info(s"Image $image downloaded")
@@ -463,6 +524,18 @@ class DockerManagedBox(
 
 
     // =================================================================================================================
+    private def storeCustomComponentCryptoMaterial(outPath: String, componentType: String, crypto: CustomComponentCerts): Unit = {
+        Util.mkDirs(s"$outPath/orderers/tls")
+        Util.writeTextFile(s"$outPath/orderers/tls/server.crt", crypto.tlsOsn)
+
+        Util.mkDirs(s"$outPath/peers/tls")
+        Util.writeTextFile(s"$outPath/peers/tls/server.crt", crypto.tlsPeer)
+        ///
+        Util.mkDirs(s"$outPath/users/$componentType")
+        Util.writeTextFile(s"$outPath/users/$componentType/$componentType.crt", crypto.customComponentCerts.certificate)
+        Util.writeTextFile(s"$outPath/users/$componentType/$componentType.key", crypto.customComponentCerts.key)
+    }
+
     private def storeComponentCryptoMaterial(outPath: String, orgConfig: OrganizationConfig, component: ComponentConfig): Unit = {
         //
         Util.mkDirs(s"$outPath/msp/admincerts")
@@ -484,6 +557,31 @@ class DockerManagedBox(
         Util.writeTextFile(s"$outPath/tls/ca.crt", orgConfig.cryptoMaterial.tlsca.certificate)
         Util.writeTextFile(s"$outPath/tls/server.crt", component.cryptoMaterial.tls.certificate)
         Util.writeTextFile(s"$outPath/tls/server.key", component.cryptoMaterial.tls.key)
+    }
+
+    // =================================================================================================================
+
+    private def checkComponentTypeExists(serviceNodeName: String, componentType: String, distributivesPath: String): Either[String, Unit] = {
+        val componentNameFolder = new File(distributivesPath).getAbsoluteFile
+        if (componentNameFolder.exists()) {
+            logger.info(s"Component type $componentType is already exists on a box manager")
+            Right(())
+        } else {
+            componentNameFolder.mkdirs()
+            logger.info(s"Component type $componentType isn't on a box manager. Querying distributor client...")
+            getServiceNodeComponent(serviceNodeName, componentType, componentNameFolder)
+        }
+    }
+
+    private def getServiceNodeComponent(serviceNodeName: String, componentType: String, componentNameFolder: File): Either[String, Unit] = {
+        for {
+            distributorClient <- distributorClients.get(serviceNodeName).toRight(s"Service node $serviceNodeName is not registered in box manager")
+            distributiveBase64 <- distributorClient.getComponentTypeDistributive(componentType)
+            distributive <- Try(Base64.getDecoder.decode(distributiveBase64)).toEither.left.map(_.getMessage)
+            _ <- Util.untarFile(distributive, componentNameFolder.getAbsolutePath)
+        } yield {
+            logger.info(s"Component type $componentType has been successfully downloaded")
+        }
     }
 
     // =================================================================================================================

@@ -15,7 +15,7 @@ import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
 import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FabricCryptoMaterial.writeToPemFile
-import org.enterprisedlt.fabric.service.node.process.OrganizationCryptoMaterialPEM
+import org.enterprisedlt.fabric.service.node.process.{CertAndKeyPEM, CustomComponentCerts, OrganizationCryptoMaterialPEM}
 import org.enterprisedlt.fabric.service.node.{CryptoManager, Util}
 import org.hyperledger.fabric.sdk.identity.X509Enrollment
 import org.slf4j.LoggerFactory
@@ -58,6 +58,14 @@ class FileBasedCryptoManager(
         key.store(new FileOutputStream(s"$cryptoDir/users/admin/admin-${organizationConfig.name}.p12"), password.toCharArray)
     }
 
+
+    override def generateCustomComponentCrypto(componentName: String): CustomComponentCerts = {
+        val customComponentCerts = createFabricUser(componentName)
+        CustomComponentCerts(
+            tlsPeer = getOrgCryptoMaterialPem.tlsca.certificate,
+            tlsOsn = getOrgCryptoMaterialPem.tlsca.certificate,
+            customComponentCerts = customComponentCerts)
+    }
 
     override def generateComponentCrypto(componentType: Component, componentName: String): ComponentCerts = {
         val component = componentType match {
@@ -135,7 +143,7 @@ class FileBasedCryptoManager(
     }
 
     //=========================================================================
-    override def createFabricUser(name: String): Unit = {
+    override def createFabricUser(name: String):CertAndKeyPEM = {
         val notBefore = new Date
         val notAfter = Util.futureDate(Util.parsePeriod(organizationConfig.certificateDuration))
         val orgConfig = organizationConfig
@@ -154,6 +162,10 @@ class FileBasedCryptoManager(
         Util.mkDirs(userDir)
         writeToPemFile(s"$userDir/$name.crt", theCert.certificate)
         writeToPemFile(s"$userDir/$name.key", theCert.key)
+        CertAndKeyPEM(
+            FabricCryptoMaterial.asPemText(theCert.certificate),
+            FabricCryptoMaterial.asPemText(theCert.key)
+        )
     }
 
     //=========================================================================

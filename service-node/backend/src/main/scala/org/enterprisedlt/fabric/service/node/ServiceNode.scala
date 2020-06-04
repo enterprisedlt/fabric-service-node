@@ -11,13 +11,12 @@ import org.eclipse.jetty.util.security.Constraint
 import org.eclipse.jetty.util.ssl.SslContextFactory
 import org.eclipse.jetty.websocket.server.WebSocketHandler
 import org.eclipse.jetty.websocket.servlet.WebSocketServletFactory
-import org.enterprisedlt.fabric.service.node.UnitsHelper._
 import org.enterprisedlt.fabric.service.node.auth.{FabricAuthenticator, Role}
 import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
 import org.enterprisedlt.fabric.service.node.cryptography.FileBasedCryptoManager
 import org.enterprisedlt.fabric.service.node.model.FabricServiceStateHolder
 import org.enterprisedlt.fabric.service.node.process.ProcessManager
-import org.enterprisedlt.fabric.service.node.rest.{FileUploadEndpoint, JsonRestEndpoint, UploadHandler}
+import org.enterprisedlt.fabric.service.node.rest.JsonRestEndpoint
 import org.enterprisedlt.fabric.service.node.shared.FabricServiceState
 import org.enterprisedlt.fabric.service.node.websocket.ServiceWebSocketManager
 import org.slf4j.LoggerFactory
@@ -33,6 +32,7 @@ object ServiceNode extends App {
     private val Environment = System.getenv()
     private val LogLevel = Option(Environment.get("LOG_LEVEL")).filter(_.trim.nonEmpty).getOrElse("INFO")
     private val ServiceBindPort = Option(Environment.get("SERVICE_BIND_PORT")).map(_.toInt).getOrElse(throw new Exception("Mandatory environment variable missing SERVICE_BIND_PORT!"))
+    private val ComponentsDistributorBindPort = Option(Environment.get("COMPONENTS_DISTRIBUTOR_BIND_PORT")).map(_.toInt).getOrElse(throw new Exception("Mandatory environment variable missing COMPONENTS_DISTRIBUTOR_BIND_PORT!"))
     private val ServiceExternalAddress = Option(Environment.get("SERVICE_EXTERNAL_ADDRESS")).filter(_.trim.nonEmpty).map(parseExternalAddress(_, ServiceBindPort))
     private val ProfilePath = Option(Environment.get("PROFILE_PATH")).getOrElse(throw new Exception("Mandatory environment variable missing PROFILE_PATH!"))
     // Org variables
@@ -68,30 +68,29 @@ object ServiceNode extends App {
     private val processManager = new ProcessManager
     private val cryptoManager = new FileBasedCryptoManager(organizationConfig, "/opt/profile/crypto", AdminPassword)
     private val restEndpoint = new RestEndpoint(
-        ServiceBindPort, ServiceExternalAddress, organizationConfig, cryptoManager,
+        ServiceBindPort, ComponentsDistributorBindPort, ServiceExternalAddress, organizationConfig, cryptoManager,
         hostsManager = new HostsManager("/opt/profile/hosts", ServiceExternalAddress.map(_.host)),
         ProfilePath, processManager
     )
-    val uploadEndpoint =
-        new UploadHandler(
-            tmpLocation = "/opt/profile/work/upload-parts", // the directory location where files will be stored
-            maxFileSize = 500 MByte, // the maximum size allowed for uploaded files
-            maxRequestSize = 500 MByte, // the maximum size allowed for multipart/form-data requests
-            fileSizeThreshold = 1 MByte, // the size threshold after which files will be written to disk
-            Array(
-                FileUploadEndpoint("/admin/upload-chaincode", "/opt/profile/chain-code"),
-                FileUploadEndpoint("/admin/upload-custom-component", "/opt/profile/components")
-            )
+    private val componentsDistributorRestEndpoint = new ComponentsDistributorRestEndpoint()
+    private val componentsDistributorServer = new Server(ComponentsDistributorBindPort)
+    componentsDistributorServer.setHandler(
+        new JsonRestEndpoint(
+            Util.createCodec,
+            componentsDistributorRestEndpoint
         )
+    )
+
     //TODO: make web app optional, based on configuration
     private val server =
         createServer(
-            ServiceBindPort, cryptoManager, restEndpoint, uploadEndpoint,
+            ServiceBindPort, cryptoManager, restEndpoint,
             "/opt/profile/webapp",
             "/opt/service/admin-console"
         )
-
+    //
     setupShutdownHook()
+    componentsDistributorServer.start()
     server.start()
     logger.info("Started.")
     //    server.join()
@@ -115,12 +114,13 @@ object ServiceNode extends App {
                 logger.info("Shutting down...")
                 restEndpoint.cleanup()
                 server.stop()
+                componentsDistributorServer.stop()
                 logger.info("Shutdown complete.")
             }
         })
     }
 
-    private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: AnyRef, uploadEndpoint: UploadHandler, webAppResource: String, adminConsole: String): Server = {
+    private def createServer(bindPort: Int, cryptography: CryptoManager, endpoint: AnyRef, webAppResource: String, adminConsole: String): Server = {
         val server = new Server()
 
         val connector = createTLSConnector(bindPort, server, cryptography)
@@ -147,9 +147,6 @@ object ServiceNode extends App {
                 endpoint
             )
         )
-
-        val uploadEndpointContext = new ContextHandler("/")
-        uploadEndpointContext.setHandler(uploadEndpoint)
 
         // add serving for web app:
         Util.mkDirs(webAppResource)
@@ -182,7 +179,7 @@ object ServiceNode extends App {
         }
         webSocketContext.setHandler(wsHandler)
 
-        security.setHandler(new ContextHandlerCollection(webAppContext, adminAppContext, webSocketContext, uploadEndpointContext, endpointContext))
+        security.setHandler(new ContextHandlerCollection(webAppContext, adminAppContext, webSocketContext, endpointContext))
         server.setHandler(security)
         server
     }

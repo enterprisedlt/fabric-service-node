@@ -11,6 +11,9 @@ import com.google.gson.{Gson, GsonBuilder}
 import com.google.protobuf.{ByteString, MessageLite}
 import javax.security.auth.x500.X500Principal
 import javax.servlet.ServletRequest
+import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveInputStream}
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
+import org.apache.commons.compress.utils.IOUtils
 import org.apache.http.client.methods.HttpPost
 import org.apache.http.conn.ssl.{NoopHostnameVerifier, SSLConnectionSocketFactory, TrustAllStrategy}
 import org.apache.http.entity.{ByteArrayEntity, ContentType}
@@ -21,8 +24,8 @@ import org.bouncycastle.asn1.ASN1ObjectIdentifier
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x500.style.{BCStyle, IETFUtils}
 import org.enterprisedlt.fabric.service.node.endorsement.EndorsementPolicyCompiler
-import org.enterprisedlt.fabric.service.node.shared.ContractParticipant
 import org.enterprisedlt.fabric.service.node.rest.JsonServerCodec
+import org.enterprisedlt.fabric.service.node.shared.ContractParticipant
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope, Payload}
 import org.hyperledger.fabric.protos.common.Configtx
@@ -37,9 +40,11 @@ import oshi.SystemInfo
 
 import scala.collection.JavaConverters._
 import scala.language.postfixOps
+import scala.util.control.NonFatal
 
 /**
  * @author Alexey Polubelov
+ * @author Maxim Fedin
  */
 object Util {
     private val logger = LoggerFactory.getLogger(this.getClass)
@@ -309,7 +314,90 @@ object Util {
         val freq = (hal.getProcessor.getProcessorIdentifier.getVendorFreq * 1d) / (1 GHz)
         s"${coreCount}Core ${freq.formatted("%.2f")}GHz ${total.formatted("%.2f")}Gb"
     }
+
+    //=========================================================================
+    def withResources[T <: AutoCloseable, V](r: => T)(f: T => V): V = {
+        val resource: T = r
+        require(resource != null, "resource is null")
+        var exception: Throwable = null
+        try {
+            f(resource)
+        } catch {
+            case NonFatal(e) =>
+                exception = e
+                throw e
+        } finally {
+            closeAndAddSuppressed(exception, resource)
+        }
+    }
+
+    private def closeAndAddSuppressed(e: Throwable,
+        resource: AutoCloseable): Unit = {
+        if (e != null) {
+            try {
+                resource.close()
+            } catch {
+                case NonFatal(suppressed) =>
+                    e.addSuppressed(suppressed)
+            }
+        } else {
+            resource.close()
+        }
+    }
+
+    def findInTar[T](tarArchiveInputStream: TarArchiveInputStream, filename: String)(f: InputStream => T): Option[T] = {
+        new TarIterator(tarArchiveInputStream)
+          .find(_.name == filename)
+          .map(tarRecord => f(tarRecord.inputStream))
+    }
+
+    def untarFile(file: Array[Byte], destinationDir: String): Either[String, Unit] =
+        withResources(
+            new TarArchiveInputStream(
+                new GzipCompressorInputStream(
+                    new ByteArrayInputStream(file)
+                )
+            )
+        ) { tarIn =>
+            new TarIterator(tarIn)
+              .map(_.inputStream)
+              .foreach { case inputStream: TarArchiveInputStream =>
+                  inputStream.getCurrentEntry match {
+                      case entry if entry.isDirectory =>
+                          val f = new File(s"$destinationDir/${entry.getName}")
+                          f.mkdirs()
+                      case entry if entry.isFile =>
+                          val outputFile = new File(s"$destinationDir/${entry.getName}")
+                          logger.info(s"Untarring file ${entry.getName} into ${destinationDir}")
+                          val fos = new FileOutputStream(outputFile)
+                          IOUtils.copy(inputStream, fos)
+                          fos.close()
+                  }
+              }
+            Right(())
+        }
 }
+
+
+class TarIterator(val input: TarArchiveInputStream) extends Iterator[TarRecord] {
+    var current: TarArchiveEntry = _
+
+    override def hasNext: Boolean = {
+        current = input.getNextTarEntry
+        current != null
+    }
+
+    override def next(): TarRecord = if (current == null) null else {
+        TarRecord(current.getName, input)
+    }
+
+}
+
+case class TarRecord(
+    name: String,
+    inputStream: InputStream
+)
+
 
 object ConversionHelper {
 

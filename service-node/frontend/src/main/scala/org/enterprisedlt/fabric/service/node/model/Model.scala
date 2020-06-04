@@ -1,6 +1,7 @@
 package org.enterprisedlt.fabric.service.node.model
 
 import monocle.macros.Lenses
+import org.enterprisedlt.fabric.service.node.shared.{EnvironmentVariable, PortBind, VolumeBind}
 import upickle.default.{macroRW, ReadWriter => RW}
 
 /**
@@ -11,7 +12,11 @@ import upickle.default.{macroRW, ReadWriter => RW}
     box: String,
     name: String,
     port: Int,
-    componentType: String
+    componentType: String,
+    //
+    environmentVariables: Array[EnvironmentVariable],
+    ports: Array[PortBind],
+    volumes: Array[VolumeBind]
 )
 
 object ComponentCandidate {

@@ -7,8 +7,8 @@ import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.page.form.{ComponentForm, CreateContract, RegisterOrganization, ServerForm}
-import org.enterprisedlt.fabric.service.node.shared.{ContractParticipant, CreateContractRequest, RegisterBoxManager}
+import org.enterprisedlt.fabric.service.node.page.form.{ComponentFormDashboard, CreateContract, RegisterOrganization, ServerForm}
+import org.enterprisedlt.fabric.service.node.shared._
 import org.enterprisedlt.fabric.service.node.util.Html.data
 import org.scalajs.dom
 import org.scalajs.dom.FormData
@@ -28,7 +28,8 @@ object Dashboard {
         // Servers
         boxCandidate: RegisterBoxManager,
         componentCandidate: ComponentCandidate,
-
+        componentFile: File,
+        componentName: String,
         // Network
         channelName: String,
         createContractRequest: CreateContractRequest,
@@ -58,8 +59,13 @@ object Dashboard {
                   box = g.info.boxes.headOption.map(_.name).getOrElse(""),
                   name = "",
                   port = 0,
-                  componentType = ComponentCandidate.Types.head
+                  componentType = ComponentCandidate.Types.head,
+                  environmentVariables = Array.empty[EnvironmentVariable],
+                  ports = Array.empty[PortBind],
+                  volumes = Array.empty[VolumeBind]
               ),
+              componentFile = null,
+              componentName = "Choose file",
               channelName = "",
               createContractRequest = CreateContractRequest(
                   name = "",
@@ -70,9 +76,9 @@ object Dashboard {
                   initArgs = defaultPackage.map(p => Array.fill(p.initArgsNames.length)("")).getOrElse(Array.empty[String])
               ),
               contractFile = null,
-              contractName = "",
+              contractName = "Choose file",
               descriptorFile = null,
-              descriptorName = "",
+              descriptorName = "Choose file",
               //
               registerOrganizationRequest = JoinRequest(
                   organization = Organization(
@@ -184,8 +190,9 @@ object Dashboard {
                                 PageAction(
                                     name = "Component",
                                     id = "component-form",
-                                    _ => <.div(
-                                        ComponentForm(s, State.componentCandidate, g.info),
+                                    _ =>
+                                        <.div(
+                                        ComponentFormDashboard(s, State.componentCandidate, g),
                                         <.div(^.className := "form-group mt-1",
                                             <.button(
                                                 ^.className := "btn btn-sm btn-outline-secondary",
@@ -195,13 +202,43 @@ object Dashboard {
                                             ),
                                             <.button(
                                                 ^.className := "btn btn-sm btn-outline-success float-right",
-                                                ^.onClick --> addNetworkComponents(Seq(s.componentCandidate), g),
+                                                ^.onClick --> addCustomComponent(s.componentCandidate, g.info.orgFullName),
                                                 "Add component",
-                                                ^.disabled := true //TODO
                                             )
                                         )
                                     )
-                                )
+                                ),
+                                PageAction(
+                                    name = "Upload",
+                                    id = "upload-component",
+                                    actionForm = progress =>
+                                        <.div(
+                                            <.div(^.className := "form-group row",
+                                                <.label(^.className := "col-sm-4 col-form-label", "Component"),
+                                                <.div(^.className := "input-group input-group-sm col-sm-8",
+                                                    <.div(^.className := "custom-file",
+                                                        <.input(^.`type` := "file", ^.className := "custom-file-input",
+                                                            ^.onChange ==> changeCustomComponentFile
+                                                        ),
+                                                        <.label(^.className := "custom-file-label", s.componentName)
+                                                    )
+                                                )
+                                            ),
+                                            <.div(^.className := "form-group mt-1",
+                                                <.button(
+                                                    ^.className := "btn btn-sm btn-outline-secondary",
+                                                    data.toggle := "collapse", data.target := "#upload-component",
+                                                    ^.aria.expanded := true, ^.aria.controls := "upload-component",
+                                                    "Cancel"
+                                                ),
+                                                <.button(
+                                                    ^.className := "btn btn-sm btn-outline-success float-right",
+                                                    ^.onClick --> progress(uploadCustomComponent(s)),
+                                                    "Upload component",
+                                                )
+                                            )
+                                        )
+                                ),
                             ),
                         ),
                         Page(
@@ -484,15 +521,21 @@ object Dashboard {
             }.getOrElse(Callback())
         }
 
+        def changeCustomComponentFile(event: ReactEventFromInput): CallbackTo[Unit] = {
+            val file: UndefOr[File] = event.target.files(0)
+            file.map { f =>
+                $.modState(x => x.copy(componentName = f.name, componentFile = f))
+            }.getOrElse(Callback())
+        }
+
 
         def addBox(boxCandidate: RegisterBoxManager)(r: Callback): Callback = Callback.future {
             ServiceNodeRemote.registerBox(boxCandidate).map(_ => r)
         }
 
-        def addNetworkComponents(components: Seq[ComponentCandidate], g: Ready): CallbackTo[Unit] = {
-            //TODO: implement
-            println("not yet :(")
-            Callback()
+        def addCustomComponent(component: ComponentCandidate, orgFullName: String): Callback = Callback.future {
+            val updatedComponent = component.copy(name = s"${component.name}.$orgFullName")
+            ServiceNodeRemote.addCustomComponent(updatedComponent).map(_ => Callback())
         }
 
         def createInvite: Callback = Callback {
@@ -510,6 +553,12 @@ object Dashboard {
             formData.append("contractFile", s.contractFile)
             formData.append("descriptorFile", s.descriptorFile)
             ServiceNodeRemote.uploadContract(formData).map(_ => r)
+        }
+
+        def uploadCustomComponent(s: State)(r: Callback): Callback = Callback.future {
+            val formData = new FormData
+            formData.append("componentFile", s.componentFile)
+            ServiceNodeRemote.uploadCustomComponent(formData).map(_ => r)
         }
 
 
