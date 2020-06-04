@@ -93,8 +93,8 @@ class EventsMonitor(
                     status
                 )
             } ++ applications
-              .filter { application =>
-                  !applicationDescriptors.exists(_.name == application.name)
+              .filterNot { application =>
+                  applicationDescriptors.exists(_.name == application.name)
               }.map {
                 application =>
                     ApplicationEventsMonitor(
@@ -123,8 +123,10 @@ class EventsMonitor(
     }
 
     private def getApplicationDescriptors: Array[ApplicationDescriptor] = {
-        val customComponentsPath = new File("/opt/profile/applications").getAbsoluteFile
-        customComponentsPath
+        val applicationsPath = "/opt/profile/applications"
+        Util.mkDirs(applicationsPath)
+        new File(applicationsPath)
+          .getAbsoluteFile
           .listFiles()
           .filter(_.getName.endsWith(".tgz"))
           .flatMap { file =>
@@ -135,8 +137,10 @@ class EventsMonitor(
     }
 
     private def getCustomComponentDescriptors: Array[CustomComponentDescriptor] = {
-        val customComponentsPath = new File("/opt/profile/components").getAbsoluteFile
-        customComponentsPath
+        val customComponentsPath = "/opt/profile/components"
+        Util.mkDirs(customComponentsPath)
+        new File(customComponentsPath)
+          .getAbsoluteFile
           .listFiles()
           .filter(_.getName.endsWith(".tgz"))
           .flatMap { file =>
