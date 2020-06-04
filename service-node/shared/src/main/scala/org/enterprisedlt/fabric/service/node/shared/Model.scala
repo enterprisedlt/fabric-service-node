@@ -239,7 +239,7 @@ case class Events(
     messages: Array[PrivateMessageEvent] = Array.empty,
     contractInvitations: Array[ContractInvitation] = Array.empty,
     customComponentDescriptors: Array[CustomComponentDescriptor] = Array.empty,
-    applications: Array[ApplicationDescriptor] = Array.empty
+    applications: Array[ApplicationEventsMonitor] = Array.empty
 )
 
 object Events {
@@ -334,4 +334,15 @@ case class ApplicationDescriptor(
 object ApplicationDescriptor {
 
     implicit val rw: RW[ApplicationDescriptor] = macroRW
+}
+
+
+case class ApplicationEventsMonitor(
+    name: String,
+    status: String
+)
+
+object ApplicationEventsMonitor {
+
+    implicit val rw: RW[ApplicationEventsMonitor] = macroRW
 }

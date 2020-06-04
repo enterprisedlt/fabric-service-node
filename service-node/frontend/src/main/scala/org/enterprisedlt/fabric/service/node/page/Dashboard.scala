@@ -448,7 +448,7 @@ object Dashboard {
                                                   g.events.applications.map { application =>
                                                       <.tr(
                                                           <.td(application.name),
-                                                          <.td(),
+                                                          <.td(application.status),
                                                           <.td()
                                                       )
                                                   }.toTagMod

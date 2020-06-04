@@ -7,11 +7,11 @@ import java.util.concurrent.atomic.AtomicReference
 import com.google.gson.GsonBuilder
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
-import org.enterprisedlt.fabric.service.model.Contract
+import org.enterprisedlt.fabric.service.model.{Application, Contract}
 import org.enterprisedlt.fabric.service.node.Util.withResources
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.model.FabricServiceStateHolder
-import org.enterprisedlt.fabric.service.node.shared.{ApplicationDescriptor, ContractInvitation, CustomComponentDescriptor, Events}
+import org.enterprisedlt.fabric.service.node.shared._
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.reflect.{ClassTag, _}
@@ -28,6 +28,8 @@ class EventsMonitor(
     private val logger: Logger = LoggerFactory.getLogger(this.getClass)
     private var delay: Long = -1L
     private val events: AtomicReference[Events] = new AtomicReference[Events](Events())
+
+    def getEvents: Events = events.get()
 
     def updateEvents(): Either[String, Unit] = {
         for {
@@ -65,41 +67,62 @@ class EventsMonitor(
         }
     }
 
-    def updateApplications(): Either[String, Unit] = {
-        for {
-            applications <- Try(getApplicationDescriptors).toEither.left.map(_.getMessage)
-        } yield {
-            val old = events.get()
-            val next = old.copy(applications = applications)
-            events.set(next)
-            logger.info(s"got ${applications.length} component descriptor")
-            if (
-                old.applications.length != next.applications.length
-            ) {
-                FabricServiceStateHolder.incrementVersion()
+    def updateCustomComponentDescriptors(): Either[String, Unit] = Try(getCustomComponentDescriptors)
+      .map { customComponentDescriptors =>
+          val old = events.get()
+          val next = old.copy(customComponentDescriptors = customComponentDescriptors)
+          events.set(next)
+          logger.info(s"got ${customComponentDescriptors.length} component descriptor")
+          if (
+              old.customComponentDescriptors.length != next.customComponentDescriptors.length
+          ) {
+              FabricServiceStateHolder.incrementVersion()
+          }
+      }.toEither.left.map(_.getMessage)
+
+
+    def updateApplications(): Either[String, Unit] = for {
+        applicationDescriptors <- Try(getApplicationDescriptors).toEither.left.map(_.getMessage)
+        applications <- getApplications
+    } yield {
+        val applicationEventsMonitor =
+            applicationDescriptors.map { applicationDescriptor =>
+                val status = if (applications.exists(_.name == applicationDescriptor.name)) "Published" else "Installed"
+                ApplicationEventsMonitor(
+                    applicationDescriptor.name,
+                    status
+                )
+            } ++ applications
+              .filter { application =>
+                  !applicationDescriptors.exists(_.name == application.name)
+              }.map {
+                application =>
+                    ApplicationEventsMonitor(
+                        application.name,
+                        "Not Installed"
+                    )
             }
+        val old = events.get()
+        val next = old.copy(applications = applicationEventsMonitor)
+        logger.info(s"got ${applicationEventsMonitor.length} for applications")
+        events.set(next)
+        if (
+            old.applications.length != next.applications.length
+        ) {
+            FabricServiceStateHolder.incrementVersion()
         }
     }
 
-    def updateCustomComponentDescriptors(): Either[String, Unit] = {
+    //    ================================================================================
+    private def getApplications: Either[String, Array[Application]] = {
         for {
-            customComponentDescriptors <- Try(getCustomComponentDescriptors).toEither.left.map(_.getMessage)
-        } yield {
-            val old = events.get()
-            val next = old.copy(customComponentDescriptors = customComponentDescriptors)
-            events.set(next)
-            logger.info(s"got ${customComponentDescriptors.length} component descriptor")
-            if (
-                old.customComponentDescriptors.length != next.customComponentDescriptors.length
-            ) {
-                FabricServiceStateHolder.incrementVersion()
-            }
-        }
+            queryResult <- networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listApplications")
+            applications <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
+            contractInvitations <- Try((new GsonBuilder).create().fromJson(applications, classOf[Array[Application]])).toEither.left.map(_.getMessage)
+        } yield contractInvitations
     }
 
-    def getEvents: Events = events.get()
-
-    def getApplicationDescriptors: Array[ApplicationDescriptor] = {
+    private def getApplicationDescriptors: Array[ApplicationDescriptor] = {
         val customComponentsPath = new File("/opt/profile/applications").getAbsoluteFile
         customComponentsPath
           .listFiles()
@@ -111,7 +134,7 @@ class EventsMonitor(
           }
     }
 
-    def getCustomComponentDescriptors: Array[CustomComponentDescriptor] = {
+    private def getCustomComponentDescriptors: Array[CustomComponentDescriptor] = {
         val customComponentsPath = new File("/opt/profile/components").getAbsoluteFile
         customComponentsPath
           .listFiles()
