@@ -236,9 +236,9 @@ object ContractParticipant {
 
 // ------------------------------------------------------------------------
 case class Events(
-    messages: Array[PrivateMessageEvent],
-    contractInvitations: Array[ContractInvitation],
-    customComponentDescriptors: Array[CustomComponentDescriptor]
+    messages: Array[PrivateMessageEvent] = Array.empty,
+    contractInvitations: Array[ContractInvitation] = Array.empty,
+    customComponentDescriptors: Array[CustomComponentDescriptor] = Array.empty
 )
 
 object Events {
