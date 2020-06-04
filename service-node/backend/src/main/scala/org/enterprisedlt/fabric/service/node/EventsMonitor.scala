@@ -22,12 +22,12 @@ import scala.util.Try
  */
 class EventsMonitor(
     eventPullingInterval: Long, //Ms
-    networkManager: FabricNetworkManager,
-    events: AtomicReference[Events] = new AtomicReference[Events](Events(Array.empty, Array.empty, Array.empty, Array.empty))
+    networkManager: FabricNetworkManager
 ) extends Thread("EventsMonitor") {
     @volatile private var working = true
     private val logger: Logger = LoggerFactory.getLogger(this.getClass)
     private var delay: Long = -1L
+    private val events: AtomicReference[Events] = new AtomicReference[Events](Events())
 
     def updateEvents(): Either[String, Unit] = {
         for {
