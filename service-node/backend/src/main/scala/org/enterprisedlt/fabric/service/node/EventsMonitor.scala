@@ -14,6 +14,7 @@ import org.enterprisedlt.fabric.service.node.model.FabricServiceStateHolder
 import org.enterprisedlt.fabric.service.node.shared.{ContractInvitation, CustomComponentDescriptor, Events}
 import org.slf4j.{Logger, LoggerFactory}
 
+import scala.reflect.{ClassTag, _}
 import scala.util.Try
 
 /**
@@ -89,11 +90,12 @@ class EventsMonitor(
           .flatMap { file =>
               logger.info(s"file is ${file.getName}")
               val filename = s"${file.getName.split('.')(0)}.json"
-              getCustomComponentDescriptorFromTar(file.toPath, filename)
+              getFileFromTar[CustomComponentDescriptor](file.toPath, filename)
           }
     }
 
-    private def getCustomComponentDescriptorFromTar(filePath: Path, filename: String): Option[CustomComponentDescriptor] =
+    private def getFileFromTar[T: ClassTag](filePath: Path, filename: String): Option[T] = {
+        val targetClazz = classTag[T].runtimeClass.asInstanceOf[Class[T]]
         withResources(
             new TarArchiveInputStream(
                 new GzipCompressorInputStream(
@@ -102,9 +104,10 @@ class EventsMonitor(
             )
         ) { inputStream =>
             Util.findInTar(inputStream, filename)(descriptorInputStream =>
-                Util.codec.fromJson(new InputStreamReader(descriptorInputStream), classOf[CustomComponentDescriptor])
+                Util.codec.fromJson(new InputStreamReader(descriptorInputStream), targetClazz)
             )
         }
+    }
 
     override def run(): Unit = {
         logger.info("Events monitor started")
