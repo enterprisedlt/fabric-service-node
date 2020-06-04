@@ -39,7 +39,11 @@ object Dashboard {
         descriptorName: String,
 
         // Goverment
-        registerOrganizationRequest: JoinRequest
+        registerOrganizationRequest: JoinRequest,
+
+        // Applications
+        applicationFile: File,
+        applicationName: String,
 
         //        block: BlockConfig,
         //        raft: RaftConfig,
@@ -91,7 +95,9 @@ object Dashboard {
                       tlsCACerts = Array.empty[String],
                       adminCerts = Array.empty[String]
                   )
-              )
+              ),
+              applicationFile = null,
+              applicationName = "Choose file"
           )
       }
       .renderBackend[Backend]
@@ -192,21 +198,21 @@ object Dashboard {
                                     id = "component-form",
                                     _ =>
                                         <.div(
-                                        ComponentFormDashboard(s, State.componentCandidate, g),
-                                        <.div(^.className := "form-group mt-1",
-                                            <.button(
-                                                ^.className := "btn btn-sm btn-outline-secondary",
-                                                data.toggle := "collapse", data.target := "#component-form",
-                                                ^.aria.expanded := true, ^.aria.controls := "component-form",
-                                                "Cancel"
-                                            ),
-                                            <.button(
-                                                ^.className := "btn btn-sm btn-outline-success float-right",
-                                                ^.onClick --> addCustomComponent(s.componentCandidate, g.info.orgFullName),
-                                                "Add component",
+                                            ComponentFormDashboard(s, State.componentCandidate, g),
+                                            <.div(^.className := "form-group mt-1",
+                                                <.button(
+                                                    ^.className := "btn btn-sm btn-outline-secondary",
+                                                    data.toggle := "collapse", data.target := "#component-form",
+                                                    ^.aria.expanded := true, ^.aria.controls := "component-form",
+                                                    "Cancel"
+                                                ),
+                                                <.button(
+                                                    ^.className := "btn btn-sm btn-outline-success float-right",
+                                                    ^.onClick --> addCustomComponent(s.componentCandidate, g.info.orgFullName),
+                                                    "Add component",
+                                                )
                                             )
                                         )
-                                    )
                                 ),
                                 PageAction(
                                     name = "Upload",
@@ -419,8 +425,71 @@ object Dashboard {
                         ),
                         Page(
                             name = "Applications",
-                            content = <.div(),
-                            actions = Seq.empty,
+                            content =
+                              <.div(
+                                  ^.width := "900px",
+                                  ^.marginTop := "0px",
+                                  ^.marginBottom := "0px",
+                                  ^.marginLeft := "auto",
+                                  ^.marginRight := "auto",
+                                  <.div(
+                                      ^.className := "card",
+                                      ^.marginTop := "3px",
+                                      <.div(^.className := "card-header", <.i(<.b("Applications"))),
+                                      <.div(^.className := "card-body",
+                                          <.table(
+                                              ^.width := "100%",
+                                              <.tbody(
+                                                  <.tr(
+                                                      <.td(<.i(<.b("Application name"))),
+                                                      <.td(<.i(<.b("Status"))),
+                                                      <.td(<.i(<.b("Action"))),
+                                                  ),
+                                                  g.events.applications.map { application =>
+                                                      <.tr(
+                                                          <.td(application.name),
+                                                          <.td(),
+                                                          <.td()
+                                                      )
+                                                  }.toTagMod
+                                              )
+                                          )
+                                      )
+                                  )
+                              ),
+                            actions = Seq(
+                                PageAction(
+                                    name = "Upload",
+                                    id = "upload-application",
+                                    actionForm = progress =>
+                                        <.div(
+                                            <.div(^.className := "form-group row",
+                                                <.label(^.className := "col-sm-4 col-form-label", "Application"),
+                                                <.div(^.className := "input-group input-group-sm col-sm-8",
+                                                    <.div(^.className := "custom-file",
+                                                        <.input(^.`type` := "file", ^.className := "custom-file-input",
+                                                            ^.onChange ==> changeApplicationFile
+                                                        ),
+                                                        <.label(^.className := "custom-file-label", s.applicationName)
+                                                    )
+                                                )
+                                            ),
+                                            <.div(^.className := "form-group mt-1",
+                                                <.button(
+                                                    ^.className := "btn btn-sm btn-outline-secondary",
+                                                    data.toggle := "collapse", data.target := "#upload-application",
+                                                    ^.aria.expanded := true, ^.aria.controls := "upload-application",
+                                                    "Cancel"
+                                                ),
+                                                <.button(
+                                                    ^.className := "btn btn-sm btn-outline-success float-right",
+                                                    ^.onClick --> progress(uploadApplication(s)),
+                                                    "Upload application",
+                                                )
+                                            )
+                                        )
+                                ),
+                            ),
                         ),
                         Page(
                             name = "Events",
@@ -528,6 +597,12 @@ object Dashboard {
             }.getOrElse(Callback())
         }
 
+        def changeApplicationFile(event: ReactEventFromInput): CallbackTo[Unit] = {
+            val file: UndefOr[File] = event.target.files(0)
+            file.map { f =>
+                $.modState(x => x.copy(applicationName = f.name, applicationFile = f))
+            }.getOrElse(Callback())
+        }
 
         def addBox(boxCandidate: RegisterBoxManager)(r: Callback): Callback = Callback.future {
             ServiceNodeRemote.registerBox(boxCandidate).map(_ => r)
@@ -546,6 +621,12 @@ object Dashboard {
 
         def createChannel(channelName: String)(r: Callback): Callback = Callback.future {
             ServiceNodeRemote.createChannel(channelName).map(_ => r)
+        }
+
+        def uploadApplication(s: State)(r: Callback): Callback = Callback.future {
+            val formData = new FormData
+            formData.append("applicationFile", s.applicationFile)
+            ServiceNodeRemote.uploadApplication(formData).map(_ => r)
         }
 
         def uploadContract(s: State)(r: Callback): Callback = Callback.future {

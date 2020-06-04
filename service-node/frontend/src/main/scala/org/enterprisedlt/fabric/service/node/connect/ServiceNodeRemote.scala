@@ -13,6 +13,13 @@ import scala.concurrent.Future
  */
 object ServiceNodeRemote {
 
+    def uploadApplication(inputData: FormData): Future[Unit] = {
+        Ajax
+          .post(url = "/admin/upload-application", data = inputData)
+          .map(_.responseText)
+          .map { _ => () }
+    }
+
     def uploadCustomComponent(inputData: FormData): Future[Unit] = {
         Ajax
           .post(url = "/admin/upload-custom-component", data = inputData)

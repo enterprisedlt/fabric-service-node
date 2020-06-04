@@ -74,7 +74,7 @@ class EventsMonitor(
             events.set(next)
             logger.info(s"got ${applications.length} component descriptor")
             if (
-                old.customComponentDescriptors.length != next.customComponentDescriptors.length
+                old.applications.length != next.applications.length
             ) {
                 FabricServiceStateHolder.incrementVersion()
             }
