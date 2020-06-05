@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Paths, StandardOpenOption}
 import java.time.Instant
 import java.util
+import java.util.Base64
 import java.util.concurrent.atomic.AtomicReference
 
 import com.google.gson.GsonBuilder
@@ -15,9 +16,9 @@ import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.process.{CustomComponentRequest, ProcessManager, StartCustomComponentRequest}
+import org.enterprisedlt.fabric.service.node.process.{ComponentsDistributor, CustomComponentRequest, ProcessManager, StartCustomComponentRequest}
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
-import org.enterprisedlt.fabric.service.node.rest.{Get, Post, PostMultipart}
+import org.enterprisedlt.fabric.service.node.rest.{Get, JsonRestClient, Post, PostMultipart}
 import org.enterprisedlt.fabric.service.node.shared._
 import org.hyperledger.fabric.sdk.Peer
 import org.slf4j.LoggerFactory
@@ -143,9 +144,30 @@ class RestEndpoint(
           .map(_.network)
 
 
-    @Post("/admin/publish-application")
-    def publishApplication(name: String): Either[String, String] = {
-        val application = Application(name)
+    @Get("/admin/download-application")
+    def downloadApplication(componentsDistributorUrl: String, applicationFileName: String): Either[String, Unit] = {
+        val distributorClient = JsonRestClient.create[ComponentsDistributor](componentsDistributorUrl)
+        val destinationDir = s"/opt/profile/applications/"
+        for {
+            distributiveBase64 <- distributorClient.getApplicationDistributive(applicationFileName)
+            applicationDistributive <- Try(Base64.getDecoder.decode(distributiveBase64)).toEither.left.map(_.getMessage)
+        } yield {
+            Util.storeToFile(s"$destinationDir/$applicationFileName.tgz", applicationDistributive)
+            logger.info(s"Application $applicationFileName has been successfully downloaded")
+        }
+    }
+
+    @Get("/admin/publish-application")
+    def publishApplication(name: String, filename: String): Either[String, String] = {
+        val componentsDistributorAddress = externalAddress
+          .map(ea => s"http://${ea.host}:$componentsDistributorBindPort")
+          .getOrElse(s"http://service.${organizationConfig.name}.${organizationConfig.domain}:$componentsDistributorBindPort")
+        val application = Application(
+            name = name,
+            filename = filename,
+            founder = serviceNodeName,
+            componentsDistributorAddress = componentsDistributorAddress
+        )
         for {
             state <- globalState.toRight("Node is not initialized yet")
             _ <- state.networkManager.invokeChainCode(

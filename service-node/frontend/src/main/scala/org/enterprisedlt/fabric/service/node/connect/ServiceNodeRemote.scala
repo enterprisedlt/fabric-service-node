@@ -7,15 +7,23 @@ import org.scalajs.dom.ext.Ajax
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
+import scala.scalajs.js.JSON
 
 /**
  * @author Alexey Polubelov
  */
 object ServiceNodeRemote {
-    def publishApplication(applicationName: String): Future[Unit] = {
-        val json = upickle.default.write(applicationName)
-        Ajax
-          .post("/admin/publish-application", json)
+    def downloadApplication(distributorAddress: String, name: String): Future[Unit] = {
+        Ajax.get(mkURLGet("/admin/download-application",
+            "componentsDistributorUrl" -> JSON.stringify(distributorAddress),
+            "applicationFileName" -> JSON.stringify(name)))
+          .map { _ => () }
+    }
+
+    def publishApplication(name: String, filename: String): Future[Unit] = {
+        Ajax.get(mkURLGet("/admin/publish-application",
+            "name" -> JSON.stringify(name),
+            "filename" -> JSON.stringify(filename)))
           .map { _ => () }
     }
 
@@ -172,5 +180,6 @@ object ServiceNodeRemote {
           .map(_.responseText)
           .map(r => upickle.default.read[Events](r))
 
-
+    private def mkURLGet(url: String, parameters: (String, String)*): String =
+        s"$url${parameters.map(v => s"${v._1}=${v._2}").mkString("?", "&", "")}"
 }

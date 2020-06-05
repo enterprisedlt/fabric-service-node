@@ -118,6 +118,11 @@ case class OsnCertificates(
     serverTlsCert: String
 )
 
+case class ApplicationDescriptor(
+    name: String,
+    filename: String = ""
+)
+
 object CCLanguage {
 
     val GO = "GO"

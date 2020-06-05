@@ -20,4 +20,11 @@ class ComponentsDistributorRestEndpoint() extends ComponentsDistributor {
         } yield new String(Base64.getEncoder.encode(Files.readAllBytes(componentFile.toPath)), StandardCharsets.UTF_8)
     }
 
+    override def getApplicationDistributive(applicationName: String): Either[String, String] = {
+        val applicationPath = new File(s"/opt/profile/applications/").getAbsoluteFile
+        if (!applicationPath.exists()) applicationPath.mkdirs()
+        for {
+            componentFile <- applicationPath.listFiles().find(_.getName == s"$applicationName.tgz").toRight(s"File $applicationName.tgz doesn't exist")
+        } yield new String(Base64.getEncoder.encode(Files.readAllBytes(componentFile.toPath)), StandardCharsets.UTF_8)
+    }
 }

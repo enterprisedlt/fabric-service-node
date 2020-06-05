@@ -322,24 +322,14 @@ case class Image(
 
 
 object Image {
-
     implicit val rw: RW[Image] = macroRW
 }
 
-
-case class ApplicationDescriptor(
-    name: String
-)
-
-object ApplicationDescriptor {
-
-    implicit val rw: RW[ApplicationDescriptor] = macroRW
-}
-
-
 case class ApplicationEventsMonitor(
     name: String,
-    status: String
+    filename:String,
+    status: String,
+    distributorAddress: String = ""
 )
 
 object ApplicationEventsMonitor {

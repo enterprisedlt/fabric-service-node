@@ -443,12 +443,14 @@ object Dashboard {
                                                   <.tr(
                                                       <.td(<.i(<.b("Application name"))),
                                                       <.td(<.i(<.b("Status"))),
+                                                      <.td(<.i(<.b("Distributor address"))),
                                                       <.td(<.i(<.b("Action"))),
                                                   ),
                                                   g.events.applications.map { application =>
                                                       <.tr(
                                                           <.td(application.name),
                                                           <.td(application.status),
+                                                          <.td(application.distributorAddress),
                                                           <.td(applicationButton(application))
                                                       )
                                                   }.toTagMod
@@ -655,22 +657,26 @@ object Dashboard {
             ServiceNodeRemote.contractJoin(ContractJoinRequest(name, initiator)).map(Callback(_))
         }
 
-        def publishApplication(applicationName: String): Callback = Callback.future {
-            ServiceNodeRemote.publishApplication(applicationName).map(Callback(_))
+        def publishApplication(application: ApplicationEventsMonitor): Callback = Callback.future {
+            ServiceNodeRemote.publishApplication(application.name,application.filename).map(Callback(_))
+        }
+
+        def downloadApplication(application: ApplicationEventsMonitor): Callback = Callback.future {
+            ServiceNodeRemote.downloadApplication(application.distributorAddress, application.filename).map(Callback(_))
         }
 
         def applicationButton(application: ApplicationEventsMonitor): VdomTagOf[HTMLElement] = {
             application.status match {
                 case status if status == "Installed" =>
                     <.button(^.className := "btn btn-sm btn-outline-success",
-                        ^.onClick --> publishApplication(application.name),
+                        ^.onClick --> publishApplication(application),
                         "Publish application"
                     )
 
                 case status if status == "Not Installed" =>
                     <.button(^.className := "btn btn-sm btn-outline-success",
-                        "Install application",
-                        ^.disabled := true //TODO
+                        "Download application",
+                        ^.onClick --> downloadApplication(application),
                     )
 
                 case status if status == "Published" =>

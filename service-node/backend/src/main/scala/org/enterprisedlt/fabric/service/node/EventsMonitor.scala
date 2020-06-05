@@ -10,7 +10,7 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.enterprisedlt.fabric.service.model.{Application, Contract}
 import org.enterprisedlt.fabric.service.node.Util.withResources
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
-import org.enterprisedlt.fabric.service.node.model.FabricServiceStateHolder
+import org.enterprisedlt.fabric.service.node.model.{ApplicationDescriptor, FabricServiceStateHolder}
 import org.enterprisedlt.fabric.service.node.shared._
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -87,10 +87,11 @@ class EventsMonitor(
     } yield {
         val applicationEventsMonitor =
             applicationDescriptors.map { applicationDescriptor =>
-                val status = if (applications.exists(_.name == applicationDescriptor.name)) "Published" else "Installed"
+                val status = if (applications.exists(_.name == applicationDescriptor.name)) "Published" else "Downloaded"
                 ApplicationEventsMonitor(
-                    applicationDescriptor.name,
-                    status
+                    name = applicationDescriptor.name,
+                    filename = applicationDescriptor.filename,
+                    status = status
                 )
             } ++ applications
               .filterNot { application =>
@@ -98,8 +99,10 @@ class EventsMonitor(
               }.map {
                 application =>
                     ApplicationEventsMonitor(
-                        application.name,
-                        "Not Installed"
+                        name = application.name,
+                        filename = application.filename,
+                        status = "Not Downloaded",
+                        distributorAddress = application.componentsDistributorAddress
                     )
             }
         val old = events.get()
@@ -131,8 +134,8 @@ class EventsMonitor(
           .filter(_.getName.endsWith(".tgz"))
           .flatMap { file =>
               logger.info(s"file is ${file.getName}")
-              val filename = s"${file.getName.split('.')(0)}.json"
-              getFileFromTar[ApplicationDescriptor](file.toPath, filename)
+              val filename = file.getName.split('.')(0)
+              getFileFromTar[ApplicationDescriptor](file.toPath, s"$filename.json").map(_.copy(filename = filename))
           }
     }
 
