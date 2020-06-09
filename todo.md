@@ -1,26 +1,30 @@
 #TODO list:
 
-- create component on-the-fly
+- [ ] create component on-the-fly
 
-- fetch log for components 
+- [ ] fetch log for components 
 
-- Events (pulling on backend and view on UI): 
-    - join contract invites
-    - join channel invites
-    - private messages 
+- [ ] Events (pulling on backend and view on UI): 
+    - [ ] join contract invites
+    - [ ] join channel invites
+    - [ ] private messages 
     
-- User management (view in UI)
+- [ ] User management (view in UI)
 
-- Implement sync-up (on backend) of:
-    - consortium membership
-    - channel membership
+- [ ] Implement sync-up (on backend) of:
+    - [ ] consortium membership
+    - [ ] channel membership
 
-- Custom components 
-    - Custom domponent deployment
-    - Form for custom component
-    - Peer and OSN support for custom component 
+- [ ] Custom components 
+    - [x] Custom component deployment
+    - [x] Form for custom component
+    - [ ] Custom component 
+    - [ ] Peer and OSN support for custom component 
 
-- Applications 
-    - Upload mechanism
-    - Descriptor
-    - Form for application deployment    
+- [ ] Applications 
+    - [x] Upload mechanism
+    - [x] Descriptor 
+    - [ ] Extract chaincode/component to the proper folders
+    - [ ] Form for application deployment
+
+- [ ] Invite channel UI
