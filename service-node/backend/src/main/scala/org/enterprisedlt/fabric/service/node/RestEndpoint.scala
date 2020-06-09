@@ -2,7 +2,6 @@ package org.enterprisedlt.fabric.service.node
 
 import java.io._
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Paths, StandardOpenOption}
 import java.time.Instant
 import java.util
 import java.util.Base64
@@ -10,7 +9,6 @@ import java.util.concurrent.atomic.AtomicReference
 
 import com.google.gson.GsonBuilder
 import javax.servlet.http.Part
-import org.eclipse.jetty.util.IO
 import org.enterprisedlt.fabric.service.model.{Application, Contract, Organization, UpgradeContract}
 import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
@@ -42,52 +40,21 @@ class RestEndpoint(
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val serviceNodeName = s"service.${organizationConfig.name}.${organizationConfig.domain}"
 
-
     @PostMultipart("/admin/upload-application")
     def uploadApplication(multipart: Iterable[Part]): Either[String, Unit] = {
         val fileDir = "/opt/profile/applications"
-        Util.mkDirs(fileDir)
-        val outputDir = Paths.get(fileDir)
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
-            _ <- Try {
-                multipart.foreach { part =>
-                    Option(part.getSubmittedFileName).foreach { filename =>
-                        logger.debug(s"Got Part ${part.getName} with size = ${part.getSize}, contentType = ${part.getContentType}, submittedFileName $filename")
-                        val outputFile = outputDir.resolve(filename)
-                        val is = part.getInputStream
-                        val os = Files.newOutputStream(outputFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
-                        IO.copy(is, os)
-                        logger.debug(s"Saved Part ${part.getName} to ${outputFile.toString}")
-                        is.close()
-                        os.close()
-                    }
-                }
-            }.toEither.left.map(_.getMessage)
+            _ <- Util.saveTar(multipart, fileDir)
         } yield globalState.eventsMonitor.updateApplications()
     }
 
     @PostMultipart("/admin/upload-chaincode")
     def uploadChaincode(multipart: Iterable[Part]): Either[String, Unit] = {
         val fileDir = "/opt/profile/chain-code"
-        Util.mkDirs(fileDir)
-        val outputDir = Paths.get(fileDir)
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
-            _ <- Try {
-                multipart.foreach { part =>
-                    Option(part.getSubmittedFileName).foreach { filename =>
-                        logger.debug(s"Got Part ${part.getName} with size = ${part.getSize}, contentType = ${part.getContentType}, submittedFileName $filename")
-                        val outputFile = outputDir.resolve(filename)
-                        val is = part.getInputStream
-                        val os = Files.newOutputStream(outputFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
-                        IO.copy(is, os)
-                        logger.debug(s"Saved Part ${part.getName} to ${outputFile.toString}")
-                        is.close()
-                        os.close()
-                    }
-                }
-            }.toEither.left.map(_.getMessage)
+            _ <- Util.saveTar(multipart, fileDir)
         } yield globalState.eventsMonitor.updateCustomComponentDescriptors()
 
     }
@@ -96,25 +63,9 @@ class RestEndpoint(
     @PostMultipart("/admin/upload-custom-component")
     def uploadCustomComponent(multipart: Iterable[Part]): Either[String, Unit] = {
         val fileDir = "/opt/profile/components"
-        Util.mkDirs(fileDir)
-        val outputDir = Paths.get(fileDir)
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
-            tgzPart <- multipart
-              .find(_.getSubmittedFileName.endsWith(".tgz"))
-              .toRight("No tgz in multipart")
-            _ <- Try {
-                Option(tgzPart.getSubmittedFileName).map { filename =>
-                    logger.info(s"Got Part ${tgzPart.getName} with size = ${tgzPart.getSize}, contentType = ${tgzPart.getContentType}, submittedFileName $filename")
-                    val outputFile = outputDir.resolve(filename)
-                    val is = tgzPart.getInputStream
-                    val os = Files.newOutputStream(outputFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
-                    IO.copy(is, os)
-                    logger.info(s"Saved Part ${tgzPart.getName} to ${outputFile.toString}")
-                    is.close()
-                    os.close()
-                }
-            }.toEither.left.map(_.getMessage)
+            _ <- Util.saveTar(multipart, fileDir)
         } yield globalState.eventsMonitor.updateCustomComponentDescriptors()
     }
 
