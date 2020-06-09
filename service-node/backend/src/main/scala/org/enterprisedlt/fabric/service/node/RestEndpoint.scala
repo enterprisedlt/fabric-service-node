@@ -44,14 +44,14 @@ class RestEndpoint(
 
 
     @PostMultipart("/admin/upload-application")
-    def uploadApplication(multipart: java.util.Collection[Part]): Either[String, Unit] = {
+    def uploadApplication(multipart: Iterable[Part]): Either[String, Unit] = {
         val fileDir = "/opt/profile/applications"
         Util.mkDirs(fileDir)
         val outputDir = Paths.get(fileDir)
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
             _ <- Try {
-                multipart.forEach { part =>
+                multipart.foreach { part =>
                     Option(part.getSubmittedFileName).foreach { filename =>
                         logger.debug(s"Got Part ${part.getName} with size = ${part.getSize}, contentType = ${part.getContentType}, submittedFileName $filename")
                         val outputFile = outputDir.resolve(filename)
@@ -68,14 +68,14 @@ class RestEndpoint(
     }
 
     @PostMultipart("/admin/upload-chaincode")
-    def uploadChaincode(multipart: java.util.Collection[Part]): Either[String, Unit] = {
+    def uploadChaincode(multipart: Iterable[Part]): Either[String, Unit] = {
         val fileDir = "/opt/profile/chain-code"
         Util.mkDirs(fileDir)
         val outputDir = Paths.get(fileDir)
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
             _ <- Try {
-                multipart.forEach { part =>
+                multipart.foreach { part =>
                     Option(part.getSubmittedFileName).foreach { filename =>
                         logger.debug(s"Got Part ${part.getName} with size = ${part.getSize}, contentType = ${part.getContentType}, submittedFileName $filename")
                         val outputFile = outputDir.resolve(filename)
@@ -94,15 +94,13 @@ class RestEndpoint(
 
 
     @PostMultipart("/admin/upload-custom-component")
-    def uploadCustomComponent(multipart: java.util.Collection[Part]): Either[String, Unit] = {
+    def uploadCustomComponent(multipart: Iterable[Part]): Either[String, Unit] = {
         val fileDir = "/opt/profile/components"
         Util.mkDirs(fileDir)
         val outputDir = Paths.get(fileDir)
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
             tgzPart <- multipart
-              .iterator()
-              .asScala
               .find(_.getSubmittedFileName.endsWith(".tgz"))
               .toRight("No tgz in multipart")
             _ <- Try {
