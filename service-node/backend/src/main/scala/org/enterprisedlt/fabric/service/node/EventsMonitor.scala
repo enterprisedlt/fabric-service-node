@@ -1,6 +1,7 @@
 package org.enterprisedlt.fabric.service.node
 
-import java.io.{File, InputStreamReader}
+import java.io.{File, FileOutputStream, InputStreamReader}
+import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.util.concurrent.atomic.AtomicReference
 
@@ -126,7 +127,7 @@ class EventsMonitor(
     }
 
     private def getApplicationDescriptors: Array[ApplicationDescriptor] = {
-        val applicationsPath = "/opt/profile/applications"
+        val applicationsPath = "/opt/profile/application-distributives"
         Util.mkDirs(applicationsPath)
         new File(applicationsPath)
           .getAbsoluteFile
@@ -135,7 +136,16 @@ class EventsMonitor(
           .flatMap { file =>
               logger.info(s"file is ${file.getName}")
               val filename = file.getName.split('.')(0)
-              getFileFromTar[ApplicationDescriptor](file.toPath, s"$filename.json").map(_.copy(filename = filename))
+              val applicationDescriptor = getObjectFromTar[ApplicationDescriptor](file.toPath, s"$filename.json").map(_.copy(filename = filename))
+              val applicationDescriptorJson = Util.codec.toJson(applicationDescriptor)
+              val out = new FileOutputStream(s"/opt/profile/applications/$filename.json")
+              try {
+                  val s = applicationDescriptorJson.getBytes(StandardCharsets.UTF_8)
+                  out.write(s)
+                  out.flush()
+              }
+              finally out.close()
+              applicationDescriptor
           }
     }
 
@@ -149,11 +159,11 @@ class EventsMonitor(
           .flatMap { file =>
               logger.info(s"file is ${file.getName}")
               val filename = s"${file.getName.split('.')(0)}.json"
-              getFileFromTar[CustomComponentDescriptor](file.toPath, filename)
+              getObjectFromTar[CustomComponentDescriptor](file.toPath, filename)
           }
     }
 
-    private def getFileFromTar[T: ClassTag](filePath: Path, filename: String): Option[T] = {
+    private def getObjectFromTar[T: ClassTag](filePath: Path, filename: String): Option[T] = {
         val targetClazz = classTag[T].runtimeClass.asInstanceOf[Class[T]]
         withResources(
             new TarArchiveInputStream(

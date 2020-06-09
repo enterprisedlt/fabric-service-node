@@ -350,7 +350,7 @@ object Util {
     }
 
 
-    def saveTar(multipart: Iterable[Part], fileDir: String): Either[String, Unit] = Try {
+    def saveMultipart(multipart: Iterable[Part], fileDir: String): Either[String, Unit] = Try {
         Util.mkDirs(fileDir)
         val outputDir = Paths.get(fileDir)
         multipart.foreach { part =>
@@ -390,7 +390,7 @@ object Util {
                           f.mkdirs()
                       case entry if entry.isFile =>
                           val outputFile = new File(s"$destinationDir/${entry.getName}")
-                          logger.info(s"Untarring file ${entry.getName} into ${destinationDir}")
+                          logger.info(s"Untarring file ${entry.getName} into $destinationDir")
                           val fos = new FileOutputStream(outputFile)
                           IOUtils.copy(inputStream, fos)
                           fos.close()

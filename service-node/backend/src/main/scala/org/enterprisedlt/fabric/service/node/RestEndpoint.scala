@@ -42,10 +42,10 @@ class RestEndpoint(
 
     @PostMultipart("/admin/upload-application")
     def uploadApplication(multipart: Iterable[Part]): Either[String, Unit] = {
-        val fileDir = "/opt/profile/applications"
+        val fileDir = "/opt/profile/application-distributives"
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
-            _ <- Util.saveTar(multipart, fileDir)
+            _ <- Util.saveMultipart(multipart, fileDir)
         } yield globalState.eventsMonitor.updateApplications()
     }
 
@@ -54,7 +54,7 @@ class RestEndpoint(
         val fileDir = "/opt/profile/chain-code"
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
-            _ <- Util.saveTar(multipart, fileDir)
+            _ <- Util.saveMultipart(multipart, fileDir)
         } yield globalState.eventsMonitor.updateCustomComponentDescriptors()
 
     }
@@ -65,7 +65,7 @@ class RestEndpoint(
         val fileDir = "/opt/profile/components"
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
-            _ <- Util.saveTar(multipart, fileDir)
+            _ <- Util.saveMultipart(multipart, fileDir)
         } yield globalState.eventsMonitor.updateCustomComponentDescriptors()
     }
 
