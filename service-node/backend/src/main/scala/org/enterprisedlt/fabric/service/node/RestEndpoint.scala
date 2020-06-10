@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import com.google.gson.GsonBuilder
 import javax.servlet.http.Part
-import org.enterprisedlt.fabric.service.model.{Application, Contract, Organization, UpgradeContract}
+import org.enterprisedlt.fabric.service.model._
 import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
@@ -69,6 +69,53 @@ class RestEndpoint(
         } yield globalState.eventsMonitor.updateCustomComponentDescriptors()
     }
 
+    @Post("/admin/create-application")
+    def createApplication(applicationRequest: CreateApplicationRequest): Either[String, String] = {
+        logger.info("Creating application ...")
+        val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
+        logger.info(s"applicationRequest =  $applicationRequest")
+        for {
+            state <- globalState.toRight("Node is not initialized yet")
+            applicationDescriptor <- Try(Util.codec.fromJson(
+                new FileReader(s"/opt/profile/applications/${applicationRequest.applicationType}.json"),
+                classOf[ApplicationDescriptor]
+            )).toEither.left.map(_.getMessage)
+            contractCreateRequest = CreateContractRequest(
+                name = applicationRequest.name,
+                version = applicationRequest.version,
+                contractType = applicationRequest.applicationType,
+                channelName = applicationRequest.channelName,
+                parties = applicationRequest.parties,
+                initArgs = applicationRequest.initArgs
+            )
+            createContractResponse <- createContract(contractCreateRequest)
+            //TODO
+            _ = logger.info(s"createContractResponse: [$createContractResponse]")
+            response <- {
+                logger.info(s"Invoking 'createApplication' method...")
+                val application = Application(
+                    founder = organizationConfig.name,
+                    name = applicationRequest.name,
+                    channel = applicationRequest.channelName,
+                    applicationType = applicationRequest.applicationType,
+                    version = applicationRequest.version,
+                    participants = applicationRequest.parties.map(_.mspId),
+                    timestamp = Instant.now.toEpochMilli
+                )
+                state.networkManager.invokeChainCode(
+                    ServiceChannelName,
+                    ServiceChainCodeName,
+                    "createApplication",
+                    Util.codec.toJson(application)
+                )
+            }
+            r <- Try(response.get()).toEither.left.map(_.getMessage)
+        } yield {
+            FabricServiceStateHolder.incrementVersion()
+            s"Creating application ${applicationRequest.applicationType} has been completed successfully $r"
+        }
+    }
+
     @Post("/admin/start-custom-node")
     def startCustomNode(request: CustomComponentRequest): Either[String, String] = {
         val crypto = cryptoManager.generateCustomComponentCrypto(request.box)
@@ -111,7 +158,7 @@ class RestEndpoint(
         val componentsDistributorAddress = externalAddress
           .map(ea => s"http://${ea.host}:$componentsDistributorBindPort")
           .getOrElse(s"http://service.${organizationConfig.name}.${organizationConfig.domain}:$componentsDistributorBindPort")
-        val application = Application(
+        val application = ApplicationDistributive(
             name = name,
             filename = filename,
             founder = serviceNodeName,
@@ -122,7 +169,7 @@ class RestEndpoint(
             _ <- state.networkManager.invokeChainCode(
                 ServiceChannelName,
                 ServiceChainCodeName,
-                "publishApplication",
+                "publishApplicationDistributive",
                 Util.codec.toJson(application))
         } yield {
             FabricServiceStateHolder.incrementVersion()

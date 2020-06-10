@@ -16,7 +16,7 @@ object Main extends ContractBase
   with ServiceOperations
   with MessagingOperations
   with ContractOperations
-  with ApplicationOperations
+  with ApplicationDistributivesOperations
   //
 {
 

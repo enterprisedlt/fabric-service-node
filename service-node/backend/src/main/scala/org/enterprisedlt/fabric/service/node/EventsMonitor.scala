@@ -9,7 +9,7 @@ import com.google.gson.GsonBuilder
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.eclipse.jetty.util.IO
-import org.enterprisedlt.fabric.service.model.{Application, Contract}
+import org.enterprisedlt.fabric.service.model.{ApplicationDistributive, Contract}
 import org.enterprisedlt.fabric.service.node.Util.withResources
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.model.{ApplicationDescriptor, FabricServiceStateHolder}
@@ -127,11 +127,11 @@ class EventsMonitor(
     }
 
     //    ================================================================================
-    private def getApplications: Either[String, Array[Application]] = {
+    private def getApplications: Either[String, Array[ApplicationDistributive]] = {
         for {
-            queryResult <- networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listApplications")
+            queryResult <- networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listApplicationDistributives")
             applications <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
-            applications <- Try((new GsonBuilder).create().fromJson(applications, classOf[Array[Application]])).toEither.left.map(_.getMessage)
+            applications <- Try((new GsonBuilder).create().fromJson(applications, classOf[Array[ApplicationDistributive]])).toEither.left.map(_.getMessage)
         } yield applications
     }
 

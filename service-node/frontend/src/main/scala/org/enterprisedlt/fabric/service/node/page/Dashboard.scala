@@ -7,7 +7,7 @@ import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.page.form.{ComponentFormDashboard, CreateContract, RegisterOrganization, ServerForm}
+import org.enterprisedlt.fabric.service.node.page.form.{ComponentFormDashboard,CreateApplication, CreateContract, RegisterOrganization, ServerForm}
 import org.enterprisedlt.fabric.service.node.shared.{ApplicationEventsMonitor, _}
 import org.enterprisedlt.fabric.service.node.util.Html.data
 import org.scalajs.dom
@@ -33,6 +33,8 @@ object Dashboard {
         // Network
         channelName: String,
         createContractRequest: CreateContractRequest,
+        createApplicationRequest: CreateApplicationRequest,
+
         contractFile: File,
         contractName: String,
         descriptorFile: File,
@@ -75,6 +77,14 @@ object Dashboard {
                   name = "",
                   version = "",
                   contractType = defaultPackage.map(_.name).getOrElse(""),
+                  channelName = g.channels.headOption.getOrElse(""),
+                  parties = Array.empty[ContractParticipant],
+                  initArgs = defaultPackage.map(p => Array.fill(p.initArgsNames.length)("")).getOrElse(Array.empty[String])
+              ),
+              createApplicationRequest = CreateApplicationRequest(
+                  name = "",
+                  version = "",
+                  applicationType = defaultPackage.map(_.name).getOrElse(""),
                   channelName = g.channels.headOption.getOrElse(""),
                   parties = Array.empty[ContractParticipant],
                   initArgs = defaultPackage.map(p => Array.fill(p.initArgsNames.length)("")).getOrElse(Array.empty[String])
@@ -384,9 +394,7 @@ object Dashboard {
                         Page(
                             name = "Government",
                             content =
-                              <.div(
-
-                              ),
+                              <.div(),
                             actions = Seq(
                                 PageAction(
                                     name = "Invite",
@@ -489,7 +497,30 @@ object Dashboard {
                                             )
                                         )
                                 ),
-                            ),
+                                PageAction(
+                                    name = "Create application",
+                                    id = "create-application",
+                                    actionForm = progress =>
+                                        <.div(
+                                            <.div(
+                                                CreateApplication(s, State.createApplicationRequest, g),
+                                                <.div(^.className := "form-group mt-1",
+                                                    <.button(
+                                                        ^.className := "btn btn-sm btn-outline-secondary",
+                                                        data.toggle := "collapse", data.target := "#upload-application",
+                                                        ^.aria.expanded := true, ^.aria.controls := "upload-application",
+                                                        "Cancel"
+                                                    ),
+                                                    <.button(
+                                                        ^.className := "btn btn-sm btn-outline-success float-right",
+                                                        ^.onClick --> progress(createApplication(s.createApplicationRequest)),
+                                                        "Create application",
+                                                    )
+                                                )
+                                            )
+                                        ),
+                                )
+                            )
                         ),
                         Page(
                             name = "Events",
@@ -642,6 +673,10 @@ object Dashboard {
             ServiceNodeRemote.uploadCustomComponent(formData).map(_ => r)
         }
 
+
+        def createApplication(request: CreateApplicationRequest)(r: Callback): Callback = Callback.future {
+            ServiceNodeRemote.createApplication(request).map(_ => r)
+        }
 
         def createContract(request: CreateContractRequest)(r: Callback): Callback = Callback.future {
             ServiceNodeRemote.createContract(request).map(_ => r)

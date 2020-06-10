@@ -13,6 +13,8 @@ import scala.scalajs.js.JSON
  * @author Alexey Polubelov
  */
 object ServiceNodeRemote {
+
+
     def downloadApplication(distributorAddress: String, name: String): Future[Unit] = {
         Ajax.get(mkURLGet("/admin/download-application",
             "componentsDistributorUrl" -> JSON.stringify(distributorAddress),
@@ -116,6 +118,13 @@ object ServiceNodeRemote {
     def createContract(createContractRequest: CreateContractRequest): Future[Unit] = {
         val json = upickle.default.write(createContractRequest)
         Ajax.post("/admin/create-contract", json)
+          .map(_ => ())
+    }
+
+
+    def createApplication(createApplicationRequest: CreateApplicationRequest): Future[Unit] = {
+        val json = upickle.default.write(createApplicationRequest)
+        Ajax.post("/admin/create-application", json)
           .map(_ => ())
     }
 

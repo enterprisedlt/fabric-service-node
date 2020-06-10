@@ -312,7 +312,7 @@ object CustomComponentDescriptor {
     implicit val rw: RW[CustomComponentDescriptor] = macroRW
 }
 
-
+// ------------------------------------------------------------------------
 case class Image(
     name: String,
     tag: String = "latest"
@@ -320,14 +320,13 @@ case class Image(
     def getName = s"$name:$tag"
 }
 
-
 object Image {
     implicit val rw: RW[Image] = macroRW
 }
 
 case class ApplicationEventsMonitor(
     name: String,
-    filename:String,
+    filename: String,
     status: String,
     distributorAddress: String = ""
 )
@@ -335,4 +334,19 @@ case class ApplicationEventsMonitor(
 object ApplicationEventsMonitor {
 
     implicit val rw: RW[ApplicationEventsMonitor] = macroRW
+}
+
+// ------------------------------------------------------------------------
+
+@Lenses case class CreateApplicationRequest(
+    name: String,
+    version: String,
+    applicationType: String,
+    channelName: String,
+    parties: Array[ContractParticipant],
+    initArgs: Array[String]
+)
+
+object CreateApplicationRequest {
+    implicit val rw: RW[CreateApplicationRequest] = macroRW
 }
