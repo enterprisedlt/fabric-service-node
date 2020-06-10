@@ -96,7 +96,7 @@ class RestEndpoint(
     @Get("/admin/download-application")
     def downloadApplication(componentsDistributorUrl: String, applicationFileName: String): Either[String, Unit] = {
         val distributorClient = JsonRestClient.create[ComponentsDistributor](componentsDistributorUrl)
-        val destinationDir = s"/opt/profile/applications/"
+        val destinationDir = s"/opt/profile/application-distributives"
         for {
             distributiveBase64 <- distributorClient.getApplicationDistributive(applicationFileName)
             applicationDistributive <- Try(Base64.getDecoder.decode(distributiveBase64)).toEither.left.map(_.getMessage)

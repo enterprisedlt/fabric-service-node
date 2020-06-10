@@ -112,7 +112,7 @@ class EventsMonitor(
         val next = old.copy(applications = applicationEventsMonitor)
         logger.info(s"got ${applicationEventsMonitor.length} for applications")
         events.set(next)
-        if (old.applications.length != next.applications.length) {
+        if (!(old.applications sameElements next.applications)) {
             applicationDescriptors.foreach { applicationDescriptor =>
                 applicationDescriptor.chaincodes.foreach { chaincode =>
                     saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"chain-code/$chaincode.json", "/opt/profile")
