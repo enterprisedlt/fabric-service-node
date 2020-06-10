@@ -120,7 +120,9 @@ case class OsnCertificates(
 
 case class ApplicationDescriptor(
     name: String,
-    filename: String = ""
+    filename: String = "",
+    chaincodes: Array[String] = Array.empty[String],
+    components: Array[String] = Array.empty[String]
 )
 
 object CCLanguage {

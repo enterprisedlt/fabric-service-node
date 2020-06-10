@@ -21,7 +21,7 @@ class ComponentsDistributorRestEndpoint() extends ComponentsDistributor {
     }
 
     override def getApplicationDistributive(applicationName: String): Either[String, String] = {
-        val applicationPath = new File(s"/opt/profile/applications/").getAbsoluteFile
+        val applicationPath = new File(s"/opt/profile/application-distributives/").getAbsoluteFile
         if (!applicationPath.exists()) applicationPath.mkdirs()
         for {
             componentFile <- applicationPath.listFiles().find(_.getName == s"$applicationName.tgz").toRight(s"File $applicationName.tgz doesn't exist")

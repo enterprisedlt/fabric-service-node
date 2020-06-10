@@ -2,12 +2,13 @@ package org.enterprisedlt.fabric.service.node
 
 import java.io.{File, FileOutputStream, InputStreamReader}
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path}
+import java.nio.file.{Files, Path, Paths}
 import java.util.concurrent.atomic.AtomicReference
 
 import com.google.gson.GsonBuilder
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
+import org.eclipse.jetty.util.IO
 import org.enterprisedlt.fabric.service.model.{Application, Contract}
 import org.enterprisedlt.fabric.service.node.Util.withResources
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
@@ -20,6 +21,7 @@ import scala.util.Try
 
 /**
  * @author Alexey Polubelov
+ * @author Maxim Fedin
  */
 class EventsMonitor(
     eventPullingInterval: Long, //Ms
@@ -110,9 +112,16 @@ class EventsMonitor(
         val next = old.copy(applications = applicationEventsMonitor)
         logger.info(s"got ${applicationEventsMonitor.length} for applications")
         events.set(next)
-        if (
-            old.applications.length != next.applications.length
-        ) {
+        if (old.applications.length != next.applications.length) {
+            applicationDescriptors.foreach { applicationDescriptor =>
+                applicationDescriptor.chaincodes.foreach { chaincode =>
+                    saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"chain-code/$chaincode.json", "/opt/profile")
+                    saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"chain-code/$chaincode.tgz", "/opt/profile")
+                }
+                applicationDescriptor.components.foreach { component =>
+                    saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"components/$component.tgz", "/opt/profile")
+                }
+            }
             FabricServiceStateHolder.incrementVersion()
         }
     }
@@ -122,8 +131,8 @@ class EventsMonitor(
         for {
             queryResult <- networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listApplications")
             applications <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
-            contractInvitations <- Try((new GsonBuilder).create().fromJson(applications, classOf[Array[Application]])).toEither.left.map(_.getMessage)
-        } yield contractInvitations
+            applications <- Try((new GsonBuilder).create().fromJson(applications, classOf[Array[Application]])).toEither.left.map(_.getMessage)
+        } yield applications
     }
 
     private def getApplicationDescriptors: Array[ApplicationDescriptor] = {
@@ -177,6 +186,28 @@ class EventsMonitor(
             )
         }
     }
+
+    private def saveFileFromTar(tarPath: String, filename: String, destPath: String): Unit = {
+        withResources(
+            new TarArchiveInputStream(
+                new GzipCompressorInputStream(
+                    Files.newInputStream(Paths.get(tarPath))
+                )
+            )
+        ) { inputStream =>
+            Util.findInTar(inputStream, filename) { in =>
+                val out = new FileOutputStream(s"$destPath/$filename")
+                try {
+                    IO.copy(in, out)
+                }
+                finally {
+                    in.close()
+                    out.close()
+                }
+            }
+        }
+    }
+
 
     override def run(): Unit = {
         logger.info("Events monitor started")
