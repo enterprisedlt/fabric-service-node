@@ -18,14 +18,14 @@ import scala.language.higherKinds
 @Lenses case class ApplicationState(
     roles: Array[String],
     initArgsNames: Array[String],
-    participantCandidate: ContractParticipant,
-
+    participantCandidate: ContractParticipant
 )
 
 object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Ready, ApplicationState]("create-application-form") {
 
     private def stateFor(ct: String, data: Ready): ApplicationState = {
         val firstMSPId = data.organizations.headOption.map(_.mspId).getOrElse("")
+        //TODO
         data.contractPackages.find(_.name == ct).map { descriptor =>
             ApplicationState(
                 roles = descriptor.roles,

@@ -94,7 +94,9 @@ class EventsMonitor(
                 ApplicationEventsMonitor(
                     name = applicationDescriptor.name,
                     filename = applicationDescriptor.filename,
-                    status = status
+                    status = status,
+                    contracts = applicationDescriptor.contracts,
+                    components = applicationDescriptor.components
                 )
             } ++ applications
               .filterNot { application =>
@@ -112,14 +114,14 @@ class EventsMonitor(
         val next = old.copy(applications = applicationEventsMonitor)
         logger.info(s"got ${applicationEventsMonitor.length} for applications")
         events.set(next)
-        if (!(old.applications sameElements next.applications)) {
+        if (old.applications.length != next.applications.length || old.applications.flatMap(_.contracts).length != next.applications.flatMap(_.contracts).length) {
             applicationDescriptors.foreach { applicationDescriptor =>
-                applicationDescriptor.chaincodes.foreach { chaincode =>
-                    saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"chain-code/$chaincode.json", "/opt/profile")
-                    saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"chain-code/$chaincode.tgz", "/opt/profile")
+                applicationDescriptor.contracts.foreach { chaincode =>
+                    saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"chain-code/${chaincode.name}.json", "/opt/profile")
+                    saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"chain-code/${chaincode.name}.tgz", "/opt/profile")
                 }
                 applicationDescriptor.components.foreach { component =>
-                    saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"components/$component.tgz", "/opt/profile")
+                    saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"components/${component.componentType}.tgz", "/opt/profile")
                 }
             }
             FabricServiceStateHolder.incrementVersion()

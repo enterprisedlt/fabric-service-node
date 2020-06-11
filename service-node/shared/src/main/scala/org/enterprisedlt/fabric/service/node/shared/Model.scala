@@ -323,11 +323,13 @@ case class Image(
 object Image {
     implicit val rw: RW[Image] = macroRW
 }
-
+// ------------------------------------------------------------------------
 case class ApplicationEventsMonitor(
     name: String,
     filename: String,
     status: String,
+    contracts: Array[ContractEventsMonitor] = Array.empty[ContractEventsMonitor],
+    components: Array[CustomComponentEventsMonitor] = Array.empty[CustomComponentEventsMonitor],
     distributorAddress: String = ""
 )
 
@@ -335,9 +337,27 @@ object ApplicationEventsMonitor {
 
     implicit val rw: RW[ApplicationEventsMonitor] = macroRW
 }
+// ------------------------------------------------------------------------
+case class ContractEventsMonitor(
+    name: String
+)
+
+object ContractEventsMonitor {
+
+    implicit val rw: RW[ContractEventsMonitor] = macroRW
+}
 
 // ------------------------------------------------------------------------
+case class CustomComponentEventsMonitor(
+    componentType: String
+)
 
+object CustomComponentEventsMonitor {
+
+    implicit val rw: RW[CustomComponentEventsMonitor] = macroRW
+}
+
+// ------------------------------------------------------------------------
 @Lenses case class CreateApplicationRequest(
     name: String,
     version: String,
