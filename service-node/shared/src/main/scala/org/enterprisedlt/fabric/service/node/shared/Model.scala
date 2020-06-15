@@ -156,6 +156,17 @@ object ChainCodeInfo {
 }
 
 // ------------------------------------------------------------------------
+case class ApplicationInfo(
+    name: String,
+    version: String,
+    channelName: String
+)
+
+object ApplicationInfo {
+    implicit val rw: RW[ApplicationInfo] = macroRW
+}
+
+// ------------------------------------------------------------------------
 @Lenses case class Box(
     name: String,
     information: BoxInformation
@@ -238,6 +249,7 @@ object ContractParticipant {
 case class Events(
     messages: Array[PrivateMessageEvent] = Array.empty,
     contractInvitations: Array[ContractInvitation] = Array.empty,
+    applicationInvitations: Array[ApplicationInvitation] = Array.empty,
     customComponentDescriptors: Array[CustomComponentDescriptor] = Array.empty,
     applications: Array[ApplicationState] = Array.empty
 )
@@ -267,7 +279,18 @@ case class ContractInvitation(
 object ContractInvitation {
     implicit val rw: RW[ContractInvitation] = macroRW
 }
+// ------------------------------------------------------------------------
+case class ApplicationInvitation(
+     initiator: String,
+     name: String,
+     applicationType: String,
+     applicationVersion: String,
+     participants: Array[String]
+)
 
+object ApplicationInvitation {
+    implicit val rw: RW[ApplicationInvitation] = macroRW
+}
 
 @Lenses case class PortBind(
     externalPort: String,

@@ -28,15 +28,15 @@ import scala.util.Try
  * @author Alexey Polubelov
  */
 class RestEndpoint(
-    bindPort: Int,
-    componentsDistributorBindPort: Int,
-    externalAddress: Option[ExternalAddress],
-    organizationConfig: OrganizationConfig,
-    cryptoManager: CryptoManager,
-    hostsManager: HostsManager,
-    profilePath: String,
-    processManager: ProcessManager,
-) {
+                      bindPort: Int,
+                      componentsDistributorBindPort: Int,
+                      externalAddress: Option[ExternalAddress],
+                      organizationConfig: OrganizationConfig,
+                      cryptoManager: CryptoManager,
+                      hostsManager: HostsManager,
+                      profilePath: String,
+                      processManager: ProcessManager,
+                  ) {
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val serviceNodeName = s"service.${organizationConfig.name}.${organizationConfig.domain}"
 
@@ -110,7 +110,15 @@ class RestEndpoint(
             }
             r <- Try(response.get()).toEither.left.map(_.getMessage)
         } yield {
-            FabricServiceStateHolder.incrementVersion()
+            FabricServiceStateHolder.updateStateFull(state =>
+                state.copy(
+                    deployedApplications = state.deployedApplications :+ ApplicationInfo(
+                        name = applicationRequest.name,
+                        version = applicationRequest.version,
+                        channelName = applicationRequest.channelName
+                    )
+                )
+            )
             s"Creating application ${applicationRequest.applicationType} has been completed successfully $r"
         }
     }
@@ -297,7 +305,7 @@ class RestEndpoint(
             ).foldRight(Right(Nil): Either[String, List[Peer]]) {
                 (e, p) => for (xs <- p.right; x <- e.right) yield x :: xs
             }
-        } yield s"Sucessfully has been joined to channel $channelName"
+        } yield s"Successfully has been joined to channel $channelName"
     }
 
     @Get("/service/list-messages")
@@ -334,17 +342,12 @@ class RestEndpoint(
         } yield result
     }
 
-    @Get("/service/list-applications")
-    def getListApplications: Either[String, Array[Application]] = {
-        logger.info(s"Querying contracts for ${organizationConfig.name}...")
-        for {
-            state <- globalState.toRight("Node is not initialized yet")
-            queryResult <- state.networkManager
-              .queryChainCode(ServiceChannelName, ServiceChainCodeName, "listApplications")
-            contracts <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
-            result <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[Application]])).toEither.left.map(_.getMessage)
-        } yield result
-    }
+
+        @Get("/service/list-applications")
+        def listApplications: Either[String, Array[ApplicationInfo]] = {
+            Try(FabricServiceStateHolder.fabricServiceStateFull.deployedApplications)
+              .toEither.left.map(_.getMessage)
+        }
 
 
     @Get("/service/list-chain-codes")
@@ -790,8 +793,8 @@ class RestEndpoint(
 }
 
 case class GlobalState(
-    networkManager: FabricNetworkManager,
-    network: NetworkConfig,
-    networkName: String,
-    eventsMonitor: EventsMonitor
-)
+                          networkManager: FabricNetworkManager,
+                          network: NetworkConfig,
+                          networkName: String,
+                          eventsMonitor: EventsMonitor
+                      )

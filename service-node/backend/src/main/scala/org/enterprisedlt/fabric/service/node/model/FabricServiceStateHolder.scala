@@ -2,7 +2,7 @@ package org.enterprisedlt.fabric.service.node.model
 
 import java.util.concurrent.locks.ReentrantLock
 
-import org.enterprisedlt.fabric.service.node.shared.FabricServiceState
+import org.enterprisedlt.fabric.service.node.shared.{ApplicationInfo, FabricServiceState}
 
 /**
  * @author Alexey Polubelov
@@ -56,5 +56,6 @@ object FabricServiceStateHolder {
 
 
 case class FabricServiceStateFull(
-    applications: Array[ApplicationDescriptor] = Array.empty[ApplicationDescriptor]
+     applications: Array[ApplicationDescriptor] = Array.empty[ApplicationDescriptor],
+     deployedApplications: Array[ApplicationInfo]= Array.empty[ApplicationInfo]
 )

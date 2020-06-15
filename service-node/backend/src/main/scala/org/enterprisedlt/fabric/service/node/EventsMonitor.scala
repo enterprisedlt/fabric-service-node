@@ -9,7 +9,7 @@ import com.google.gson.GsonBuilder
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.eclipse.jetty.util.IO
-import org.enterprisedlt.fabric.service.model.{ApplicationDistributive, Contract}
+import org.enterprisedlt.fabric.service.model.{Application, ApplicationDistributive, Contract}
 import org.enterprisedlt.fabric.service.node.Util.withResources
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.model.{ApplicationDescriptor, FabricServiceStateHolder}
@@ -34,11 +34,40 @@ class EventsMonitor(
 
     def getEvents: Events = events.get()
 
+    def updateApplicationInvitations() = {
+        for {
+            queryResult <- networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listApplications")
+            contracts <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
+            applicationInvitations <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[Application]])).toEither.left.map(_.getMessage)
+        } yield {
+            val old = events.get()
+            val next = old.copy(
+                applicationInvitations = applicationInvitations.map { application =>
+                    ApplicationInvitation(
+                        initiator = application.founder,
+                        name = application.name,
+                        applicationType = application.applicationType,
+                        applicationVersion = application.version,
+                        participants = application.participants,
+                    )
+                },
+            )
+            events.set(next)
+            logger.info(s"got ${applicationInvitations.length} contract records")
+            if (
+                old.contractInvitations.length != next.contractInvitations.length
+            ) {
+                FabricServiceStateHolder.incrementVersion()
+            }
+        }
+    }
+
     def updateEvents(): Either[String, Unit] = {
         for {
             _ <- updateContractInvitations()
             _ <- updateCustomComponentDescriptors()
             _ <- updateApplications()
+            _ <- updateApplicationInvitations()
         } yield ()
     }
 
