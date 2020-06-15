@@ -128,10 +128,10 @@ object ServiceNodeRemote {
           .map(_ => ())
     }
 
-    def listApplications: Future[Array[Application]] = Ajax
+    def listApplications: Future[Array[ApplicationInfo]] = Ajax
       .get("/service/list-applications")
       .map(_.responseText)
-      .map(r => upickle.default.read[Array[Application]](r))
+      .map(r => upickle.default.read[Array[ApplicationInfo]](r))
 
     def listOrganizations: Future[Array[Organization]] = Ajax
       .get("/service/list-organizations")

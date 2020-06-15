@@ -28,15 +28,15 @@ import scala.util.Try
  * @author Alexey Polubelov
  */
 class RestEndpoint(
-                      bindPort: Int,
-                      componentsDistributorBindPort: Int,
-                      externalAddress: Option[ExternalAddress],
-                      organizationConfig: OrganizationConfig,
-                      cryptoManager: CryptoManager,
-                      hostsManager: HostsManager,
-                      profilePath: String,
-                      processManager: ProcessManager,
-                  ) {
+    bindPort: Int,
+    componentsDistributorBindPort: Int,
+    externalAddress: Option[ExternalAddress],
+    organizationConfig: OrganizationConfig,
+    cryptoManager: CryptoManager,
+    hostsManager: HostsManager,
+    profilePath: String,
+    processManager: ProcessManager
+) {
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val serviceNodeName = s"service.${organizationConfig.name}.${organizationConfig.domain}"
 
@@ -793,8 +793,8 @@ class RestEndpoint(
 }
 
 case class GlobalState(
-                          networkManager: FabricNetworkManager,
-                          network: NetworkConfig,
-                          networkName: String,
-                          eventsMonitor: EventsMonitor
-                      )
+    networkManager: FabricNetworkManager,
+    network: NetworkConfig,
+    networkName: String,
+    eventsMonitor: EventsMonitor
+  )

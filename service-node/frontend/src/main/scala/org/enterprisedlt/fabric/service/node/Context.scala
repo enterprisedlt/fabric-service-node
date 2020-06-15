@@ -130,7 +130,7 @@ case object Initial extends AppState
     network: NetworkConfig,
     channels: Array[String],
     contractPackages: Array[ContractDescriptor],
-    applications: Array[Application],
+    applications: Array[ApplicationInfo],
     organizations: Array[Organization],
     chainCodes: Array[ChainCodeInfo],
     events: Events

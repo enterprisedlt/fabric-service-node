@@ -713,11 +713,7 @@ object Dashboard {
                         ^.onClick --> downloadApplication(application),
                     )
 
-                case status if status == "Published" =>
-                    <.button(^.className := "btn btn-sm btn-outline-success",
-                        "Create",
-                        ^.disabled := true //TODO
-                    )
+                case status if status == "Published" => <.div
             }
         }
     }
