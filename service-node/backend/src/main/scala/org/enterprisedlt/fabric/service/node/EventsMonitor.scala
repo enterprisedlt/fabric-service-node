@@ -84,49 +84,52 @@ class EventsMonitor(
       }.toEither.left.map(_.getMessage)
 
 
-    def updateApplications(): Either[String, Unit] = for {
-        applicationDescriptors <- Try(getApplicationDescriptors).toEither.left.map(_.getMessage)
-        applications <- getApplications
-    } yield {
-        val applicationEventsMonitor =
-            applicationDescriptors.map { applicationDescriptor =>
-                val status = if (applications.exists(_.name == applicationDescriptor.name)) "Published" else "Downloaded"
-                ApplicationEventsMonitor(
-                    name = applicationDescriptor.name,
-                    filename = applicationDescriptor.filename,
-                    status = status,
-                    contracts = applicationDescriptor.contracts,
-                    components = applicationDescriptor.components
-                )
-            } ++ applications
-              .filterNot { application =>
-                  applicationDescriptors.exists(_.name == application.name)
-              }.map {
-                application =>
-                    ApplicationEventsMonitor(
-                        name = application.name,
-                        filename = application.filename,
-                        status = "Not Downloaded",
-                        distributorAddress = application.componentsDistributorAddress
+    def updateApplications(): Either[String, Unit] =
+        for {
+            applicationDescriptors <- Try(getApplicationDescriptors).toEither.left.map(_.getMessage)
+            applications <- getApplications
+        } yield {
+            val applicationEventsMonitor =
+                applicationDescriptors.map { applicationDescriptor =>
+                    val status = if (applications.exists(_.name == applicationDescriptor.name)) "Published" else "Downloaded"
+                    ApplicationState(
+                        name = applicationDescriptor.name,
+                        filename = applicationDescriptor.filename,
+                        status = status,
+                        contracts = applicationDescriptor.contracts,
+                        components = applicationDescriptor.components,
+                        roles = applicationDescriptor.roles,
+                        initArgsNames = applicationDescriptor.initArgsNames
                     )
-            }
-        val old = events.get()
-        val next = old.copy(applications = applicationEventsMonitor)
-        logger.info(s"got ${applicationEventsMonitor.length} for applications")
-        events.set(next)
-        if (old.applications.length != next.applications.length || old.applications.flatMap(_.contracts).length != next.applications.flatMap(_.contracts).length) {
-            applicationDescriptors.foreach { applicationDescriptor =>
-                applicationDescriptor.contracts.foreach { chaincode =>
-                    saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"chain-code/${chaincode.name}.json", "/opt/profile")
-                    saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"chain-code/${chaincode.name}.tgz", "/opt/profile")
+                } ++ applications
+                  .filterNot { application =>
+                      applicationDescriptors.exists(_.name == application.name)
+                  }.map {
+                    application =>
+                        ApplicationState(
+                            name = application.name,
+                            filename = application.filename,
+                            status = "Not Downloaded",
+                            distributorAddress = application.componentsDistributorAddress
+                        )
                 }
-                applicationDescriptor.components.foreach { component =>
-                    saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"components/${component.componentType}.tgz", "/opt/profile")
+            val old = events.get()
+            val next = old.copy(applications = applicationEventsMonitor)
+            logger.info(s"got ${applicationEventsMonitor.length} for applications")
+            events.set(next)
+            if (old.applications.length != next.applications.length || old.applications.flatMap(_.contracts).length != next.applications.flatMap(_.contracts).length) {
+                applicationDescriptors.foreach { applicationDescriptor =>
+                    applicationDescriptor.contracts.foreach { chaincode =>
+                        saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"chain-code/${chaincode.name}.json", "/opt/profile")
+                        saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"chain-code/${chaincode.name}.tgz", "/opt/profile")
+                    }
+                    applicationDescriptor.components.foreach { component =>
+                        saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"components/${component.componentType}.tgz", "/opt/profile")
+                    }
                 }
+                FabricServiceStateHolder.updateStateFull(_.copy(applications = applicationDescriptors))
             }
-            FabricServiceStateHolder.incrementVersion()
         }
-    }
 
     //    ================================================================================
     private def getApplications: Either[String, Array[ApplicationDistributive]] = {

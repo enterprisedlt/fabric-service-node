@@ -7,8 +7,8 @@ import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.page.form.{ComponentFormDashboard,CreateApplication, CreateContract, RegisterOrganization, ServerForm}
-import org.enterprisedlt.fabric.service.node.shared.{ApplicationEventsMonitor, _}
+import org.enterprisedlt.fabric.service.node.page.form._
+import org.enterprisedlt.fabric.service.node.shared.{ApplicationState, _}
 import org.enterprisedlt.fabric.service.node.util.Html.data
 import org.scalajs.dom
 import org.scalajs.dom.FormData
@@ -56,6 +56,7 @@ object Dashboard {
     private val component = ScalaComponent.builder[Ready]("dashboard")
       .initialStateFromProps { g =>
           val defaultPackage = g.contractPackages.headOption
+          val defaultApplication = g.events.applications.headOption
           State(
               boxCandidate = RegisterBoxManager(
                   name = "",
@@ -84,10 +85,10 @@ object Dashboard {
               createApplicationRequest = CreateApplicationRequest(
                   name = "",
                   version = "",
-                  applicationType = defaultPackage.map(_.name).getOrElse(""),
+                  applicationType = defaultApplication.map(_.filename).getOrElse(""),
                   channelName = g.channels.headOption.getOrElse(""),
                   parties = Array.empty[ContractParticipant],
-                  initArgs = defaultPackage.map(p => Array.fill(p.initArgsNames.length)("")).getOrElse(Array.empty[String])
+                  initArgs = defaultApplication.map(p => Array.fill(p.initArgsNames.length)("")).getOrElse(Array.empty[String])
               ),
               contractFile = null,
               contractName = "Choose file",
@@ -690,15 +691,15 @@ object Dashboard {
             ServiceNodeRemote.contractJoin(ContractJoinRequest(name, initiator)).map(Callback(_))
         }
 
-        def publishApplication(application: ApplicationEventsMonitor): Callback = Callback.future {
+        def publishApplication(application: ApplicationState): Callback = Callback.future {
             ServiceNodeRemote.publishApplication(application.name, application.filename).map(Callback(_))
         }
 
-        def downloadApplication(application: ApplicationEventsMonitor): Callback = Callback.future {
+        def downloadApplication(application: ApplicationState): Callback = Callback.future {
             ServiceNodeRemote.downloadApplication(application.distributorAddress, application.filename).map(Callback(_))
         }
 
-        def applicationButton(application: ApplicationEventsMonitor): VdomTagOf[HTMLElement] = {
+        def applicationButton(application: ApplicationState): VdomTagOf[HTMLElement] = {
             application.status match {
                 case status if status == "Downloaded" =>
                     <.button(^.className := "btn btn-sm btn-outline-success",

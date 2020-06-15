@@ -239,7 +239,7 @@ case class Events(
     messages: Array[PrivateMessageEvent] = Array.empty,
     contractInvitations: Array[ContractInvitation] = Array.empty,
     customComponentDescriptors: Array[CustomComponentDescriptor] = Array.empty,
-    applications: Array[ApplicationEventsMonitor] = Array.empty
+    applications: Array[ApplicationState] = Array.empty
 )
 
 object Events {
@@ -323,38 +323,41 @@ case class Image(
 object Image {
     implicit val rw: RW[Image] = macroRW
 }
+
 // ------------------------------------------------------------------------
-case class ApplicationEventsMonitor(
+case class ApplicationState(
     name: String,
     filename: String,
     status: String,
-    contracts: Array[ContractEventsMonitor] = Array.empty[ContractEventsMonitor],
-    components: Array[CustomComponentEventsMonitor] = Array.empty[CustomComponentEventsMonitor],
+    roles: Array[String] = Array.empty[String],
+    initArgsNames: Array[String] = Array.empty[String],
+    contracts: Array[ContractsState] = Array.empty[ContractsState],
+    components: Array[CustomComponentState] = Array.empty[CustomComponentState],
     distributorAddress: String = ""
 )
 
-object ApplicationEventsMonitor {
+object ApplicationState {
 
-    implicit val rw: RW[ApplicationEventsMonitor] = macroRW
+    implicit val rw: RW[ApplicationState] = macroRW
 }
 // ------------------------------------------------------------------------
-case class ContractEventsMonitor(
+@Lenses case class ContractsState(
     name: String
 )
 
-object ContractEventsMonitor {
+object ContractsState {
 
-    implicit val rw: RW[ContractEventsMonitor] = macroRW
+    implicit val rw: RW[ContractsState] = macroRW
 }
 
 // ------------------------------------------------------------------------
-case class CustomComponentEventsMonitor(
+@Lenses case class CustomComponentState(
     componentType: String
 )
 
-object CustomComponentEventsMonitor {
+object CustomComponentState {
 
-    implicit val rw: RW[CustomComponentEventsMonitor] = macroRW
+    implicit val rw: RW[CustomComponentState] = macroRW
 }
 
 // ------------------------------------------------------------------------

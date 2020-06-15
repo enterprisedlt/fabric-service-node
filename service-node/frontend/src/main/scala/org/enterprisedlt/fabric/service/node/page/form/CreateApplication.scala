@@ -8,8 +8,6 @@ import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.shared.{ContractParticipant, CreateApplicationRequest}
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
 
-import scala.language.higherKinds
-
 /**
  * @author Maxim Fedin
  * @author Alexey Polubelov
@@ -18,31 +16,33 @@ import scala.language.higherKinds
 @Lenses case class ApplicationState(
     roles: Array[String],
     initArgsNames: Array[String],
-    participantCandidate: ContractParticipant
+    participantCandidate: ContractParticipant,
+    filename: String
 )
 
 object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Ready, ApplicationState]("create-application-form") {
 
-    private def stateFor(ct: String, data: Ready): ApplicationState = {
+    private def stateFor(appType: String, data: Ready): ApplicationState = {
         val firstMSPId = data.organizations.headOption.map(_.mspId).getOrElse("")
-        //TODO
-        data.contractPackages.find(_.name == ct).map { descriptor =>
+        data.events.applications.find(_.filename == appType).map { descriptor =>
             ApplicationState(
                 roles = descriptor.roles,
                 initArgsNames = descriptor.initArgsNames,
-                ContractParticipant(
+                participantCandidate = ContractParticipant(
                     firstMSPId,
                     descriptor.roles.headOption.getOrElse("")
-                )
+                ),
+                filename = descriptor.filename
             )
         }.getOrElse( // could be only if package list is empty or something got wrong :(
             ApplicationState(
                 roles = Array.empty,
                 initArgsNames = Array.empty,
-                ContractParticipant(
+                participantCandidate = ContractParticipant(
                     firstMSPId,
                     ""
-                )
+                ),
+                filename = ""
             )
         )
     }
@@ -76,7 +76,7 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                         ^.value := p.applicationType,
                         ^.onChange ==> onPackageChange(s, data),
                         data.events.applications.map { application =>
-                            val label = application.name
+                            val label = application.filename
                             val selected = p.applicationType
                             option((className := "selected").when(selected == label), label)
                         }.toTagMod
@@ -191,7 +191,9 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
     private def onPackageChange(s: ApplicationState, data: Ready)(event: ReactEventFromInput)
       (implicit modP: (CreateApplicationRequest => CreateApplicationRequest) => Callback, modS: (ApplicationState => ApplicationState) => Callback): Callback = {
         val v: String = event.target.value
-        modP(_.copy(applicationType = v)) >> modS(_ => stateFor(v, data))
+        modP(_.copy(
+            applicationType = v
+        )) >> modS(_ => stateFor(v, data))
     }
 
 }

@@ -73,24 +73,23 @@ class RestEndpoint(
     def createApplication(applicationRequest: CreateApplicationRequest): Either[String, String] = {
         logger.info("Creating application ...")
         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
-        logger.info(s"applicationRequest =  $applicationRequest")
+        logger.info(s"applicationRequest =  ${applicationRequest.toString}")
         for {
             state <- globalState.toRight("Node is not initialized yet")
-            applicationDescriptor <- Try(Util.codec.fromJson(
-                new FileReader(s"/opt/profile/applications/${applicationRequest.applicationType}.json"),
-                classOf[ApplicationDescriptor]
-            )).toEither.left.map(_.getMessage)
-            contractCreateRequest = CreateContractRequest(
-                name = applicationRequest.name,
-                version = applicationRequest.version,
-                contractType = applicationRequest.applicationType,
-                channelName = applicationRequest.channelName,
-                parties = applicationRequest.parties,
-                initArgs = applicationRequest.initArgs
-            )
-            createContractResponse <- createContract(contractCreateRequest)
-            //TODO
-            _ = logger.info(s"createContractResponse: [$createContractResponse]")
+            descriptor <- FabricServiceStateHolder.fullState.applications.find(_.filename == applicationRequest.applicationType).toRight("No such ...")
+            responseContract <- descriptor.contracts.foldRight[Either[String, String]](Right("")) { case (contract, current) =>
+                current.flatMap { _ =>
+                    val contractCreateRequest = CreateContractRequest(
+                        name = applicationRequest.name,
+                        version = applicationRequest.version,
+                        contractType = contract.name,
+                        channelName = applicationRequest.channelName,
+                        parties = applicationRequest.parties,
+                        initArgs = applicationRequest.initArgs
+                    )
+                    createContract(contractCreateRequest)
+                }
+            }
             response <- {
                 logger.info(s"Invoking 'createApplication' method...")
                 val application = Application(
@@ -334,6 +333,19 @@ class RestEndpoint(
             result <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[Contract]])).toEither.left.map(_.getMessage)
         } yield result
     }
+
+    @Get("/service/list-applications")
+    def getListApplications: Either[String, Array[Contract]] = {
+        logger.info(s"Querying contracts for ${organizationConfig.name}...")
+        for {
+            state <- globalState.toRight("Node is not initialized yet")
+            queryResult <- state.networkManager
+              .queryChainCode(ServiceChannelName, ServiceChainCodeName, "listApplications")
+            contracts <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
+            result <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[Contract]])).toEither.left.map(_.getMessage)
+        } yield result
+    }
+
 
     @Get("/service/list-chain-codes")
     def listChainCodes: Either[String, Array[ChainCodeInfo]] =
