@@ -69,6 +69,7 @@ object Context {
                             packages <- ServiceNodeRemote.listContractPackages
                             channels <- ServiceNodeRemote.listChannels
                             organizations <- ServiceNodeRemote.listOrganizations
+                            applications <- ServiceNodeRemote.listApplications
                             chainCodes <- ServiceNodeRemote.listChainCodes
                             boxes <- ServiceNodeRemote.listBoxes
                             events <- ServiceNodeRemote.listEvents
@@ -83,6 +84,7 @@ object Context {
                                 network = network,
                                 channels = channels,
                                 contractPackages = packages,
+                                applications = applications,
                                 organizations = organizations,
                                 chainCodes = chainCodes,
                                 events = events
@@ -128,6 +130,7 @@ case object Initial extends AppState
     network: NetworkConfig,
     channels: Array[String],
     contractPackages: Array[ContractDescriptor],
+    applications: Array[Application],
     organizations: Array[Organization],
     chainCodes: Array[ChainCodeInfo],
     events: Events

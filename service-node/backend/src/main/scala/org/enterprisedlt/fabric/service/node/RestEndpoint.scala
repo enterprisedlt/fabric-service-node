@@ -335,14 +335,14 @@ class RestEndpoint(
     }
 
     @Get("/service/list-applications")
-    def getListApplications: Either[String, Array[Contract]] = {
+    def getListApplications: Either[String, Array[Application]] = {
         logger.info(s"Querying contracts for ${organizationConfig.name}...")
         for {
             state <- globalState.toRight("Node is not initialized yet")
             queryResult <- state.networkManager
               .queryChainCode(ServiceChannelName, ServiceChainCodeName, "listApplications")
             contracts <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
-            result <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[Contract]])).toEither.left.map(_.getMessage)
+            result <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[Application]])).toEither.left.map(_.getMessage)
         } yield result
     }
 

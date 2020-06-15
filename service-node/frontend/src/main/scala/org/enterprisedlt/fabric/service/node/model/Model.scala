@@ -96,3 +96,17 @@ object ContractJoinRequest {
 
     implicit val rw: RW[ContractJoinRequest] = macroRW
 }
+
+@Lenses case class Application(
+    founder: String,
+    name: String,
+    channel: String,
+    applicationType: String,
+    version: String,
+    participants: Array[String],
+    timestamp: Long
+)
+
+object Application {
+    implicit val rw: RW[Application] = macroRW
+}
