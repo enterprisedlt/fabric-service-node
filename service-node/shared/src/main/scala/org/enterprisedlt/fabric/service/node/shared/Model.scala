@@ -352,8 +352,7 @@ case class ApplicationState(
     name: String,
     filename: String,
     status: String,
-    roles: Array[String] = Array.empty[String],
-    initArgsNames: Array[String] = Array.empty[String],
+    applicationRoles: Array[String] = Array.empty[String],
     contracts: Array[ContractsState] = Array.empty[ContractsState],
     components: Array[CustomComponentState] = Array.empty[CustomComponentState],
     distributorAddress: String = ""
@@ -365,7 +364,9 @@ object ApplicationState {
 }
 // ------------------------------------------------------------------------
 @Lenses case class ContractsState(
-    name: String
+    name: String,
+    contractType: String,
+    initArgsNames: Array[String] = Array.empty[String]
 )
 
 object ContractsState {
@@ -389,10 +390,18 @@ object CustomComponentState {
     version: String,
     applicationType: String,
     channelName: String,
-    parties: Array[ContractParticipant],
-    initArgs: Array[String]
+    parties: Array[ContractParticipant]
 )
 
 object CreateApplicationRequest {
     implicit val rw: RW[CreateApplicationRequest] = macroRW
+}
+// ------------------------------------------------------------------------
+@Lenses case class ApplicationJoinRequest(
+    name: String,
+    founder: String
+)
+
+object ApplicationJoinRequest {
+    implicit val rw: RW[ApplicationJoinRequest] = macroRW
 }

@@ -87,8 +87,7 @@ object Dashboard {
                   version = "",
                   applicationType = defaultApplication.map(_.filename).getOrElse(""),
                   channelName = g.channels.headOption.getOrElse(""),
-                  parties = Array.empty[ContractParticipant],
-                  initArgs = defaultApplication.map(p => Array.fill(p.initArgsNames.length)("")).getOrElse(Array.empty[String])
+                  parties = Array.empty[ContractParticipant]
               ),
               contractFile = null,
               contractName = "Choose file",
@@ -532,6 +531,27 @@ object Dashboard {
                                   ^.marginBottom := "0px",
                                   ^.marginLeft := "auto",
                                   ^.marginRight := "auto",
+                                  g.events.applicationInvitations.map { applicationInvite =>
+                                      <.div(^.className := "card card-body",
+                                          <.h5(^.className := "card-title", s"Application invitation (${applicationInvite.name})"),
+                                          <.p(
+                                              <.i(
+                                                  <.b(applicationInvite.initiator),
+                                                  " has invited you to join application ",
+                                                  <.b(applicationInvite.name),
+                                                  " of type ", <.b(s"${applicationInvite.applicationType}:${applicationInvite.applicationVersion}"),
+                                                  " with participants ",
+                                                  <.b(applicationInvite.participants.mkString("[", ", ", "]"))
+                                              )
+                                          ),
+                                          <.div(
+                                              <.button(^.className := "btn btn-sm btn-outline-success float-right",
+                                                  ^.onClick --> joinApplication(applicationInvite.initiator, applicationInvite.name),
+                                                  "Join"
+                                              )
+                                          )
+                                      )
+                                  }.toTagMod,
                                   g.events.contractInvitations.map { contractInvite =>
                                       <.div(^.className := "card card-body",
                                           <.h5(^.className := "card-title", s"Contract invitation (${contractInvite.name})"),
@@ -689,6 +709,10 @@ object Dashboard {
 
         def joinContract(initiator: String, name: String): Callback = Callback.future {
             ServiceNodeRemote.contractJoin(ContractJoinRequest(name, initiator)).map(Callback(_))
+        }
+
+        def joinApplication(initiator: String, name: String): Callback = Callback.future {
+            ServiceNodeRemote.applicationJoin(ApplicationJoinRequest(name, initiator)).map(Callback(_))
         }
 
         def publishApplication(application: ApplicationState): Callback = Callback.future {

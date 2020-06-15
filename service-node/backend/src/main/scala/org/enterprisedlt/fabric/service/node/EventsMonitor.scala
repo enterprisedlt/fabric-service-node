@@ -127,8 +127,7 @@ class EventsMonitor(
                         status = status,
                         contracts = applicationDescriptor.contracts,
                         components = applicationDescriptor.components,
-                        roles = applicationDescriptor.roles,
-                        initArgsNames = applicationDescriptor.initArgsNames
+                        applicationRoles = applicationDescriptor.roles
                     )
                 } ++ applications
                   .filterNot { application =>
@@ -149,8 +148,8 @@ class EventsMonitor(
             if (old.applications.length != next.applications.length || old.applications.flatMap(_.contracts).length != next.applications.flatMap(_.contracts).length) {
                 applicationDescriptors.foreach { applicationDescriptor =>
                     applicationDescriptor.contracts.foreach { chaincode =>
-                        saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"chain-code/${chaincode.name}.json", "/opt/profile")
-                        saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"chain-code/${chaincode.name}.tgz", "/opt/profile")
+                        saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"chain-code/${chaincode.contractType}.json", "/opt/profile")
+                        saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"chain-code/${chaincode.contractType}.tgz", "/opt/profile")
                     }
                     applicationDescriptor.components.foreach { component =>
                         saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"components/${component.componentType}.tgz", "/opt/profile")
@@ -179,16 +178,19 @@ class EventsMonitor(
           .flatMap { file =>
               logger.info(s"file is ${file.getName}")
               val filename = file.getName.split('.')(0)
-              val applicationDescriptor = getObjectFromTar[ApplicationDescriptor](file.toPath, s"$filename.json").map(_.copy(filename = filename))
-              val applicationDescriptorJson = Util.codec.toJson(applicationDescriptor)
-              val out = new FileOutputStream(s"/opt/profile/applications/$filename.json")
-              try {
-                  val s = applicationDescriptorJson.getBytes(StandardCharsets.UTF_8)
-                  out.write(s)
-                  out.flush()
-              }
-              finally out.close()
-              applicationDescriptor
+              getObjectFromTar[ApplicationDescriptor](file.toPath, s"$filename.json")
+                .map(_.copy(filename = filename))
+                .map { applicationDescriptor =>
+                    val applicationDescriptorJson = Util.codec.toJson(applicationDescriptor)
+                    val out = new FileOutputStream(s"/opt/profile/applications/$filename.json")
+                    try {
+                        val s = applicationDescriptorJson.getBytes(StandardCharsets.UTF_8)
+                        out.write(s)
+                        out.flush()
+                    }
+                    finally out.close()
+                    applicationDescriptor
+                }
           }
     }
 

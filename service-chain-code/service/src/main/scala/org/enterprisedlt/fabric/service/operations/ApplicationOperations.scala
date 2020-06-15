@@ -41,7 +41,6 @@ trait ApplicationOperations {
               }
           }
 
-
     @ContractOperation(OperationType.Query)
     def listApplications: ContractResult[Array[Application]] =
         this.listCollections.map { collections =>
@@ -52,5 +51,32 @@ trait ApplicationOperations {
               }
         }
 
+    @ContractOperation(OperationType.Query)
+    def getApplication(name: String, founder: String): ContractResult[Application] =
+        getOwnOrganization
+          .flatMap { org =>
+              for {
+                  applicationFounderOrg <- OperationContext.store.get[Organization](founder).toRight(s"Application founder organization $founder isn't registered")
+                  applicationNameValue <- Option(name).filter(_.nonEmpty).toRight("Application name must be non empty")
+                  r <- OperationContext.privateStore(
+                      CollectionsHelper.collectionNameFor(org, applicationFounderOrg))
+                    .get[Application](applicationNameValue)
+                    .toRight(s"No application with name $applicationNameValue from ${applicationFounderOrg.mspId} org")
+              } yield r
+          }
+
+    @ContractOperation(OperationType.Invoke)
+    def delApplication(name: String, founder: String): ContractResult[Unit] =
+        getOwnOrganization
+          .flatMap { org =>
+              for {
+                  applicationFounderOrg <- OperationContext.store.get[Organization](founder).toRight(s"Application founder organization $founder isn't registered")
+                  applicationNameValue <- Option(name).filter(_.nonEmpty).toRight("Application name must be non empty")
+              } yield
+                  OperationContext
+                    .privateStore(
+                        CollectionsHelper.collectionNameFor(org, applicationFounderOrg))
+                    .del[Application](applicationNameValue)
+          }
 
 }

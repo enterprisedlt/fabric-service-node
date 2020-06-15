@@ -80,12 +80,12 @@ class RestEndpoint(
             responseContract <- descriptor.contracts.foldRight[Either[String, String]](Right("")) { case (contract, current) =>
                 current.flatMap { _ =>
                     val contractCreateRequest = CreateContractRequest(
-                        name = applicationRequest.name,
+                        name = contract.name,
                         version = applicationRequest.version,
-                        contractType = contract.name,
+                        contractType = contract.contractType,
                         channelName = applicationRequest.channelName,
                         parties = applicationRequest.parties,
-                        initArgs = applicationRequest.initArgs
+                        initArgs = contract.initArgsNames
                     )
                     createContract(contractCreateRequest)
                 }
@@ -93,7 +93,7 @@ class RestEndpoint(
             response <- {
                 logger.info(s"Invoking 'createApplication' method...")
                 val application = Application(
-                    founder = organizationConfig.name,
+                    founder = organizationFullName,
                     name = applicationRequest.name,
                     channel = applicationRequest.channelName,
                     applicationType = applicationRequest.applicationType,
@@ -120,6 +120,74 @@ class RestEndpoint(
                 )
             )
             s"Creating application ${applicationRequest.applicationType} has been completed successfully $r"
+        }
+    }
+
+    @Post("/admin/application-join")
+    def applicationJoin(joinReq: ApplicationJoinRequest): Either[String, String] = {
+        logger.info("Joining deployed application ...")
+        val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
+        for {
+            state <- globalState.toRight("Node is not initialized yet")
+            network = state.networkManager
+            queryResult <- {
+                logger.info(s"Querying application with getApplication...")
+                network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getApplication", joinReq.name, joinReq.founder)
+                  .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getApplication method in system chain-code"))
+            }
+            applicationDetails <- Try(Util.codec.fromJson(queryResult, classOf[Application])).toEither.left.map(_.getMessage)
+            applicationDescriptor <- Try(
+                Util.codec.fromJson(new FileReader(s"/opt/profile/applications/${applicationDetails.applicationType}.json")
+                    , classOf[ApplicationDescriptor])
+            ).toEither.left.map(_.getMessage)
+            responsesContract <- applicationDescriptor.contracts.foldRight[Either[String, String]](Right("")) { case (contract, current) =>
+                logger.info(s"Contract is $contract")
+                current.flatMap { _ =>
+                    val filePath = s"/opt/profile/chain-code/${contract.contractType}.tgz"
+                    for {
+                        chaincodeFile <- Option(new File(filePath)).filter(_.exists()).toRight(s"File $filePath does not exist ")
+                        chaincodeDescriptor <- Try(Util.codec.fromJson(
+                            new FileReader(s"/opt/profile/chain-code/${contract.contractType}.json"),
+                            classOf[ContractDeploymentDescriptor]
+                        )).toEither.left.map(_.getMessage)
+                        chainCodePkg = new BufferedInputStream(new FileInputStream(chaincodeFile))
+                        _ = logger.info(s"[ $organizationFullName ] - Installing ${contract.name}:${applicationDetails.version} chaincode ...")
+                        _ <- network.installChainCode(
+                            applicationDetails.channel,
+                            contract.name,
+                            applicationDetails.version,
+                            chaincodeDescriptor.language,
+                            chainCodePkg)
+                        invokeResultFuture <- network.invokeChainCode(
+                            ServiceChannelName,
+                            ServiceChainCodeName,
+                            "delContract",
+                            joinReq.name,
+                            joinReq.founder
+                        )
+                        invokeAwait <- Try(invokeResultFuture.get()).toEither.left.map(_.getMessage)
+                    } yield s"invokeResult is $invokeAwait"
+                }
+            }
+            invokeResultFuture <- network.invokeChainCode(
+                ServiceChannelName,
+                ServiceChainCodeName,
+                "delApplication",
+                joinReq.name,
+                joinReq.founder
+            )
+            invokeAwait <- Try(invokeResultFuture.get()).toEither.left.map(_.getMessage)
+        } yield {
+            FabricServiceStateHolder.updateStateFull(state =>
+                state.copy(
+                    deployedApplications = state.deployedApplications :+ ApplicationInfo(
+                        name = applicationDetails.name,
+                        version = applicationDetails.version,
+                        channelName = applicationDetails.channel
+                    )
+                )
+            )
+            s"Joining to application ${joinReq.name} has been completed successfully $invokeAwait"
         }
     }
 

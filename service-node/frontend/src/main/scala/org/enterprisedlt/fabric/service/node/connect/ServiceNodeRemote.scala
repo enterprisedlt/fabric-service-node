@@ -157,6 +157,11 @@ object ServiceNodeRemote {
           .map(_.responseText)
     }
 
+    def applicationJoin(applicationJoinRequest: ApplicationJoinRequest): Future[String] = {
+        val json = upickle.default.write(applicationJoinRequest)
+        Ajax.post("/admin/application-join", json)
+          .map(_.responseText)
+    }
 
     def registerBox(request: RegisterBoxManager): Future[Box] = {
         val json = upickle.default.write(request)

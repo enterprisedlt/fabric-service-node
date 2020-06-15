@@ -15,7 +15,6 @@ import org.enterprisedlt.fabric.service.node.util.DataFunction._
 
 @Lenses case class ApplicationState(
     roles: Array[String],
-    initArgsNames: Array[String],
     participantCandidate: ContractParticipant,
     filename: String
 )
@@ -26,18 +25,16 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
         val firstMSPId = data.organizations.headOption.map(_.mspId).getOrElse("")
         data.events.applications.find(_.filename == appType).map { descriptor =>
             ApplicationState(
-                roles = descriptor.roles,
-                initArgsNames = descriptor.initArgsNames,
+                roles = descriptor.applicationRoles,
                 participantCandidate = ContractParticipant(
                     firstMSPId,
-                    descriptor.roles.headOption.getOrElse("")
+                    descriptor.applicationRoles.headOption.getOrElse("")
                 ),
                 filename = descriptor.filename
             )
         }.getOrElse( // could be only if package list is empty or something got wrong :(
             ApplicationState(
                 roles = Array.empty,
-                initArgsNames = Array.empty,
                 participantCandidate = ContractParticipant(
                     firstMSPId,
                     ""
@@ -145,31 +142,6 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                     )
                 )
             ),
-            <.div(
-                <.div(^.className := "form-group row",
-                    <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Init arguments"))
-                ),
-                <.table(^.className := "table table-sm",
-                    <.thead(^.className := "thead-light",
-                        <.tr(
-                            <.th(^.scope := "col", "Name", ^.width := "30%"),
-                            <.th(^.scope := "col", "Value", ^.width := "70%"),
-                        )
-                    ),
-                    <.tbody(
-                        s.initArgsNames.zipWithIndex.map { case (name, index) =>
-                            <.tr(
-                                <.td(name),
-                                <.td(
-                                    <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                        bind(p) := CreateApplicationRequest.initArgs / ForElement[String](index)
-                                    )
-                                ),
-                            )
-                        }.toTagMod,
-                    ),
-                )
-            ).when(s.initArgsNames.nonEmpty),
             <.hr()
         )
     }
