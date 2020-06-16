@@ -8,7 +8,9 @@ import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveInp
 import org.apache.commons.compress.compressors.gzip.{GzipCompressorInputStream, GzipCompressorOutputStream}
 import org.apache.commons.compress.utils.IOUtils
 import org.enterprisedlt.fabric.service.node.Util.withResources
+import org.enterprisedlt.fabric.service.node.shared.Property
 import org.scalatest._
+import org.scalatest.matchers.should.Matchers._
 
 /**
  * @author Maxim Fedin
@@ -82,6 +84,33 @@ class UtilTest extends FunSuite {
             )
         }
         assert(text === Some(initialMessage))
+    }
+
+
+    test("fillPlaceholdersEnvironmentVariables should work fine") {
+
+        val targetProperty = Array(
+            Property("a", "1"),
+            Property("b", "2"),
+            Property("c", "3")
+        )
+
+        val values = Array(
+            Property("a", "1"),
+            Property("b", "2"),
+            Property("c", "3")
+        )
+
+        val dictionary = Array(
+            Property("a", "1"),
+            Property("b", s"$${b}"),
+            Property("c", s"$${c}")
+        )
+
+        val filledProperty = Util.fillPlaceholdersEnvironmentVariables(values, dictionary)
+
+        filledProperty shouldEqual  targetProperty
+
     }
 
 

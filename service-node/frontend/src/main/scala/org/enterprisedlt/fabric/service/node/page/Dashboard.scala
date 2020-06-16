@@ -67,7 +67,7 @@ object Dashboard {
                   name = "",
                   port = 0,
                   componentType = ComponentCandidate.Types.head,
-                  environmentVariables = Array.empty[EnvironmentVariable],
+                  properties = Array.empty[Property],
                   ports = Array.empty[PortBind],
                   volumes = Array.empty[VolumeBind]
               ),

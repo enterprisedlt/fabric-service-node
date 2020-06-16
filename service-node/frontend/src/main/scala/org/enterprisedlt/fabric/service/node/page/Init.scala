@@ -51,7 +51,7 @@ object Init {
                   port = 0,
                   componentType = ComponentCandidate.Types.head,
                   //
-                  environmentVariables = Array.empty[EnvironmentVariable],
+                  properties = Array.empty[Property],
                   ports = Array.empty[PortBind],
                   volumes = Array.empty[VolumeBind]
               ),
@@ -130,7 +130,7 @@ object Init {
                         name = name,
                         box = defaultBox,
                         port = 7001 + index,
-                        environmentVariables = Array.empty[EnvironmentVariable],
+                        properties = Array.empty[Property],
                         ports = Array.empty[PortBind],
                         volumes = Array.empty[VolumeBind]
                     )
@@ -140,7 +140,7 @@ object Init {
                       name = "peer0",
                       box = defaultBox,
                       port = 7010,
-                      environmentVariables = Array.empty[EnvironmentVariable],
+                      properties = Array.empty[Property],
                       ports = Array.empty[PortBind],
                       volumes = Array.empty[VolumeBind]
                   )

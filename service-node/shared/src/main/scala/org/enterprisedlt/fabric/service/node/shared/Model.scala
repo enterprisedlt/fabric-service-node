@@ -310,13 +310,13 @@ object VolumeBind {
     implicit val rw: RW[VolumeBind] = macroRW
 }
 
-@Lenses case class EnvironmentVariable(
+@Lenses case class Property(
     key: String,
     value: String
 )
 
-object EnvironmentVariable {
-    implicit val rw: RW[EnvironmentVariable] = macroRW
+object Property {
+    implicit val rw: RW[Property] = macroRW
 }
 
 // ------------------------------------------------------------------------
@@ -325,7 +325,8 @@ case class CustomComponentDescriptor(
     image: Image,
     command: String,
     workingDir: String,
-    environmentVariablesDescriptor: Array[EnvironmentVariable],
+    properties: Array[Property],
+    environmentVariablesDescriptor: Array[Property],
     portBindDescriptor: Array[PortBind],
     volumeBindDescriptor: Array[VolumeBind]
 )

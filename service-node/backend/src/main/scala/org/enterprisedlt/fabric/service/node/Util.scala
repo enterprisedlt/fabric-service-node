@@ -28,7 +28,7 @@ import org.bouncycastle.asn1.x500.style.{BCStyle, IETFUtils}
 import org.eclipse.jetty.util.IO
 import org.enterprisedlt.fabric.service.node.endorsement.EndorsementPolicyCompiler
 import org.enterprisedlt.fabric.service.node.rest.JsonServerCodec
-import org.enterprisedlt.fabric.service.node.shared.ContractParticipant
+import org.enterprisedlt.fabric.service.node.shared.{ContractParticipant, PortBind, Property}
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope, Payload}
 import org.hyperledger.fabric.protos.common.Configtx
@@ -320,15 +320,32 @@ object Util {
     }
 
     //=========================================================================
-    def fillPlaceholders(values: Array[KV], dictionary: Array[KV]): Array[KV] = {
-        values.map(x => fillPlaceholders(x, dictionary))
+    def fillPlaceholdersEnvironmentVariables(values: Array[Property], dictionary: Array[Property]): Array[Property] = {
+        values.map(x => fillPlaceholdersEnvironmentVariables(x, dictionary))
     }
 
-    def fillPlaceholders(value: KV, dictionary: Array[KV]): KV = {
+    def fillPlaceholdersEnvironmentVariables(value: Property, dictionary: Array[Property]): Property = {
         value.copy(
             value =
               dictionary.foldRight(value.value) { case (term, current) =>
-                  current.replaceAll(s"$${${term.key}}", term.value)
+                  current.replaceAll(s"\\$$\\{${term.key}\\}", term.value)
+              }
+        )
+    }
+
+    def fillPlaceholdersPortBind(values: Array[PortBind], dictionary: Array[Property]): Array[PortBind] = {
+        values.map(x => fillPlaceholdersPortBind(x, dictionary))
+    }
+
+    def fillPlaceholdersPortBind(portBind: PortBind, dictionary: Array[Property]): PortBind = {
+        portBind.copy(
+            externalPort =
+              dictionary.foldRight(portBind.externalPort) { case (term, current) =>
+                  current.replaceAll(s"\\$$\\{${term.key}\\}", term.value)
+              },
+            internalPort =
+              dictionary.foldRight(portBind.externalPort) { case (term, current) =>
+                  current.replaceAll(s"\\$$\\{${term.key}\\}", term.value)
               }
         )
     }
@@ -475,9 +492,3 @@ object UnitsHelper {
     }
 
 }
-
-case class KV(
-    key: String,
-    value: String
-)
-

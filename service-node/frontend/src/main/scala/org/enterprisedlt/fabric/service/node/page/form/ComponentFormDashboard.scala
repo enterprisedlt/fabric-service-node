@@ -7,7 +7,7 @@ import japgolly.scalajs.react.{Callback, CallbackTo}
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node.Ready
 import org.enterprisedlt.fabric.service.node.model.ComponentCandidate
-import org.enterprisedlt.fabric.service.node.shared.{Box, EnvironmentVariable, PortBind, VolumeBind}
+import org.enterprisedlt.fabric.service.node.shared.{Box, PortBind, Property, VolumeBind}
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
 import org.scalajs.dom.html.Select
 
@@ -16,7 +16,7 @@ import org.scalajs.dom.html.Select
  */
 
 @Lenses case class ComponentFormState(
-    environmentVariable: EnvironmentVariable,
+    environmentVariable: Property,
     port: PortBind,
     volume: VolumeBind,
 
@@ -26,7 +26,7 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
 
     override def initState(c: ComponentCandidate, data: Ready): ComponentFormState = {
         ComponentFormState(
-            environmentVariable = new EnvironmentVariable(
+            environmentVariable = new Property(
                 key = "",
                 value = ""
             ),
@@ -76,7 +76,7 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
                     )
                 ),
                 <.tbody(
-                    p.environmentVariables.map { envVar =>
+                    p.properties.map { envVar =>
                         <.tr(
                             <.td(envVar.key),
                             <.td(envVar.value),
@@ -91,12 +91,12 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
                     <.tr(
                         <.td(
                             <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                bind(s) := ComponentFormState.environmentVariable / EnvironmentVariable.key
+                                bind(s) := ComponentFormState.environmentVariable / Property.key
                             )
                         ),
                         <.td(
                             <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                bind(s) := ComponentFormState.environmentVariable / EnvironmentVariable.value
+                                bind(s) := ComponentFormState.environmentVariable / Property.value
                             )
                         ),
                         <.td(
@@ -244,11 +244,11 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
               )
           )
 
-    private def removeEnvironmentVariable(environmentVariable: EnvironmentVariable)
+    private def removeEnvironmentVariable(environmentVariable: Property)
       (implicit modState: (ComponentCandidate => ComponentCandidate) => Callback)
     : CallbackTo[Unit] =
         modState(
-            ComponentCandidate.environmentVariables.modify(
+            ComponentCandidate.properties.modify(
                 _.filter(p => !(p.value == environmentVariable.value && p.key == environmentVariable.key))
             )
         )
@@ -257,9 +257,9 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
     private def addEnvironmentVariable(s: ComponentFormState)
       (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
     : CallbackTo[Unit] =
-        modP(ComponentCandidate.environmentVariables.modify(_ :+ s.environmentVariable)) >>
+        modP(ComponentCandidate.properties.modify(_ :+ s.environmentVariable)) >>
           modS(ComponentFormState.environmentVariable.modify(_ =>
-              EnvironmentVariable(
+              Property(
                   key = "",
                   value = ""
               ))
