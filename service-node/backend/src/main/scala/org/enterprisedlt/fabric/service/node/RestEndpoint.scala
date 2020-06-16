@@ -26,6 +26,7 @@ import scala.util.Try
 
 /**
  * @author Alexey Polubelov
+ * @author Maxim Fedin
  */
 class RestEndpoint(
     bindPort: Int,
@@ -77,7 +78,7 @@ class RestEndpoint(
         for {
             state <- globalState.toRight("Node is not initialized yet")
             descriptor <- FabricServiceStateHolder.fullState.applications.find(_.filename == applicationRequest.applicationType).toRight("No such ...")
-            responseContract <- descriptor.contracts.foldRight[Either[String, String]](Right("")) { case (contract, current) =>
+            _ <- descriptor.contracts.foldRight[Either[String, String]](Right("")) { case (contract, current) =>
                 current.flatMap { _ =>
                     val contractCreateRequest = CreateContractRequest(
                         name = contract.name,
@@ -90,6 +91,19 @@ class RestEndpoint(
                     createContract(contractCreateRequest)
                 }
             }
+           _ <- descriptor.components.foldRight[Either[String, String]](Right("")) { case (component, current) =>
+               current.flatMap { _ =>
+                 val request = CustomComponentRequest(
+                       box = applicationRequest.box,
+                       name = s"${applicationRequest.name}.${component.componentType}.${organizationFullName}",
+                       componentType = component.componentType,
+                       environmentVariables = ???,// TODO
+                       ports = ???,// TODO
+                       volumes = ??? // TODO
+                 )
+                   startCustomNode(request)
+               }
+           }
             response <- {
                 logger.info(s"Invoking 'createApplication' method...")
                 val application = Application(
@@ -140,7 +154,7 @@ class RestEndpoint(
                 Util.codec.fromJson(new FileReader(s"/opt/profile/applications/${applicationDetails.applicationType}.json")
                     , classOf[ApplicationDescriptor])
             ).toEither.left.map(_.getMessage)
-            responsesContract <- applicationDescriptor.contracts.foldRight[Either[String, String]](Right("")) { case (contract, current) =>
+            _ <- applicationDescriptor.contracts.foldRight[Either[String, String]](Right("")) { case (contract, current) =>
                 logger.info(s"Contract is $contract")
                 current.flatMap { _ =>
                     val filePath = s"/opt/profile/chain-code/${contract.contractType}.tgz"
@@ -157,7 +171,8 @@ class RestEndpoint(
                             contract.name,
                             applicationDetails.version,
                             chaincodeDescriptor.language,
-                            chainCodePkg)
+                            chainCodePkg
+                        )
                         invokeResultFuture <- network.invokeChainCode(
                             ServiceChannelName,
                             ServiceChainCodeName,

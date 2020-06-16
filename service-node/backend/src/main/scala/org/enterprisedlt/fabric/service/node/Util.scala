@@ -320,6 +320,19 @@ object Util {
     }
 
     //=========================================================================
+    def fillPlaceholders(values: Array[KV], dictionary: Array[KV]): Array[KV] = {
+        values.map(x => fillPlaceholders(x, dictionary))
+    }
+
+    def fillPlaceholders(value: KV, dictionary: Array[KV]): KV = {
+        value.copy(
+            value =
+              dictionary.foldRight(value.value) { case (term, current) =>
+                  current.replaceAll(s"$${${term.key}}", term.value)
+              }
+        )
+    }
+    //=========================================================================
     def withResources[T <: AutoCloseable, V](r: => T)(f: T => V): V = {
         val resource: T = r
         require(resource != null, "resource is null")
@@ -462,4 +475,9 @@ object UnitsHelper {
     }
 
 }
+
+case class KV(
+    key: String,
+    value: String
+)
 

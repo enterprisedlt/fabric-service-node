@@ -376,6 +376,7 @@ object ContractsState {
 
 // ------------------------------------------------------------------------
 @Lenses case class CustomComponentState(
+    componentName: String,
     componentType: String
 )
 
@@ -389,6 +390,7 @@ object CustomComponentState {
     name: String,
     version: String,
     applicationType: String,
+    box: String,
     channelName: String,
     parties: Array[ContractParticipant]
 )
