@@ -107,7 +107,7 @@ class UtilTest extends FunSuite {
             Property("c", s"$${c}")
         )
 
-        val filledProperty = Util.fillPlaceholdersEnvironmentVariables(values, dictionary)
+        val filledProperty = Util.fillPlaceholdersProperties(values, dictionary)
 
         filledProperty shouldEqual  targetProperty
 

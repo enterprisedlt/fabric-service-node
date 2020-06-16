@@ -107,7 +107,7 @@ class DockerManagedBox(
                 classOf[CustomComponentDescriptor]
             )).toEither.left.map(_.getMessage)
             mergedProperties = mergeProperties(descriptor.properties, customComponentRequest.request.properties)
-            enrichedDescriptor = enrichDescriptor(descriptor, mergedProperties)
+            enrichedDescriptor = enrichCustomComponentDescriptor(descriptor, mergedProperties)
             _ <- pullImageIfNeeded(enrichedDescriptor.image)
             osnContainerId <- Try {
                 Util.mkDirs(innerComponentPath)
@@ -482,9 +482,9 @@ class DockerManagedBox(
     }
 
     // =================================================================================================================
-    private def enrichDescriptor(descriptor: CustomComponentDescriptor, properties: Array[Property]): CustomComponentDescriptor = {
+    private def enrichCustomComponentDescriptor(descriptor: CustomComponentDescriptor, properties: Array[Property]): CustomComponentDescriptor = {
         descriptor.copy(
-            environmentVariablesDescriptor = Util.fillPlaceholdersEnvironmentVariables(
+            environmentVariablesDescriptor = Util.fillPlaceholdersProperties(
                 descriptor.environmentVariablesDescriptor,
                 properties,
             ),

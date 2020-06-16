@@ -3,7 +3,7 @@ package org.enterprisedlt.fabric.service.node.model
 import java.util.{Map => JavaMap}
 
 import org.enterprisedlt.fabric.service.model.Organization
-import org.enterprisedlt.fabric.service.node.shared.{ContractsState, CustomComponentState}
+import org.enterprisedlt.fabric.service.node.shared.{ContractsState, CustomComponentState, Property}
 import org.hyperledger.fabric.sdk.TransactionRequest.Type
 
 case class CreateChannelRequest(
@@ -122,6 +122,7 @@ case class OsnCertificates(
 case class ApplicationDescriptor(
     name: String,
     filename: String = "",
+    properties: Array[Property],
     roles: Array[String] = Array.empty[String],
     initArgsNames: Array[String] = Array.empty[String],
     contracts: Array[ContractsState] = Array.empty[ContractsState],

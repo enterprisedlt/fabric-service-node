@@ -5,7 +5,7 @@ import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CallbackTo, ReactEventFromInput}
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
-import org.enterprisedlt.fabric.service.node.shared.{ContractParticipant, CreateApplicationRequest}
+import org.enterprisedlt.fabric.service.node.shared.{ContractParticipant, CreateApplicationRequest, Property}
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
 
 /**
@@ -16,6 +16,7 @@ import org.enterprisedlt.fabric.service.node.util.DataFunction._
 @Lenses case class ApplicationState(
     roles: Array[String],
     participantCandidate: ContractParticipant,
+    propertyCandidate: Property,
     filename: String
 )
 
@@ -30,11 +31,13 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                     firstMSPId,
                     descriptor.applicationRoles.headOption.getOrElse("")
                 ),
+                propertyCandidate = Property("",""), // TODO
                 filename = descriptor.filename
             )
         }.getOrElse( // could be only if package list is empty or something got wrong :(
             ApplicationState(
                 roles = Array.empty,
+                propertyCandidate = Property("",""),
                 participantCandidate = ContractParticipant(
                     firstMSPId,
                     ""
@@ -89,6 +92,50 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                         data.channels.map { channel =>
                             option((className := "selected").when(p.channelName == channel), channel)
                         }.toTagMod
+                    )
+                )
+            ),
+            <.div(^.className := "form-group row",
+                <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Properties"))
+            ),
+            <.table(^.className := "table table-sm",
+                <.thead(^.className := "thead-light",
+                    <.tr(
+                        <.th(^.scope := "col", "Name", ^.width := "45%"),
+                        <.th(^.scope := "col", "Value", ^.width := "45%"),
+                        <.th(^.scope := "col", "", ^.width := "10%"),
+                    )
+                ),
+                <.tbody(
+                    p.properties.map { property =>
+                        <.tr(
+                            <.td(property.key),
+                            <.td(property.value),
+                            <.td(
+                                <.button(^.className := "btn btn-sm btn-outline-danger float-right", //^.aria.label="remove">
+                                    ^.onClick --> removeProperty(property),
+                                    <.i(^.className := "fas fa-minus-circle")
+                                )
+                            )
+                        )
+                    }.toTagMod,
+                    <.tr(
+                        <.td(
+                            <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
+                                bind(s) := ApplicationState.propertyCandidate / Property.key
+                            )
+                        ),
+                        <.td(
+                            <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
+                                bind(s) := ApplicationState.propertyCandidate / Property.value
+                            )
+                        ),
+                        <.td(
+                            <.button(^.className := "btn btn-sm btn-outline-success float-right", //^.aria.label="remove">
+                                ^.onClick --> addProperty(s),
+                                <.i(^.className := "fas fa-plus-circle")
+                            )
+                        )
                     )
                 )
             ),
@@ -167,5 +214,27 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
             applicationType = v
         )) >> modS(_ => stateFor(v, data))
     }
+
+    private def removeProperty(environmentVariable: Property)
+      (implicit modState: (CreateApplicationRequest => CreateApplicationRequest) => Callback)
+    : CallbackTo[Unit] =
+        modState(
+            CreateApplicationRequest.properties.modify(
+                _.filter(p => !(p.value == environmentVariable.value && p.key == environmentVariable.key))
+            )
+        )
+
+
+    private def addProperty(s: ApplicationState)
+      (implicit modP: (CreateApplicationRequest => CreateApplicationRequest) => Callback, modS: (ApplicationState => ApplicationState) => Callback)
+    : CallbackTo[Unit] =
+        modP(CreateApplicationRequest.properties.modify(_ :+ s.propertyCandidate)) >>
+          modS(ApplicationState.propertyCandidate.modify(_ =>
+              Property(
+                  key = "",
+                  value = ""
+              ))
+          )
+
 
 }

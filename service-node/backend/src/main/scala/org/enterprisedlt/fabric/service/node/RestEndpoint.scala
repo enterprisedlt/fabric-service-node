@@ -91,18 +91,27 @@ class RestEndpoint(
                     createContract(contractCreateRequest)
                 }
             }
-           _ <- descriptor.components.foldRight[Either[String, String]](Right("")) { case (component, current) =>
-               current.flatMap { _ =>
-                 val request = CustomComponentRequest(
-                       box = applicationRequest.box,
-                       name = s"${applicationRequest.name}.${component.componentType}.${organizationFullName}",
-                       componentType = component.componentType,
-                       properties = ??? // TODO
-
-                 )
-                   startCustomNode(request)
-               }
-           }
+            filledDescriptor = descriptor.copy(
+                properties = Util.fillPlaceholdersProperties(
+                    descriptor.properties,
+                    applicationRequest.properties,
+                )
+            )
+            _ <- filledDescriptor.components.foldRight[Either[String, String]](Right("")) { case (component, current) =>
+                current.flatMap { _ =>
+                    val enrichedProperties = Util.fillPlaceholdersProperties(
+                        component.environmentVariables,
+                        filledDescriptor.properties,
+                    )
+                    val request = CustomComponentRequest(
+                        box = applicationRequest.box,
+                        name = s"${applicationRequest.name}.${component.componentType}.${organizationFullName}",
+                        componentType = component.componentType,
+                        properties = enrichedProperties
+                    )
+                    startCustomNode(request)
+                }
+            }
             response <- {
                 logger.info(s"Invoking 'createApplication' method...")
                 val application = Application(
@@ -207,7 +216,7 @@ class RestEndpoint(
 
     @Post("/admin/start-custom-node")
     def startCustomNode(request: CustomComponentRequest): Either[String, String] = {
-        val orgNameDescriptor = Property("org",organizationConfig.name)
+        val orgNameDescriptor = Property("org", organizationConfig.name)
         //
         val crypto = cryptoManager.generateCustomComponentCrypto(request.box)
         val startCustomComponentRequest = StartCustomComponentRequest(
@@ -427,11 +436,11 @@ class RestEndpoint(
     }
 
 
-        @Get("/service/list-applications")
-        def listApplications: Either[String, Array[ApplicationInfo]] = {
-            Try(FabricServiceStateHolder.fabricServiceStateFull.deployedApplications)
-              .toEither.left.map(_.getMessage)
-        }
+    @Get("/service/list-applications")
+    def listApplications: Either[String, Array[ApplicationInfo]] = {
+        Try(FabricServiceStateHolder.fabricServiceStateFull.deployedApplications)
+          .toEither.left.map(_.getMessage)
+    }
 
 
     @Get("/service/list-chain-codes")
@@ -881,4 +890,4 @@ case class GlobalState(
     network: NetworkConfig,
     networkName: String,
     eventsMonitor: EventsMonitor
-  )
+)

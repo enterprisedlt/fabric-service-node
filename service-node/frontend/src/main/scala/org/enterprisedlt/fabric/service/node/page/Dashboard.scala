@@ -87,6 +87,7 @@ object Dashboard {
                   version = "",
                   applicationType = defaultApplication.map(_.filename).getOrElse(""),
                   channelName = g.channels.headOption.getOrElse(""),
+                  properties = Array.empty[Property],
                   parties = Array.empty[ContractParticipant],
                   box = "default"
               ),

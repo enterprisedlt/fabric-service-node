@@ -320,11 +320,11 @@ object Util {
     }
 
     //=========================================================================
-    def fillPlaceholdersEnvironmentVariables(values: Array[Property], dictionary: Array[Property]): Array[Property] = {
-        values.map(x => fillPlaceholdersEnvironmentVariables(x, dictionary))
+    def fillPlaceholdersProperties(values: Array[Property], dictionary: Array[Property]): Array[Property] = {
+        values.map(x => fillPlaceholdersProperties(x, dictionary))
     }
 
-    def fillPlaceholdersEnvironmentVariables(value: Property, dictionary: Array[Property]): Property = {
+    def fillPlaceholdersProperties(value: Property, dictionary: Array[Property]): Property = {
         value.copy(
             value =
               dictionary.foldRight(value.value) { case (term, current) =>

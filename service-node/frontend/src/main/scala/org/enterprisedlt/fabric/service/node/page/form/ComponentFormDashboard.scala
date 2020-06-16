@@ -65,7 +65,7 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
                 )
             ),
             <.div(^.className := "form-group row",
-                <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Environment variables"))
+                <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Properties"))
             ),
             <.table(^.className := "table table-sm",
                 <.thead(^.className := "thead-light",
@@ -82,7 +82,7 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
                             <.td(envVar.value),
                             <.td(
                                 <.button(^.className := "btn btn-sm btn-outline-danger float-right", //^.aria.label="remove">
-                                    ^.onClick --> removeEnvironmentVariable(envVar),
+                                    ^.onClick --> removeProperty(envVar),
                                     <.i(^.className := "fas fa-minus-circle")
                                 )
                             )
@@ -101,95 +101,7 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
                         ),
                         <.td(
                             <.button(^.className := "btn btn-sm btn-outline-success float-right", //^.aria.label="remove">
-                                ^.onClick --> addEnvironmentVariable(s),
-                                <.i(^.className := "fas fa-plus-circle")
-                            )
-                        )
-                    )
-                )
-            ),
-            <.div(^.className := "form-group row",
-                <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Ports"))
-            ),
-            <.table(^.className := "table table-sm",
-                <.thead(^.className := "thead-light",
-                    <.tr(
-                        <.th(^.scope := "col", "External port", ^.width := "45%"),
-                        <.th(^.scope := "col", "Internal port", ^.width := "45%"),
-                        <.th(^.scope := "col", "", ^.width := "10%"),
-                    )
-                ),
-                <.tbody(
-                    p.ports.map { portBind =>
-                        <.tr(
-                            <.td(portBind.externalPort),
-                            <.td(portBind.internalPort),
-                            <.td(
-                                <.button(^.className := "btn btn-sm btn-outline-danger float-right", //^.aria.label="remove">
-                                    ^.onClick --> removePortBind(portBind),
-                                    <.i(^.className := "fas fa-minus-circle")
-                                )
-                            )
-                        )
-                    }.toTagMod,
-                    <.tr(
-                        <.td(
-                            <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                bind(s) := ComponentFormState.port / PortBind.externalPort
-                            )
-                        ),
-                        <.td(
-                            <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                bind(s) := ComponentFormState.port / PortBind.internalPort
-                            )
-                        ),
-                        <.td(
-                            <.button(^.className := "btn btn-sm btn-outline-success float-right", //^.aria.label="remove">
-                                ^.onClick --> addPortBind(s),
-                                <.i(^.className := "fas fa-plus-circle")
-                            )
-                        )
-                    )
-                )
-            ),
-            <.div(^.className := "form-group row",
-                <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Volumes"))
-            ),
-            <.table(^.className := "table table-sm",
-                <.thead(^.className := "thead-light",
-                    <.tr(
-                        <.th(^.scope := "col", "External volume", ^.width := "45%"),
-                        <.th(^.scope := "col", "Internal volume", ^.width := "45%"),
-                        <.th(^.scope := "col", "", ^.width := "10%"),
-                    )
-                ),
-                <.tbody(
-                    p.volumes.map { volumeBind =>
-                        <.tr(
-                            <.td(volumeBind.externalHost),
-                            <.td(volumeBind.internalHost),
-                            <.td(
-                                <.button(^.className := "btn btn-sm btn-outline-danger float-right", //^.aria.label="remove">
-                                    ^.onClick --> removeVolumeBind(volumeBind),
-                                    <.i(^.className := "fas fa-minus-circle")
-                                )
-                            )
-                        )
-                    }.toTagMod,
-                    <.tr(
-                        <.td(
-                            <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                bind(s) := ComponentFormState.volume / VolumeBind.externalHost
-                            )
-                        ),
-                        <.td(
-                            <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                bind(s) := ComponentFormState.volume / VolumeBind.internalHost
-                            )
-                        ),
-                        <.td(
-                            <.button(^.className := "btn btn-sm btn-outline-success float-right", //^.aria.label="remove">
-                                ^.onClick --> addVolumeBind(s),
+                                ^.onClick --> addProperty(s),
                                 <.i(^.className := "fas fa-plus-circle")
                             )
                         )
@@ -244,7 +156,7 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
               )
           )
 
-    private def removeEnvironmentVariable(environmentVariable: Property)
+    private def removeProperty(environmentVariable: Property)
       (implicit modState: (ComponentCandidate => ComponentCandidate) => Callback)
     : CallbackTo[Unit] =
         modState(
@@ -254,7 +166,7 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
         )
 
 
-    private def addEnvironmentVariable(s: ComponentFormState)
+    private def addProperty(s: ComponentFormState)
       (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
     : CallbackTo[Unit] =
         modP(ComponentCandidate.properties.modify(_ :+ s.environmentVariable)) >>
