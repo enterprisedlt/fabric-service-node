@@ -146,7 +146,7 @@ class RestEndpoint(
     }
 
     @Post("/admin/application-join")
-    def applicationJoin(joinReq: ApplicationJoinRequest): Either[String, String] = {
+    def applicationJoin(joinReq: JoinApplicationRequest): Either[String, String] = {
         logger.info("Joining deployed application ...")
         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
         for {
@@ -190,6 +190,27 @@ class RestEndpoint(
                         )
                         invokeAwait <- Try(invokeResultFuture.get()).toEither.left.map(_.getMessage)
                     } yield s"invokeResult is $invokeAwait"
+                }
+            }
+            filledDescriptor = applicationDescriptor.copy(
+                properties = Util.fillPlaceholdersProperties(
+                    applicationDescriptor.properties,
+                    joinReq.properties,
+                )
+            )
+            _ <- filledDescriptor.components.foldRight[Either[String, String]](Right("")) { case (component, current) =>
+                current.flatMap { _ =>
+                    val enrichedProperties = Util.fillPlaceholdersProperties(
+                        component.environmentVariables,
+                        filledDescriptor.properties,
+                    )
+                    val request = CustomComponentRequest(
+                        box = joinReq.box,
+                        name = s"${joinReq.name}.${component.componentType}.${organizationFullName}",
+                        componentType = component.componentType,
+                        properties = enrichedProperties
+                    )
+                    startCustomNode(request)
                 }
             }
             invokeResultFuture <- network.invokeChainCode(

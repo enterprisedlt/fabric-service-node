@@ -13,19 +13,19 @@ import org.enterprisedlt.fabric.service.node.util.DataFunction._
  * @author Alexey Polubelov
  */
 
-@Lenses case class ApplicationState(
+@Lenses case class CreateApplicationState(
     roles: Array[String],
     participantCandidate: ContractParticipant,
     propertyCandidate: Property,
     filename: String
 )
 
-object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Ready, ApplicationState]("create-application-form") {
+object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Ready, CreateApplicationState]("create-application-form") {
 
-    private def stateFor(appType: String, data: Ready): ApplicationState = {
+    private def stateFor(appType: String, data: Ready): CreateApplicationState = {
         val firstMSPId = data.organizations.headOption.map(_.mspId).getOrElse("")
         data.events.applications.find(_.filename == appType).map { descriptor =>
-            ApplicationState(
+            CreateApplicationState(
                 roles = descriptor.applicationRoles,
                 participantCandidate = ContractParticipant(
                     firstMSPId,
@@ -35,7 +35,7 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                 filename = descriptor.filename
             )
         }.getOrElse( // could be only if package list is empty or something got wrong :(
-            ApplicationState(
+            CreateApplicationState(
                 roles = Array.empty,
                 propertyCandidate = Property("",""),
                 participantCandidate = ContractParticipant(
@@ -47,10 +47,10 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
         )
     }
 
-    override def initState(p: CreateApplicationRequest, data: Ready): ApplicationState = stateFor(p.applicationType, data)
+    override def initState(p: CreateApplicationRequest, data: Ready): CreateApplicationState = stateFor(p.applicationType, data)
 
-    override def render(s: ApplicationState, p: CreateApplicationRequest, data: Ready)
-      (implicit modP: (CreateApplicationRequest => CreateApplicationRequest) => Callback, modS: (ApplicationState => ApplicationState) => Callback)
+    override def render(s: CreateApplicationState, p: CreateApplicationRequest, data: Ready)
+      (implicit modP: (CreateApplicationRequest => CreateApplicationRequest) => Callback, modS: (CreateApplicationState => CreateApplicationState) => Callback)
     : VdomNode = {
         <.div(
             <.div(^.className := "form-group row",
@@ -122,12 +122,12 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                     <.tr(
                         <.td(
                             <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                bind(s) := ApplicationState.propertyCandidate / Property.key
+                                bind(s) := CreateApplicationState.propertyCandidate / Property.key
                             )
                         ),
                         <.td(
                             <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                bind(s) := ApplicationState.propertyCandidate / Property.value
+                                bind(s) := CreateApplicationState.propertyCandidate / Property.value
                             )
                         ),
                         <.td(
@@ -166,7 +166,7 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                     <.tr(
                         <.td(
                             <.select(className := "form-control form-control-sm",
-                                bind(s) := ApplicationState.participantCandidate / ContractParticipant.mspId,
+                                bind(s) := CreateApplicationState.participantCandidate / ContractParticipant.mspId,
                                 data.organizations.map { organization =>
                                     option((className := "selected").when(s.participantCandidate.mspId == organization.mspId), organization.mspId)
                                 }.toTagMod
@@ -174,7 +174,7 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                         ),
                         <.td(
                             <.select(className := "form-control form-control-sm",
-                                bind(s) := ApplicationState.participantCandidate / ContractParticipant.role,
+                                bind(s) := CreateApplicationState.participantCandidate / ContractParticipant.role,
                                 s.roles.map { role =>
                                     option((className := "selected").when(s.participantCandidate.role == role), role)
                                 }.toTagMod
@@ -207,8 +207,8 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
     : CallbackTo[Unit] =
         modState(CreateApplicationRequest.parties.modify(_ :+ participant))
 
-    private def onPackageChange(s: ApplicationState, data: Ready)(event: ReactEventFromInput)
-      (implicit modP: (CreateApplicationRequest => CreateApplicationRequest) => Callback, modS: (ApplicationState => ApplicationState) => Callback): Callback = {
+    private def onPackageChange(s: CreateApplicationState, data: Ready)(event: ReactEventFromInput)
+      (implicit modP: (CreateApplicationRequest => CreateApplicationRequest) => Callback, modS: (CreateApplicationState => CreateApplicationState) => Callback): Callback = {
         val v: String = event.target.value
         modP(_.copy(
             applicationType = v
@@ -225,16 +225,14 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
         )
 
 
-    private def addProperty(s: ApplicationState)
-      (implicit modP: (CreateApplicationRequest => CreateApplicationRequest) => Callback, modS: (ApplicationState => ApplicationState) => Callback)
+    private def addProperty(s: CreateApplicationState)
+      (implicit modP: (CreateApplicationRequest => CreateApplicationRequest) => Callback, modS: (CreateApplicationState => CreateApplicationState) => Callback)
     : CallbackTo[Unit] =
         modP(CreateApplicationRequest.properties.modify(_ :+ s.propertyCandidate)) >>
-          modS(ApplicationState.propertyCandidate.modify(_ =>
+          modS(CreateApplicationState.propertyCandidate.modify(_ =>
               Property(
                   key = "",
                   value = ""
               ))
           )
-
-
 }

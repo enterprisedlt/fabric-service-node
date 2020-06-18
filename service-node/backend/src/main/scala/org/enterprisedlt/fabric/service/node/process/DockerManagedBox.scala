@@ -496,14 +496,10 @@ class DockerManagedBox(
     }
 
     private def mergeProperties(descriptorProperties: Array[Property], requestProperties: Array[Property]): Array[Property] = {
-        logger.info(s"descriptorProperties: ${descriptorProperties.mkString(" ")}")
-        logger.info(s"requestProperties: ${requestProperties.mkString(" ")}")
-        val x = descriptorProperties.map { property =>
+        descriptorProperties.map { property =>
             requestProperties.find(_.key == property.key)
               .getOrElse(property)
         }
-        logger.info(s"mergedProperties: ${x.mkString(" ")}")
-        x
     }
     // =================================================================================================================
 

@@ -402,11 +402,13 @@ object CreateApplicationRequest {
     implicit val rw: RW[CreateApplicationRequest] = macroRW
 }
 // ------------------------------------------------------------------------
-@Lenses case class ApplicationJoinRequest(
+@Lenses case class JoinApplicationRequest(
     name: String,
-    founder: String
+    founder: String,
+    box: String,
+    properties: Array[Property]
 )
 
-object ApplicationJoinRequest {
-    implicit val rw: RW[ApplicationJoinRequest] = macroRW
+object JoinApplicationRequest {
+    implicit val rw: RW[JoinApplicationRequest] = macroRW
 }

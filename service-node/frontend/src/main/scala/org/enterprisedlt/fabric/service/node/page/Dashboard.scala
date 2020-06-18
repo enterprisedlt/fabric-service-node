@@ -9,6 +9,7 @@ import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.page.form._
 import org.enterprisedlt.fabric.service.node.shared.{ApplicationState, _}
+import org.enterprisedlt.fabric.service.node.util.DataFunction._
 import org.enterprisedlt.fabric.service.node.util.Html.data
 import org.scalajs.dom
 import org.scalajs.dom.FormData
@@ -47,6 +48,9 @@ object Dashboard {
         applicationFile: File,
         applicationName: String,
 
+        // Events
+        joinApplicationRequest: JoinApplicationRequest,
+        propertyCandidate: Property
         //        block: BlockConfig,
         //        raft: RaftConfig,
         //        networkName: String,
@@ -109,7 +113,14 @@ object Dashboard {
                   )
               ),
               applicationFile = null,
-              applicationName = "Choose file"
+              applicationName = "Choose file",
+              joinApplicationRequest = JoinApplicationRequest(
+                  name = "",
+                  founder = "",
+                  box = "default",
+                  properties = Array.empty[Property]
+              ),
+              propertyCandidate = Property("", "")
           )
       }
       .renderBackend[Backend]
@@ -547,9 +558,63 @@ object Dashboard {
                                               )
                                           ),
                                           <.div(
-                                              <.button(^.className := "btn btn-sm btn-outline-success float-right",
-                                                  ^.onClick --> joinApplication(applicationInvite.initiator, applicationInvite.name),
-                                                  "Join"
+                                              <.button(
+                                                  ^.className := "btn btn-sm btn-outline-success float-right",
+                                                  data.toggle := "collapse", data.target := "#application-invitation",
+                                                  ^.aria.expanded := false, ^.aria.controls := "application-invitation",
+                                                  "Details"
+                                              )
+                                          ),
+                                          <.div(^.className := "collapse", ^.id := "application-invitation",
+                                              <.div(
+                                                  <.div(^.className := "form-group row",
+                                                      <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Properties"))
+                                                  ),
+                                                  <.table(^.className := "table table-sm",
+                                                      <.thead(^.className := "thead-light",
+                                                          <.tr(
+                                                              <.th(^.scope := "col", "Name", ^.width := "45%"),
+                                                              <.th(^.scope := "col", "Value", ^.width := "45%"),
+                                                              <.th(^.scope := "col", "", ^.width := "10%"),
+                                                          )
+                                                      ),
+                                                      <.tbody(
+                                                          s.joinApplicationRequest.properties.map { property =>
+                                                              <.tr(
+                                                                  <.td(property.key),
+                                                                  <.td(property.value),
+                                                                  <.td(
+                                                                      <.button(^.className := "btn btn-sm btn-outline-danger float-right", //^.aria.label="remove">
+                                                                          ^.onClick --> removeProperty(property),
+                                                                          <.i(^.className := "fas fa-minus-circle")
+                                                                      )
+                                                                  )
+                                                              )
+                                                          }.toTagMod,
+                                                          <.tr(
+                                                              <.td(
+                                                                  <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
+                                                                      bind(s) := State.propertyCandidate / Property.key
+                                                                  )
+                                                              ),
+                                                              <.td(
+                                                                  <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
+                                                                      bind(s) := State.propertyCandidate / Property.value
+                                                                  )
+                                                              ),
+                                                              <.td(
+                                                                  <.button(^.className := "btn btn-sm btn-outline-success float-right", //^.aria.label="remove">
+                                                                      ^.onClick --> addProperty(s),
+                                                                      <.i(^.className := "fas fa-plus-circle")
+                                                                  )
+                                                              )
+                                                          )
+                                                      )
+                                                  ),
+                                                  <.button(^.className := "btn btn-sm btn-outline-success float-right",
+                                                      ^.onClick --> joinApplication(s.joinApplicationRequest, applicationInvite),
+                                                      "Join application"
+                                                  )
                                               )
                                           )
                                       )
@@ -611,6 +676,23 @@ object Dashboard {
         //            box.information.details
         //            if (box.information.externalAddress.trim.nonEmpty) box.information.externalAddress else "local"
         //        }
+
+
+        private def removeProperty(property: Property): CallbackTo[Unit] = modState(
+            (State.joinApplicationRequest / JoinApplicationRequest.properties).modify(
+                _.filter(p => !(p.value == property.value && p.key == property.key))
+            )
+        )
+
+
+        private def addProperty(s: State): CallbackTo[Unit] = modState(
+            (State.joinApplicationRequest / JoinApplicationRequest.properties).modify(_ :+ s.propertyCandidate)) >>
+          modState(State.propertyCandidate.modify(_ =>
+              Property(
+                  key = "",
+                  value = ""
+              ))
+          )
 
         private def doDownload(content: String, name: String): Unit = {
             val blob = new Blob(js.Array(content))
@@ -713,8 +795,13 @@ object Dashboard {
             ServiceNodeRemote.contractJoin(ContractJoinRequest(name, initiator)).map(Callback(_))
         }
 
-        def joinApplication(initiator: String, name: String): Callback = Callback.future {
-            ServiceNodeRemote.applicationJoin(ApplicationJoinRequest(name, initiator)).map(Callback(_))
+        def joinApplication(request: JoinApplicationRequest, applicationInvite: ApplicationInvitation): Callback = Callback.future {
+            ServiceNodeRemote.applicationJoin(
+                request.copy(
+                    founder = applicationInvite.initiator,
+                    name = applicationInvite.name
+                )
+            ).map(Callback(_))
         }
 
         def publishApplication(application: ApplicationState): Callback = Callback.future {
