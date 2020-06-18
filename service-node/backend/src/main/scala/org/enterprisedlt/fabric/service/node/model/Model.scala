@@ -120,8 +120,8 @@ case class OsnCertificates(
 )
 
 case class ApplicationDescriptor(
-    name: String,
-    filename: String = "",
+    applicationName: String,
+    applicationType: String = "",
     properties: Array[Property],
     roles: Array[String] = Array.empty[String],
     initArgsNames: Array[String] = Array.empty[String],

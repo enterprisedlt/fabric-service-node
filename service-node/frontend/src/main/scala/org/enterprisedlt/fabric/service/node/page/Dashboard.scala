@@ -89,7 +89,7 @@ object Dashboard {
               createApplicationRequest = CreateApplicationRequest(
                   name = "",
                   version = "",
-                  applicationType = defaultApplication.map(_.filename).getOrElse(""),
+                  applicationType = defaultApplication.map(_.applicationType).getOrElse(""),
                   channelName = g.channels.headOption.getOrElse(""),
                   properties = Array.empty[Property],
                   parties = Array.empty[ContractParticipant],
@@ -468,7 +468,7 @@ object Dashboard {
                                                   ),
                                                   g.events.applications.map { application =>
                                                       <.tr(
-                                                          <.td(application.name),
+                                                          <.td(application.applicationName),
                                                           <.td(application.status),
                                                           <.td(applicationButton(application))
                                                       )
@@ -805,11 +805,11 @@ object Dashboard {
         }
 
         def publishApplication(application: ApplicationState): Callback = Callback.future {
-            ServiceNodeRemote.publishApplication(application.name, application.filename).map(Callback(_))
+            ServiceNodeRemote.publishApplication(application.applicationName, application.applicationType).map(Callback(_))
         }
 
         def downloadApplication(application: ApplicationState): Callback = Callback.future {
-            ServiceNodeRemote.downloadApplication(application.distributorAddress, application.filename).map(Callback(_))
+            ServiceNodeRemote.downloadApplication(application.distributorAddress, application.applicationType).map(Callback(_))
         }
 
         def applicationButton(application: ApplicationState): VdomTagOf[HTMLElement] = {

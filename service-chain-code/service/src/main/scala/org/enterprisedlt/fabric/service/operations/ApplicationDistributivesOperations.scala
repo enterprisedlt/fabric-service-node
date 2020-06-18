@@ -16,9 +16,9 @@ trait ApplicationDistributivesOperations {
     @ContractOperation(OperationType.Invoke)
     def publishApplicationDistributive(application: ApplicationDistributive): ContractResult[Unit] = {
         for {
-            _ <- Option(application.name).filter(_.nonEmpty).toRight("Application name must be non empty")
+            _ <- Option(application.applicationName).filter(_.nonEmpty).toRight("Application name must be non empty")
         } yield {
-            OperationContext.store.put[ApplicationDistributive](application.name, application)
+            OperationContext.store.put[ApplicationDistributive](application.applicationType, application)
         }
     }
 
@@ -30,10 +30,10 @@ trait ApplicationDistributivesOperations {
 
 
     @ContractOperation(OperationType.Query)
-    def getApplicationDistributive(name: String): ContractResult[Option[ApplicationDistributive]] = {
+    def getApplicationDistributive(applicationType: String): ContractResult[ApplicationDistributive] = {
         for {
-            _ <- Option(name).filter(_.nonEmpty).toRight("Application name must be non empty")
-            name <- Try(OperationContext.store.get[ApplicationDistributive](name)).toEither.left.map(_.getMessage)
+            _ <- Option(applicationType).filter(_.nonEmpty).toRight("Application name must be non empty")
+            name <- OperationContext.store.get[ApplicationDistributive](applicationType).toRight(s"No application distributive with name $applicationType")
         } yield name
     }
 

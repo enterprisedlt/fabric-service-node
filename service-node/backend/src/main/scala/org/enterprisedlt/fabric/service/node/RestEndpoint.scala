@@ -77,7 +77,7 @@ class RestEndpoint(
         logger.info(s"applicationRequest =  ${applicationRequest.toString}")
         for {
             state <- globalState.toRight("Node is not initialized yet")
-            applicationDescriptor <- FabricServiceStateHolder.fullState.applications.find(_.filename == applicationRequest.applicationType).toRight("No such ...")
+            applicationDescriptor <- FabricServiceStateHolder.fullState.applications.find(_.applicationType == applicationRequest.applicationType).toRight("No such ...")
             _ <- applicationDescriptor.contracts.foldRight[Either[String, String]](Right("")) { case (contract, current) =>
                 current.flatMap { _ =>
                     val contractCreateRequest = CreateContractRequest(
@@ -143,6 +143,29 @@ class RestEndpoint(
         }
     }
 
+    def checkApplicationDownloaded(applicationType: String, applicationDescriptorPath: String): Either[String, Unit] = {
+        val applicationDescriptorFile = new File(applicationDescriptorPath).getAbsoluteFile
+        if (applicationDescriptorFile.exists()) {
+            logger.info(s"Application type $applicationType is already downloaded")
+            Right(())
+        } else {
+            logger.info(s"Component type $applicationType isn't downloaded...")
+            for {
+                state <- globalState.toRight("Node is not initialized yet")
+                network = state.networkManager
+                queryResult <- {
+                    logger.info(s"Querying application with getApplication...")
+                    network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getApplicationDistributive", applicationType)
+                      .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getApplication method in system chain-code"))
+                }
+                applicationDistributive <- Try(Util.codec.fromJson(queryResult, classOf[ApplicationDistributive])).toEither.left.map(_.getMessage)
+            } yield {
+                FabricServiceStateHolder.updateStateFullOption(FabricServiceStateHolder.compose(state.eventsMonitor.updateApplications()))
+                downloadApplication(applicationDistributive.componentsDistributorAddress, applicationType)
+            }
+        }
+    }
+
     @Post("/admin/application-join")
     def applicationJoin(joinReq: JoinApplicationRequest): Either[String, String] = {
         logger.info("Joining deployed application ...")
@@ -156,8 +179,10 @@ class RestEndpoint(
                   .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getApplication method in system chain-code"))
             }
             applicationDetails <- Try(Util.codec.fromJson(queryResult, classOf[Application])).toEither.left.map(_.getMessage)
+            applicationDescriptorPath = s"/opt/profile/applications/${applicationDetails.applicationType}.json"
+            _ <- checkApplicationDownloaded(applicationDetails.applicationType, applicationDescriptorPath)
             applicationDescriptor <- Try(
-                Util.codec.fromJson(new FileReader(s"/opt/profile/applications/${applicationDetails.applicationType}.json")
+                Util.codec.fromJson(new FileReader(applicationDescriptorPath)
                     , classOf[ApplicationDescriptor])
             ).toEither.left.map(_.getMessage)
             _ <- applicationDescriptor.contracts.foldRight[Either[String, String]](Right("")) { case (contract, current) =>
@@ -218,15 +243,22 @@ class RestEndpoint(
             )
             invokeAwait <- Try(invokeResultFuture.get()).toEither.left.map(_.getMessage)
         } yield {
-            FabricServiceStateHolder.updateStateFull(state =>
-                state.copy(
-                    deployedApplications = state.deployedApplications :+ ApplicationInfo(
-                        name = applicationDetails.name,
-                        version = applicationDetails.version,
-                        channelName = applicationDetails.channel
-                    )
+            FabricServiceStateHolder.updateStateFullOption(
+                FabricServiceStateHolder.compose(
+                    state =>
+                        Some(
+                            state.copy(
+                                deployedApplications = state.deployedApplications :+ ApplicationInfo(
+                                    name = applicationDetails.name,
+                                    version = applicationDetails.version,
+                                    channelName = applicationDetails.channel
+                                )
+                            )
+                        ),
+                    state.eventsMonitor.updateApplications()
                 )
             )
+
             s"Joining to application ${joinReq.name} has been completed successfully $invokeAwait"
         }
     }
@@ -271,13 +303,13 @@ class RestEndpoint(
     }
 
     @Get("/admin/publish-application")
-    def publishApplication(name: String, filename: String): Either[String, String] = {
+    def publishApplication(applicationName: String, applicationType: String): Either[String, String] = {
         val componentsDistributorAddress = externalAddress
           .map(ea => s"http://${ea.host}:$componentsDistributorBindPort")
           .getOrElse(s"http://service.${organizationConfig.name}.${organizationConfig.domain}:$componentsDistributorBindPort")
         val application = ApplicationDistributive(
-            name = name,
-            filename = filename,
+            applicationName = applicationName,
+            applicationType = applicationType,
             founder = serviceNodeName,
             componentsDistributorAddress = componentsDistributorAddress
         )
@@ -290,7 +322,7 @@ class RestEndpoint(
                 Util.codec.toJson(application))
         } yield {
             FabricServiceStateHolder.incrementVersion()
-            s"Application $name has been successfully published"
+            s"Application $applicationName has been successfully published"
         }
     }
 
@@ -880,10 +912,13 @@ class RestEndpoint(
 
     @Get("/service/get-events")
     def getEvents: Either[String, Events] = {
+        FabricServiceStateHolder.fullState.events
         logger.info(s"Querying events for ${organizationConfig.name}...")
-        globalState
-          .toRight("Node is not initialized yet")
-          .map(_.eventsMonitor.getEvents)
+        Try(FabricServiceStateHolder.fullState.events).toEither.left.map { ex =>
+            val msg = s"Failed to query events: ${ex.getMessage}"
+            logger.error(msg, ex)
+            msg
+        }
     }
 
     // ================================================================================================================

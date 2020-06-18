@@ -2,14 +2,20 @@ package org.enterprisedlt.fabric.service.node.model
 
 import java.util.concurrent.locks.ReentrantLock
 
-import org.enterprisedlt.fabric.service.node.shared.{ApplicationInfo, FabricServiceState}
+import org.enterprisedlt.fabric.service.node.shared._
 
 /**
  * @author Alexey Polubelov
  */
 object FabricServiceStateHolder {
+    type StateChangeFunction = FabricServiceStateFull => Option[FabricServiceStateFull]
     private val lock = new ReentrantLock()
-    private var state: FabricServiceState = FabricServiceState("", "", -1, -1)
+    private var state: FabricServiceState = FabricServiceState(
+        mspId = "",
+        organizationFullName = "",
+        stateCode = -1,
+        version = -1
+    )
 
     var fabricServiceStateFull: FabricServiceStateFull = FabricServiceStateFull()
 
@@ -19,6 +25,38 @@ object FabricServiceStateHolder {
             val s = fabricServiceStateFull
             fabricServiceStateFull = u(s)
             state = state.copy(version = state.version + 1)
+        } finally lock.unlock()
+    }
+
+
+    def updateStateFullIf(condition: FabricServiceStateFull => Boolean)(u: FabricServiceStateFull => FabricServiceStateFull): Unit = {
+        lock.lock()
+        try {
+            val s = fabricServiceStateFull
+            if (condition(s)) {
+                fabricServiceStateFull = u(s)
+                state = state.copy(version = state.version + 1)
+            }
+        } finally lock.unlock()
+    }
+
+    def compose(u: (FabricServiceStateFull => Option[FabricServiceStateFull])*): FabricServiceStateFull => Option[FabricServiceStateFull] = { s =>
+        val (r, changed) = u.foldLeft((s, false)) { case ((c, changed), f) =>
+            f(c) match {
+                case Some(newState) => (newState, true)
+                case _ => (c, changed)
+            }
+        }
+        if (changed) Some(r) else None
+    }
+
+    def updateStateFullOption(u: FabricServiceStateFull => Option[FabricServiceStateFull]): Unit = {
+        lock.lock()
+        try {
+            u(fabricServiceStateFull).foreach { n =>
+                fabricServiceStateFull = n
+                state = state.copy(version = state.version + 1)
+            }
         } finally lock.unlock()
     }
 
@@ -56,6 +94,13 @@ object FabricServiceStateHolder {
 
 
 case class FabricServiceStateFull(
-     applications: Array[ApplicationDescriptor] = Array.empty[ApplicationDescriptor],
-     deployedApplications: Array[ApplicationInfo]= Array.empty[ApplicationInfo]
+    applications: Array[ApplicationDescriptor] = Array.empty[ApplicationDescriptor],
+    deployedApplications: Array[ApplicationInfo] = Array.empty[ApplicationInfo],
+    events: Events = Events(
+        messages = Array.empty[PrivateMessageEvent],
+        contractInvitations = Array.empty[ContractInvitation],
+        applicationInvitations = Array.empty[ApplicationInvitation],
+        customComponentDescriptors = Array.empty[CustomComponentDescriptor],
+        applications = Array.empty[ApplicationState]
+    )
 )

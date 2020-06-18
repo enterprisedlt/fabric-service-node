@@ -22,10 +22,10 @@ object ServiceNodeRemote {
           .map { _ => () }
     }
 
-    def publishApplication(name: String, filename: String): Future[Unit] = {
+    def publishApplication(applicationName: String, applicationType: String): Future[Unit] = {
         Ajax.get(mkURLGet("/admin/publish-application",
-            "name" -> JSON.stringify(name),
-            "filename" -> JSON.stringify(filename)))
+            "applicationName" -> JSON.stringify(applicationName),
+            "applicationType" -> JSON.stringify(applicationType)))
           .map { _ => () }
     }
 

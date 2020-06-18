@@ -24,7 +24,7 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
 
     private def stateFor(appType: String, data: Ready): CreateApplicationState = {
         val firstMSPId = data.organizations.headOption.map(_.mspId).getOrElse("")
-        data.events.applications.find(_.filename == appType).map { descriptor =>
+        data.events.applications.find(_.applicationType == appType).map { descriptor =>
             CreateApplicationState(
                 roles = descriptor.applicationRoles,
                 participantCandidate = ContractParticipant(
@@ -32,7 +32,7 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                     descriptor.applicationRoles.headOption.getOrElse("")
                 ),
                 propertyCandidate = Property("",""), // TODO
-                filename = descriptor.filename
+                filename = descriptor.applicationType
             )
         }.getOrElse( // could be only if package list is empty or something got wrong :(
             CreateApplicationState(
@@ -76,7 +76,7 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                         ^.value := p.applicationType,
                         ^.onChange ==> onPackageChange(s, data),
                         data.events.applications.map { application =>
-                            val label = application.filename
+                            val label = application.applicationType
                             val selected = p.applicationType
                             option((className := "selected").when(selected == label), label)
                         }.toTagMod

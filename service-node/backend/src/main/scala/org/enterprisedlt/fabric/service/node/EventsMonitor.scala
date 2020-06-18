@@ -3,7 +3,6 @@ package org.enterprisedlt.fabric.service.node
 import java.io.{File, FileOutputStream, InputStreamReader}
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
-import java.util.concurrent.atomic.AtomicReference
 
 import com.google.gson.GsonBuilder
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
@@ -12,7 +11,8 @@ import org.eclipse.jetty.util.IO
 import org.enterprisedlt.fabric.service.model.{Application, ApplicationDistributive, Contract}
 import org.enterprisedlt.fabric.service.node.Util.withResources
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
-import org.enterprisedlt.fabric.service.node.model.{ApplicationDescriptor, FabricServiceStateHolder}
+import org.enterprisedlt.fabric.service.node.model.FabricServiceStateHolder.StateChangeFunction
+import org.enterprisedlt.fabric.service.node.model.{ApplicationDescriptor, FabricServiceStateFull, FabricServiceStateHolder}
 import org.enterprisedlt.fabric.service.node.shared._
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -30,56 +30,54 @@ class EventsMonitor(
     @volatile private var working = true
     private val logger: Logger = LoggerFactory.getLogger(this.getClass)
     private var delay: Long = -1L
-    private val events: AtomicReference[Events] = new AtomicReference[Events](Events())
 
-    def getEvents: Events = events.get()
+    def updateEvents(): Unit = FabricServiceStateHolder.updateStateFullOption(
+        FabricServiceStateHolder.compose(
+            updateApplicationInvitations(),
+            updateContractInvitations(),
+            updateCustomComponentDescriptors(),
+            updateApplications()
+        )
+    )
 
-    def updateApplicationInvitations() = {
-        for {
+    def updateApplicationInvitations(): StateChangeFunction = { current: FabricServiceStateFull =>
+        val applicationInvs = for {
             queryResult <- networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listApplications")
             contracts <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
             applicationInvitations <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[Application]])).toEither.left.map(_.getMessage)
         } yield {
-            val old = events.get()
-            val next = old.copy(
-                applicationInvitations = applicationInvitations.map { application =>
-                    ApplicationInvitation(
-                        initiator = application.founder,
-                        name = application.name,
-                        applicationType = application.applicationType,
-                        applicationVersion = application.version,
-                        participants = application.participants,
-                    )
-                },
-            )
-            events.set(next)
-            logger.info(s"got ${applicationInvitations.length} contract records")
-            if (
-                old.contractInvitations.length != next.contractInvitations.length
-            ) {
-                FabricServiceStateHolder.incrementVersion()
+            applicationInvitations.map { application =>
+                ApplicationInvitation(
+                    initiator = application.founder,
+                    name = application.name,
+                    applicationType = application.applicationType,
+                    applicationVersion = application.version,
+                    participants = application.participants,
+
+                )
             }
         }
+        applicationInvs match {
+            case Right(applicationInvs) if current.events.applicationInvitations.length != applicationInvs.length =>
+                Option(current.copy(events = current.events.copy(applicationInvitations = applicationInvs)))
+
+            case Left(msg) =>
+                logger.warn(msg)
+                None
+
+            case _ => None
+        }
+
     }
 
-    def updateEvents(): Either[String, Unit] = {
-        for {
-            _ <- updateContractInvitations()
-            _ <- updateCustomComponentDescriptors()
-            _ <- updateApplications()
-            _ <- updateApplicationInvitations()
-        } yield ()
-    }
-
-    def updateContractInvitations(): Either[String, Unit] = {
-        for {
+    def updateContractInvitations(): StateChangeFunction = { current: FabricServiceStateFull =>
+        val contractInvs = for {
             queryResult <- networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContracts")
             contracts <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
             contractInvitations <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[Contract]])).toEither.left.map(_.getMessage)
         } yield {
-            val old = events.get()
-            val next = old.copy(
-                contractInvitations = contractInvitations.map { contract =>
+            contractInvitations.map {
+                contract =>
                     ContractInvitation(
                         initiator = contract.founder,
                         name = contract.name,
@@ -87,77 +85,91 @@ class EventsMonitor(
                         chainCodeVersion = contract.version,
                         participants = contract.participants,
                     )
-                },
-            )
-            events.set(next)
-            logger.info(s"got ${contractInvitations.length} contract records")
-            if (
-                old.contractInvitations.length != next.contractInvitations.length
-            ) {
-                FabricServiceStateHolder.incrementVersion()
             }
+        }
+        contractInvs match {
+            case Right(contractInvs) if current.events.contractInvitations.length != contractInvs.length =>
+                Option(current.copy(events = current.events.copy(contractInvitations = contractInvs)))
+
+            case Left(msg) =>
+                logger.warn(msg)
+                None
+
+            case _ => None
         }
     }
 
-    def updateCustomComponentDescriptors(): Either[String, Unit] = Try(getCustomComponentDescriptors)
-      .map { customComponentDescriptors =>
-          val old = events.get()
-          val next = old.copy(customComponentDescriptors = customComponentDescriptors)
-          events.set(next)
-          logger.info(s"got ${customComponentDescriptors.length} component descriptor")
-          if (
-              old.customComponentDescriptors.length != next.customComponentDescriptors.length
-          ) {
-              FabricServiceStateHolder.incrementVersion()
-          }
-      }.toEither.left.map(_.getMessage)
+    def updateCustomComponentDescriptors(): StateChangeFunction = { current: FabricServiceStateFull =>
+        Try(getCustomComponentDescriptors)
+          .toEither
+          .left.map(_.getMessage) match {
+            case Right(descriptors) if (current.events.customComponentDescriptors.length != descriptors.length) =>
+                logger.info(s"current.events.contractInvitations.length: ${current.events.customComponentDescriptors.length} customComponentDscrptrs.length: ${descriptors.length}")
+                Option(current.copy(events = current.events.copy(customComponentDescriptors = descriptors)))
+
+            case Left(msg) =>
+                logger.warn(msg)
+                None
+
+            case _ => None
+        }
+    }
 
 
-    def updateApplications(): Either[String, Unit] =
-        for {
+    def updateApplications(): StateChangeFunction = { current: FabricServiceStateFull =>
+        val apps = for {
             applicationDescriptors <- Try(getApplicationDescriptors).toEither.left.map(_.getMessage)
             applications <- getApplications
         } yield {
-            val applicationEventsMonitor =
-                applicationDescriptors.map { applicationDescriptor =>
-                    val status = if (applications.exists(_.name == applicationDescriptor.name)) "Published" else "Downloaded"
+            applicationDescriptors.map {
+                applicationDescriptor =>
+                    val status = if (applications.exists(_.applicationName == applicationDescriptor.applicationName)) "Published" else "Downloaded"
                     ApplicationState(
-                        name = applicationDescriptor.name,
-                        filename = applicationDescriptor.filename,
+                        applicationName = applicationDescriptor.applicationName,
+                        applicationType = applicationDescriptor.applicationType,
                         status = status,
                         contracts = applicationDescriptor.contracts,
                         components = applicationDescriptor.components,
                         applicationRoles = applicationDescriptor.roles
                     )
-                } ++ applications
-                  .filterNot { application =>
-                      applicationDescriptors.exists(_.name == application.name)
-                  }.map {
-                    application =>
-                        ApplicationState(
-                            name = application.name,
-                            filename = application.filename,
-                            status = "Not Downloaded",
-                            distributorAddress = application.componentsDistributorAddress
-                        )
-                }
-            val old = events.get()
-            val next = old.copy(applications = applicationEventsMonitor)
-            logger.info(s"got ${applicationEventsMonitor.length} for applications")
-            events.set(next)
-            if (old.applications.length != next.applications.length || old.applications.flatMap(_.contracts).length != next.applications.flatMap(_.contracts).length) {
-                applicationDescriptors.foreach { applicationDescriptor =>
-                    applicationDescriptor.contracts.foreach { chaincode =>
-                        saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"chain-code/${chaincode.contractType}.json", "/opt/profile")
-                        saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"chain-code/${chaincode.contractType}.tgz", "/opt/profile")
-                    }
-                    applicationDescriptor.components.foreach { component =>
-                        saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.filename}.tgz", s"components/${component.componentType}.tgz", "/opt/profile")
-                    }
-                }
-                FabricServiceStateHolder.updateStateFull(_.copy(applications = applicationDescriptors))
+            } ++ applications
+              .filterNot {
+                  application =>
+                      applicationDescriptors.exists(_.applicationName == application.applicationName)
+              }.map {
+                application =>
+                    ApplicationState(
+                        applicationName = application.applicationName,
+                        applicationType = application.applicationType,
+                        status = "Not Downloaded",
+                        distributorAddress = application.componentsDistributorAddress
+                    )
             }
         }
+
+        apps match {
+            case Right(apps) if current.events.applications.length != apps.length || current.events.applications.flatMap(_.contracts).length != apps.flatMap(_.contracts).length =>
+                getApplicationDescriptors.foreach {
+                    applicationDescriptor =>
+                        applicationDescriptor.contracts.foreach {
+                            chaincode =>
+                                saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"chain-code/${chaincode.contractType}.json", "/opt/profile")
+                                saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"chain-code/${chaincode.contractType}.tgz", "/opt/profile")
+                        }
+                        applicationDescriptor.components.foreach {
+                            component =>
+                                saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"components/${component.componentType}.tgz", "/opt/profile")
+                        }
+                }
+                Option(current.copy(events = current.events.copy(applications = apps)))
+
+            case Left(msg) =>
+                logger.warn(msg)
+                None
+
+            case _ => None
+        }
+    }
 
     //    ================================================================================
     private def getApplications: Either[String, Array[ApplicationDistributive]] = {
@@ -179,7 +191,7 @@ class EventsMonitor(
               logger.info(s"file is ${file.getName}")
               val filename = file.getName.split('.')(0)
               getObjectFromTar[ApplicationDescriptor](file.toPath, s"$filename.json")
-                .map(_.copy(filename = filename))
+                .map(_.copy(applicationType = filename))
                 .map { applicationDescriptor =>
                     val applicationDescriptorJson = Util.codec.toJson(applicationDescriptor)
                     val out = new FileOutputStream(s"/opt/profile/applications/$filename.json")
@@ -253,9 +265,7 @@ class EventsMonitor(
                     Thread.sleep(delay)
                 }
                 val start = System.currentTimeMillis()
-                updateEvents().left.map { error =>
-                    logger.warn(s"Failed to pull events: $error")
-                }
+                updateEvents()
                 val duration = System.currentTimeMillis() - start
                 logger.info(s"Pulling done in $duration ms")
                 delay = eventPullingInterval - duration

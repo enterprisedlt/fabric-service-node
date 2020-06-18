@@ -350,8 +350,8 @@ object Image {
 
 // ------------------------------------------------------------------------
 case class ApplicationState(
-    name: String,
-    filename: String,
+    applicationName: String,
+    applicationType: String,
     status: String,
     applicationRoles: Array[String] = Array.empty[String],
     contracts: Array[ContractsState] = Array.empty[ContractsState],
