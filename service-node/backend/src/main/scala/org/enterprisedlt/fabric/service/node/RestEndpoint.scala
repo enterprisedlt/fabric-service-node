@@ -77,8 +77,8 @@ class RestEndpoint(
         logger.info(s"applicationRequest =  ${applicationRequest.toString}")
         for {
             state <- globalState.toRight("Node is not initialized yet")
-            descriptor <- FabricServiceStateHolder.fullState.applications.find(_.filename == applicationRequest.applicationType).toRight("No such ...")
-            _ <- descriptor.contracts.foldRight[Either[String, String]](Right("")) { case (contract, current) =>
+            applicationDescriptor <- FabricServiceStateHolder.fullState.applications.find(_.filename == applicationRequest.applicationType).toRight("No such ...")
+            _ <- applicationDescriptor.contracts.foldRight[Either[String, String]](Right("")) { case (contract, current) =>
                 current.flatMap { _ =>
                     val contractCreateRequest = CreateContractRequest(
                         name = contract.name,
@@ -91,17 +91,15 @@ class RestEndpoint(
                     createContract(contractCreateRequest)
                 }
             }
-            filledDescriptor = descriptor.copy(
-                properties = Util.fillPlaceholdersProperties(
-                    descriptor.properties,
-                    applicationRequest.properties,
-                )
-            )
-            _ <- filledDescriptor.components.foldRight[Either[String, String]](Right("")) { case (component, current) =>
+            mergedApplicationProperties = applicationDescriptor.properties.map { property =>
+                applicationRequest.properties.find(_.key == property.key)
+                  .getOrElse(property)
+            }
+            _ <- applicationDescriptor.components.foldRight[Either[String, String]](Right("")) { case (component, current) =>
                 current.flatMap { _ =>
                     val enrichedProperties = Util.fillPlaceholdersProperties(
                         component.environmentVariables,
-                        filledDescriptor.properties,
+                        mergedApplicationProperties,
                     )
                     val request = CustomComponentRequest(
                         box = applicationRequest.box,
@@ -192,17 +190,15 @@ class RestEndpoint(
                     } yield s"invokeResult is $invokeAwait"
                 }
             }
-            filledDescriptor = applicationDescriptor.copy(
-                properties = Util.fillPlaceholdersProperties(
-                    applicationDescriptor.properties,
-                    joinReq.properties,
-                )
-            )
-            _ <- filledDescriptor.components.foldRight[Either[String, String]](Right("")) { case (component, current) =>
+            mergedProperties = applicationDescriptor.properties.map { property =>
+                joinReq.properties.find(_.key == property.key)
+                  .getOrElse(property)
+            }
+            _ <- applicationDescriptor.components.foldRight[Either[String, String]](Right("")) { case (component, current) =>
                 current.flatMap { _ =>
                     val enrichedProperties = Util.fillPlaceholdersProperties(
                         component.environmentVariables,
-                        filledDescriptor.properties,
+                        mergedProperties,
                     )
                     val request = CustomComponentRequest(
                         box = joinReq.box,
