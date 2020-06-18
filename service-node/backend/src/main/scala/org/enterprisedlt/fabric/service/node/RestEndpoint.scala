@@ -77,7 +77,8 @@ class RestEndpoint(
         logger.info(s"applicationRequest =  ${applicationRequest.toString}")
         for {
             state <- globalState.toRight("Node is not initialized yet")
-            applicationDescriptor <- FabricServiceStateHolder.fullState.applications.find(_.applicationType == applicationRequest.applicationType).toRight("No such ...")
+            applicationDescriptor <- FabricServiceStateHolder.fullState.applications.find(_.applicationType == applicationRequest.applicationType)
+              .toRight(s"No such application type ${applicationRequest.applicationType} in application registry")
             _ <- applicationDescriptor.contracts.foldRight[Either[String, String]](Right("")) { case (contract, current) =>
                 current.flatMap { _ =>
                     val contractCreateRequest = CreateContractRequest(
@@ -140,29 +141,6 @@ class RestEndpoint(
                 )
             )
             s"Creating application ${applicationRequest.applicationType} has been completed successfully $r"
-        }
-    }
-
-    def checkApplicationDownloaded(applicationType: String, applicationDescriptorPath: String): Either[String, Unit] = {
-        val applicationDescriptorFile = new File(applicationDescriptorPath).getAbsoluteFile
-        if (applicationDescriptorFile.exists()) {
-            logger.info(s"Application type $applicationType is already downloaded")
-            Right(())
-        } else {
-            logger.info(s"Component type $applicationType isn't downloaded...")
-            for {
-                state <- globalState.toRight("Node is not initialized yet")
-                network = state.networkManager
-                queryResult <- {
-                    logger.info(s"Querying application with getApplication...")
-                    network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getApplicationDistributive", applicationType)
-                      .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getApplication method in system chain-code"))
-                }
-                applicationDistributive <- Try(Util.codec.fromJson(queryResult, classOf[ApplicationDistributive])).toEither.left.map(_.getMessage)
-            } yield {
-                FabricServiceStateHolder.updateStateFullOption(FabricServiceStateHolder.compose(state.eventsMonitor.updateApplications()))
-                downloadApplication(applicationDistributive.componentsDistributorAddress, applicationType)
-            }
         }
     }
 
@@ -922,6 +900,29 @@ class RestEndpoint(
     }
 
     // ================================================================================================================
+
+    private def checkApplicationDownloaded(applicationType: String, applicationDescriptorPath: String): Either[String, Unit] = {
+        val applicationDescriptorFile = new File(applicationDescriptorPath).getAbsoluteFile
+        if (applicationDescriptorFile.exists()) {
+            logger.info(s"Application type $applicationType is already downloaded")
+            Right(())
+        } else {
+            logger.info(s"Component type $applicationType isn't downloaded...")
+            for {
+                state <- globalState.toRight("Node is not initialized yet")
+                network = state.networkManager
+                queryResult <- {
+                    logger.info(s"Querying application with getApplication...")
+                    network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getApplicationDistributive", applicationType)
+                      .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getApplication method in system chain-code"))
+                }
+                applicationDistributive <- Try(Util.codec.fromJson(queryResult, classOf[ApplicationDistributive])).toEither.left.map(_.getMessage)
+            } yield {
+                FabricServiceStateHolder.updateStateFullOption(FabricServiceStateHolder.compose(state.eventsMonitor.updateApplications()))
+                downloadApplication(applicationDistributive.componentsDistributorAddress, applicationType)
+            }
+        }
+    }
 
     private val _globalState = new AtomicReference[GlobalState]()
 

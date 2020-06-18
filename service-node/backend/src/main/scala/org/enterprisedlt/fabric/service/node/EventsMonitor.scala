@@ -104,7 +104,7 @@ class EventsMonitor(
           .toEither
           .left.map(_.getMessage) match {
             case Right(descriptors) if (current.events.customComponentDescriptors.length != descriptors.length) =>
-                logger.info(s"current.events.contractInvitations.length: ${current.events.customComponentDescriptors.length} customComponentDscrptrs.length: ${descriptors.length}")
+
                 Option(current.copy(events = current.events.copy(customComponentDescriptors = descriptors)))
 
             case Left(msg) =>
@@ -146,10 +146,10 @@ class EventsMonitor(
                     )
             }
         }
-
         apps match {
             case Right(apps) if current.events.applications.length != apps.length || current.events.applications.flatMap(_.contracts).length != apps.flatMap(_.contracts).length =>
-                getApplicationDescriptors.foreach {
+                val applicationDescriptors = getApplicationDescriptors
+                applicationDescriptors.foreach {
                     applicationDescriptor =>
                         applicationDescriptor.contracts.foreach {
                             chaincode =>
@@ -161,7 +161,11 @@ class EventsMonitor(
                                 saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"components/${component.componentType}.tgz", "/opt/profile")
                         }
                 }
-                Option(current.copy(events = current.events.copy(applications = apps)))
+                Option(
+                    current.copy(
+                        events = current.events.copy(applications = apps),
+                        applications = applicationDescriptors)
+                )
 
             case Left(msg) =>
                 logger.warn(msg)

@@ -566,55 +566,10 @@ object Dashboard {
                                               )
                                           ),
                                           <.div(^.className := "collapse", ^.id := "application-invitation",
-                                              <.div(
-                                                  <.div(^.className := "form-group row",
-                                                      <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Properties"))
-                                                  ),
-                                                  <.table(^.className := "table table-sm",
-                                                      <.thead(^.className := "thead-light",
-                                                          <.tr(
-                                                              <.th(^.scope := "col", "Name", ^.width := "45%"),
-                                                              <.th(^.scope := "col", "Value", ^.width := "45%"),
-                                                              <.th(^.scope := "col", "", ^.width := "10%"),
-                                                          )
-                                                      ),
-                                                      <.tbody(
-                                                          s.joinApplicationRequest.properties.map { property =>
-                                                              <.tr(
-                                                                  <.td(property.key),
-                                                                  <.td(property.value),
-                                                                  <.td(
-                                                                      <.button(^.className := "btn btn-sm btn-outline-danger float-right", //^.aria.label="remove">
-                                                                          ^.onClick --> removeProperty(property),
-                                                                          <.i(^.className := "fas fa-minus-circle")
-                                                                      )
-                                                                  )
-                                                              )
-                                                          }.toTagMod,
-                                                          <.tr(
-                                                              <.td(
-                                                                  <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                                                      bind(s) := State.propertyCandidate / Property.key
-                                                                  )
-                                                              ),
-                                                              <.td(
-                                                                  <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                                                      bind(s) := State.propertyCandidate / Property.value
-                                                                  )
-                                                              ),
-                                                              <.td(
-                                                                  <.button(^.className := "btn btn-sm btn-outline-success float-right", //^.aria.label="remove">
-                                                                      ^.onClick --> addProperty(s),
-                                                                      <.i(^.className := "fas fa-plus-circle")
-                                                                  )
-                                                              )
-                                                          )
-                                                      )
-                                                  ),
-                                                  <.button(^.className := "btn btn-sm btn-outline-success float-right",
-                                                      ^.onClick --> joinApplication(s.joinApplicationRequest, applicationInvite),
-                                                      "Join application"
-                                                  )
+                                              JoinApplication(s, State.joinApplicationRequest, g),
+                                              <.button(^.className := "btn btn-sm btn-outline-success float-right",
+                                                  ^.onClick --> joinApplication(s.joinApplicationRequest, applicationInvite),
+                                                  "Join application"
                                               )
                                           )
                                       )
