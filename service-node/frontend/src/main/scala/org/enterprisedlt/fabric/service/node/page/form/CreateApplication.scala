@@ -33,14 +33,14 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                     firstMSPId,
                     descriptor.applicationRoles.headOption.getOrElse("")
                 ),
-                propertyCandidate = Property("",""), // TODO
+                propertyCandidate = Property("", ""), // TODO
                 filename = descriptor.applicationType
             )
         }.getOrElse( // could be only if package list is empty or something got wrong :(
             CreateApplicationState(
                 roles = Array.empty,
                 applicationProperties = Array.empty,
-                propertyCandidate = Property("",""),
+                propertyCandidate = Property("", ""),
                 participantCandidate = ContractParticipant(
                     firstMSPId,
                     ""

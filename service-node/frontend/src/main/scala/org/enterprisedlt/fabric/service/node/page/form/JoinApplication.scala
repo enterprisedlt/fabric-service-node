@@ -1,5 +1,6 @@
 package org.enterprisedlt.fabric.service.node.page.form
 
+import japgolly.scalajs.react.vdom.all.{className, option}
 import japgolly.scalajs.react.vdom.html_<^._
 import japgolly.scalajs.react.{Callback, CallbackTo}
 import monocle.macros.Lenses
@@ -64,9 +65,12 @@ object JoinApplication extends StateFullFormExt[JoinApplicationRequest, Ready, J
                         }.toTagMod,
                         <.tr(
                             <.td(
-                                <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                    bind(s) := JoinApplicationState.propertyCandidate / Property.key
-                                )
+                                <.select(className := "form-control form-control-sm",
+                                    bind(s) := JoinApplicationState.propertyCandidate / Property.key,
+                                    s.applicationProperties.map { property =>
+                                        option((className := "selected").when(s.propertyCandidate.key == property.key), property.key)
+                                    }.toTagMod
+                                ),
                             ),
                             <.td(
                                 <.input(^.`type` := "text", ^.className := "form-control form-control-sm",

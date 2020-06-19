@@ -115,7 +115,7 @@ object Dashboard {
               applicationFile = null,
               applicationName = "Choose file",
               joinApplicationRequest = JoinApplicationRequest(
-                  name = "",
+                  name = defaultApplication.map(_.applicationType).getOrElse(""),
                   founder = "",
                   box = "default",
                   properties = Array.empty[Property]
