@@ -33,7 +33,7 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                     firstMSPId,
                     descriptor.applicationRoles.headOption.getOrElse("")
                 ),
-                propertyCandidate = Property("", ""), // TODO
+                propertyCandidate = descriptor.properties.headOption.getOrElse(Property("","")), // TODO
                 filename = descriptor.applicationType
             )
         }.getOrElse( // could be only if package list is empty or something got wrong :(

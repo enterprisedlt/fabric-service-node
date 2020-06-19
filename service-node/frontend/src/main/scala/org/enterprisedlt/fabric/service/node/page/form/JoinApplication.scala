@@ -23,7 +23,7 @@ object JoinApplication extends StateFullFormExt[JoinApplicationRequest, Ready, J
         data.events.applications.find(_.applicationType == appType).map { descriptor =>
             JoinApplicationState(
                 applicationProperties = descriptor.properties,
-                propertyCandidate = Property("",""),
+                propertyCandidate = descriptor.properties.headOption.getOrElse(Property("","")), // TODO
             )
         }.getOrElse( // could be only if package list is empty or something got wrong :(
             JoinApplicationState(
