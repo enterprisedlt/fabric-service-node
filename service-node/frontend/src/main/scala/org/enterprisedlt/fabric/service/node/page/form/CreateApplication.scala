@@ -125,7 +125,7 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                     <.tr(
                         <.td(
                             <.select(className := "form-control form-control-sm",
-                                bind(s) := CreateApplicationState.propertyCandidate / Property.key,
+                                ^.onChange ==> onPropertyCandidateChange(s.applicationProperties),
                                 s.applicationProperties.map { property =>
                                     option((className := "selected").when(s.propertyCandidate.key == property.key), property.key)
                                 }.toTagMod
@@ -138,7 +138,7 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                         ),
                         <.td(
                             <.button(^.className := "btn btn-sm btn-outline-success float-right", //^.aria.label="remove">
-                                ^.onClick --> addProperty(s),
+                                ^.onClick --> addProperty(s.propertyCandidate),
                                 <.i(^.className := "fas fa-plus-circle")
                             )
                         )
@@ -221,6 +221,14 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
         )) >> modS(_ => stateFor(v, data))
     }
 
+    private def onPropertyCandidateChange(p: Array[Property])(event: ReactEventFromInput)
+      (implicit modS: (CreateApplicationState => CreateApplicationState) => Callback): Callback = {
+        val propertyKey: String = event.target.value
+        val propertyValue = p.find(_.key == propertyKey).map(_.value).getOrElse("")
+
+        modS(CreateApplicationState.propertyCandidate.modify(_.copy(value = propertyValue)))
+    }
+
     private def removeProperty(environmentVariable: Property)
       (implicit modState: (CreateApplicationRequest => CreateApplicationRequest) => Callback)
     : CallbackTo[Unit] =
@@ -231,10 +239,10 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
         )
 
 
-    private def addProperty(s: CreateApplicationState)
+    private def addProperty(property: Property)
       (implicit modP: (CreateApplicationRequest => CreateApplicationRequest) => Callback, modS: (CreateApplicationState => CreateApplicationState) => Callback)
     : CallbackTo[Unit] =
-        modP(CreateApplicationRequest.properties.modify(_ :+ s.propertyCandidate)) >>
+        modP(CreateApplicationRequest.properties.modify(_ :+ property)) >>
           modS(CreateApplicationState.propertyCandidate.modify(_ =>
               Property(
                   key = "",
