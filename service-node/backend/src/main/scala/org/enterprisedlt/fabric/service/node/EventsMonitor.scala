@@ -104,7 +104,6 @@ class EventsMonitor(
           .toEither
           .left.map(_.getMessage) match {
             case Right(descriptors) if (current.events.customComponentDescriptors.length != descriptors.length) =>
-
                 Option(current.copy(events = current.events.copy(customComponentDescriptors = descriptors)))
 
             case Left(msg) =>
@@ -121,33 +120,34 @@ class EventsMonitor(
             applicationDescriptors <- Try(getApplicationDescriptors).toEither.left.map(_.getMessage)
             applications <- getApplications
         } yield {
-            applicationDescriptors.map {
-                applicationDescriptor =>
-                    val status = if (applications.exists(_.applicationName == applicationDescriptor.applicationName)) "Published" else "Downloaded"
-                    ApplicationState(
-                        applicationName = applicationDescriptor.applicationName,
-                        applicationType = applicationDescriptor.applicationType,
-                        status = status,
-                        contracts = applicationDescriptor.contracts,
-                        components = applicationDescriptor.components,
-                        applicationRoles = applicationDescriptor.roles
-                    )
+            applicationDescriptors.map { applicationDescriptor =>
+                val status = if (applications.exists(_.applicationType == applicationDescriptor.applicationType)) "Published" else "Downloaded"
+                logger.info(s"status $status for ${applicationDescriptor.applicationType}")
+                ApplicationState(
+                    applicationName = applicationDescriptor.applicationName,
+                    applicationType = applicationDescriptor.applicationType,
+                    status = status,
+                    applicationRoles = applicationDescriptor.roles,
+                    properties = applicationDescriptor.properties,
+                    contracts = applicationDescriptor.contracts,
+                    components = applicationDescriptor.components
+                )
             } ++ applications
-              .filterNot {
-                  application =>
-                      applicationDescriptors.exists(_.applicationName == application.applicationName)
-              }.map {
-                application =>
-                    ApplicationState(
-                        applicationName = application.applicationName,
-                        applicationType = application.applicationType,
-                        status = "Not Downloaded",
-                        distributorAddress = application.componentsDistributorAddress
-                    )
+              .filterNot { application =>
+                  applicationDescriptors.exists(_.applicationName == application.applicationName)
+              }.map { application =>
+                ApplicationState(
+                    applicationName = application.applicationName,
+                    applicationType = application.applicationType,
+                    status = "Not Downloaded",
+                    distributorAddress = application.componentsDistributorAddress
+                )
             }
         }
         apps match {
-            case Right(apps) if current.events.applications.length != apps.length || current.events.applications.flatMap(_.contracts).length != apps.flatMap(_.contracts).length =>
+            case Right(apps) if current.events.applications.length != apps.length || !current.events.applications.exists(app =>
+                apps.exists(application => application.applicationType == app.applicationType && application.status == app.status)) =>
+                logger.info(s"apps ${apps.mkString(" ")}")
                 val applicationDescriptors = getApplicationDescriptors
                 applicationDescriptors.foreach {
                     applicationDescriptor =>

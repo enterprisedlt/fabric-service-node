@@ -15,6 +15,7 @@ import org.enterprisedlt.fabric.service.node.util.DataFunction._
 
 @Lenses case class CreateApplicationState(
     roles: Array[String],
+    applicationProperties: Array[Property],
     participantCandidate: ContractParticipant,
     propertyCandidate: Property,
     filename: String
@@ -27,6 +28,7 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
         data.events.applications.find(_.applicationType == appType).map { descriptor =>
             CreateApplicationState(
                 roles = descriptor.applicationRoles,
+                applicationProperties = descriptor.properties,
                 participantCandidate = ContractParticipant(
                     firstMSPId,
                     descriptor.applicationRoles.headOption.getOrElse("")
@@ -37,6 +39,7 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
         }.getOrElse( // could be only if package list is empty or something got wrong :(
             CreateApplicationState(
                 roles = Array.empty,
+                applicationProperties = Array.empty,
                 propertyCandidate = Property("",""),
                 participantCandidate = ContractParticipant(
                     firstMSPId,
@@ -121,9 +124,12 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                     }.toTagMod,
                     <.tr(
                         <.td(
-                            <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                bind(s) := CreateApplicationState.propertyCandidate / Property.key
-                            )
+                            <.select(className := "form-control form-control-sm",
+                                bind(s) := CreateApplicationState.propertyCandidate / Property.key,
+                                s.applicationProperties.map { property =>
+                                    option((className := "selected").when(s.propertyCandidate.key == property.key), property.key)
+                                }.toTagMod
+                            ),
                         ),
                         <.td(
                             <.input(^.`type` := "text", ^.className := "form-control form-control-sm",

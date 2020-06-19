@@ -12,17 +12,27 @@ import org.enterprisedlt.fabric.service.node.util.DataFunction._
  */
 
 @Lenses case class JoinApplicationState(
+    applicationProperties: Array[Property],
     propertyCandidate: Property
 )
 
 object JoinApplication extends StateFullFormExt[JoinApplicationRequest, Ready, JoinApplicationState]("join-application-form") {
 
-    override def initState(p: JoinApplicationRequest, data: Ready): JoinApplicationState = JoinApplicationState(
-        Property(
-            "",
-            ""
+    private def stateFor(appType: String, data: Ready): JoinApplicationState = {
+        data.events.applications.find(_.applicationType == appType).map { descriptor =>
+            JoinApplicationState(
+                applicationProperties = descriptor.properties,
+                propertyCandidate = Property("",""),
+            )
+        }.getOrElse( // could be only if package list is empty or something got wrong :(
+            JoinApplicationState(
+                applicationProperties = Array.empty,
+                propertyCandidate = Property("",""),
+            )
         )
-    )
+    }
+
+    override def initState(p: JoinApplicationRequest, data: Ready): JoinApplicationState = stateFor(p.name, data)
 
     override def render(s: JoinApplicationState, p: JoinApplicationRequest, data: Ready)
       (implicit modP: (JoinApplicationRequest => JoinApplicationRequest) => Callback, modS: (JoinApplicationState => JoinApplicationState) => Callback)

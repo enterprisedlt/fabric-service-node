@@ -354,6 +354,7 @@ case class ApplicationState(
     applicationType: String,
     status: String,
     applicationRoles: Array[String] = Array.empty[String],
+    properties: Array[Property] = Array.empty[Property],
     contracts: Array[ContractsState] = Array.empty[ContractsState],
     components: Array[CustomComponentState] = Array.empty[CustomComponentState],
     distributorAddress: String = ""
