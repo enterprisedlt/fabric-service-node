@@ -236,7 +236,6 @@ class RestEndpoint(
                     state.eventsMonitor.updateApplications()
                 )
             )
-
             s"Joining to application ${joinReq.name} has been completed successfully $invokeAwait"
         }
     }
@@ -918,8 +917,8 @@ class RestEndpoint(
                 }
                 applicationDistributive <- Try(Util.codec.fromJson(queryResult, classOf[ApplicationDistributive])).toEither.left.map(_.getMessage)
             } yield {
-                FabricServiceStateHolder.updateStateFullOption(FabricServiceStateHolder.compose(state.eventsMonitor.updateApplications()))
                 downloadApplication(applicationDistributive.componentsDistributorAddress, applicationType)
+                FabricServiceStateHolder.updateStateFullOption(FabricServiceStateHolder.compose(state.eventsMonitor.updateApplications()))
             }
         }
     }
