@@ -47,7 +47,8 @@ class RestEndpoint(
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
             _ <- Util.saveMultipart(multipart, fileDir)
-        } yield globalState.eventsMonitor.updateApplications()
+        } yield FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateApplications())
+
     }
 
     @PostMultipart("/admin/upload-chaincode")
@@ -56,7 +57,7 @@ class RestEndpoint(
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
             _ <- Util.saveMultipart(multipart, fileDir)
-        } yield globalState.eventsMonitor.updateCustomComponentDescriptors()
+        } yield FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateCustomComponentDescriptors())
 
     }
 
@@ -67,7 +68,7 @@ class RestEndpoint(
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
             _ <- Util.saveMultipart(multipart, fileDir)
-        } yield globalState.eventsMonitor.updateCustomComponentDescriptors()
+        } yield FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateCustomComponentDescriptors())
     }
 
     @Post("/admin/create-application")
