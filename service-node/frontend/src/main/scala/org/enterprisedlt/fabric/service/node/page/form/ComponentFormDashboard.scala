@@ -2,7 +2,7 @@ package org.enterprisedlt.fabric.service.node.page.form
 
 import japgolly.scalajs.react.vdom.VdomNode
 import japgolly.scalajs.react.vdom.all.{className, id, option}
-import japgolly.scalajs.react.vdom.html_<^._
+import japgolly.scalajs.react.vdom.html_<^.{^, _}
 import japgolly.scalajs.react.{Callback, CallbackTo, ReactEventFromInput}
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node.Ready
@@ -47,7 +47,7 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
         <.div(
             <.div(^.className := "form-group row",
                 <.label(^.`for` := "componentType", ^.className := "col-sm-4 col-form-label", "Type"),
-                <.div(^.className := "col-sm-8", renderComponentType(p, data.events.customComponentDescriptors.map(_.componentType)))
+                <.div(^.className := "col-sm-8", renderComponentType(p, data.events.customComponentDescriptors.map(_.componentType),data) )
             ),
             <.div(^.className := "form-group row",
                 <.label(^.`for` := "componentBox", ^.className := "col-sm-4 col-form-label", "Server"),
@@ -135,10 +135,21 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
           )
 
 
-    private def renderComponentType(p: ComponentCandidate, componentTypes: Array[String])(implicit modState: (ComponentCandidate => ComponentCandidate) => Callback): VdomTagOf[Select] = {
+    def onComponentTypeChange(data: Ready)(event: ReactEventFromInput)
+      (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback) = {
+        val v: String = event.target.value
+        modP(_.copy(
+            componentType = v
+        ))  >> modS(_ => stateFor(v, data))
+    }
+
+    private def renderComponentType(p: ComponentCandidate, componentTypes: Array[String], data: Ready)
+      (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
+    : VdomTagOf[Select] = {
         <.select(className := "form-control form-control-sm",
             id := "componentType",
             bind(p) := ComponentCandidate.componentType,
+            ^.onChange ==> onComponentTypeChange(data),
             componentTypeOptions(p, componentTypes)
         )
     }
