@@ -7,6 +7,7 @@ import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.shared.{JoinApplicationRequest, Property}
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
+
 /**
  * @author Maxim Fedin
  */
@@ -22,12 +23,12 @@ object JoinApplication extends StateFullFormExt[JoinApplicationRequest, Ready, J
         data.events.applications.find(_.applicationType == appType).map { descriptor =>
             JoinApplicationState(
                 applicationProperties = descriptor.properties,
-                propertyCandidate = descriptor.properties.headOption.getOrElse(Property("","")), // TODO
+                propertyCandidate = descriptor.properties.headOption.getOrElse(Property("", "")), // TODO
             )
         }.getOrElse( // could be only if package list is empty or something got wrong :(
             JoinApplicationState(
                 applicationProperties = Array.empty,
-                propertyCandidate = Property("",""),
+                propertyCandidate = Property("", ""),
             )
         )
     }
@@ -37,55 +38,55 @@ object JoinApplication extends StateFullFormExt[JoinApplicationRequest, Ready, J
     override def render(s: JoinApplicationState, p: JoinApplicationRequest, data: Ready)
       (implicit modP: (JoinApplicationRequest => JoinApplicationRequest) => Callback, modS: (JoinApplicationState => JoinApplicationState) => Callback)
     : VdomNode = {
-            <.div(
-                <.div(^.className := "form-group row",
-                    <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Properties"))
+        <.div(
+            <.div(^.className := "form-group row",
+                <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Properties"))
+            ),
+            <.table(^.className := "table table-sm",
+                <.thead(^.className := "thead-light",
+                    <.tr(
+                        <.th(^.scope := "col", "Name", ^.width := "45%"),
+                        <.th(^.scope := "col", "Value", ^.width := "45%"),
+                        <.th(^.scope := "col", "", ^.width := "10%"),
+                    )
                 ),
-                <.table(^.className := "table table-sm",
-                    <.thead(^.className := "thead-light",
+                <.tbody(
+                    p.properties.map { property =>
                         <.tr(
-                            <.th(^.scope := "col", "Name", ^.width := "45%"),
-                            <.th(^.scope := "col", "Value", ^.width := "45%"),
-                            <.th(^.scope := "col", "", ^.width := "10%"),
-                        )
-                    ),
-                    <.tbody(
-                        p.properties.map { property =>
-                            <.tr(
-                                <.td(property.key),
-                                <.td(property.value),
-                                <.td(
-                                    <.button(^.className := "btn btn-sm btn-outline-danger float-right", //^.aria.label="remove">
-                                        ^.onClick --> removeProperty(property),
-                                        <.i(^.className := "fas fa-minus-circle")
-                                    )
+                            <.td(property.key),
+                            <.td(property.value),
+                            <.td(
+                                <.button(^.className := "btn btn-sm btn-outline-danger float-right", //^.aria.label="remove">
+                                    ^.onClick --> removeProperty(property),
+                                    <.i(^.className := "fas fa-minus-circle")
                                 )
                             )
-                        }.toTagMod,
-                        <.tr(
-                            <.td(
-                                <.select(className := "form-control form-control-sm",
-                                    ^.onChange ==> onPropertyCandidateChange(s.applicationProperties),
-                                      bind(s) := JoinApplicationState.propertyCandidate / Property.key,
-                                    s.applicationProperties.map { property =>
-                                        option((className := "selected").when(s.propertyCandidate.key == property.key), property.key)
-                                    }.toTagMod
-                                ),
+                        )
+                    }.toTagMod,
+                    <.tr(
+                        <.td(
+                            <.select(className := "form-control form-control-sm",
+                                ^.onChange ==> onPropertyCandidateChange(s.applicationProperties),
+                                bind(s) := JoinApplicationState.propertyCandidate / Property.key,
+                                s.applicationProperties.map { property =>
+                                    option((className := "selected").when(s.propertyCandidate.key == property.key), property.key)
+                                }.toTagMod
                             ),
-                            <.td(
-                                <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                    bind(s) := JoinApplicationState.propertyCandidate / Property.value
-                                )
-                            ),
-                            <.td(
-                                <.button(^.className := "btn btn-sm btn-outline-success float-right", //^.aria.label="remove">
-                                    ^.onClick --> addProperty(s),
-                                    <.i(^.className := "fas fa-plus-circle")
-                                )
+                        ),
+                        <.td(
+                            <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
+                                bind(s) := JoinApplicationState.propertyCandidate / Property.value
+                            )
+                        ),
+                        <.td(
+                            <.button(^.className := "btn btn-sm btn-outline-success float-right", //^.aria.label="remove">
+                                ^.onClick --> addProperty(s),
+                                <.i(^.className := "fas fa-plus-circle")
                             )
                         )
                     )
                 )
+            )
         )
     }
 
@@ -102,24 +103,20 @@ object JoinApplication extends StateFullFormExt[JoinApplicationRequest, Ready, J
 
     private def addProperty(s: JoinApplicationState)
       (implicit modP: (JoinApplicationRequest => JoinApplicationRequest) => Callback, modS: (JoinApplicationState => JoinApplicationState) => Callback)
-    : CallbackTo[Unit] =
-        modP(
-            JoinApplicationRequest.properties.modify(_ :+ s.propertyCandidate)
-        ) >>
-          modS(
-              JoinApplicationState.propertyCandidate.modify(_ =>
-                  Property(
-                      key = "",
-                      value = ""
-                  )
-              )
-          )
+    : CallbackTo[Unit] = modP(
+        JoinApplicationRequest.properties.modify(_ :+ s.propertyCandidate)
+    )
 
     private def onPropertyCandidateChange(p: Array[Property])(event: ReactEventFromInput)
       (implicit modS: (JoinApplicationState => JoinApplicationState) => Callback): Callback = {
         val propertyKey: String = event.target.value
         val propertyValue = p.find(_.key == propertyKey).map(_.value).getOrElse("")
-        modS(JoinApplicationState.propertyCandidate.modify(_.copy(value = propertyValue)))
+        modS(JoinApplicationState.propertyCandidate.modify(
+            _.copy(
+                key = propertyKey,
+                value = propertyValue
+            )
+        ))
     }
 
 }
