@@ -9,7 +9,6 @@ import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.page.form._
 import org.enterprisedlt.fabric.service.node.shared.{ApplicationState, _}
-import org.enterprisedlt.fabric.service.node.util.DataFunction._
 import org.enterprisedlt.fabric.service.node.util.Html.data
 import org.scalajs.dom
 import org.scalajs.dom.FormData
@@ -631,23 +630,6 @@ object Dashboard {
         //            box.information.details
         //            if (box.information.externalAddress.trim.nonEmpty) box.information.externalAddress else "local"
         //        }
-
-
-        private def removeProperty(property: Property): CallbackTo[Unit] = modState(
-            (State.joinApplicationRequest / JoinApplicationRequest.properties).modify(
-                _.filter(p => !(p.value == property.value && p.key == property.key))
-            )
-        )
-
-
-        private def addProperty(s: State): CallbackTo[Unit] = modState(
-            (State.joinApplicationRequest / JoinApplicationRequest.properties).modify(_ :+ s.propertyCandidate)) >>
-          modState(State.propertyCandidate.modify(_ =>
-              Property(
-                  key = "",
-                  value = ""
-              ))
-          )
 
         private def doDownload(content: String, name: String): Unit = {
             val blob = new Blob(js.Array(content))

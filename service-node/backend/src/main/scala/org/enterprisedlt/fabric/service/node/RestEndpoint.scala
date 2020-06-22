@@ -243,11 +243,12 @@ class RestEndpoint(
     @Post("/admin/start-custom-node")
     def startCustomNode(request: CustomComponentRequest): Either[String, String] = {
         val orgNameDescriptor = Property("org", organizationConfig.name)
+        val componentFullNameDescriptor = Property("component_full_name", request.name)
         //
         val crypto = cryptoManager.generateCustomComponentCrypto(request.box)
         val startCustomComponentRequest = StartCustomComponentRequest(
             serviceNodeName,
-            request.copy(properties = request.properties :+ orgNameDescriptor),
+            request.copy(properties = request.properties ++ Array(orgNameDescriptor, componentFullNameDescriptor)),
             crypto
         )
         processManager.startCustomNode(request.box, startCustomComponentRequest)
