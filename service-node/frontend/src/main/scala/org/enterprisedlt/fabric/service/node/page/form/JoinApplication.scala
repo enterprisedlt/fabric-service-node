@@ -2,12 +2,11 @@ package org.enterprisedlt.fabric.service.node.page.form
 
 import japgolly.scalajs.react.vdom.all.{className, option}
 import japgolly.scalajs.react.vdom.html_<^._
-import japgolly.scalajs.react.{Callback, CallbackTo}
+import japgolly.scalajs.react.{Callback, CallbackTo, ReactEventFromInput}
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.shared.{JoinApplicationRequest, Property}
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
-
 /**
  * @author Maxim Fedin
  */
@@ -66,7 +65,8 @@ object JoinApplication extends StateFullFormExt[JoinApplicationRequest, Ready, J
                         <.tr(
                             <.td(
                                 <.select(className := "form-control form-control-sm",
-                                    bind(s) := JoinApplicationState.propertyCandidate / Property.key,
+                                    ^.onChange ==> onPropertyCandidateChange(s.applicationProperties),
+                                      bind(s) := JoinApplicationState.propertyCandidate / Property.key,
                                     s.applicationProperties.map { property =>
                                         option((className := "selected").when(s.propertyCandidate.key == property.key), property.key)
                                     }.toTagMod
@@ -114,4 +114,12 @@ object JoinApplication extends StateFullFormExt[JoinApplicationRequest, Ready, J
                   )
               )
           )
+
+    private def onPropertyCandidateChange(p: Array[Property])(event: ReactEventFromInput)
+      (implicit modS: (JoinApplicationState => JoinApplicationState) => Callback): Callback = {
+        val propertyKey: String = event.target.value
+        val propertyValue = p.find(_.key == propertyKey).map(_.value).getOrElse("")
+        modS(JoinApplicationState.propertyCandidate.modify(_.copy(value = propertyValue)))
+    }
+
 }
