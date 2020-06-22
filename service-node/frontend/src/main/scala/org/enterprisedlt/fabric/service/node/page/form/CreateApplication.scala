@@ -33,7 +33,7 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                     firstMSPId,
                     descriptor.applicationRoles.headOption.getOrElse("")
                 ),
-                propertyCandidate = descriptor.properties.headOption.getOrElse(Property("","")), // TODO
+                propertyCandidate = descriptor.properties.headOption.getOrElse(Property("", "")), // TODO
                 filename = descriptor.applicationType
             )
         }.getOrElse( // could be only if package list is empty or something got wrong :(
@@ -77,7 +77,7 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                 <.div(^.className := "col-sm-8",
                     <.select(className := "form-control",
                         ^.value := p.applicationType,
-                        ^.onChange ==> onPackageChange(s, data),
+                        ^.onChange ==> onPackageChange(data),
                         data.events.applications.map { application =>
                             val label = application.applicationType
                             val selected = p.applicationType
@@ -138,7 +138,7 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                         ),
                         <.td(
                             <.button(^.className := "btn btn-sm btn-outline-success float-right", //^.aria.label="remove">
-                                ^.onClick --> addProperty(s.propertyCandidate),
+                                ^.onClick --> addProperty(s),
                                 <.i(^.className := "fas fa-plus-circle")
                             )
                         )
@@ -213,7 +213,7 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
     : CallbackTo[Unit] =
         modState(CreateApplicationRequest.parties.modify(_ :+ participant))
 
-    private def onPackageChange(s: CreateApplicationState, data: Ready)(event: ReactEventFromInput)
+    private def onPackageChange(data: Ready)(event: ReactEventFromInput)
       (implicit modP: (CreateApplicationRequest => CreateApplicationRequest) => Callback, modS: (CreateApplicationState => CreateApplicationState) => Callback): Callback = {
         val v: String = event.target.value
         modP(_.copy(
@@ -225,28 +225,33 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
       (implicit modS: (CreateApplicationState => CreateApplicationState) => Callback): Callback = {
         val propertyKey: String = event.target.value
         val propertyValue = p.find(_.key == propertyKey).map(_.value).getOrElse("")
-
-        modS(CreateApplicationState.propertyCandidate.modify(_.copy(value = propertyValue)))
+        modS(
+            CreateApplicationState.propertyCandidate.modify(
+                _.copy(
+                    key = propertyKey,
+                    value = propertyValue
+                )
+            )
+        )
     }
 
-    private def removeProperty(environmentVariable: Property)
+    private def removeProperty(property: Property)
       (implicit modState: (CreateApplicationRequest => CreateApplicationRequest) => Callback)
     : CallbackTo[Unit] =
         modState(
             CreateApplicationRequest.properties.modify(
-                _.filter(p => !(p.value == environmentVariable.value && p.key == environmentVariable.key))
+                _.filter(p => !(p.value == property.value && p.key == property.key))
             )
         )
 
 
-    private def addProperty(property: Property)
+    private def addProperty(s: CreateApplicationState)
       (implicit modP: (CreateApplicationRequest => CreateApplicationRequest) => Callback, modS: (CreateApplicationState => CreateApplicationState) => Callback)
-    : CallbackTo[Unit] =
-        modP(CreateApplicationRequest.properties.modify(_ :+ property)) >>
+    : CallbackTo[Unit] = {
+        modP(CreateApplicationRequest.properties.modify(_ :+ s.propertyCandidate)) >>
           modS(CreateApplicationState.propertyCandidate.modify(_ =>
-              Property(
-                  key = "",
-                  value = ""
-              ))
-          )
+              s.applicationProperties.headOption.getOrElse(Property("", ""))
+          ))
+    }
+
 }
