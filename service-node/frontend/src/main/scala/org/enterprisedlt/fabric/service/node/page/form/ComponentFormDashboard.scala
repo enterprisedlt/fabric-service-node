@@ -3,11 +3,11 @@ package org.enterprisedlt.fabric.service.node.page.form
 import japgolly.scalajs.react.vdom.VdomNode
 import japgolly.scalajs.react.vdom.all.{className, id, option}
 import japgolly.scalajs.react.vdom.html_<^._
-import japgolly.scalajs.react.{Callback, CallbackTo}
+import japgolly.scalajs.react.{Callback, CallbackTo, ReactEventFromInput}
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node.Ready
 import org.enterprisedlt.fabric.service.node.model.ComponentCandidate
-import org.enterprisedlt.fabric.service.node.shared.{Box, PortBind, Property, VolumeBind}
+import org.enterprisedlt.fabric.service.node.shared.{Box, Property}
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
 import org.scalajs.dom.html.Select
 
@@ -16,30 +16,30 @@ import org.scalajs.dom.html.Select
  */
 
 @Lenses case class ComponentFormState(
-    environmentVariable: Property,
-    port: PortBind,
-    volume: VolumeBind,
-
+    applicationProperties: Array[Property],
+    propertyCandidate: Property
 )
 
 object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready, ComponentFormState]("register-component-form") {
 
-    override def initState(c: ComponentCandidate, data: Ready): ComponentFormState = {
-        ComponentFormState(
-            environmentVariable = new Property(
-                key = "",
-                value = ""
-            ),
-            port = new PortBind(
-                externalPort = "",
-                internalPort = ""
-            ),
-            volume = new VolumeBind(
-                externalHost = "",
-                internalHost = ""
+    private def stateFor(componentType: String, data: Ready): ComponentFormState = {
+        data.events.customComponentDescriptors.find(_.componentType == componentType).map { componentDescriptor =>
+            ComponentFormState(
+                applicationProperties = componentDescriptor.properties,
+                propertyCandidate = componentDescriptor.properties.headOption.getOrElse(Property("", ""))
+            )
+        }.getOrElse(
+            ComponentFormState(
+                applicationProperties = Array.empty,
+                propertyCandidate = new Property(
+                    key = "",
+                    value = ""
+                )
             )
         )
     }
+
+    override def initState(c: ComponentCandidate, data: Ready): ComponentFormState = stateFor(c.componentType, data)
 
     override def render(s: ComponentFormState, p: ComponentCandidate, data: Ready)
       (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
@@ -90,13 +90,16 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
                     }.toTagMod,
                     <.tr(
                         <.td(
-                            <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                bind(s) := ComponentFormState.environmentVariable / Property.key
-                            )
+                            <.select(className := "form-control form-control-sm",
+                                ^.onChange ==> onPropertyCandidateChange(s.applicationProperties),
+                                s.applicationProperties.map { property =>
+                                    option((className := "selected").when(s.propertyCandidate.key == property.key), property.key)
+                                }.toTagMod
+                            ),
                         ),
                         <.td(
                             <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                bind(s) := ComponentFormState.environmentVariable / Property.value
+                                bind(s) := ComponentFormState.propertyCandidate / Property.value
                             )
                         ),
                         <.td(
@@ -109,52 +112,6 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
                 )
             )
         )
-
-
-    private def removeVolumeBind(volumeBind: VolumeBind)
-      (implicit modState: (ComponentCandidate => ComponentCandidate) => Callback)
-    : CallbackTo[Unit] =
-        modState(
-            ComponentCandidate.volumes.modify(
-                _.filter(p => !(p.internalHost == volumeBind.internalHost && p.externalHost == volumeBind.externalHost))
-            )
-        )
-
-    private def addVolumeBind(s: ComponentFormState)
-      (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
-    : CallbackTo[Unit] =
-        modP(ComponentCandidate.volumes.modify(_ :+ s.volume)) >>
-          modS(
-              ComponentFormState.volume.modify(_ =>
-                  VolumeBind(
-                      externalHost = "",
-                      internalHost = ""
-                  )
-              )
-          )
-
-
-    private def removePortBind(portBind: PortBind)
-      (implicit modState: (ComponentCandidate => ComponentCandidate) => Callback)
-    : CallbackTo[Unit] =
-        modState(
-            ComponentCandidate.ports.modify(
-                _.filter(p => !(p.internalPort == portBind.internalPort && p.externalPort == portBind.externalPort))
-            )
-        )
-
-    private def addPortBind(s: ComponentFormState)
-      (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
-    : CallbackTo[Unit] =
-        modP(ComponentCandidate.ports.modify(_ :+ s.port)) >>
-          modS(
-              ComponentFormState.port.modify(_ =>
-                  PortBind(
-                      externalPort = "",
-                      internalPort = ""
-                  )
-              )
-          )
 
     private def removeProperty(environmentVariable: Property)
       (implicit modState: (ComponentCandidate => ComponentCandidate) => Callback)
@@ -169,8 +126,8 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
     private def addProperty(s: ComponentFormState)
       (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
     : CallbackTo[Unit] =
-        modP(ComponentCandidate.properties.modify(_ :+ s.environmentVariable)) >>
-          modS(ComponentFormState.environmentVariable.modify(_ =>
+        modP(ComponentCandidate.properties.modify(_ :+ s.propertyCandidate)) >>
+          modS(ComponentFormState.propertyCandidate.modify(_ =>
               Property(
                   key = "",
                   value = ""
@@ -204,6 +161,13 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
         boxes.map { box =>
             option((className := "selected").when(p.box == box.name), box.name)
         }.toTagMod
+    }
+
+    private def onPropertyCandidateChange(p: Array[Property])(event: ReactEventFromInput)
+      (implicit modS: (ComponentFormState => ComponentFormState) => Callback): Callback = {
+        val propertyKey: String = event.target.value
+        val propertyValue = p.find(_.key == propertyKey).map(_.value).getOrElse("")
+        modS(ComponentFormState.propertyCandidate.modify(_.copy(value = propertyValue)))
     }
 
 
