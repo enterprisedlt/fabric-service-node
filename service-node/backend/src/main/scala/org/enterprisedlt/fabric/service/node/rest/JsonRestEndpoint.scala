@@ -126,16 +126,15 @@ class JsonRestEndpoint(
                                 val params: Seq[AnyRef] = m
                                   .getParameters
                                   .headOption
-                                  .map { _ => request.getParts.asScala }
                                   .toSeq
-                                m.invoke(o, params: _*) match {
+                                m.invoke(o, request.getParts.asScala) match {
                                     case Right(_) =>
                                         response.setContentType(MimeTypes.Type.TEXT_PLAIN.asString())
                                         response.setCharacterEncoding("utf-8")
                                         response.setStatus(HttpServletResponse.SC_OK)
 
                                     case Left(ex) =>
-                                        val msg = s"Unable to process file: ${ex}"
+                                        val msg = s"Unable to process file: $ex"
                                         logger.warn(msg, ex)
                                         response.getWriter.println(msg)
                                         response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)

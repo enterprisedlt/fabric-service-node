@@ -46,7 +46,7 @@ class RestEndpoint(
         val fileDir = "/opt/profile/application-distributives"
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
-            _ <- Util.saveMultipart(multipart, fileDir)
+            _ <- Util.saveParts(multipart, fileDir)
         } yield FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateApplications())
 
     }
@@ -56,7 +56,7 @@ class RestEndpoint(
         val fileDir = "/opt/profile/chain-code"
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
-            _ <- Util.saveMultipart(multipart, fileDir)
+            _ <- Util.saveParts(multipart, fileDir)
         } yield FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateCustomComponentDescriptors())
 
     }
@@ -67,7 +67,7 @@ class RestEndpoint(
         val fileDir = "/opt/profile/components"
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
-            _ <- Util.saveMultipart(multipart, fileDir)
+            _ <- Util.saveParts(multipart, fileDir)
         } yield FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateCustomComponentDescriptors())
     }
 
@@ -99,22 +99,22 @@ class RestEndpoint(
             }
             _ <- applicationDescriptor.components.foldRight[Either[String, String]](Right("")) { case (component, current) =>
                 current.flatMap { _ =>
-                    val enrichedProperties = Util.fillPlaceholdersProperties(
+                    val enrichedProperties = Util.fillPropertiesPlaceholders(
                         component.environmentVariables,
                         mergedApplicationProperties,
                     )
                     val request = CustomComponentRequest(
                         box = applicationRequest.box,
-                        name = s"${applicationRequest.name}.${component.componentType}.${organizationFullName}",
+                        name = s"${applicationRequest.name}.${component.componentType}.$organizationFullName",
                         componentType = component.componentType,
                         properties = enrichedProperties
                     )
                     startCustomNode(request)
                 }
             }
-            response <- {
+            _ <- {
                 logger.info(s"Invoking 'createApplication' method...")
-                val application = Application(
+                val application = ApplicationInvite(
                     founder = organizationFullName,
                     name = applicationRequest.name,
                     channel = applicationRequest.channelName,
@@ -126,11 +126,10 @@ class RestEndpoint(
                 state.networkManager.invokeChainCode(
                     ServiceChannelName,
                     ServiceChainCodeName,
-                    "createApplication",
+                    "createApplicationInvite",
                     Util.codec.toJson(application)
                 )
             }
-            r <- Try(response.get()).toEither.left.map(_.getMessage)
         } yield {
             FabricServiceStateHolder.updateStateFull(state =>
                 state.copy(
@@ -141,7 +140,7 @@ class RestEndpoint(
                     )
                 )
             )
-            s"Creating application ${applicationRequest.applicationType} has been completed successfully $r"
+            s"Creating application ${applicationRequest.applicationType} has been completed successfully"
         }
     }
 
@@ -154,12 +153,12 @@ class RestEndpoint(
             network = state.networkManager
             queryResult <- {
                 logger.info(s"Querying application with getApplication...")
-                network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getApplication", joinReq.name, joinReq.founder)
-                  .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getApplication method in system chain-code"))
+                network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getApplicationInvite", joinReq.name, joinReq.founder)
+                  .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getApplicationInvite method in system chain-code"))
             }
-            applicationDetails <- Try(Util.codec.fromJson(queryResult, classOf[Application])).toEither.left.map(_.getMessage)
+            applicationDetails <- Try(Util.codec.fromJson(queryResult, classOf[ApplicationInvite])).toEither.left.map(_.getMessage)
             applicationDescriptorPath = s"/opt/profile/applications/${applicationDetails.applicationType}.json"
-            _ <- checkApplicationDownloaded(applicationDetails.applicationType, applicationDescriptorPath)
+            _ <- ensureApplicationDownloaded(applicationDetails.applicationType, applicationDescriptorPath)
             applicationDescriptor <- Try(
                 Util.codec.fromJson(new FileReader(applicationDescriptorPath)
                     , classOf[ApplicationDescriptor])
@@ -200,13 +199,13 @@ class RestEndpoint(
             }
             _ <- applicationDescriptor.components.foldRight[Either[String, String]](Right("")) { case (component, current) =>
                 current.flatMap { _ =>
-                    val enrichedProperties = Util.fillPlaceholdersProperties(
+                    val enrichedProperties = Util.fillPropertiesPlaceholders(
                         component.environmentVariables,
                         mergedProperties,
                     )
                     val request = CustomComponentRequest(
                         box = joinReq.box,
-                        name = s"${joinReq.name}.${component.componentType}.${organizationFullName}",
+                        name = s"${joinReq.name}.${component.componentType}.$organizationFullName",
                         componentType = component.componentType,
                         properties = enrichedProperties
                     )
@@ -216,7 +215,7 @@ class RestEndpoint(
             invokeResultFuture <- network.invokeChainCode(
                 ServiceChannelName,
                 ServiceChainCodeName,
-                "delApplication",
+                "delApplicationInvite",
                 joinReq.name,
                 joinReq.founder
             )
@@ -901,7 +900,7 @@ class RestEndpoint(
 
     // ================================================================================================================
 
-    private def checkApplicationDownloaded(applicationType: String, applicationDescriptorPath: String): Either[String, Unit] = {
+    private def ensureApplicationDownloaded(applicationType: String, applicationDescriptorPath: String): Either[String, Unit] = {
         val applicationDescriptorFile = new File(applicationDescriptorPath).getAbsoluteFile
         if (applicationDescriptorFile.exists()) {
             logger.info(s"Application type $applicationType is already downloaded")

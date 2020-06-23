@@ -10,7 +10,6 @@ import org.apache.commons.compress.utils.IOUtils
 import org.enterprisedlt.fabric.service.node.Util.withResources
 import org.enterprisedlt.fabric.service.node.shared.Property
 import org.scalatest._
-import org.scalatest.matchers.should.Matchers._
 
 /**
  * @author Maxim Fedin
@@ -24,8 +23,8 @@ class UtilTest extends FunSuite {
             new GzipCompressorOutputStream(
                 new BufferedOutputStream(
                     new FileOutputStream(tarZippedFile))))
-        tarOut.putArchiveEntry(new TarArchiveEntry(file, file.getName));
-        IOUtils.copy(new FileInputStream(file), tarOut);
+        tarOut.putArchiveEntry(new TarArchiveEntry(file, file.getName))
+        IOUtils.copy(new FileInputStream(file), tarOut)
         tarOut.closeArchiveEntry()
         tarOut.close()
         tarZippedFile
@@ -87,7 +86,7 @@ class UtilTest extends FunSuite {
     }
 
 
-    test("fillPlaceholdersEnvironmentVariables should work fine") {
+    test("fillPlaceholdersProperties should replace single placeholder") {
 
         val targetProperty = Array(
             Property("a", "1"),
@@ -95,23 +94,50 @@ class UtilTest extends FunSuite {
             Property("c", "3")
         )
 
-        val values = Array(
+        val dictionary = Array(
             Property("a", "1"),
             Property("b", "2"),
             Property("c", "3")
         )
 
-        val dictionary = Array(
+        val initialProperty = Array(
             Property("a", "1"),
-            Property("b", s"$${b}"),
-            Property("c", s"$${c}")
+            Property("b", "${b}"),
+            Property("c", "${c}")
         )
 
-        val filledProperty = Util.fillPlaceholdersProperties(values, dictionary)
+        val filledProperty = Util.fillPropertiesPlaceholders(dictionary, initialProperty)
 
-        filledProperty shouldEqual  targetProperty
+        filledProperty sameElements  targetProperty
 
     }
+
+    test("fillPlaceholdersProperties should replace multi placeholder") {
+
+        val targetProperty = Array(
+            Property("a", "1"),
+            Property("b", "2.1"),
+            Property("c", "3.1")
+        )
+
+        val dictionary = Array(
+            Property("a", "1"),
+            Property("b", "2"),
+            Property("c", "3")
+        )
+
+        val initialProperty = Array(
+            Property("a", "1"),
+            Property("b", "${b}.${a}"),
+            Property("c", "${c}.${a}")
+        )
+
+        val filledProperty = Util.fillPropertiesPlaceholders(dictionary, initialProperty)
+
+        filledProperty sameElements  targetProperty
+
+    }
+
 
 
 }

@@ -320,11 +320,11 @@ object Util {
     }
 
     //=========================================================================
-    def fillPlaceholdersProperties(values: Array[Property], dictionary: Array[Property]): Array[Property] = {
-        values.map(x => fillPlaceholdersProperties(x, dictionary))
+    def fillPropertiesPlaceholders(values: Array[Property], dictionary: Array[Property]): Array[Property] = {
+        values.map(x => fillPropertiesPlaceholders(x, dictionary))
     }
 
-    def fillPlaceholdersProperties(value: Property, dictionary: Array[Property]): Property = {
+    def fillPropertiesPlaceholders(value: Property, dictionary: Array[Property]): Property = {
         value.copy(
             value =
               dictionary.foldRight(value.value) { case (term, current) =>
@@ -333,11 +333,11 @@ object Util {
         )
     }
 
-    def fillPlaceholdersPortBind(values: Array[PortBind], dictionary: Array[Property]): Array[PortBind] = {
-        values.map(x => fillPlaceholdersPortBind(x, dictionary))
+    def fillPortBindPlaceholders(values: Array[PortBind], dictionary: Array[Property]): Array[PortBind] = {
+        values.map(x => fillPortBindPlaceholders(x, dictionary))
     }
 
-    def fillPlaceholdersPortBind(portBind: PortBind, dictionary: Array[Property]): PortBind = {
+    def fillPortBindPlaceholders(portBind: PortBind, dictionary: Array[Property]): PortBind = {
         portBind.copy(
             externalPort =
               dictionary.foldRight(portBind.externalPort) { case (term, current) =>
@@ -380,7 +380,7 @@ object Util {
     }
 
 
-    def saveMultipart(multipart: Iterable[Part], fileDir: String): Either[String, Unit] = Try {
+    def saveParts(multipart: Iterable[Part], fileDir: String): Either[String, Unit] = Try {
         Util.mkDirs(fileDir)
         val outputDir = Paths.get(fileDir)
         multipart.foreach { part =>

@@ -71,9 +71,7 @@ object Dashboard {
                   name = "",
                   port = 0,
                   componentType = ComponentCandidate.Types.head,
-                  properties = Array.empty[Property],
-                  ports = Array.empty[PortBind],
-                  volumes = Array.empty[VolumeBind]
+                  properties = Array.empty[Property]
               ),
               componentFile = null,
               componentName = "Choose file",

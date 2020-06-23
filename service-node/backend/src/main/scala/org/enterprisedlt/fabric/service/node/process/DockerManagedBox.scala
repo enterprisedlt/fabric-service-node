@@ -484,11 +484,11 @@ class DockerManagedBox(
     // =================================================================================================================
     private def enrichCustomComponentDescriptor(descriptor: CustomComponentDescriptor, properties: Array[Property]): CustomComponentDescriptor = {
         descriptor.copy(
-            environmentVariablesDescriptor = Util.fillPlaceholdersProperties(
+            environmentVariablesDescriptor = Util.fillPropertiesPlaceholders(
                 descriptor.environmentVariablesDescriptor,
                 properties,
             ),
-            portBindDescriptor = Util.fillPlaceholdersPortBind(
+            portBindDescriptor = Util.fillPortBindPlaceholders(
                 descriptor.portBindDescriptor,
                 properties,
             )

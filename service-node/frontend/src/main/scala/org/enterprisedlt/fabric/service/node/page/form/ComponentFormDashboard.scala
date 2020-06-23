@@ -110,52 +110,6 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
             )
         )
 
-
-    private def removeVolumeBind(volumeBind: VolumeBind)
-      (implicit modState: (ComponentCandidate => ComponentCandidate) => Callback)
-    : CallbackTo[Unit] =
-        modState(
-            ComponentCandidate.volumes.modify(
-                _.filter(p => !(p.internalHost == volumeBind.internalHost && p.externalHost == volumeBind.externalHost))
-            )
-        )
-
-    private def addVolumeBind(s: ComponentFormState)
-      (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
-    : CallbackTo[Unit] =
-        modP(ComponentCandidate.volumes.modify(_ :+ s.volume)) >>
-          modS(
-              ComponentFormState.volume.modify(_ =>
-                  VolumeBind(
-                      externalHost = "",
-                      internalHost = ""
-                  )
-              )
-          )
-
-
-    private def removePortBind(portBind: PortBind)
-      (implicit modState: (ComponentCandidate => ComponentCandidate) => Callback)
-    : CallbackTo[Unit] =
-        modState(
-            ComponentCandidate.ports.modify(
-                _.filter(p => !(p.internalPort == portBind.internalPort && p.externalPort == portBind.externalPort))
-            )
-        )
-
-    private def addPortBind(s: ComponentFormState)
-      (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
-    : CallbackTo[Unit] =
-        modP(ComponentCandidate.ports.modify(_ :+ s.port)) >>
-          modS(
-              ComponentFormState.port.modify(_ =>
-                  PortBind(
-                      externalPort = "",
-                      internalPort = ""
-                  )
-              )
-          )
-
     private def removeProperty(environmentVariable: Property)
       (implicit modState: (ComponentCandidate => ComponentCandidate) => Callback)
     : CallbackTo[Unit] =

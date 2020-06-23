@@ -3,7 +3,7 @@ package org.enterprisedlt.fabric.service.model
 /**
  * @author Maxim Fedin
  */
-case class Application(
+case class ApplicationInvite(
     founder: String,
     name: String,
     channel: String,
