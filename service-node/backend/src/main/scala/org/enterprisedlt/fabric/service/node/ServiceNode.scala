@@ -1,5 +1,6 @@
 package org.enterprisedlt.fabric.service.node
 
+import java.io.File
 import java.security.Security
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -72,7 +73,16 @@ object ServiceNode extends App {
         hostsManager = new HostsManager("/opt/profile/hosts", ServiceExternalAddress.map(_.host)),
         ProfilePath, processManager
     )
-    private val componentsDistributorRestEndpoint = new ComponentsDistributorRestEndpoint()
+    //
+    val customComponentsPath = new File(s"/opt/profile/components/").getAbsoluteFile
+    if (!customComponentsPath.exists()) customComponentsPath.mkdirs()
+    val applicationPath = new File(s"/opt/profile/application-distributives/").getAbsoluteFile
+    if (!applicationPath.exists()) applicationPath.mkdirs()
+    //
+    private val componentsDistributorRestEndpoint = new ComponentsDistributorRestEndpoint(
+        customComponentsPath,
+        applicationPath)
+
     private val componentsDistributorServer = new Server(ComponentsDistributorBindPort)
     componentsDistributorServer.setHandler(
         new JsonRestEndpoint(

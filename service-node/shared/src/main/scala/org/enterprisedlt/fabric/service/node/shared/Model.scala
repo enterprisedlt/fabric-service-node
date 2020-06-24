@@ -413,3 +413,21 @@ object CreateApplicationRequest {
 object JoinApplicationRequest {
     implicit val rw: RW[JoinApplicationRequest] = macroRW
 }
+// ------------------------------------------------------------------------
+@Lenses case class DownloadApplicationRequest(
+    componentsDistributorUrl: String,
+    applicationFileName: String,
+)
+
+object DownloadApplicationRequest {
+    implicit val rw: RW[DownloadApplicationRequest] = macroRW
+}
+// ------------------------------------------------------------------------
+@Lenses case class PublishApplicationRequest(
+    applicationName: String,
+    applicationType: String,
+)
+
+object PublishApplicationRequest {
+    implicit val rw: RW[PublishApplicationRequest] = macroRW
+}

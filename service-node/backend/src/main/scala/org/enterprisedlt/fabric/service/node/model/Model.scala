@@ -124,7 +124,6 @@ case class ApplicationDescriptor(
     applicationType: String = "",
     properties: Array[Property],
     roles: Array[String] = Array.empty[String],
-    initArgsNames: Array[String] = Array.empty[String],
     contracts: Array[ContractsState] = Array.empty[ContractsState],
     components: Array[CustomComponentState] = Array.empty[CustomComponentState]
 )

@@ -22,6 +22,7 @@ import org.hyperledger.fabric.sdk.Peer
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
+import scala.language.postfixOps
 import scala.util.Try
 
 /**
@@ -46,8 +47,9 @@ class RestEndpoint(
         val fileDir = "/opt/profile/application-distributives"
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
-            _ <- Util.saveMultipart(multipart, fileDir)
-        } yield globalState.eventsMonitor.updateApplications()
+            _ <- Util.saveParts(multipart, fileDir)
+        } yield FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateApplications())
+
     }
 
     @PostMultipart("/admin/upload-chaincode")
@@ -55,8 +57,8 @@ class RestEndpoint(
         val fileDir = "/opt/profile/chain-code"
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
-            _ <- Util.saveMultipart(multipart, fileDir)
-        } yield globalState.eventsMonitor.updateCustomComponentDescriptors()
+            _ <- Util.saveParts(multipart, fileDir)
+        } yield FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateCustomComponentDescriptors())
 
     }
 
@@ -66,8 +68,8 @@ class RestEndpoint(
         val fileDir = "/opt/profile/components"
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
-            _ <- Util.saveMultipart(multipart, fileDir)
-        } yield globalState.eventsMonitor.updateCustomComponentDescriptors()
+            _ <- Util.saveParts(multipart, fileDir)
+        } yield FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateCustomComponentDescriptors())
     }
 
     @Post("/admin/create-application")
@@ -98,22 +100,22 @@ class RestEndpoint(
             }
             _ <- applicationDescriptor.components.foldRight[Either[String, String]](Right("")) { case (component, current) =>
                 current.flatMap { _ =>
-                    val enrichedProperties = Util.fillPlaceholdersProperties(
+                    val enrichedProperties = Util.fillPropertiesPlaceholders(
                         component.environmentVariables,
                         mergedApplicationProperties,
                     )
                     val request = CustomComponentRequest(
                         box = applicationRequest.box,
-                        name = s"${applicationRequest.name}.${component.componentType}.${organizationFullName}",
+                        name = s"${applicationRequest.name}.${component.componentType}.$organizationFullName",
                         componentType = component.componentType,
                         properties = enrichedProperties
                     )
                     startCustomNode(request)
                 }
             }
-            response <- {
+            _ <- {
                 logger.info(s"Invoking 'createApplication' method...")
-                val application = Application(
+                val application = ApplicationInvite(
                     founder = organizationFullName,
                     name = applicationRequest.name,
                     channel = applicationRequest.channelName,
@@ -125,11 +127,10 @@ class RestEndpoint(
                 state.networkManager.invokeChainCode(
                     ServiceChannelName,
                     ServiceChainCodeName,
-                    "createApplication",
+                    "createApplicationInvite",
                     Util.codec.toJson(application)
                 )
             }
-            r <- Try(response.get()).toEither.left.map(_.getMessage)
         } yield {
             FabricServiceStateHolder.updateStateFull(state =>
                 state.copy(
@@ -140,7 +141,7 @@ class RestEndpoint(
                     )
                 )
             )
-            s"Creating application ${applicationRequest.applicationType} has been completed successfully $r"
+            s"Creating application ${applicationRequest.applicationType} has been completed successfully"
         }
     }
 
@@ -153,12 +154,12 @@ class RestEndpoint(
             network = state.networkManager
             queryResult <- {
                 logger.info(s"Querying application with getApplication...")
-                network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getApplication", joinReq.name, joinReq.founder)
-                  .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getApplication method in system chain-code"))
+                network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getApplicationInvite", joinReq.name, joinReq.founder)
+                  .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getApplicationInvite method in system chain-code"))
             }
-            applicationDetails <- Try(Util.codec.fromJson(queryResult, classOf[Application])).toEither.left.map(_.getMessage)
+            applicationDetails <- Try(Util.codec.fromJson(queryResult, classOf[ApplicationInvite])).toEither.left.map(_.getMessage)
             applicationDescriptorPath = s"/opt/profile/applications/${applicationDetails.applicationType}.json"
-            _ <- checkApplicationDownloaded(applicationDetails.applicationType, applicationDescriptorPath)
+            _ <- ensureApplicationDownloaded(applicationDetails.applicationType, applicationDescriptorPath)
             applicationDescriptor <- Try(
                 Util.codec.fromJson(new FileReader(applicationDescriptorPath)
                     , classOf[ApplicationDescriptor])
@@ -199,7 +200,7 @@ class RestEndpoint(
             }
             _ <- applicationDescriptor.components.foldRight[Either[String, String]](Right("")) { case (component, current) =>
                 current.flatMap { _ =>
-                    val enrichedProperties = Util.fillPlaceholdersProperties(
+                    val enrichedProperties = Util.fillPropertiesPlaceholders(
                         component.environmentVariables,
                         mergedProperties,
                     )
@@ -215,7 +216,7 @@ class RestEndpoint(
             invokeResultFuture <- network.invokeChainCode(
                 ServiceChannelName,
                 ServiceChainCodeName,
-                "delApplication",
+                "delApplicationInvite",
                 joinReq.name,
                 joinReq.founder
             )
@@ -248,7 +249,7 @@ class RestEndpoint(
         val crypto = cryptoManager.generateCustomComponentCrypto(request.box)
         val startCustomComponentRequest = StartCustomComponentRequest(
             serviceNodeName,
-            request.copy(properties = request.properties ++ Array(orgNameDescriptor, componentFullNameDescriptor)),
+            request.copy(properties = addDefaultProperties(request.properties)),
             crypto
         )
         processManager.startCustomNode(request.box, startCustomComponentRequest)
@@ -267,40 +268,42 @@ class RestEndpoint(
           .map(_.network)
 
 
-    @Get("/admin/download-application")
-    def downloadApplication(componentsDistributorUrl: String, applicationFileName: String): Either[String, Unit] = {
-        val distributorClient = JsonRestClient.create[ComponentsDistributor](componentsDistributorUrl)
+    @Post("/admin/download-application")
+    def downloadApplication(request: DownloadApplicationRequest): Either[String, Unit] = {
+        val distributorClient = JsonRestClient.create[ComponentsDistributor](request.componentsDistributorUrl)
         val destinationDir = s"/opt/profile/application-distributives"
         for {
-            distributiveBase64 <- distributorClient.getApplicationDistributive(applicationFileName)
+            globalState <- globalState.toRight("Node is not initialized yet")
+            distributiveBase64 <- distributorClient.getApplicationDistributive(request.applicationFileName)
             applicationDistributive <- Try(Base64.getDecoder.decode(distributiveBase64)).toEither.left.map(_.getMessage)
         } yield {
-            Util.storeToFile(s"$destinationDir/$applicationFileName.tgz", applicationDistributive)
-            logger.info(s"Application $applicationFileName has been successfully downloaded")
+            Util.storeToFile(s"$destinationDir/${request.applicationFileName}.tgz", applicationDistributive)
+            logger.info(s"Application ${request.applicationFileName} has been successfully downloaded")
+            FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateApplications())
         }
     }
 
-    @Get("/admin/publish-application")
-    def publishApplication(applicationName: String, applicationType: String): Either[String, String] = {
+    @Post("/admin/publish-application")
+    def publishApplication(request: PublishApplicationRequest): Either[String, String] = {
         val componentsDistributorAddress = externalAddress
           .map(ea => s"http://${ea.host}:$componentsDistributorBindPort")
           .getOrElse(s"http://service.${organizationConfig.name}.${organizationConfig.domain}:$componentsDistributorBindPort")
         val application = ApplicationDistributive(
-            applicationName = applicationName,
-            applicationType = applicationType,
+            applicationName = request.applicationName,
+            applicationType = request.applicationType,
             founder = serviceNodeName,
             componentsDistributorAddress = componentsDistributorAddress
         )
         for {
-            state <- globalState.toRight("Node is not initialized yet")
-            _ <- state.networkManager.invokeChainCode(
+            globalState <- globalState.toRight("Node is not initialized yet")
+            _ <- globalState.networkManager.invokeChainCode(
                 ServiceChannelName,
                 ServiceChainCodeName,
                 "publishApplicationDistributive",
                 Util.codec.toJson(application))
         } yield {
-            FabricServiceStateHolder.incrementVersion()
-            s"Application $applicationName has been successfully published"
+            FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateApplications())
+            s"Application ${request.applicationName} has been successfully published"
         }
     }
 
@@ -901,7 +904,7 @@ class RestEndpoint(
 
     // ================================================================================================================
 
-    private def checkApplicationDownloaded(applicationType: String, applicationDescriptorPath: String): Either[String, Unit] = {
+    private def ensureApplicationDownloaded(applicationType: String, applicationDescriptorPath: String): Either[String, Unit] = {
         val applicationDescriptorFile = new File(applicationDescriptorPath).getAbsoluteFile
         if (applicationDescriptorFile.exists()) {
             logger.info(s"Application type $applicationType is already downloaded")
@@ -918,11 +921,23 @@ class RestEndpoint(
                 }
                 applicationDistributive <- Try(Util.codec.fromJson(queryResult, classOf[ApplicationDistributive])).toEither.left.map(_.getMessage)
             } yield {
-                downloadApplication(applicationDistributive.componentsDistributorAddress, applicationType)
-                FabricServiceStateHolder.updateStateFullOption(FabricServiceStateHolder.compose(state.eventsMonitor.updateApplications()))
+                val request = DownloadApplicationRequest(
+                    componentsDistributorUrl = applicationDistributive.componentsDistributorAddress,
+                    applicationFileName = applicationType
+                )
+                downloadApplication(request)
+                FabricServiceStateHolder.updateStateFullOption(state.eventsMonitor.updateApplications())
             }
         }
     }
+
+    private def addDefaultProperties(props: Array[Property]): Array[Property] = {
+        val orgNameDescriptor = Property("org", organizationConfig.name)
+        val domainDescriptor = Property("domain", organizationConfig.domain)
+        // TODO add other properties
+        props ++ Array(orgNameDescriptor, domainDescriptor)
+    }
+
 
     private val _globalState = new AtomicReference[GlobalState]()
 

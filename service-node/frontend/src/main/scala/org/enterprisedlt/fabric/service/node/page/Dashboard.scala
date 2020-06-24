@@ -70,9 +70,7 @@ object Dashboard {
                   name = "",
                   port = 0,
                   componentType = ComponentCandidate.Types.head,
-                  properties = Array.empty[Property],
-                  ports = Array.empty[PortBind],
-                  volumes = Array.empty[VolumeBind]
+                  properties = Array.empty[Property]
               ),
               componentFile = null,
               componentName = "Choose file",
@@ -742,11 +740,19 @@ object Dashboard {
         }
 
         def publishApplication(application: ApplicationState): Callback = Callback.future {
-            ServiceNodeRemote.publishApplication(application.applicationName, application.applicationType).map(Callback(_))
+            val request = PublishApplicationRequest(
+                application.applicationName,
+                application.applicationType
+            )
+            ServiceNodeRemote.publishApplication(request).map(Callback(_))
         }
 
         def downloadApplication(application: ApplicationState): Callback = Callback.future {
-            ServiceNodeRemote.downloadApplication(application.distributorAddress, application.applicationType).map(Callback(_))
+            val request = DownloadApplicationRequest(
+                application.distributorAddress,
+                application.applicationType
+            )
+            ServiceNodeRemote.downloadApplication(request).map(Callback(_))
         }
 
         def applicationButton(application: ApplicationState): VdomTagOf[HTMLElement] = {

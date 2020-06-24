@@ -106,7 +106,8 @@ class DockerManagedBox(
                 new FileReader(s"$innerDistibutivePath/${request.componentType}.json"),
                 classOf[CustomComponentDescriptor]
             )).toEither.left.map(_.getMessage)
-            mergedProperties = mergeProperties(descriptor.properties, customComponentRequest.request.properties)
+            propertiesWithDefault = addDefaultProperties(descriptor.properties)
+            mergedProperties = mergeProperties(propertiesWithDefault, customComponentRequest.request.properties)
             enrichedDescriptor = enrichCustomComponentDescriptor(descriptor, mergedProperties)
             _ <- pullImageIfNeeded(enrichedDescriptor.image)
             osnContainerId <- Try {
@@ -484,11 +485,11 @@ class DockerManagedBox(
     // =================================================================================================================
     private def enrichCustomComponentDescriptor(descriptor: CustomComponentDescriptor, properties: Array[Property]): CustomComponentDescriptor = {
         descriptor.copy(
-            environmentVariablesDescriptor = Util.fillPlaceholdersProperties(
+            environmentVariablesDescriptor = Util.fillPropertiesPlaceholders(
                 descriptor.environmentVariablesDescriptor,
                 properties,
             ),
-            portBindDescriptor = Util.fillPlaceholdersPortBind(
+            portBindDescriptor = Util.fillPortBindPlaceholders(
                 descriptor.portBindDescriptor,
                 properties,
             )
@@ -501,6 +502,7 @@ class DockerManagedBox(
               .getOrElse(property)
         }
     }
+
     // =================================================================================================================
 
     private def pullImageIfNeeded(image: Image, forcePull: Boolean = false): Either[String, Unit] = {
@@ -605,6 +607,11 @@ class DockerManagedBox(
         } yield {
             logger.info(s"Component type $componentType has been successfully downloaded")
         }
+    }
+
+    private def addDefaultProperties(props: Array[Property]): Array[Property] = {
+        // TODO add properties
+        props ++ Array(Property("network_name", networkName))
     }
 
     // =================================================================================================================

@@ -2,18 +2,18 @@ package org.enterprisedlt.fabric.service.operations
 
 import org.enterprisedlt.fabric.contract.OperationContext
 import org.enterprisedlt.fabric.service.Main
-import org.enterprisedlt.fabric.service.model.{Application, CollectionsHelper, Organization}
+import org.enterprisedlt.fabric.service.model.{ApplicationInvite, CollectionsHelper, Organization}
 import org.enterprisedlt.spec.{ContractOperation, ContractResult, _}
 
 /**
  * @author Maxim Fedin
  */
-trait ApplicationOperations {
+trait ApplicationInviteOperations {
     self: Main.type =>
 
 
     @ContractOperation(OperationType.Invoke)
-    def createApplication(application: Application): ContractResult[Unit] =
+    def createApplicationInvite(application: ApplicationInvite): ContractResult[Unit] =
         getOwnOrganization
           .flatMap { founder =>
               for {
@@ -42,17 +42,17 @@ trait ApplicationOperations {
           }
 
     @ContractOperation(OperationType.Query)
-    def listApplications: ContractResult[Array[Application]] =
+    def listApplicationInvites: ContractResult[Array[ApplicationInvite]] =
         this.listCollections.map { collections =>
             collections.filter(e => e.endsWith(s"-${OperationContext.clientIdentity.mspId}") || e.startsWith(s"${OperationContext.clientIdentity.mspId}-"))
               .map(OperationContext.privateStore)
               .flatMap { store =>
-                  store.list[Application].map(_.value)
+                  store.list[ApplicationInvite].map(_.value)
               }
         }
 
     @ContractOperation(OperationType.Query)
-    def getApplication(name: String, founder: String): ContractResult[Application] =
+    def getApplicationInvite(name: String, founder: String): ContractResult[ApplicationInvite] =
         getOwnOrganization
           .flatMap { org =>
               for {
@@ -60,13 +60,13 @@ trait ApplicationOperations {
                   applicationNameValue <- Option(name).filter(_.nonEmpty).toRight("Application name must be non empty")
                   r <- OperationContext.privateStore(
                       CollectionsHelper.collectionNameFor(org, applicationFounderOrg))
-                    .get[Application](applicationNameValue)
+                    .get[ApplicationInvite](applicationNameValue)
                     .toRight(s"No application with name $applicationNameValue from ${applicationFounderOrg.mspId} org")
               } yield r
           }
 
     @ContractOperation(OperationType.Invoke)
-    def delApplication(name: String, founder: String): ContractResult[Unit] =
+    def delApplicationInvite(name: String, founder: String): ContractResult[Unit] =
         getOwnOrganization
           .flatMap { org =>
               for {
@@ -76,7 +76,7 @@ trait ApplicationOperations {
                   OperationContext
                     .privateStore(
                         CollectionsHelper.collectionNameFor(org, applicationFounderOrg))
-                    .del[Application](applicationNameValue)
+                    .del[ApplicationInvite](applicationNameValue)
           }
 
 }

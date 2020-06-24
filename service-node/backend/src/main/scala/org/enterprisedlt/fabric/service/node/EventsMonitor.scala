@@ -8,7 +8,7 @@ import com.google.gson.GsonBuilder
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.eclipse.jetty.util.IO
-import org.enterprisedlt.fabric.service.model.{Application, ApplicationDistributive, Contract}
+import org.enterprisedlt.fabric.service.model.{ApplicationDistributive, ApplicationInvite, Contract}
 import org.enterprisedlt.fabric.service.node.Util.withResources
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.model.FabricServiceStateHolder.StateChangeFunction
@@ -31,7 +31,10 @@ class EventsMonitor(
     private val logger: Logger = LoggerFactory.getLogger(this.getClass)
     private var delay: Long = -1L
 
-    def updateEvents(): Unit = FabricServiceStateHolder.updateStateFullOption(
+    val customComponentsPath: File = new File(s"/opt/profile/components/").getAbsoluteFile
+    if (!customComponentsPath.exists()) customComponentsPath.mkdirs()
+
+    def checkUpdateState(): Unit = FabricServiceStateHolder.updateStateFullOption(
         FabricServiceStateHolder.compose(
             updateApplicationInvitations(),
             updateContractInvitations(),
@@ -42,9 +45,9 @@ class EventsMonitor(
 
     def updateApplicationInvitations(): StateChangeFunction = { current: FabricServiceStateFull =>
         val applicationInvs = for {
-            queryResult <- networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listApplications")
+            queryResult <- networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listApplicationInvites")
             contracts <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
-            applicationInvitations <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[Application]])).toEither.left.map(_.getMessage)
+            applicationInvitations <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[ApplicationInvite]])).toEither.left.map(_.getMessage)
         } yield {
             applicationInvitations.map { application =>
                 ApplicationInvitation(
@@ -103,7 +106,7 @@ class EventsMonitor(
         Try(getCustomComponentDescriptors)
           .toEither
           .left.map(_.getMessage) match {
-            case Right(descriptors) if (current.events.customComponentDescriptors.length != descriptors.length) =>
+            case Right(descriptors) if current.events.customComponentDescriptors.length != descriptors.length =>
                 Option(current.copy(events = current.events.copy(customComponentDescriptors = descriptors)))
 
             case Left(msg) =>
@@ -153,12 +156,12 @@ class EventsMonitor(
                     applicationDescriptor =>
                         applicationDescriptor.contracts.foreach {
                             chaincode =>
-                                saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"chain-code/${chaincode.contractType}.json", "/opt/profile")
-                                saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"chain-code/${chaincode.contractType}.tgz", "/opt/profile")
+                                extractFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"chain-code/${chaincode.contractType}.json", "/opt/profile")
+                                extractFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"chain-code/${chaincode.contractType}.tgz", "/opt/profile")
                         }
                         applicationDescriptor.components.foreach {
                             component =>
-                                saveFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"components/${component.componentType}.tgz", "/opt/profile")
+                                extractFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"components/${component.componentType}.tgz", "/opt/profile")
                         }
                 }
                 Option(
@@ -194,7 +197,7 @@ class EventsMonitor(
           .flatMap { file =>
               logger.info(s"file is ${file.getName}")
               val filename = file.getName.split('.')(0)
-              getObjectFromTar[ApplicationDescriptor](file.toPath, s"$filename.json")
+              readFromTarAs[ApplicationDescriptor](file.toPath, s"$filename.json")
                 .map(_.copy(applicationType = filename))
                 .map { applicationDescriptor =>
                     val applicationDescriptorJson = Util.codec.toJson(applicationDescriptor)
@@ -211,20 +214,17 @@ class EventsMonitor(
     }
 
     private def getCustomComponentDescriptors: Array[CustomComponentDescriptor] = {
-        val customComponentsPath = "/opt/profile/components"
-        Util.mkDirs(customComponentsPath)
-        new File(customComponentsPath)
-          .getAbsoluteFile
+        customComponentsPath
           .listFiles()
           .filter(_.getName.endsWith(".tgz"))
           .flatMap { file =>
               logger.info(s"file is ${file.getName}")
               val filename = s"${file.getName.split('.')(0)}.json"
-              getObjectFromTar[CustomComponentDescriptor](file.toPath, filename)
+              readFromTarAs[CustomComponentDescriptor](file.toPath, filename)
           }
     }
 
-    private def getObjectFromTar[T: ClassTag](filePath: Path, filename: String): Option[T] = {
+    private def readFromTarAs[T: ClassTag](filePath: Path, filename: String): Option[T] = {
         val targetClazz = classTag[T].runtimeClass.asInstanceOf[Class[T]]
         withResources(
             new TarArchiveInputStream(
@@ -239,7 +239,7 @@ class EventsMonitor(
         }
     }
 
-    private def saveFileFromTar(tarPath: String, filename: String, destPath: String): Unit = {
+    private def extractFileFromTar(tarPath: String, filename: String, destPath: String): Unit = {
         withResources(
             new TarArchiveInputStream(
                 new GzipCompressorInputStream(
@@ -253,7 +253,6 @@ class EventsMonitor(
                     IO.copy(in, out)
                 }
                 finally {
-                    in.close()
                     out.close()
                 }
             }
@@ -269,7 +268,7 @@ class EventsMonitor(
                     Thread.sleep(delay)
                 }
                 val start = System.currentTimeMillis()
-                updateEvents()
+                checkUpdateState()
                 val duration = System.currentTimeMillis() - start
                 logger.info(s"Pulling done in $duration ms")
                 delay = eventPullingInterval - duration
