@@ -22,6 +22,7 @@ import org.hyperledger.fabric.sdk.Peer
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
+import scala.language.postfixOps
 import scala.util.Try
 
 /**
@@ -205,7 +206,7 @@ class RestEndpoint(
                     )
                     val request = CustomComponentRequest(
                         box = joinReq.box,
-                        name = s"${joinReq.name}.${component.componentType}.$organizationFullName",
+                        name = s"${joinReq.name}.${component.componentType}.${organizationFullName}",
                         componentType = component.componentType,
                         properties = enrichedProperties
                     )
@@ -242,12 +243,11 @@ class RestEndpoint(
 
     @Post("/admin/start-custom-node")
     def startCustomNode(request: CustomComponentRequest): Either[String, String] = {
-        val orgNameDescriptor = Property("org", organizationConfig.name)
         //
         val crypto = cryptoManager.generateCustomComponentCrypto(request.box)
         val startCustomComponentRequest = StartCustomComponentRequest(
             serviceNodeName,
-            request.copy(properties = request.properties :+ orgNameDescriptor),
+            request.copy(properties = addDefaultProperties(request.properties)),
             crypto
         )
         processManager.startCustomNode(request.box, startCustomComponentRequest)
@@ -266,40 +266,42 @@ class RestEndpoint(
           .map(_.network)
 
 
-    @Get("/admin/download-application")
-    def downloadApplication(componentsDistributorUrl: String, applicationFileName: String): Either[String, Unit] = {
-        val distributorClient = JsonRestClient.create[ComponentsDistributor](componentsDistributorUrl)
+    @Post("/admin/download-application")
+    def downloadApplication(request: DownloadApplicationRequest): Either[String, Unit] = {
+        val distributorClient = JsonRestClient.create[ComponentsDistributor](request.componentsDistributorUrl)
         val destinationDir = s"/opt/profile/application-distributives"
         for {
-            distributiveBase64 <- distributorClient.getApplicationDistributive(applicationFileName)
+            globalState <- globalState.toRight("Node is not initialized yet")
+            distributiveBase64 <- distributorClient.getApplicationDistributive(request.applicationFileName)
             applicationDistributive <- Try(Base64.getDecoder.decode(distributiveBase64)).toEither.left.map(_.getMessage)
         } yield {
-            Util.storeToFile(s"$destinationDir/$applicationFileName.tgz", applicationDistributive)
-            logger.info(s"Application $applicationFileName has been successfully downloaded")
+            Util.storeToFile(s"$destinationDir/${request.applicationFileName}.tgz", applicationDistributive)
+            logger.info(s"Application ${request.applicationFileName} has been successfully downloaded")
+            FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateApplications())
         }
     }
 
-    @Get("/admin/publish-application")
-    def publishApplication(applicationName: String, applicationType: String): Either[String, String] = {
+    @Post("/admin/publish-application")
+    def publishApplication(request: PublishApplicationRequest): Either[String, String] = {
         val componentsDistributorAddress = externalAddress
           .map(ea => s"http://${ea.host}:$componentsDistributorBindPort")
           .getOrElse(s"http://service.${organizationConfig.name}.${organizationConfig.domain}:$componentsDistributorBindPort")
         val application = ApplicationDistributive(
-            applicationName = applicationName,
-            applicationType = applicationType,
+            applicationName = request.applicationName,
+            applicationType = request.applicationType,
             founder = serviceNodeName,
             componentsDistributorAddress = componentsDistributorAddress
         )
         for {
-            state <- globalState.toRight("Node is not initialized yet")
-            _ <- state.networkManager.invokeChainCode(
+            globalState <- globalState.toRight("Node is not initialized yet")
+            _ <- globalState.networkManager.invokeChainCode(
                 ServiceChannelName,
                 ServiceChainCodeName,
                 "publishApplicationDistributive",
                 Util.codec.toJson(application))
         } yield {
-            FabricServiceStateHolder.incrementVersion()
-            s"Application $applicationName has been successfully published"
+            FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateApplications())
+            s"Application ${request.applicationName} has been successfully published"
         }
     }
 
@@ -917,11 +919,23 @@ class RestEndpoint(
                 }
                 applicationDistributive <- Try(Util.codec.fromJson(queryResult, classOf[ApplicationDistributive])).toEither.left.map(_.getMessage)
             } yield {
-                downloadApplication(applicationDistributive.componentsDistributorAddress, applicationType)
-                FabricServiceStateHolder.updateStateFullOption(FabricServiceStateHolder.compose(state.eventsMonitor.updateApplications()))
+                val request = DownloadApplicationRequest(
+                    componentsDistributorUrl = applicationDistributive.componentsDistributorAddress,
+                    applicationFileName = applicationType
+                )
+                downloadApplication(request)
+                FabricServiceStateHolder.updateStateFullOption(state.eventsMonitor.updateApplications())
             }
         }
     }
+
+    private def addDefaultProperties(props: Array[Property]): Array[Property] = {
+        val orgNameDescriptor = Property("org", organizationConfig.name)
+        val domainDescriptor = Property("domain", organizationConfig.domain)
+        // TODO add other properties
+        props ++ Array(orgNameDescriptor, domainDescriptor)
+    }
+
 
     private val _globalState = new AtomicReference[GlobalState]()
 

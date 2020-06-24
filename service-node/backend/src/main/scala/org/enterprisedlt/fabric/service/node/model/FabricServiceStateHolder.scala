@@ -96,11 +96,11 @@ object FabricServiceStateHolder {
 case class FabricServiceStateFull(
     applications: Array[ApplicationDescriptor] = Array.empty[ApplicationDescriptor],
     deployedApplications: Array[ApplicationInfo] = Array.empty[ApplicationInfo],
+    customComponentDescriptors: Array[CustomComponentDescriptor] = Array.empty[CustomComponentDescriptor],
+    applicationState: Array[ApplicationState] = Array.empty[ApplicationState],
     events: Events = Events(
         messages = Array.empty[PrivateMessageEvent],
         contractInvitations = Array.empty[ContractInvitation],
-        applicationInvitations = Array.empty[ApplicationInvitation],
-        customComponentDescriptors = Array.empty[CustomComponentDescriptor],
-        applications = Array.empty[ApplicationState]
+        applicationInvitations = Array.empty[ApplicationInvitation]
     )
 )

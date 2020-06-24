@@ -106,7 +106,8 @@ class DockerManagedBox(
                 new FileReader(s"$innerDistibutivePath/${request.componentType}.json"),
                 classOf[CustomComponentDescriptor]
             )).toEither.left.map(_.getMessage)
-            mergedProperties = mergeProperties(descriptor.properties, customComponentRequest.request.properties)
+            propertiesWithDefault = addDefaultProperties(descriptor.properties)
+            mergedProperties = mergeProperties(propertiesWithDefault, customComponentRequest.request.properties)
             enrichedDescriptor = enrichCustomComponentDescriptor(descriptor, mergedProperties)
             _ <- pullImageIfNeeded(enrichedDescriptor.image)
             osnContainerId <- Try {
@@ -501,6 +502,7 @@ class DockerManagedBox(
               .getOrElse(property)
         }
     }
+
     // =================================================================================================================
 
     private def pullImageIfNeeded(image: Image, forcePull: Boolean = false): Either[String, Unit] = {
@@ -605,6 +607,11 @@ class DockerManagedBox(
         } yield {
             logger.info(s"Component type $componentType has been successfully downloaded")
         }
+    }
+
+    private def addDefaultProperties(props: Array[Property]): Array[Property] = {
+        // TODO add properties
+        props ++ Array(Property("network_name", networkName))
     }
 
     // =================================================================================================================

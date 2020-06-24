@@ -8,7 +8,7 @@ import com.google.gson.GsonBuilder
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.eclipse.jetty.util.IO
-import org.enterprisedlt.fabric.service.model.{ApplicationInvite, ApplicationDistributive, Contract}
+import org.enterprisedlt.fabric.service.model.{ApplicationDistributive, ApplicationInvite, Contract}
 import org.enterprisedlt.fabric.service.node.Util.withResources
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.model.FabricServiceStateHolder.StateChangeFunction
@@ -30,6 +30,9 @@ class EventsMonitor(
     @volatile private var working = true
     private val logger: Logger = LoggerFactory.getLogger(this.getClass)
     private var delay: Long = -1L
+
+    val customComponentsPath: File = new File(s"/opt/profile/components/").getAbsoluteFile
+    if (!customComponentsPath.exists()) customComponentsPath.mkdirs()
 
     def checkUpdateState(): Unit = FabricServiceStateHolder.updateStateFullOption(
         FabricServiceStateHolder.compose(
@@ -211,10 +214,7 @@ class EventsMonitor(
     }
 
     private def getCustomComponentDescriptors: Array[CustomComponentDescriptor] = {
-        val customComponentsPath = "/opt/profile/components"
-        Util.mkDirs(customComponentsPath)
-        new File(customComponentsPath)
-          .getAbsoluteFile
+        customComponentsPath
           .listFiles()
           .filter(_.getName.endsWith(".tgz"))
           .flatMap { file =>
