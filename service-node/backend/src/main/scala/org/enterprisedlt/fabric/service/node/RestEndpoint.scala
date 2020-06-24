@@ -41,6 +41,7 @@ class RestEndpoint(
 ) {
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val serviceNodeName = s"service.${organizationConfig.name}.${organizationConfig.domain}"
+    private val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
 
     @PostMultipart("/admin/upload-application")
     def uploadApplication(multipart: Iterable[Part]): Either[String, Unit] = {
@@ -75,7 +76,6 @@ class RestEndpoint(
     @Post("/admin/create-application")
     def createApplication(applicationRequest: CreateApplicationRequest): Either[String, String] = {
         logger.info("Creating application ...")
-        val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
         logger.info(s"applicationRequest =  ${applicationRequest.toString}")
         for {
             state <- globalState.toRight("Node is not initialized yet")
@@ -148,7 +148,6 @@ class RestEndpoint(
     @Post("/admin/application-join")
     def applicationJoin(joinReq: JoinApplicationRequest): Either[String, String] = {
         logger.info("Joining deployed application ...")
-        val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
         for {
             state <- globalState.toRight("Node is not initialized yet")
             network = state.networkManager
@@ -243,13 +242,12 @@ class RestEndpoint(
 
     @Post("/admin/start-custom-node")
     def startCustomNode(request: CustomComponentRequest): Either[String, String] = {
-        val orgNameDescriptor = Property("org", organizationConfig.name)
         val componentFullNameDescriptor = Property("component_full_name", request.name)
         //
         val crypto = cryptoManager.generateCustomComponentCrypto(request.box)
         val startCustomComponentRequest = StartCustomComponentRequest(
             serviceNodeName,
-            request.copy(properties = addDefaultProperties(request.properties)),
+            request.copy(properties = addDefaultProperties(request.properties :+ componentFullNameDescriptor)),
             crypto
         )
         processManager.startCustomNode(request.box, startCustomComponentRequest)
