@@ -17,7 +17,7 @@ object FabricServiceStateHolder {
         version = -1
     )
 
-    var fabricServiceStateFull: FabricServiceStateFull = FabricServiceStateFull()
+    private var fabricServiceStateFull: FabricServiceStateFull = FabricServiceStateFull()
 
     def updateStateFull(u: FabricServiceStateFull => FabricServiceStateFull): Unit = {
         lock.lock()

@@ -47,7 +47,7 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
         <.div(
             <.div(^.className := "form-group row",
                 <.label(^.`for` := "componentType", ^.className := "col-sm-4 col-form-label", "Type"),
-                <.div(^.className := "col-sm-8", renderComponentType(p, data.events.customComponentDescriptors.map(_.componentType)))
+                <.div(^.className := "col-sm-8", renderComponentType(p, data.customComponentDescriptors.map(_.componentType)))
             ),
             <.div(^.className := "form-group row",
                 <.label(^.`for` := "componentBox", ^.className := "col-sm-4 col-form-label", "Server"),

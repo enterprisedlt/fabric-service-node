@@ -20,7 +20,7 @@ import org.enterprisedlt.fabric.service.node.util.DataFunction._
 object JoinApplication extends StateFullFormExt[JoinApplicationRequest, Ready, JoinApplicationState]("join-application-form") {
 
     private def stateFor(appType: String, data: Ready): JoinApplicationState = {
-        data.events.applications.find(_.applicationType == appType).map { descriptor =>
+        data.applicationState.find(_.applicationType == appType).map { descriptor =>
             JoinApplicationState(
                 applicationProperties = descriptor.properties,
                 propertyCandidate = descriptor.properties.headOption.getOrElse(Property("", "")), // TODO

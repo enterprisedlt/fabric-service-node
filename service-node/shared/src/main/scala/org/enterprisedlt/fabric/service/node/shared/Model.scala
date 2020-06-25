@@ -249,9 +249,7 @@ object ContractParticipant {
 case class Events(
     messages: Array[PrivateMessageEvent] = Array.empty,
     contractInvitations: Array[ContractInvitation] = Array.empty,
-    applicationInvitations: Array[ApplicationInvitation] = Array.empty,
-    customComponentDescriptors: Array[CustomComponentDescriptor] = Array.empty,
-    applications: Array[ApplicationState] = Array.empty
+    applicationInvitations: Array[ApplicationInvitation] = Array.empty
 )
 
 object Events {
@@ -279,13 +277,14 @@ case class ContractInvitation(
 object ContractInvitation {
     implicit val rw: RW[ContractInvitation] = macroRW
 }
+
 // ------------------------------------------------------------------------
 case class ApplicationInvitation(
-     initiator: String,
-     name: String,
-     applicationType: String,
-     applicationVersion: String,
-     participants: Array[String]
+    initiator: String,
+    name: String,
+    applicationType: String,
+    applicationVersion: String,
+    participants: Array[String]
 )
 
 object ApplicationInvitation {
@@ -364,6 +363,7 @@ object ApplicationState {
 
     implicit val rw: RW[ApplicationState] = macroRW
 }
+
 // ------------------------------------------------------------------------
 @Lenses case class ContractsState(
     name: String,
@@ -402,6 +402,7 @@ object CustomComponentState {
 object CreateApplicationRequest {
     implicit val rw: RW[CreateApplicationRequest] = macroRW
 }
+
 // ------------------------------------------------------------------------
 @Lenses case class JoinApplicationRequest(
     name: String,
@@ -413,6 +414,7 @@ object CreateApplicationRequest {
 object JoinApplicationRequest {
     implicit val rw: RW[JoinApplicationRequest] = macroRW
 }
+
 // ------------------------------------------------------------------------
 @Lenses case class DownloadApplicationRequest(
     componentsDistributorUrl: String,
@@ -422,6 +424,7 @@ object JoinApplicationRequest {
 object DownloadApplicationRequest {
     implicit val rw: RW[DownloadApplicationRequest] = macroRW
 }
+
 // ------------------------------------------------------------------------
 @Lenses case class PublishApplicationRequest(
     applicationName: String,

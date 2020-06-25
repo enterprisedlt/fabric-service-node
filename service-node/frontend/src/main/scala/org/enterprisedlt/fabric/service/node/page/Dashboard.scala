@@ -60,7 +60,7 @@ object Dashboard {
     private val component = ScalaComponent.builder[Ready]("dashboard")
       .initialStateFromProps { g =>
           val defaultPackage = g.contractPackages.headOption
-          val defaultApplication = g.events.applications.headOption
+          val defaultApplication = g.applicationState.headOption
           State(
               boxCandidate = RegisterBoxManager(
                   name = "",
@@ -464,7 +464,7 @@ object Dashboard {
                                                       <.td(<.i(<.b("Status"))),
                                                       <.td(<.i(<.b("Action"))),
                                                   ),
-                                                  g.events.applications.map { application =>
+                                                  g.applicationState.map { application =>
                                                       <.tr(
                                                           <.td(application.applicationName),
                                                           <.td(application.status),

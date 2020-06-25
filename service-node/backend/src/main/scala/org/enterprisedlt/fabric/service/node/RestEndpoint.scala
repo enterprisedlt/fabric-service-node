@@ -466,7 +466,19 @@ class RestEndpoint(
 
     @Get("/service/list-applications")
     def listApplications: Either[String, Array[ApplicationInfo]] = {
-        Try(FabricServiceStateHolder.fabricServiceStateFull.deployedApplications)
+        Try(FabricServiceStateHolder.fullState.deployedApplications)
+          .toEither.left.map(_.getMessage)
+    }
+
+    @Get("/service/list-application-state")
+    def listApplicationState: Either[String, Array[ApplicationState]] = {
+        Try(FabricServiceStateHolder.fullState.applicationState)
+          .toEither.left.map(_.getMessage)
+    }
+
+    @Get("/service/list-custom-component-descriptors")
+    def listCustomComponentDescriptors: Either[String, Array[CustomComponentDescriptor]] = {
+        Try(FabricServiceStateHolder.fullState.customComponentDescriptors)
           .toEither.left.map(_.getMessage)
     }
 
