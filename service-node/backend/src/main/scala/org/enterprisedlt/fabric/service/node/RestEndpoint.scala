@@ -48,8 +48,12 @@ class RestEndpoint(
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
             _ <- Util.saveParts(multipart, fileDir)
-        } yield FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateApplications())
-
+        } yield FabricServiceStateHolder.updateStateFullOption(
+            FabricServiceStateHolder.compose(
+                globalState.eventsMonitor.updateApplications(),
+                globalState.eventsMonitor.updateContractDescriptors()
+            )
+        )
     }
 
     @PostMultipart("/admin/upload-chaincode")
@@ -206,7 +210,7 @@ class RestEndpoint(
                     )
                     val request = CustomComponentRequest(
                         box = joinReq.box,
-                        name = s"${joinReq.name}.${component.componentType}.${organizationFullName}",
+                        name = s"${joinReq.name}.${component.componentType}.$organizationFullName",
                         componentType = component.componentType,
                         properties = enrichedProperties
                     )
@@ -234,7 +238,8 @@ class RestEndpoint(
                                 )
                             )
                         ),
-                    state.eventsMonitor.updateApplications()
+                    state.eventsMonitor.updateApplications(),
+                    state.eventsMonitor.updateContractDescriptors()
                 )
             )
             s"Joining to application ${joinReq.name} has been completed successfully $invokeAwait"
@@ -494,29 +499,8 @@ class RestEndpoint(
     @Get("/admin/list-contract-packages")
     def getListContractPackages: Either[String, Array[ContractDescriptor]] = {
         logger.info("Listing contract packages...")
-        val chaincodePath = new File(s"/opt/profile/chain-code/").getAbsoluteFile
-        if (!chaincodePath.exists()) chaincodePath.mkdirs()
-        Try(
-            chaincodePath
-              .listFiles()
-              .filter(_.getName.endsWith(".json"))
-              .map(_.getName)
-              .flatMap { packageName =>
-                  Try {
-                      val descriptor = Util.codec.fromJson(
-                          new FileReader(s"/opt/profile/chain-code/$packageName"),
-                          classOf[ContractDeploymentDescriptor]
-                      )
-                      val name = packageName.substring(0, packageName.length - 5)
-                      ContractDescriptor(
-                          name = name,
-                          roles = descriptor.roles,
-                          initArgsNames = descriptor.initArgsNames
-                      )
-                  }.toOption
-              }
-        ).toEither.left.map(_.getMessage)
-    }
+        Try(FabricServiceStateHolder.fullState.contractDescriptors)
+    }.toEither.left.map(_.getMessage)
 
 
     @Post("/admin/register-box-manager")
@@ -701,12 +685,10 @@ class RestEndpoint(
             _ = logger.info(s"[ $organizationFullName ] - Preparing ${contractRequest.name} chain code ...")
             filesBaseName = s"${contractRequest.contractType}" // -${contractRequest.version}
             chainCodeName = s"${contractRequest.name}-${contractRequest.version}" //
-            deploymentDescriptor <- Try(Util.codec.fromJson(
-                new FileReader(s"/opt/profile/chain-code/$filesBaseName.json"),
-                classOf[ContractDeploymentDescriptor]
-            )).toEither.left.map(_.getMessage)
             path = s"/opt/profile/chain-code/$filesBaseName.tgz"
             file <- Option(new File(path)).filter(_.exists()).toRight(s"File $filesBaseName.tgz doesn't exist")
+            deploymentDescriptor <- Util.readFromTarAs[ContractDeploymentDescriptor](file.toPath,
+                s"$filesBaseName.json").toRight(s"Descriptor hasn't been found in $path")
             chainCodePkg <- Option(new BufferedInputStream(new FileInputStream(file))).toRight(s"Can't prepare cc pkg stream")
             _ <- {
                 logger.info(s"[ $organizationFullName ] - Installing $chainCodeName chain code ...")

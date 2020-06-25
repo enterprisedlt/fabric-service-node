@@ -33,6 +33,7 @@ class EventsMonitor(
             updateApplicationInvitations(),
             updateContractInvitations(),
             updateCustomComponentDescriptors(),
+            updateContractDescriptors(),
             updateApplications()
         )
     )
@@ -87,6 +88,21 @@ class EventsMonitor(
         contractInvs match {
             case Right(contractInvs) if current.events.contractInvitations.length != contractInvs.length =>
                 Option(current.copy(events = current.events.copy(contractInvitations = contractInvs)))
+
+            case Left(msg) =>
+                logger.warn(msg)
+                None
+
+            case _ => None
+        }
+    }
+
+    def updateContractDescriptors(): StateChangeFunction = { current: FabricServiceStateFull =>
+        Try(getContractDescriptors)
+          .toEither
+          .left.map(_.getMessage) match {
+            case Right(descriptors) if current.contractDescriptors.length != descriptors.length =>
+                Option(current.copy(contractDescriptors = descriptors))
 
             case Left(msg) =>
                 logger.warn(msg)
@@ -204,6 +220,19 @@ class EventsMonitor(
                     finally out.close()
                     applicationDescriptor
                 }
+          }
+    }
+
+    private def getContractDescriptors: Array[ContractDescriptor] = {
+        val applicationsPath = "/opt/profile/chain-code"
+        Util.mkDirs(applicationsPath)
+        new File(applicationsPath)
+          .getAbsoluteFile
+          .listFiles()
+          .filter(_.getName.endsWith(".tgz"))
+          .flatMap { file =>
+              val filename = file.getName.substring(0,file.getName.length - 4)
+              Util.readFromTarAs[ContractDescriptor](file.toPath, s"$filename.json")
           }
     }
 
