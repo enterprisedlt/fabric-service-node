@@ -104,11 +104,6 @@ object ServiceNodeRemote {
       .map(_.responseText)
       .map(r => upickle.default.read[Array[ContractDescriptor]](r))
 
-    def listCustomComponentDescriptors: Future[Array[CustomComponentDescriptor]] = Ajax
-      .get("/admin/list-custom-component-descriptors")
-      .map(_.responseText)
-      .map(r => upickle.default.read[Array[CustomComponentDescriptor]](r))
-
     def listBoxes: Future[Array[Box]] = Ajax
       .get("/service/list-boxes")
       .map(_.responseText)
@@ -197,5 +192,18 @@ object ServiceNodeRemote {
           .get("/service/get-events")
           .map(_.responseText)
           .map(r => upickle.default.read[Events](r))
+
+    def listApplicationState: Future[Array[ApplicationState]] =
+        Ajax
+          .get("/service/list-application-state")
+          .map(_.responseText)
+          .map(r => upickle.default.read[Array[ApplicationState]](r))
+
+
+    def listCustomComponentDescriptors: Future[Array[CustomComponentDescriptor]] =
+        Ajax
+          .get("/service/list-custom-component-descriptors")
+          .map(_.responseText)
+          .map(r => upickle.default.read[Array[CustomComponentDescriptor]](r))
 
 }

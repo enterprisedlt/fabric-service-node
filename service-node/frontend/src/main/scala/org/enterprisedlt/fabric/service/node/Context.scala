@@ -73,6 +73,8 @@ object Context {
                             chainCodes <- ServiceNodeRemote.listChainCodes
                             boxes <- ServiceNodeRemote.listBoxes
                             events <- ServiceNodeRemote.listEvents
+                            customComponentDescriptors <- ServiceNodeRemote.listCustomComponentDescriptors
+                            applicationState <- ServiceNodeRemote.listApplicationState
                         } yield {
                             Ready(
                                 info = BaseInfo(
@@ -87,6 +89,8 @@ object Context {
                                 applications = applications,
                                 organizations = organizations,
                                 chainCodes = chainCodes,
+                                customComponentDescriptors = customComponentDescriptors,
+                                applicationState = applicationState,
                                 events = events
                             )
                         }
@@ -133,6 +137,8 @@ case object Initial extends AppState
     applications: Array[ApplicationInfo],
     organizations: Array[Organization],
     chainCodes: Array[ChainCodeInfo],
+    customComponentDescriptors: Array[CustomComponentDescriptor] = Array.empty,
+    applicationState: Array[ApplicationState] = Array.empty,
     events: Events
 ) extends AppState
 

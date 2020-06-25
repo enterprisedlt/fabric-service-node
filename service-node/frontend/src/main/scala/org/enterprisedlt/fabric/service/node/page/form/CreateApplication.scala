@@ -25,7 +25,7 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
 
     private def stateFor(appType: String, data: Ready): CreateApplicationState = {
         val firstMSPId = data.organizations.headOption.map(_.mspId).getOrElse("")
-        data.events.applications.find(_.applicationType == appType).map { descriptor =>
+        data.applicationState.find(_.applicationType == appType).map { descriptor =>
             CreateApplicationState(
                 roles = descriptor.applicationRoles,
                 applicationProperties = descriptor.properties,
@@ -78,7 +78,7 @@ object CreateApplication extends StateFullFormExt[CreateApplicationRequest, Read
                     <.select(className := "form-control",
                         ^.value := p.applicationType,
                         ^.onChange ==> onPackageChange(data),
-                        data.events.applications.map { application =>
+                        data.applicationState.map { application =>
                             val label = application.applicationType
                             val selected = p.applicationType
                             option((className := "selected").when(selected == label), label)

@@ -106,8 +106,8 @@ class EventsMonitor(
         Try(getCustomComponentDescriptors)
           .toEither
           .left.map(_.getMessage) match {
-            case Right(descriptors) if current.events.customComponentDescriptors.length != descriptors.length =>
-                Option(current.copy(events = current.events.copy(customComponentDescriptors = descriptors)))
+            case Right(descriptors) if current.customComponentDescriptors.length != descriptors.length =>
+                Option(current.copy(customComponentDescriptors = descriptors))
 
             case Left(msg) =>
                 logger.warn(msg)
@@ -148,7 +148,7 @@ class EventsMonitor(
             }
         }
         apps match {
-            case Right(apps) if current.events.applications.length != apps.length || !current.events.applications.exists(app =>
+            case Right(apps) if current.applicationState.length != apps.length || !current.applicationState.exists(app =>
                 apps.exists(application => application.applicationType == app.applicationType && application.status == app.status)) =>
                 logger.info(s"apps ${apps.mkString(" ")}")
                 val applicationDescriptors = getApplicationDescriptors
@@ -166,7 +166,7 @@ class EventsMonitor(
                 }
                 Option(
                     current.copy(
-                        events = current.events.copy(applications = apps),
+                        applicationState = apps,
                         applications = applicationDescriptors)
                 )
 
