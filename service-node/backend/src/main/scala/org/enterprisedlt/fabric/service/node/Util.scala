@@ -2,7 +2,7 @@ package org.enterprisedlt.fabric.service.node
 
 import java.io._
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Paths, StandardOpenOption}
+import java.nio.file.{Files, Path, Paths, StandardOpenOption}
 import java.security.KeyStore
 import java.security.cert.X509Certificate
 import java.time._
@@ -43,6 +43,7 @@ import oshi.SystemInfo
 
 import scala.collection.JavaConverters._
 import scala.language.postfixOps
+import scala.reflect.{ClassTag, classTag}
 import scala.util.Try
 import scala.util.control.NonFatal
 
@@ -428,6 +429,43 @@ object Util {
               }
             Right(())
         }
+
+    def readFromTarAs[T: ClassTag](filePath: Path, filename: String): Option[T] = {
+        val targetClazz = classTag[T].runtimeClass.asInstanceOf[Class[T]]
+        withResources(
+            new TarArchiveInputStream(
+                new GzipCompressorInputStream(
+                    Files.newInputStream(filePath)
+                )
+            )
+        ) { inputStream =>
+            Util.findInTar(inputStream, filename)(descriptorInputStream =>
+                Util.codec.fromJson(new InputStreamReader(descriptorInputStream), targetClazz)
+            )
+        }
+    }
+
+    def extractFileFromTar(tarPath: String, filename: String, destPath: String): Unit = {
+        withResources(
+            new TarArchiveInputStream(
+                new GzipCompressorInputStream(
+                    Files.newInputStream(Paths.get(tarPath))
+                )
+            )
+        ) { inputStream =>
+            Util.findInTar(inputStream, filename) { in =>
+                val out = new FileOutputStream(s"$destPath/$filename")
+                try {
+                    IO.copy(in, out)
+                }
+                finally {
+                    out.close()
+                }
+            }
+        }
+    }
+
+
 }
 
 
