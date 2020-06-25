@@ -1,22 +1,16 @@
 package org.enterprisedlt.fabric.service.node
 
-import java.io.{File, FileOutputStream, InputStreamReader}
+import java.io.{File, FileOutputStream}
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, Paths}
 
 import com.google.gson.GsonBuilder
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
-import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
-import org.eclipse.jetty.util.IO
 import org.enterprisedlt.fabric.service.model.{ApplicationDistributive, ApplicationInvite, Contract}
-import org.enterprisedlt.fabric.service.node.Util.withResources
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.model.FabricServiceStateHolder.StateChangeFunction
 import org.enterprisedlt.fabric.service.node.model.{ApplicationDescriptor, FabricServiceStateFull, FabricServiceStateHolder}
 import org.enterprisedlt.fabric.service.node.shared._
 import org.slf4j.{Logger, LoggerFactory}
 
-import scala.reflect.{ClassTag, _}
 import scala.util.Try
 
 /**
@@ -156,12 +150,12 @@ class EventsMonitor(
                     applicationDescriptor =>
                         applicationDescriptor.contracts.foreach {
                             chaincode =>
-                                extractFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"chain-code/${chaincode.contractType}.json", "/opt/profile")
-                                extractFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"chain-code/${chaincode.contractType}.tgz", "/opt/profile")
+                                Util.extractFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"chain-code/${chaincode.contractType}.json", "/opt/profile")
+                                Util.extractFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"chain-code/${chaincode.contractType}.tgz", "/opt/profile")
                         }
                         applicationDescriptor.components.foreach {
                             component =>
-                                extractFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"components/${component.componentType}.tgz", "/opt/profile")
+                                Util.extractFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"components/${component.componentType}.tgz", "/opt/profile")
                         }
                 }
                 Option(
@@ -197,7 +191,7 @@ class EventsMonitor(
           .flatMap { file =>
               logger.info(s"file is ${file.getName}")
               val filename = file.getName.split('.')(0)
-              readFromTarAs[ApplicationDescriptor](file.toPath, s"$filename.json")
+              Util.readFromTarAs[ApplicationDescriptor](file.toPath, s"$filename.json")
                 .map(_.copy(applicationType = filename))
                 .map { applicationDescriptor =>
                     val applicationDescriptorJson = Util.codec.toJson(applicationDescriptor)
@@ -220,45 +214,9 @@ class EventsMonitor(
           .flatMap { file =>
               logger.info(s"file is ${file.getName}")
               val filename = s"${file.getName.split('.')(0)}.json"
-              readFromTarAs[CustomComponentDescriptor](file.toPath, filename)
+              Util.readFromTarAs[CustomComponentDescriptor](file.toPath, filename)
           }
     }
-
-    private def readFromTarAs[T: ClassTag](filePath: Path, filename: String): Option[T] = {
-        val targetClazz = classTag[T].runtimeClass.asInstanceOf[Class[T]]
-        withResources(
-            new TarArchiveInputStream(
-                new GzipCompressorInputStream(
-                    Files.newInputStream(filePath)
-                )
-            )
-        ) { inputStream =>
-            Util.findInTar(inputStream, filename)(descriptorInputStream =>
-                Util.codec.fromJson(new InputStreamReader(descriptorInputStream), targetClazz)
-            )
-        }
-    }
-
-    private def extractFileFromTar(tarPath: String, filename: String, destPath: String): Unit = {
-        withResources(
-            new TarArchiveInputStream(
-                new GzipCompressorInputStream(
-                    Files.newInputStream(Paths.get(tarPath))
-                )
-            )
-        ) { inputStream =>
-            Util.findInTar(inputStream, filename) { in =>
-                val out = new FileOutputStream(s"$destPath/$filename")
-                try {
-                    IO.copy(in, out)
-                }
-                finally {
-                    out.close()
-                }
-            }
-        }
-    }
-
 
     override def run(): Unit = {
         logger.info("Events monitor started")
