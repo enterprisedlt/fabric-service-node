@@ -39,6 +39,7 @@ serviceID=`docker run -d \
  --volume=${PROFILE_PATH}/hosts:/etc/hosts \
  --volume=${PROFILE_PATH}:/opt/profile \
  --volume=${SERVICE_NODE_HOME}/target/assembly:/opt/service \
+ --volume=${SERVICE_NODE_HOME}/fsn-components/:/opt/service/fsn-components/ \
  --volume=/var/run/:/host/var/run/ \
  --network=${FABRIC_SERVICE_NETWORK} \
  --name service.${ORG}.${DOMAIN} \

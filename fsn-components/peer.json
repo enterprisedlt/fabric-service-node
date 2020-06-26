@@ -1,0 +1,39 @@
+{
+  "componentType": "peer",
+  "image": {
+    "name": "hyperledger/fabric-peer",
+    "tag": "1.4.2"
+  },
+  "command": "peer node start",
+  "workingDir": "/opt/gopath/src/github.com/hyperledger/fabric/peer",
+  "properties": [
+    {"key": "log_level","value": "INFO"},
+    {"key": "peer_port","value": "7051"},
+    {"key": "tls_enabled","value": "true"},
+    {"key": "gossip_leader_election","value": "true"},
+    {"key": "gossip_org_leader","value": "false"},
+    {"key": "profile_enabled","value": "false"}
+  ],
+  "environmentVariablesDescriptor":
+  [
+    {"key": "CORE_VM_ENDPOINT","value": "unix:///host/var/run/docker.sock"},
+    {"key": "FABRIC_LOGGING_SPEC","value": "${log_level}"},
+    {"key": "CORE_PEER_TLS_ENABLED","value": "${tls_enabled}"},
+    {"key": "CORE_PEER_GOSSIP_USELEADERELECTION","value": "${gossip_leader_election}"},
+    {"key": "CORE_PEER_GOSSIP_ORGLEADER","value": "${gossip_org_leader}"},
+    {"key": "CORE_PEER_PROFILE_ENABLED","value": "${profile_enabled}"},
+    {"key": "CORE_PEER_TLS_CERT_FILE","value": "/etc/hyperledger/fabric/tls/server.crt"},
+    {"key": "CORE_PEER_TLS_KEY_FILE","value": "/etc/hyperledger/fabric/tls/server.key"},
+    {"key": "CORE_PEER_TLS_ROOTCERT_FILE","value": "/etc/hyperledger/fabric/tls/ca.crt"},
+    {"key": "CORE_PEER_ID","value": "${component_full_name}"},
+    {"key": "CORE_PEER_ADDRESS","value": "${component_full_name}:${peer_port}"},
+    {"key": "CORE_PEER_LISTENADDRESS","value": "0.0.0.0:${peer_port}"}
+  ],
+  "portBindDescriptor": [
+    {"externalPort":"${peer_port}", "internalPort":"${peer_port}"}
+  ],
+  "volumeBindDescriptor": [
+    {"externalHost":"crypto","internalHost": "/opt/crypto-config/"},
+    {"externalHost":"wallet","internalHost": "/opt/cnft/wallet/"}
+  ]
+}

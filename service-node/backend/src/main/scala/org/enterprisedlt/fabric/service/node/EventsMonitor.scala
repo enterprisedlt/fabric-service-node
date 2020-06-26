@@ -1,13 +1,13 @@
 package org.enterprisedlt.fabric.service.node
 
-import java.io.{File, FileOutputStream}
+import java.io.{File, FileOutputStream, FileReader}
 import java.nio.charset.StandardCharsets
 
 import com.google.gson.GsonBuilder
 import org.enterprisedlt.fabric.service.model.{ApplicationDistributive, ApplicationInvite, Contract}
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.model.FabricServiceStateHolder.StateChangeFunction
-import org.enterprisedlt.fabric.service.node.model.{ApplicationDescriptor, FabricServiceStateFull, FabricServiceStateHolder, GlobalState}
+import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.shared._
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -220,17 +220,14 @@ class EventsMonitor(
           .listFiles()
           .filter(_.getName.endsWith(".tgz"))
           .flatMap { file =>
-              logger.info(s"file is ${file.getName}")
               val filename = s"${file.getName.split('.')(0)}.json"
               Util.readFromTarAs[CustomComponentDescriptor](file.toPath, filename)
           } ++
           fsnComponentPath
             .listFiles()
-            .filter(_.getName.endsWith(".tgz"))
-            .flatMap { file =>
-                logger.info(s"file is ${file.getName}")
-                val filename = s"${file.getName.split('.')(0)}.json"
-                Util.readFromTarAs[CustomComponentDescriptor](file.toPath, filename)
+            .filter(_.getName.endsWith(".json"))
+            .map { file =>
+                Util.codec.fromJson(new FileReader(file.getAbsolutePath), classOf[CustomComponentDescriptor])
             }
     }
 
