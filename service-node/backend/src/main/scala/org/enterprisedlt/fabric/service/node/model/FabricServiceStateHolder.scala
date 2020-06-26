@@ -1,7 +1,9 @@
 package org.enterprisedlt.fabric.service.node.model
 
+import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantLock
 
+import org.enterprisedlt.fabric.service.node.FabricNetworkManager
 import org.enterprisedlt.fabric.service.node.shared._
 
 /**
@@ -90,6 +92,19 @@ object FabricServiceStateHolder {
         } finally lock.unlock()
     }
 
+    private val _globalState = new AtomicReference[GlobalState]()
+
+    def globalState: Option[GlobalState] = Option(_globalState.get())
+
+    def initGlobalState(globalState: GlobalState): Unit = this._globalState.set(globalState)
+
+
+//    def cleanup(): Unit = {
+//        globalState.foreach { state =>
+//            state.eventsMonitor.shutdown()
+//        }
+//    }
+
 }
 
 
@@ -103,4 +118,11 @@ case class FabricServiceStateFull(
         contractInvitations = Array.empty[ContractInvitation],
         applicationInvitations = Array.empty[ApplicationInvitation]
     )
+)
+
+case class GlobalState(
+    networkManager: FabricNetworkManager,
+    network: NetworkConfig,
+    networkName: String,
+//    eventsMonitor: EventsMonitor
 )

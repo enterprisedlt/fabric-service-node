@@ -7,7 +7,7 @@ import com.google.gson.GsonBuilder
 import org.enterprisedlt.fabric.service.model.{ApplicationDistributive, ApplicationInvite, Contract}
 import org.enterprisedlt.fabric.service.node.flow.Constant.{ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.model.FabricServiceStateHolder.StateChangeFunction
-import org.enterprisedlt.fabric.service.node.model.{ApplicationDescriptor, FabricServiceStateFull, FabricServiceStateHolder}
+import org.enterprisedlt.fabric.service.node.model.{ApplicationDescriptor, FabricServiceStateFull, FabricServiceStateHolder, GlobalState}
 import org.enterprisedlt.fabric.service.node.shared._
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -18,8 +18,7 @@ import scala.util.Try
  * @author Maxim Fedin
  */
 class EventsMonitor(
-    eventPullingInterval: Long, //Ms
-    networkManager: FabricNetworkManager
+    eventPullingInterval: Long //Ms
 ) extends Thread("EventsMonitor") {
     @volatile private var working = true
     private val logger: Logger = LoggerFactory.getLogger(this.getClass)
@@ -27,6 +26,10 @@ class EventsMonitor(
 
     val customComponentsPath: File = new File(s"/opt/profile/components/").getAbsoluteFile
     if (!customComponentsPath.exists()) customComponentsPath.mkdirs()
+    val fsnComponentPath: File = new File(s"/opt/service/fsn-components/").getAbsoluteFile
+    if (!fsnComponentPath.exists()) fsnComponentPath.mkdirs()
+
+    FabricServiceStateHolder.updateStateFullOption(updateCustomComponentDescriptors())
 
     def checkUpdateState(): Unit = FabricServiceStateHolder.updateStateFullOption(
         FabricServiceStateHolder.compose(
@@ -38,61 +41,64 @@ class EventsMonitor(
     )
 
     def updateApplicationInvitations(): StateChangeFunction = { current: FabricServiceStateFull =>
-        val applicationInvs = for {
-            queryResult <- networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listApplicationInvites")
-            contracts <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
-            applicationInvitations <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[ApplicationInvite]])).toEither.left.map(_.getMessage)
-        } yield {
-            applicationInvitations.map { application =>
-                ApplicationInvitation(
-                    initiator = application.founder,
-                    name = application.name,
-                    applicationType = application.applicationType,
-                    applicationVersion = application.version,
-                    participants = application.participants,
+        FabricServiceStateHolder.globalState.flatMap { state =>
+            val applicationInvs = for {
+                queryResult <- state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listApplicationInvites")
+                contracts <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
+                applicationInvitations <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[ApplicationInvite]])).toEither.left.map(_.getMessage)
+            } yield {
+                applicationInvitations.map { application =>
+                    ApplicationInvitation(
+                        initiator = application.founder,
+                        name = application.name,
+                        applicationType = application.applicationType,
+                        applicationVersion = application.version,
+                        participants = application.participants,
 
-                )
+                    )
+                }
+            }
+            applicationInvs match {
+                case Right(applicationInvs) if current.events.applicationInvitations.length != applicationInvs.length =>
+                    Option(current.copy(events = current.events.copy(applicationInvitations = applicationInvs)))
+
+                case Left(msg) =>
+                    logger.warn(msg)
+                    None
+
+                case _ => None
             }
         }
-        applicationInvs match {
-            case Right(applicationInvs) if current.events.applicationInvitations.length != applicationInvs.length =>
-                Option(current.copy(events = current.events.copy(applicationInvitations = applicationInvs)))
-
-            case Left(msg) =>
-                logger.warn(msg)
-                None
-
-            case _ => None
-        }
-
     }
 
     def updateContractInvitations(): StateChangeFunction = { current: FabricServiceStateFull =>
-        val contractInvs = for {
-            queryResult <- networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContracts")
-            contracts <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
-            contractInvitations <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[Contract]])).toEither.left.map(_.getMessage)
-        } yield {
-            contractInvitations.map {
-                contract =>
-                    ContractInvitation(
-                        initiator = contract.founder,
-                        name = contract.name,
-                        chainCodeName = contract.contractType,
-                        chainCodeVersion = contract.version,
-                        participants = contract.participants,
-                    )
+        FabricServiceStateHolder.globalState.flatMap { state =>
+            val contractInvs = for {
+                queryResult <- state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContracts")
+                contracts <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
+                contractInvitations <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[Contract]])).toEither.left.map(_.getMessage)
+            } yield {
+                contractInvitations.map {
+                    contract =>
+                        ContractInvitation(
+                            initiator = contract.founder,
+                            name = contract.name,
+                            chainCodeName = contract.contractType,
+                            chainCodeVersion = contract.version,
+                            participants = contract.participants,
+                        )
+                }
             }
-        }
-        contractInvs match {
-            case Right(contractInvs) if current.events.contractInvitations.length != contractInvs.length =>
-                Option(current.copy(events = current.events.copy(contractInvitations = contractInvs)))
+            contractInvs match {
+                case Right(contractInvs) if current.events.contractInvitations.length != contractInvs.length =>
+                    Option(current.copy(events = current.events.copy(contractInvitations = contractInvs)))
 
-            case Left(msg) =>
-                logger.warn(msg)
-                None
+                case Left(msg) =>
+                    logger.warn(msg)
+                    None
 
-            case _ => None
+                case _ => None
+            }
         }
     }
 
@@ -113,69 +119,71 @@ class EventsMonitor(
 
 
     def updateApplications(): StateChangeFunction = { current: FabricServiceStateFull =>
-        val apps = for {
-            applicationDescriptors <- Try(getApplicationDescriptors).toEither.left.map(_.getMessage)
-            applications <- getApplications
-        } yield {
-            applicationDescriptors.map { applicationDescriptor =>
-                val status = if (applications.exists(_.applicationType == applicationDescriptor.applicationType)) "Published" else "Downloaded"
-                logger.info(s"status $status for ${applicationDescriptor.applicationType}")
-                ApplicationState(
-                    applicationName = applicationDescriptor.applicationName,
-                    applicationType = applicationDescriptor.applicationType,
-                    status = status,
-                    applicationRoles = applicationDescriptor.roles,
-                    properties = applicationDescriptor.properties,
-                    contracts = applicationDescriptor.contracts,
-                    components = applicationDescriptor.components
-                )
-            } ++ applications
-              .filterNot { application =>
-                  applicationDescriptors.exists(_.applicationName == application.applicationName)
-              }.map { application =>
-                ApplicationState(
-                    applicationName = application.applicationName,
-                    applicationType = application.applicationType,
-                    status = "Not Downloaded",
-                    distributorAddress = application.componentsDistributorAddress
-                )
-            }
-        }
-        apps match {
-            case Right(apps) if current.applicationState.length != apps.length || !current.applicationState.exists(app =>
-                apps.exists(application => application.applicationType == app.applicationType && application.status == app.status)) =>
-                logger.info(s"apps ${apps.mkString(" ")}")
-                val applicationDescriptors = getApplicationDescriptors
-                applicationDescriptors.foreach {
-                    applicationDescriptor =>
-                        applicationDescriptor.contracts.foreach {
-                            chaincode =>
-                                Util.extractFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"chain-code/${chaincode.contractType}.json", "/opt/profile")
-                                Util.extractFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"chain-code/${chaincode.contractType}.tgz", "/opt/profile")
-                        }
-                        applicationDescriptor.components.foreach {
-                            component =>
-                                Util.extractFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"components/${component.componentType}.tgz", "/opt/profile")
-                        }
+        FabricServiceStateHolder.globalState.flatMap { state =>
+            val apps = for {
+                applicationDescriptors <- Try(getApplicationDescriptors).toEither.left.map(_.getMessage)
+                applications <- getApplications(state)
+            } yield {
+                applicationDescriptors.map { applicationDescriptor =>
+                    val status = if (applications.exists(_.applicationType == applicationDescriptor.applicationType)) "Published" else "Downloaded"
+                    logger.info(s"status $status for ${applicationDescriptor.applicationType}")
+                    ApplicationState(
+                        applicationName = applicationDescriptor.applicationName,
+                        applicationType = applicationDescriptor.applicationType,
+                        status = status,
+                        applicationRoles = applicationDescriptor.roles,
+                        properties = applicationDescriptor.properties,
+                        contracts = applicationDescriptor.contracts,
+                        components = applicationDescriptor.components
+                    )
+                } ++ applications
+                  .filterNot { application =>
+                      applicationDescriptors.exists(_.applicationName == application.applicationName)
+                  }.map { application =>
+                    ApplicationState(
+                        applicationName = application.applicationName,
+                        applicationType = application.applicationType,
+                        status = "Not Downloaded",
+                        distributorAddress = application.componentsDistributorAddress
+                    )
                 }
-                Option(
-                    current.copy(
-                        applicationState = apps,
-                        applications = applicationDescriptors)
-                )
+            }
+            apps match {
+                case Right(apps) if current.applicationState.length != apps.length || !current.applicationState.exists(app =>
+                    apps.exists(application => application.applicationType == app.applicationType && application.status == app.status)) =>
+                    logger.info(s"apps ${apps.mkString(" ")}")
+                    val applicationDescriptors = getApplicationDescriptors
+                    applicationDescriptors.foreach {
+                        applicationDescriptor =>
+                            applicationDescriptor.contracts.foreach {
+                                chaincode =>
+                                    Util.extractFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"chain-code/${chaincode.contractType}.json", "/opt/profile")
+                                    Util.extractFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"chain-code/${chaincode.contractType}.tgz", "/opt/profile")
+                            }
+                            applicationDescriptor.components.foreach {
+                                component =>
+                                    Util.extractFileFromTar(s"/opt/profile/application-distributives/${applicationDescriptor.applicationType}.tgz", s"components/${component.componentType}.tgz", "/opt/profile")
+                            }
+                    }
+                    Option(
+                        current.copy(
+                            applicationState = apps,
+                            applications = applicationDescriptors)
+                    )
 
-            case Left(msg) =>
-                logger.warn(msg)
-                None
+                case Left(msg) =>
+                    logger.warn(msg)
+                    None
 
-            case _ => None
+                case _ => None
+            }
         }
     }
 
     //    ================================================================================
-    private def getApplications: Either[String, Array[ApplicationDistributive]] = {
+    private def getApplications(state: GlobalState): Either[String, Array[ApplicationDistributive]] = {
         for {
-            queryResult <- networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listApplicationDistributives")
+            queryResult <- state.networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listApplicationDistributives")
             applications <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
             applications <- Try((new GsonBuilder).create().fromJson(applications, classOf[Array[ApplicationDistributive]])).toEither.left.map(_.getMessage)
         } yield applications
@@ -215,7 +223,15 @@ class EventsMonitor(
               logger.info(s"file is ${file.getName}")
               val filename = s"${file.getName.split('.')(0)}.json"
               Util.readFromTarAs[CustomComponentDescriptor](file.toPath, filename)
-          }
+          } ++
+          fsnComponentPath
+            .listFiles()
+            .filter(_.getName.endsWith(".tgz"))
+            .flatMap { file =>
+                logger.info(s"file is ${file.getName}")
+                val filename = s"${file.getName.split('.')(0)}.json"
+                Util.readFromTarAs[CustomComponentDescriptor](file.toPath, filename)
+            }
     }
 
     override def run(): Unit = {

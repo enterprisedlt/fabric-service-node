@@ -218,7 +218,7 @@ object Dashboard {
                                     id = "component-form",
                                     _ =>
                                         <.div(
-                                            ComponentFormDashboard(s, State.componentCandidate, g),
+                                            ComponentForm(s, State.componentCandidate, g.info),
                                             <.div(^.className := "form-group mt-1",
                                                 <.button(
                                                     ^.className := "btn btn-sm btn-outline-secondary",

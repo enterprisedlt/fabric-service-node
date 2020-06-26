@@ -9,7 +9,7 @@ import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.configuration.OrganizationConfig
 import org.enterprisedlt.fabric.service.node.cryptography.{FabricCryptoMaterial, Orderer, Peer}
 import org.enterprisedlt.fabric.service.node.flow.Constant._
-import org.enterprisedlt.fabric.service.node.model.{CCLanguage, FabricServiceStateHolder}
+import org.enterprisedlt.fabric.service.node.model.{CCLanguage, FabricServiceStateHolder, GlobalState}
 import org.enterprisedlt.fabric.service.node.process._
 import org.enterprisedlt.fabric.service.node.proto._
 import org.enterprisedlt.fabric.service.node.shared.{BootstrapOptions, FabricServiceState}
@@ -27,7 +27,6 @@ object Bootstrap {
         cryptography: CryptoManager,
         hostsManager: HostsManager,
         externalAddress: Option[ExternalAddress],
-        profilePath: String,
         processManager: ProcessManager,
     ): GlobalState = {
         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
@@ -207,7 +206,6 @@ object Bootstrap {
         //
         logger.info(s"[ $organizationFullName ] - Bootstrap done.")
         FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.Ready))
-        val eventsMonitor = new EventsMonitor(1000, network).startup()
-        GlobalState(network, bootstrapOptions.network, bootstrapOptions.networkName, eventsMonitor)
+        GlobalState(network, bootstrapOptions.network, bootstrapOptions.networkName)
     }
 }

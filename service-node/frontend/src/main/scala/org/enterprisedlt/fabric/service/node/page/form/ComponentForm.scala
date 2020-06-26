@@ -5,7 +5,7 @@ import japgolly.scalajs.react.vdom.all.{className, id, option}
 import japgolly.scalajs.react.vdom.html_<^.{^, _}
 import japgolly.scalajs.react.{Callback, CallbackTo, ReactEventFromInput}
 import monocle.macros.Lenses
-import org.enterprisedlt.fabric.service.node.Ready
+import org.enterprisedlt.fabric.service.node.BaseInfo
 import org.enterprisedlt.fabric.service.node.model.ComponentCandidate
 import org.enterprisedlt.fabric.service.node.shared.{Box, Property}
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
@@ -20,10 +20,10 @@ import org.scalajs.dom.html.Select
     propertyCandidate: Property
 )
 
-object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready, ComponentFormState]("register-component-form") {
+object ComponentForm extends StateFullFormExt[ComponentCandidate, BaseInfo, ComponentFormState]("register-component-form") {
 
-    private def stateFor(componentType: String, data: Ready): ComponentFormState = {
-        data.events.customComponentDescriptors.find(_.componentType == componentType).map { componentDescriptor =>
+    private def stateFor(componentType: String, info: BaseInfo): ComponentFormState = {
+        info.customComponentDescriptors.find(_.componentType == componentType).map { componentDescriptor =>
             ComponentFormState(
                 applicationProperties = componentDescriptor.properties,
                 propertyCandidate = componentDescriptor.properties.headOption.getOrElse(Property("", ""))
@@ -39,19 +39,19 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
         )
     }
 
-    override def initState(c: ComponentCandidate, data: Ready): ComponentFormState = stateFor(c.componentType, data)
+    override def initState(c: ComponentCandidate, info: BaseInfo): ComponentFormState = stateFor(c.componentType, info)
 
-    override def render(s: ComponentFormState, p: ComponentCandidate, data: Ready)
+    override def render(s: ComponentFormState, p: ComponentCandidate, info: BaseInfo)
       (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
     : VdomNode =
         <.div(
             <.div(^.className := "form-group row",
                 <.label(^.`for` := "componentType", ^.className := "col-sm-4 col-form-label", "Type"),
-                <.div(^.className := "col-sm-8", renderComponentType(p, data.customComponentDescriptors.map(_.componentType), data))
+                <.div(^.className := "col-sm-8", renderComponentType(p, info.customComponentDescriptors.map(_.componentType), info))
             ),
             <.div(^.className := "form-group row",
                 <.label(^.`for` := "componentBox", ^.className := "col-sm-4 col-form-label", "Server"),
-                <.div(^.className := "col-sm-8", renderBoxesList(p, data.info.boxes))
+                <.div(^.className := "col-sm-8", renderBoxesList(p, info.boxes))
             ),
             <.div(^.className := "form-group row",
                 <.label(^.`for` := "componentName", ^.className := "col-sm-4 col-form-label", "Name"),
@@ -60,7 +60,7 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
                         bind(p) := ComponentCandidate.name
                     ),
                     <.div(^.className := "input-group-append",
-                        <.span(^.className := "input-group-text form-control-sm", data.info.orgFullName)
+                        <.span(^.className := "input-group-text form-control-sm", info.orgFullName)
                     )
                 )
             ),
@@ -129,22 +129,22 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
         modP(ComponentCandidate.properties.modify(_ :+ s.propertyCandidate))
 
 
-    def onComponentTypeChange(data: Ready)(event: ReactEventFromInput)
+    def onComponentTypeChange(info: BaseInfo)(event: ReactEventFromInput)
       (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
     : CallbackTo[Unit] = {
         val v: String = event.target.value
         modP(_.copy(
             componentType = v
-        )) >> modS(_ => stateFor(v, data))
+        )) >> modS(_ => stateFor(v, info))
     }
 
-    private def renderComponentType(p: ComponentCandidate, componentTypes: Array[String], data: Ready)
+    private def renderComponentType(p: ComponentCandidate, componentTypes: Array[String], info: BaseInfo)
       (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
     : VdomTagOf[Select] = {
         <.select(className := "form-control form-control-sm",
             id := "componentType",
             bind(p) := ComponentCandidate.componentType,
-            ^.onChange ==> onComponentTypeChange(data),
+            ^.onChange ==> onComponentTypeChange(info),
             componentTypeOptions(p, componentTypes)
         )
     }

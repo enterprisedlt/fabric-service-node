@@ -101,6 +101,17 @@ object NetworkConfig {
 }
 
 // ------------------------------------------------------------------------
+@Lenses case class CustomComponentConfig(
+    box: String,
+    name: String,
+    componentType: String,
+    properties: Array[Property]
+)
+
+object CustomComponentConfig {
+    implicit val rw: RW[CustomComponentConfig] = macroRW
+}
+
 @Lenses case class Invite(
     networkName: String,
     address: String,
@@ -380,7 +391,7 @@ object ContractsState {
 @Lenses case class CustomComponentState(
     componentName: String,
     componentType: String,
-    environmentVariables: Array[Property]
+    properties: Array[Property]
 )
 
 object CustomComponentState {

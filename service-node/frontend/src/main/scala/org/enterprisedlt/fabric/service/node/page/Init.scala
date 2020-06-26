@@ -14,6 +14,7 @@ import org.enterprisedlt.fabric.service.node.util.DataFunction._
 import org.enterprisedlt.fabric.service.node.util.Html.data
 import org.scalajs.dom.html.Div
 import org.scalajs.dom.raw.{File, FileReader}
+import org.scalajs.dom.FormData
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js.UndefOr
@@ -36,6 +37,9 @@ object Init {
         // join
         inviteFileName: String,
         inviteFile: File,
+        // upload component
+        componentFile: File,
+        componentName: String,
     )
 
     private val component = ScalaComponent.builder[Unit]("initial-screen")
@@ -62,6 +66,9 @@ object Init {
               //
               inviteFileName = "",
               inviteFile = null,
+              //
+              componentFile = null,
+              componentName = "Choose file",
           )
       )
       .renderBackend[Backend]
@@ -361,7 +368,7 @@ object Init {
                                         id = "component-form",
                                         actionForm = _ =>
                                             <.div(
-                                                ComponentFormInit(s, State.componentCandidate, g.info),
+                                                ComponentForm(s, State.componentCandidate, g.info),
                                                 <.div(^.className := "form-group mt-1",
                                                     <.button(
                                                         ^.className := "btn btn-sm btn-outline-secondary",
@@ -381,7 +388,38 @@ object Init {
                                                     )
                                                 )
                                             )
-                                    )
+                                    ),
+                                    PageAction(
+                                        name = "Upload",
+                                        id = "upload-component",
+                                        actionForm = progress =>
+                                            <.div(
+                                                <.div(^.className := "form-group row",
+                                                    <.label(^.className := "col-sm-4 col-form-label", "Component"),
+                                                    <.div(^.className := "input-group input-group-sm col-sm-8",
+                                                        <.div(^.className := "custom-file",
+                                                            <.input(^.`type` := "file", ^.className := "custom-file-input",
+                                                                ^.onChange ==> changeCustomComponentFile
+                                                            ),
+                                                            <.label(^.className := "custom-file-label", s.componentName)
+                                                        )
+                                                    )
+                                                ),
+                                                <.div(^.className := "form-group mt-1",
+                                                    <.button(
+                                                        ^.className := "btn btn-sm btn-outline-secondary",
+                                                        data.toggle := "collapse", data.target := "#upload-component",
+                                                        ^.aria.expanded := true, ^.aria.controls := "upload-component",
+                                                        "Cancel"
+                                                    ),
+                                                    <.button(
+                                                        ^.className := "btn btn-sm btn-outline-success float-right",
+                                                        ^.onClick --> progress(uploadCustomComponent(s)),
+                                                        "Upload component",
+                                                    )
+                                                )
+                                            )
+                                    ),
                                 ),
                             ),
                         )
@@ -391,10 +429,18 @@ object Init {
             case _ => <.div()
         }
 
-        //        def boxInfo(box: Box): String = {
-        //            box.information.details
-        //            if (box.information.externalAddress.trim.nonEmpty) box.information.externalAddress else "local"
-        //        }
+        def changeCustomComponentFile(event: ReactEventFromInput): CallbackTo[Unit] = {
+            val file: UndefOr[File] = event.target.files(0)
+            file.map { f =>
+                $.modState(x => x.copy(componentName = f.name, componentFile = f))
+            }.getOrElse(Callback())
+        }
+
+        def uploadCustomComponent(s: State)(r: Callback): Callback = Callback.future {
+            val formData = new FormData
+            formData.append("componentFile", s.componentFile)
+            ServiceNodeRemote.uploadCustomComponent(formData).map(_ => r)
+        }
     }
 
     def apply(): Unmounted[Unit, State, Backend] = component()

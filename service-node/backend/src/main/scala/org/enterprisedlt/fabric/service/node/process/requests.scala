@@ -1,22 +1,15 @@
 package org.enterprisedlt.fabric.service.node.process
 
-import org.enterprisedlt.fabric.service.node.shared.Property
+import org.enterprisedlt.fabric.service.node.shared.CustomComponentConfig
 
 /**
  * @author Alexey Polubelov
  */
 // =================================================================================================================
 
-case class CustomComponentRequest(
-    box: String,
-    name: String,
-    componentType: String,
-    properties: Array[Property]
-)
-
 case class StartCustomComponentRequest(
     serviceNodeName: String,
-    request: CustomComponentRequest,
+    request: CustomComponentConfig,
     crypto: CustomComponentCerts
 )
 

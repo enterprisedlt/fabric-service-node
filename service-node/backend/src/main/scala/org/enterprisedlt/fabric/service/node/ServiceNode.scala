@@ -68,10 +68,11 @@ object ServiceNode extends App {
     )
     private val processManager = new ProcessManager
     private val cryptoManager = new FileBasedCryptoManager(organizationConfig, "/opt/profile/crypto", AdminPassword)
+    private val eventsMonitor = new EventsMonitor(1000).startup()
     private val restEndpoint = new RestEndpoint(
         ServiceBindPort, ComponentsDistributorBindPort, ServiceExternalAddress, organizationConfig, cryptoManager,
         hostsManager = new HostsManager("/opt/profile/hosts", ServiceExternalAddress.map(_.host)),
-        ProfilePath, processManager
+        ProfilePath, processManager, eventsMonitor
     )
     //
     val customComponentsPath = new File(s"/opt/profile/components/").getAbsoluteFile
@@ -122,7 +123,7 @@ object ServiceNode extends App {
         Runtime.getRuntime.addShutdownHook(new Thread("shutdown-hook") {
             override def run(): Unit = {
                 logger.info("Shutting down...")
-                restEndpoint.cleanup()
+                eventsMonitor.shutdown()
                 server.stop()
                 componentsDistributorServer.stop()
                 logger.info("Shutdown complete.")
