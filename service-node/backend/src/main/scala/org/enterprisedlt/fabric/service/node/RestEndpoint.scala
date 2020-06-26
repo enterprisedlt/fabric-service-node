@@ -155,25 +155,24 @@ class RestEndpoint(
             queryResult <- {
                 logger.info(s"Querying application with getApplication...")
                 network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getApplicationInvite", joinReq.name, joinReq.founder)
-                  .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getApplicationInvite method in system chain-code"))
+                  .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getAppli§cationInvite method in system chain-code"))
             }
-            applicationDetails <- Try(Util.codec.fromJson(queryResult, classOf[ApplicationInvite])).toEither.left.map(_.getMessage)
+            applicationDetails <- Util.try2EitherWithLogging(Util.codec.fromJson(queryResult, classOf[ApplicationInvite]))
             applicationDescriptorPath = s"/opt/profile/applications/${applicationDetails.applicationType}.json"
             _ <- ensureApplicationDownloaded(applicationDetails.applicationType, applicationDescriptorPath)
-            applicationDescriptor <- Try(
-                Util.codec.fromJson(new FileReader(applicationDescriptorPath)
-                    , classOf[ApplicationDescriptor])
-            ).toEither.left.map(_.getMessage)
+            applicationDescriptor <- Util.try2EitherWithLogging(
+                Util.codec.fromJson(new FileReader(applicationDescriptorPath), classOf[ApplicationDescriptor])
+            )
             _ <- applicationDescriptor.contracts.foldRight[Either[String, String]](Right("")) { case (contract, current) =>
                 logger.info(s"Contract is $contract")
                 current.flatMap { _ =>
                     val filePath = s"/opt/profile/chain-code/${contract.contractType}.tgz"
                     for {
                         chaincodeFile <- Option(new File(filePath)).filter(_.exists()).toRight(s"File $filePath does not exist ")
-                        chaincodeDescriptor <- Try(Util.codec.fromJson(
+                        chaincodeDescriptor <- Util.try2EitherWithLogging(Util.codec.fromJson(
                             new FileReader(s"/opt/profile/chain-code/${contract.contractType}.json"),
                             classOf[ContractDeploymentDescriptor]
-                        )).toEither.left.map(_.getMessage)
+                        ))
                         chainCodePkg = new BufferedInputStream(new FileInputStream(chaincodeFile))
                         _ = logger.info(s"[ $organizationFullName ] - Installing ${contract.name}:${applicationDetails.version} chaincode ...")
                         _ <- network.installChainCode(
@@ -190,7 +189,7 @@ class RestEndpoint(
                             joinReq.name,
                             joinReq.founder
                         )
-                        invokeAwait <- Try(invokeResultFuture.get()).toEither.left.map(_.getMessage)
+                        invokeAwait <- Util.try2EitherWithLogging(invokeResultFuture.get())
                     } yield s"invokeResult is $invokeAwait"
                 }
             }
@@ -206,7 +205,7 @@ class RestEndpoint(
                     )
                     val request = CustomComponentRequest(
                         box = joinReq.box,
-                        name = s"${joinReq.name}.${component.componentType}.${organizationFullName}",
+                        name = s"${joinReq.name}.${component.componentType}.$organizationFullName",
                         componentType = component.componentType,
                         properties = enrichedProperties
                     )
@@ -220,7 +219,7 @@ class RestEndpoint(
                 joinReq.name,
                 joinReq.founder
             )
-            invokeAwait <- Try(invokeResultFuture.get()).toEither.left.map(_.getMessage)
+            invokeAwait <- Util.try2EitherWithLogging(invokeResultFuture.get())
         } yield {
             FabricServiceStateHolder.updateStateFullOption(
                 FabricServiceStateHolder.compose(
@@ -273,7 +272,7 @@ class RestEndpoint(
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
             distributiveBase64 <- distributorClient.getApplicationDistributive(request.applicationFileName)
-            applicationDistributive <- Try(Base64.getDecoder.decode(distributiveBase64)).toEither.left.map(_.getMessage)
+            applicationDistributive <- Util.try2EitherWithLogging(Base64.getDecoder.decode(distributiveBase64))
         } yield {
             Util.storeToFile(s"$destinationDir/${request.applicationFileName}.tgz", applicationDistributive)
             logger.info(s"Application ${request.applicationFileName} has been successfully downloaded")
@@ -320,7 +319,7 @@ class RestEndpoint(
             network = state.networkManager
             organization <- network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listOrganizations")
             res <- organization.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
-            r <- Try((new GsonBuilder).create().fromJson(res, classOf[Array[Organization]])).toEither.left.map(_.getMessage)
+            r <- Util.try2EitherWithLogging((new GsonBuilder).create().fromJson(res, classOf[Array[Organization]]))
         } yield r
     }
 
@@ -332,7 +331,7 @@ class RestEndpoint(
             network = state.networkManager
             queryResult <- network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listCollections")
             collections <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
-            r <- Try((new GsonBuilder).create().fromJson(collections, classOf[Array[String]])).toEither.left.map(_.getMessage)
+            r <- Util.try2EitherWithLogging((new GsonBuilder).create().fromJson(collections, classOf[Array[String]]))
         } yield r
     }
 
@@ -348,8 +347,7 @@ class RestEndpoint(
             }
             //TODO: password should be taken from request
             password = "join me"
-            key <- Try(cryptoManager.createServiceUserKeyStore(s"join-${System.currentTimeMillis()}", password))
-              .toEither.left.map(_.getMessage)
+            key <- Util.try2EitherWithLogging(cryptoManager.createServiceUserKeyStore(s"join-${System.currentTimeMillis()}", password))
             invite = Invite(
                 state.networkName,
                 address,
@@ -361,10 +359,8 @@ class RestEndpoint(
     @Get("/admin/create-user")
     def createUser(name: String): Either[String, Unit] = {
         logger.info(s"Creating new user $name ...")
-        Try(cryptoManager.createFabricUser(name))
-          .toEither
+        Util.try2EitherWithLogging(cryptoManager.createFabricUser(name))
           .map(_ => ())
-          .left.map(_.getMessage)
     }
 
 
@@ -372,13 +368,11 @@ class RestEndpoint(
     def getUserKey(name: String, password: String): Either[String, Array[Byte]] = {
         logger.info(s"Obtaining user key for $name ...")
         for {
-            keyStore <- Try(cryptoManager.getFabricUserKeyStore(name, password))
-              .toEither.left.map(_.getMessage)
+            keyStore <- Util.try2EitherWithLogging(cryptoManager.getFabricUserKeyStore(name, password))
             buffer = new ByteArrayOutputStream(1024)
-            _ <- Try(keyStore.store(buffer, password.toCharArray))
-              .toEither.left.map(_.getMessage)
-            result <- Try(buffer.toByteArray)
-              .toEither.left.map(_.getMessage)
+            _ <- Util.try2EitherWithLogging(keyStore.store(buffer, password.toCharArray))
+            result <- Util.try2EitherWithLogging(buffer.toByteArray)
+
         } yield result
     }
 
@@ -405,13 +399,12 @@ class RestEndpoint(
     def getBlockByNumber(channelName: String, blockNumber: String): Either[String, Array[Byte]] = {
         logger.info(s"Getting block number $blockNumber ...")
         for {
-            blockNumberLong <- Try(blockNumber.toLong)
-              .toEither.left.map(_.getMessage)
+            blockNumberLong <- Util.try2EitherWithLogging(blockNumber.toLong)
             state <- globalState.toRight("Node is not initialized yet")
             block <- state.networkManager.fetchChannelBlockByNum(channelName, blockNumberLong)
             buffer = new ByteArrayOutputStream(1024)
-            _ <- Try(block.writeTo(buffer)).toEither.left.map(_.getMessage)
-            result <- Try(buffer.toByteArray).toEither.left.map(_.getMessage)
+            _ <- Util.try2EitherWithLogging(block.writeTo(buffer))
+            result <- Util.try2EitherWithLogging(buffer.toByteArray)
         } yield result
     }
 
@@ -459,27 +452,24 @@ class RestEndpoint(
             queryResult <- state.networkManager
               .queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContracts")
             contracts <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
-            result <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[Contract]])).toEither.left.map(_.getMessage)
+            result <- Util.try2EitherWithLogging((new GsonBuilder).create().fromJson(contracts, classOf[Array[Contract]]))
         } yield result
     }
 
 
     @Get("/service/list-applications")
     def listApplications: Either[String, Array[ApplicationInfo]] = {
-        Try(FabricServiceStateHolder.fullState.deployedApplications)
-          .toEither.left.map(_.getMessage)
+        Util.try2EitherWithLogging(FabricServiceStateHolder.fullState.deployedApplications)
     }
 
     @Get("/service/list-application-state")
     def listApplicationState: Either[String, Array[ApplicationState]] = {
-        Try(FabricServiceStateHolder.fullState.applicationState)
-          .toEither.left.map(_.getMessage)
+        Util.try2EitherWithLogging(FabricServiceStateHolder.fullState.applicationState)
     }
 
     @Get("/service/list-custom-component-descriptors")
     def listCustomComponentDescriptors: Either[String, Array[CustomComponentDescriptor]] = {
-        Try(FabricServiceStateHolder.fullState.customComponentDescriptors)
-          .toEither.left.map(_.getMessage)
+        Util.try2EitherWithLogging(FabricServiceStateHolder.fullState.customComponentDescriptors)
     }
 
 
@@ -496,7 +486,7 @@ class RestEndpoint(
         logger.info("Listing contract packages...")
         val chaincodePath = new File(s"/opt/profile/chain-code/").getAbsoluteFile
         if (!chaincodePath.exists()) chaincodePath.mkdirs()
-        Try(
+        Util.try2EitherWithLogging(
             chaincodePath
               .listFiles()
               .filter(_.getName.endsWith(".json"))
@@ -515,7 +505,7 @@ class RestEndpoint(
                       )
                   }.toOption
               }
-        ).toEither.left.map(_.getMessage)
+        )
     }
 
 
@@ -539,7 +529,7 @@ class RestEndpoint(
         val start = System.currentTimeMillis()
         FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.BootstrapStarted))
         for {
-            gState <- Try(
+            gState <- Util.try2EitherWithLogging(
                 Bootstrap.bootstrapOrganization(
                     organizationConfig,
                     bootstrapOptions,
@@ -549,7 +539,7 @@ class RestEndpoint(
                     profilePath,
                     processManager,
                 )
-            ).toEither.left.map(e => s"Bootstrap failed: ${e.getMessage}")
+            )
             _ = init(gState)
             end = System.currentTimeMillis() - start
             _ = logger.info(s"Bootstrap done ($end ms)")
@@ -579,12 +569,9 @@ class RestEndpoint(
     def addToChannel(addToChannelRequest: AddOrgToChannelRequest): Either[String, String] = {
         for {
             state <- globalState.toRight("Node is not initialized yet")
-            caCerts <- Try(addToChannelRequest.organizationCertificates.caCerts.map(Util.base64Decode).toIterable)
-              .toEither.left.map(_.getMessage)
-            tlsCACerts <- Try(addToChannelRequest.organizationCertificates.tlsCACerts.map(Util.base64Decode).toIterable)
-              .toEither.left.map(_.getMessage)
-            adminCerts <- Try(addToChannelRequest.organizationCertificates.adminCerts.map(Util.base64Decode).toIterable)
-              .toEither.left.map(_.getMessage)
+            caCerts <- Util.try2EitherWithLogging(addToChannelRequest.organizationCertificates.caCerts.map(Util.base64Decode).toIterable)
+            tlsCACerts <- Util.try2EitherWithLogging(addToChannelRequest.organizationCertificates.tlsCACerts.map(Util.base64Decode).toIterable)
+            adminCerts <- Util.try2EitherWithLogging(addToChannelRequest.organizationCertificates.adminCerts.map(Util.base64Decode).toIterable)
             _ <- {
                 logger.info(s"Adding org to channel ${addToChannelRequest.mspId} ...")
                 state.networkManager.joinToChannel(
@@ -603,7 +590,7 @@ class RestEndpoint(
         val start = System.currentTimeMillis()
         FabricServiceStateHolder.update(_.copy(stateCode = FabricServiceState.JoinStarted))
         for {
-            gState <- Try(
+            gState <- Util.try2EitherWithLogging(
                 Join.join(
                     organizationConfig,
                     cryptoManager,
@@ -613,7 +600,7 @@ class RestEndpoint(
                     profilePath,
                     processManager,
                 )
-            ).toEither.left.map(_.getMessage)
+            )
             _ = init(gState)
             end = System.currentTimeMillis() - start
             _ = logger.info(s"Joined ($end ms)")
@@ -629,10 +616,10 @@ class RestEndpoint(
             _ = logger.info(s"[ $organizationFullName ] - Preparing ${upgradeContractRequest.name} chain code ...")
             filesBaseName = s"${upgradeContractRequest.contractType}-${upgradeContractRequest.version}"
             chainCodeName = s"${upgradeContractRequest.name}-${upgradeContractRequest.version}"
-            deploymentDescriptor <- Try(Util.codec.fromJson(
+            deploymentDescriptor <- Util.try2EitherWithLogging(Util.codec.fromJson(
                 new FileReader(s"/opt/profile/chain-code/$filesBaseName.json"),
                 classOf[ContractDeploymentDescriptor]
-            )).toEither.left.map(_.getMessage)
+            ))
             path = s"/opt/profile/chain-code/$filesBaseName.tgz"
             file <- Option(new File(path)).filter(_.exists()).toRight(s"File $filesBaseName.tgz doesn't exist")
             chainCodePkg <- Option(new BufferedInputStream(new FileInputStream(file))).toRight(s"Can't prepare cc pkg stream")
@@ -683,7 +670,7 @@ class RestEndpoint(
                     "upgradeContract",
                     Util.codec.toJson(contract))
             }
-            r <- Try(response.get()).toEither.left.map(_.getMessage)
+            r <- Util.try2EitherWithLogging(response.get())
         } yield {
             FabricServiceStateHolder.incrementVersion()
             s"Upgrading contract ${upgradeContractRequest.contractType} has been completed successfully $r"
@@ -701,10 +688,10 @@ class RestEndpoint(
             _ = logger.info(s"[ $organizationFullName ] - Preparing ${contractRequest.name} chain code ...")
             filesBaseName = s"${contractRequest.contractType}" // -${contractRequest.version}
             chainCodeName = s"${contractRequest.name}-${contractRequest.version}" //
-            deploymentDescriptor <- Try(Util.codec.fromJson(
+            deploymentDescriptor <- Util.try2EitherWithLogging(Util.codec.fromJson(
                 new FileReader(s"/opt/profile/chain-code/$filesBaseName.json"),
                 classOf[ContractDeploymentDescriptor]
-            )).toEither.left.map(_.getMessage)
+            ))
             path = s"/opt/profile/chain-code/$filesBaseName.tgz"
             file <- Option(new File(path)).filter(_.exists()).toRight(s"File $filesBaseName.tgz doesn't exist")
             chainCodePkg <- Option(new BufferedInputStream(new FileInputStream(file))).toRight(s"Can't prepare cc pkg stream")
@@ -759,7 +746,7 @@ class RestEndpoint(
                     Util.codec.toJson(contract)
                 )
             }
-            r <- Try(response.get()).toEither.left.map(_.getMessage)
+            r <- Util.try2EitherWithLogging(response.get())
         } yield {
             FabricServiceStateHolder.incrementVersion()
             s"Creating contract ${contractRequest.contractType} has been completed successfully $r"
@@ -781,8 +768,7 @@ class RestEndpoint(
             }
             contractDetails <- {
                 logger.info(s"queryResult is $queryResult")
-                Try(Util.codec.fromJson(queryResult, classOf[Contract]))
-                  .toEither.left.map(_.getMessage)
+                Util.try2EitherWithLogging(Util.codec.fromJson(queryResult, classOf[Contract]))
             }
             file <- {
                 val path = s"/opt/profile/chain-code/${contractDetails.contractType}.tgz"
@@ -805,7 +791,7 @@ class RestEndpoint(
                 joinReq.name,
                 joinReq.founder
             )
-            invokeAwait <- Try(invokeResultFuture.get()).toEither.left.map(_.getMessage)
+            invokeAwait <- Util.try2EitherWithLogging(invokeResultFuture.get())
         } yield s"invokeResult is $invokeAwait"
     }
 
@@ -850,7 +836,7 @@ class RestEndpoint(
                 delMessageRequest.messageKey,
                 delMessageRequest.sender
             )
-            invokeAwait <- Try(invokeResultFuture.get()).toEither.left.map(_.getMessage)
+            invokeAwait <- Util.try2EitherWithLogging(invokeResultFuture.get())
         } yield s"Message deleted $invokeAwait"
     }
 
@@ -905,11 +891,7 @@ class RestEndpoint(
     def getEvents: Either[String, Events] = {
         FabricServiceStateHolder.fullState.events
         logger.info(s"Querying events for ${organizationConfig.name}...")
-        Try(FabricServiceStateHolder.fullState.events).toEither.left.map { ex =>
-            val msg = s"Failed to query events: ${ex.getMessage}"
-            logger.error(msg, ex)
-            msg
-        }
+        Util.try2EitherWithLogging(FabricServiceStateHolder.fullState.events)
     }
 
     // ================================================================================================================
@@ -929,7 +911,7 @@ class RestEndpoint(
                     network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getApplicationDistributive", applicationType)
                       .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getApplication method in system chain-code"))
                 }
-                applicationDistributive <- Try(Util.codec.fromJson(queryResult, classOf[ApplicationDistributive])).toEither.left.map(_.getMessage)
+                applicationDistributive <- Util.try2EitherWithLogging(Util.codec.fromJson(queryResult, classOf[ApplicationDistributive]))
             } yield {
                 val request = DownloadApplicationRequest(
                     componentsDistributorUrl = applicationDistributive.componentsDistributorAddress,
