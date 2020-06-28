@@ -1,0 +1,41 @@
+{
+  "componentType": "osn",
+  "image": {
+    "name": "hyperledger/fabric-orderer",
+    "tag": "1.4.2"
+  },
+  "command": "orderer",
+  "workingDir": "/opt/gopath/src/github.com/hyperledger/fabric",
+  "properties": [
+    {"key": "log_level","value": "INFO"},
+    {"key": "osn_port","value": "7051"},
+    {"key": "tls_enabled","value": "true"},
+    {"key": "org","value": ""}
+  ],
+  "environmentVariablesDescriptor":
+  [
+    {"key": "FABRIC_LOGGING_SPEC","value": "${log_level}"},
+    {"key": "ORDERER_GENERAL_LISTENADDRESS","value": "0.0.0.0"},
+    {"key": "ORDERER_GENERAL_LISTENPORT","value": "${osn_port}"},
+    {"key": "ORDERER_GENERAL_GENESISMETHOD","value": "file"},
+    {"key": "ORDERER_GENERAL_GENESISFILE","value": "/var/hyperledger/orderer/orderer.genesis.block"},
+    {"key": "ORDERER_GENERAL_LOCALMSPID","value": "${org}"},
+    {"key": "ORDERER_GENERAL_LOCALMSPDIR","value": "/var/hyperledger/orderer/msp"},
+    {"key": "ORDERER_GENERAL_TLS_ENABLED","value": "${tls_enabled}"},
+    {"key": "ORDERER_GENERAL_TLS_PRIVATEKEY","value": "/var/hyperledger/orderer/tls/server.key"},
+    {"key": "ORDERER_GENERAL_TLS_CERTIFICATE","value": "/var/hyperledger/orderer/tls/server.crt"},
+    {"key": "ORDERER_GENERAL_TLS_ROOTCAS","value": "[/var/hyperledger/orderer/tls/ca.crt]"},
+    {"key": "ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE","value": "/var/hyperledger/orderer/tls/server.crt"},
+    {"key": "ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY","value": "/var/hyperledger/orderer/tls/server.key"},
+    {"key": "ORDERER_GENERAL_CLUSTER_ROOTCAS","value": "[/var/hyperledger/orderer/tls/ca.crt]"}
+  ],
+  "portBindDescriptor": [
+    {"externalPort":"${osn_port}", "internalPort":"${osn_port}"}
+  ],
+  "volumeBindDescriptor": [
+    {"externalHost":"hosts","internalHost": "/etc/hosts"},
+    {"externalHost":"/data/genesis.block","internalHost": "/var/hyperledger/orderer/orderer.genesis.block"},
+    {"externalHost":"msp","internalHost": "/var/hyperledger/orderer/msp"},
+    {"externalHost":"tls","internalHost": "/var/hyperledger/orderer/tls"}
+  ]
+}
