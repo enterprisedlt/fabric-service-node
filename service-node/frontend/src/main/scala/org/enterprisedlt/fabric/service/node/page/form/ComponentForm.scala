@@ -150,7 +150,7 @@ object ComponentForm extends StateFullFormExt[ComponentCandidate, BaseInfo, Comp
     }
 
     private def componentTypeOptions(p: ComponentCandidate, componentTypes: Array[String]): TagMod = {
-        (ComponentCandidate.Types ++ componentTypes).map { name =>
+        componentTypes.map { name =>
             option((className := "selected").when(p.componentType == name), name)
         }.toTagMod
     }

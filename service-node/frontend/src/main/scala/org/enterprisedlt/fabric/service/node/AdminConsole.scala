@@ -24,7 +24,7 @@ object AdminConsole {
             <.div(
                 global match {
                     case Initial => loadingScreen
-                    case s: Initializing => if (s.inProgress) Progress(s) else Init()
+                    case s: Initializing => if (s.inProgress) Progress(s) else Init(s)
                     case g: Ready => Dashboard(g)
                 }
             )

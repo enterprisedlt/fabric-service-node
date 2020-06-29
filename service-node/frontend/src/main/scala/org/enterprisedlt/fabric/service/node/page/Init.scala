@@ -42,8 +42,8 @@ object Init {
         componentName: String,
     )
 
-    private val component = ScalaComponent.builder[Unit]("initial-screen")
-      .initialState(
+    private val component = ScalaComponent.builder[Initializing]("initial-screen")
+      .initialStateFromProps { g =>
           State(
               boxCandidate = RegisterBoxManager(
                   name = "",
@@ -53,7 +53,7 @@ object Init {
                   box = "",
                   name = "",
                   port = 0,
-                  componentType = ComponentCandidate.Types.head,
+                  componentType = g.info.customComponentDescriptors.headOption.map(_.componentType).getOrElse(""),
                   //
                   properties = Array.empty[Property]
               ),
@@ -70,12 +70,12 @@ object Init {
               componentFile = null,
               componentName = "Choose file",
           )
-      )
+      }
       .renderBackend[Backend]
       .componentWillMount($ => Context.State.connect($.backend))
       .build
 
-    class Backend(val $: BackendScope[Unit, State]) extends GlobalStateAware[AppState, State] with StateFieldBinder[State] {
+    class Backend(val $: BackendScope[Initializing, State]) extends GlobalStateAware[AppState, State] with StateFieldBinder[State] {
         private val PeerNodes = State.network / NetworkConfig.peerNodes
         private val OsnNodes = State.network / NetworkConfig.orderingNodes
 
@@ -131,7 +131,7 @@ object Init {
                 Seq("osn1", "osn2", "osn3")
                   .zipWithIndex.map { case (name, index) =>
                     ComponentCandidate(
-                        componentType = ComponentCandidate.OSN,
+                        componentType = "osn",
                         name = name,
                         box = defaultBox,
                         port = 7001 + index,
@@ -139,7 +139,7 @@ object Init {
                     )
                 } :+
                   ComponentCandidate(
-                      componentType = ComponentCandidate.Peer,
+                      componentType = "peer",
                       name = "peer0",
                       box = defaultBox,
                       port = 7010,
@@ -151,7 +151,7 @@ object Init {
 
         private def addComponents(components: Seq[ComponentCandidate], g: Initializing): State => State = {
             val byType = components.groupBy(_.componentType)
-            val addPeers: State => State = byType.get(ComponentCandidate.Peer).map { peers =>
+            val addPeers: State => State = byType.get("peer").map { peers =>
                 val peerConfigs = peers.map { componentCandidate =>
                     PeerConfig(
                         box = componentCandidate.box,
@@ -163,7 +163,7 @@ object Init {
                 PeerNodes.modify(_ ++ peerConfigs)
             }.getOrElse(s => s)
 
-            val addOSNs: State => State = byType.get(ComponentCandidate.OSN).map { osns =>
+            val addOSNs: State => State = byType.get("osn").map { osns =>
                 val osnConfigs = osns.map { componentCandidate =>
                     OSNConfig(
                         box = componentCandidate.box,
@@ -443,5 +443,5 @@ object Init {
         }
     }
 
-    def apply(): Unmounted[Unit, State, Backend] = component()
+    def apply(g: Initializing): Unmounted[Initializing, State, Backend] = component(g)
 }

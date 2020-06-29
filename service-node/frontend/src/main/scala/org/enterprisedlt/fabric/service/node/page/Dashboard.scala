@@ -69,7 +69,7 @@ object Dashboard {
                   box = g.info.boxes.headOption.map(_.name).getOrElse(""),
                   name = "",
                   port = 0,
-                  componentType = ComponentCandidate.Types.head,
+                  componentType = g.info.customComponentDescriptors.headOption.map(_.componentType).getOrElse(""),
                   properties = Array.empty[Property]
               ),
               componentFile = null,
