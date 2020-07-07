@@ -142,9 +142,8 @@ class EventsMonitor(
             }
         }
         apps match {
-            case Right(apps) if current.applicationState.length != apps.length || !current.applicationState.exists(app =>
-                apps.exists(application => application.applicationType == app.applicationType && application.status == app.status)) =>
-                logger.info(s"apps ${apps.mkString(" ")}")
+            case Right(apps) if current.applicationState.length != apps.length || current.applicationState.exists(app =>
+                !apps.exists(application => application.applicationType == app.applicationType && application.status == app.status))  =>
                 val applicationDescriptors = getApplicationDescriptors
                 applicationDescriptors.foreach {
                     applicationDescriptor =>
