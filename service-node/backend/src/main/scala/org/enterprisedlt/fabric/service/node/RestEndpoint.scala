@@ -174,10 +174,9 @@ class RestEndpoint(
                     val filePath = s"/opt/profile/chain-code/${contract.contractType}.tgz"
                     for {
                         chaincodeFile <- Option(new File(filePath)).filter(_.exists()).toRight(s"File $filePath does not exist ")
-                        chaincodeDescriptor <- Try(Util.codec.fromJson(
-                            new FileReader(s"/opt/profile/chain-code/${contract.contractType}.json"),
-                            classOf[ContractDeploymentDescriptor]
-                        )).toEither.left.map(_.getMessage)
+                        path = chaincodeFile.toPath
+                        chaincodeDescriptor <- Util.readFromTarAs[ContractDeploymentDescriptor](chaincodeFile.toPath,
+                            s"${contract.contractType}.json").toRight(s"Descriptor hasn't been found in $path")
                         chainCodePkg = new BufferedInputStream(new FileInputStream(chaincodeFile))
                         _ = logger.info(s"[ $organizationFullName ] - Installing ${contract.name}:${applicationDetails.version} chaincode ...")
                         _ <- network.installChainCode(
