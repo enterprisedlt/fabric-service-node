@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node.process
 
-import org.enterprisedlt.fabric.service.node.shared.{EnvironmentVariable, PortBind, VolumeBind}
+import org.enterprisedlt.fabric.service.node.shared.Property
 
 /**
  * @author Alexey Polubelov
@@ -11,9 +11,7 @@ case class CustomComponentRequest(
     box: String,
     name: String,
     componentType: String,
-    environmentVariables: Array[EnvironmentVariable],
-    ports: Array[PortBind],
-    volumes: Array[VolumeBind],
+    properties: Array[Property]
 )
 
 case class StartCustomComponentRequest(

@@ -51,9 +51,7 @@ object Init {
                   port = 0,
                   componentType = ComponentCandidate.Types.head,
                   //
-                  environmentVariables = Array.empty[EnvironmentVariable],
-                  ports = Array.empty[PortBind],
-                  volumes = Array.empty[VolumeBind]
+                  properties = Array.empty[Property]
               ),
               //
               network = NetworkConfig.Default,
@@ -130,9 +128,7 @@ object Init {
                         name = name,
                         box = defaultBox,
                         port = 7001 + index,
-                        environmentVariables = Array.empty[EnvironmentVariable],
-                        ports = Array.empty[PortBind],
-                        volumes = Array.empty[VolumeBind]
+                        properties = Array.empty[Property]
                     )
                 } :+
                   ComponentCandidate(
@@ -140,9 +136,7 @@ object Init {
                       name = "peer0",
                       box = defaultBox,
                       port = 7010,
-                      environmentVariables = Array.empty[EnvironmentVariable],
-                      ports = Array.empty[PortBind],
-                      volumes = Array.empty[VolumeBind]
+                      properties = Array.empty[Property]
                   )
 
             addNetworkComponents(components, g)

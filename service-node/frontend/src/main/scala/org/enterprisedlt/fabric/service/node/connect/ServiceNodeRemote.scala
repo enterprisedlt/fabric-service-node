@@ -13,6 +13,28 @@ import scala.concurrent.Future
  */
 object ServiceNodeRemote {
 
+
+    def downloadApplication(request: DownloadApplicationRequest): Future[Unit] = {
+        val json = upickle.default.write(request)
+        Ajax
+          .post("/admin/download-application", json)
+          .map { _ => () }
+    }
+
+    def publishApplication(request: PublishApplicationRequest): Future[Unit] = {
+        val json = upickle.default.write(request)
+        Ajax
+          .post("/admin/publish-application", json)
+          .map { _ => () }
+    }
+
+    def uploadApplication(inputData: FormData): Future[Unit] = {
+        Ajax
+          .post(url = "/admin/upload-application", data = inputData)
+          .map(_.responseText)
+          .map { _ => () }
+    }
+
     def uploadCustomComponent(inputData: FormData): Future[Unit] = {
         Ajax
           .post(url = "/admin/upload-custom-component", data = inputData)
@@ -82,11 +104,6 @@ object ServiceNodeRemote {
       .map(_.responseText)
       .map(r => upickle.default.read[Array[ContractDescriptor]](r))
 
-    def listCustomComponentDescriptors: Future[Array[CustomComponentDescriptor]] = Ajax
-      .get("/admin/list-custom-component-descriptors")
-      .map(_.responseText)
-      .map(r => upickle.default.read[Array[CustomComponentDescriptor]](r))
-
     def listBoxes: Future[Array[Box]] = Ajax
       .get("/service/list-boxes")
       .map(_.responseText)
@@ -97,6 +114,18 @@ object ServiceNodeRemote {
         Ajax.post("/admin/create-contract", json)
           .map(_ => ())
     }
+
+
+    def createApplication(createApplicationRequest: CreateApplicationRequest): Future[Unit] = {
+        val json = upickle.default.write(createApplicationRequest)
+        Ajax.post("/admin/create-application", json)
+          .map(_ => ())
+    }
+
+    def listApplications: Future[Array[ApplicationInfo]] = Ajax
+      .get("/service/list-applications")
+      .map(_.responseText)
+      .map(r => upickle.default.read[Array[ApplicationInfo]](r))
 
     def listOrganizations: Future[Array[Organization]] = Ajax
       .get("/service/list-organizations")
@@ -122,6 +151,11 @@ object ServiceNodeRemote {
           .map(_.responseText)
     }
 
+    def applicationJoin(applicationJoinRequest: JoinApplicationRequest): Future[String] = {
+        val json = upickle.default.write(applicationJoinRequest)
+        Ajax.post("/admin/application-join", json)
+          .map(_.responseText)
+    }
 
     def registerBox(request: RegisterBoxManager): Future[Box] = {
         val json = upickle.default.write(request)
@@ -159,5 +193,17 @@ object ServiceNodeRemote {
           .map(_.responseText)
           .map(r => upickle.default.read[Events](r))
 
+    def listApplicationState: Future[Array[ApplicationState]] =
+        Ajax
+          .get("/service/list-application-state")
+          .map(_.responseText)
+          .map(r => upickle.default.read[Array[ApplicationState]](r))
+
+
+    def listCustomComponentDescriptors: Future[Array[CustomComponentDescriptor]] =
+        Ajax
+          .get("/service/list-custom-component-descriptors")
+          .map(_.responseText)
+          .map(r => upickle.default.read[Array[CustomComponentDescriptor]](r))
 
 }

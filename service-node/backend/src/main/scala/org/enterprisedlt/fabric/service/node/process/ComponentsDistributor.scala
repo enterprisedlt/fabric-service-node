@@ -10,4 +10,6 @@ trait ComponentsDistributor {
     @Get("/service/provide-component-type-distributive")
     def getComponentTypeDistributive(componentName: String): Either[String, String]
 
+    @Get("/service/get-application-distributive")
+    def getApplicationDistributive(componentName: String): Either[String, String]
 }

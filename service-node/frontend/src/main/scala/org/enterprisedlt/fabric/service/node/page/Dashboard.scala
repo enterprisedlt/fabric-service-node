@@ -7,13 +7,14 @@ import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.page.form.{ComponentFormDashboard, CreateContract, RegisterOrganization, ServerForm}
-import org.enterprisedlt.fabric.service.node.shared._
+import org.enterprisedlt.fabric.service.node.page.form._
+import org.enterprisedlt.fabric.service.node.shared.{ApplicationState, _}
+import org.enterprisedlt.fabric.service.node.util.DataFunction._
 import org.enterprisedlt.fabric.service.node.util.Html.data
 import org.scalajs.dom
 import org.scalajs.dom.FormData
 import org.scalajs.dom.html.Div
-import org.scalajs.dom.raw.{Blob, File, HTMLLinkElement, URL}
+import org.scalajs.dom.raw._
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.scalajs.js
@@ -33,14 +34,23 @@ object Dashboard {
         // Network
         channelName: String,
         createContractRequest: CreateContractRequest,
+        createApplicationRequest: CreateApplicationRequest,
+
         contractFile: File,
         contractName: String,
         descriptorFile: File,
         descriptorName: String,
 
         // Goverment
-        registerOrganizationRequest: JoinRequest
+        registerOrganizationRequest: JoinRequest,
 
+        // Applications
+        applicationFile: File,
+        applicationName: String,
+
+        // Events
+        joinApplicationRequest: JoinApplicationRequest,
+        propertyCandidate: Property
         //        block: BlockConfig,
         //        raft: RaftConfig,
         //        networkName: String,
@@ -50,6 +60,7 @@ object Dashboard {
     private val component = ScalaComponent.builder[Ready]("dashboard")
       .initialStateFromProps { g =>
           val defaultPackage = g.contractPackages.headOption
+          val defaultApplication = g.applicationState.headOption
           State(
               boxCandidate = RegisterBoxManager(
                   name = "",
@@ -60,9 +71,7 @@ object Dashboard {
                   name = "",
                   port = 0,
                   componentType = ComponentCandidate.Types.head,
-                  environmentVariables = Array.empty[EnvironmentVariable],
-                  ports = Array.empty[PortBind],
-                  volumes = Array.empty[VolumeBind]
+                  properties = Array.empty[Property]
               ),
               componentFile = null,
               componentName = "Choose file",
@@ -74,6 +83,15 @@ object Dashboard {
                   channelName = g.channels.headOption.getOrElse(""),
                   parties = Array.empty[ContractParticipant],
                   initArgs = defaultPackage.map(p => Array.fill(p.initArgsNames.length)("")).getOrElse(Array.empty[String])
+              ),
+              createApplicationRequest = CreateApplicationRequest(
+                  name = "",
+                  version = "",
+                  applicationType = defaultApplication.map(_.applicationType).getOrElse(""),
+                  channelName = g.channels.headOption.getOrElse(""),
+                  properties = Array.empty[Property],
+                  parties = Array.empty[ContractParticipant],
+                  box = "default"
               ),
               contractFile = null,
               contractName = "Choose file",
@@ -91,7 +109,16 @@ object Dashboard {
                       tlsCACerts = Array.empty[String],
                       adminCerts = Array.empty[String]
                   )
-              )
+              ),
+              applicationFile = null,
+              applicationName = "Choose file",
+              joinApplicationRequest = JoinApplicationRequest(
+                  name = defaultApplication.map(_.applicationType).getOrElse(""),
+                  founder = "",
+                  box = "default",
+                  properties = Array.empty[Property]
+              ),
+              propertyCandidate = Property("", "")
           )
       }
       .renderBackend[Backend]
@@ -192,21 +219,21 @@ object Dashboard {
                                     id = "component-form",
                                     _ =>
                                         <.div(
-                                        ComponentFormDashboard(s, State.componentCandidate, g),
-                                        <.div(^.className := "form-group mt-1",
-                                            <.button(
-                                                ^.className := "btn btn-sm btn-outline-secondary",
-                                                data.toggle := "collapse", data.target := "#component-form",
-                                                ^.aria.expanded := true, ^.aria.controls := "component-form",
-                                                "Cancel"
-                                            ),
-                                            <.button(
-                                                ^.className := "btn btn-sm btn-outline-success float-right",
-                                                ^.onClick --> addCustomComponent(s.componentCandidate, g.info.orgFullName),
-                                                "Add component",
+                                            ComponentFormDashboard(s, State.componentCandidate, g),
+                                            <.div(^.className := "form-group mt-1",
+                                                <.button(
+                                                    ^.className := "btn btn-sm btn-outline-secondary",
+                                                    data.toggle := "collapse", data.target := "#component-form",
+                                                    ^.aria.expanded := true, ^.aria.controls := "component-form",
+                                                    "Cancel"
+                                                ),
+                                                <.button(
+                                                    ^.className := "btn btn-sm btn-outline-success float-right",
+                                                    ^.onClick --> addCustomComponent(s.componentCandidate, g.info.orgFullName),
+                                                    "Add component",
+                                                )
                                             )
                                         )
-                                    )
                                 ),
                                 PageAction(
                                     name = "Upload",
@@ -378,9 +405,7 @@ object Dashboard {
                         Page(
                             name = "Government",
                             content =
-                              <.div(
-
-                              ),
+                              <.div(),
                             actions = Seq(
                                 PageAction(
                                     name = "Invite",
@@ -419,8 +444,94 @@ object Dashboard {
                         ),
                         Page(
                             name = "Applications",
-                            content = <.div(),
-                            actions = Seq.empty,
+                            content =
+                              <.div(
+                                  ^.width := "900px",
+                                  ^.marginTop := "0px",
+                                  ^.marginBottom := "0px",
+                                  ^.marginLeft := "auto",
+                                  ^.marginRight := "auto",
+                                  <.div(
+                                      ^.className := "card",
+                                      ^.marginTop := "3px",
+                                      <.div(^.className := "card-header", <.i(<.b("Applications"))),
+                                      <.div(^.className := "card-body",
+                                          <.table(
+                                              ^.width := "100%",
+                                              <.tbody(
+                                                  <.tr(
+                                                      <.td(<.i(<.b("Application name"))),
+                                                      <.td(<.i(<.b("Status"))),
+                                                      <.td(<.i(<.b("Action"))),
+                                                  ),
+                                                  g.applicationState.map { application =>
+                                                      <.tr(
+                                                          <.td(application.applicationName),
+                                                          <.td(application.status),
+                                                          <.td(applicationButton(application))
+                                                      )
+                                                  }.toTagMod
+                                              )
+                                          )
+                                      )
+                                  )
+                              ),
+                            actions = Seq(
+                                PageAction(
+                                    name = "Upload",
+                                    id = "upload-application",
+                                    actionForm = progress =>
+                                        <.div(
+                                            <.div(^.className := "form-group row",
+                                                <.label(^.className := "col-sm-4 col-form-label", "Application"),
+                                                <.div(^.className := "input-group input-group-sm col-sm-8",
+                                                    <.div(^.className := "custom-file",
+                                                        <.input(^.`type` := "file", ^.className := "custom-file-input",
+                                                            ^.onChange ==> changeApplicationFile
+                                                        ),
+                                                        <.label(^.className := "custom-file-label", s.applicationName)
+                                                    )
+                                                )
+                                            ),
+                                            <.div(^.className := "form-group mt-1",
+                                                <.button(
+                                                    ^.className := "btn btn-sm btn-outline-secondary",
+                                                    data.toggle := "collapse", data.target := "#upload-application",
+                                                    ^.aria.expanded := true, ^.aria.controls := "upload-application",
+                                                    "Cancel"
+                                                ),
+                                                <.button(
+                                                    ^.className := "btn btn-sm btn-outline-success float-right",
+                                                    ^.onClick --> progress(uploadApplication(s)),
+                                                    "Upload application",
+                                                )
+                                            )
+                                        )
+                                ),
+                                PageAction(
+                                    name = "Create application",
+                                    id = "create-application",
+                                    actionForm = progress =>
+                                        <.div(
+                                            <.div(
+                                                CreateApplication(s, State.createApplicationRequest, g),
+                                                <.div(^.className := "form-group mt-1",
+                                                    <.button(
+                                                        ^.className := "btn btn-sm btn-outline-secondary",
+                                                        data.toggle := "collapse", data.target := "#upload-application",
+                                                        ^.aria.expanded := true, ^.aria.controls := "upload-application",
+                                                        "Cancel"
+                                                    ),
+                                                    <.button(
+                                                        ^.className := "btn btn-sm btn-outline-success float-right",
+                                                        ^.onClick --> progress(createApplication(s.createApplicationRequest)),
+                                                        "Create application",
+                                                    )
+                                                )
+                                            )
+                                        ),
+                                )
+                            )
                         ),
                         Page(
                             name = "Events",
@@ -431,6 +542,36 @@ object Dashboard {
                                   ^.marginBottom := "0px",
                                   ^.marginLeft := "auto",
                                   ^.marginRight := "auto",
+                                  g.events.applicationInvitations.map { applicationInvite =>
+                                      <.div(^.className := "card card-body",
+                                          <.h5(^.className := "card-title", s"Application invitation (${applicationInvite.name})"),
+                                          <.p(
+                                              <.i(
+                                                  <.b(applicationInvite.initiator),
+                                                  " has invited you to join application ",
+                                                  <.b(applicationInvite.name),
+                                                  " of type ", <.b(s"${applicationInvite.applicationType}:${applicationInvite.applicationVersion}"),
+                                                  " with participants ",
+                                                  <.b(applicationInvite.participants.mkString("[", ", ", "]"))
+                                              )
+                                          ),
+                                          <.div(
+                                              <.button(
+                                                  ^.className := "btn btn-sm btn-outline-success float-right",
+                                                  data.toggle := "collapse", data.target := "#application-invitation",
+                                                  ^.aria.expanded := false, ^.aria.controls := "application-invitation",
+                                                  "Details"
+                                              )
+                                          ),
+                                          <.div(^.className := "collapse", ^.id := "application-invitation",
+                                              JoinApplication(s, State.joinApplicationRequest, g),
+                                              <.button(^.className := "btn btn-sm btn-outline-success float-right",
+                                                  ^.onClick --> joinApplication(s.joinApplicationRequest, applicationInvite),
+                                                  "Join application"
+                                              )
+                                          )
+                                      )
+                                  }.toTagMod,
                                   g.events.contractInvitations.map { contractInvite =>
                                       <.div(^.className := "card card-body",
                                           <.h5(^.className := "card-title", s"Contract invitation (${contractInvite.name})"),
@@ -489,6 +630,23 @@ object Dashboard {
         //            if (box.information.externalAddress.trim.nonEmpty) box.information.externalAddress else "local"
         //        }
 
+
+        private def removeProperty(property: Property): CallbackTo[Unit] = modState(
+            (State.joinApplicationRequest / JoinApplicationRequest.properties).modify(
+                _.filter(p => !(p.value == property.value && p.key == property.key))
+            )
+        )
+
+
+        private def addProperty(s: State): CallbackTo[Unit] = modState(
+            (State.joinApplicationRequest / JoinApplicationRequest.properties).modify(_ :+ s.propertyCandidate)) >>
+          modState(State.propertyCandidate.modify(_ =>
+              Property(
+                  key = "",
+                  value = ""
+              ))
+          )
+
         private def doDownload(content: String, name: String): Unit = {
             val blob = new Blob(js.Array(content))
             val dataUrl = URL.createObjectURL(blob)
@@ -528,6 +686,12 @@ object Dashboard {
             }.getOrElse(Callback())
         }
 
+        def changeApplicationFile(event: ReactEventFromInput): CallbackTo[Unit] = {
+            val file: UndefOr[File] = event.target.files(0)
+            file.map { f =>
+                $.modState(x => x.copy(applicationName = f.name, applicationFile = f))
+            }.getOrElse(Callback())
+        }
 
         def addBox(boxCandidate: RegisterBoxManager)(r: Callback): Callback = Callback.future {
             ServiceNodeRemote.registerBox(boxCandidate).map(_ => r)
@@ -548,6 +712,12 @@ object Dashboard {
             ServiceNodeRemote.createChannel(channelName).map(_ => r)
         }
 
+        def uploadApplication(s: State)(r: Callback): Callback = Callback.future {
+            val formData = new FormData
+            formData.append("applicationFile", s.applicationFile)
+            ServiceNodeRemote.uploadApplication(formData).map(_ => r)
+        }
+
         def uploadContract(s: State)(r: Callback): Callback = Callback.future {
             val formData = new FormData
             formData.append("contractFile", s.contractFile)
@@ -562,6 +732,10 @@ object Dashboard {
         }
 
 
+        def createApplication(request: CreateApplicationRequest)(r: Callback): Callback = Callback.future {
+            ServiceNodeRemote.createApplication(request).map(_ => r)
+        }
+
         def createContract(request: CreateContractRequest)(r: Callback): Callback = Callback.future {
             ServiceNodeRemote.createContract(request).map(_ => r)
         }
@@ -572,6 +746,49 @@ object Dashboard {
 
         def joinContract(initiator: String, name: String): Callback = Callback.future {
             ServiceNodeRemote.contractJoin(ContractJoinRequest(name, initiator)).map(Callback(_))
+        }
+
+        def joinApplication(request: JoinApplicationRequest, applicationInvite: ApplicationInvitation): Callback = Callback.future {
+            ServiceNodeRemote.applicationJoin(
+                request.copy(
+                    founder = applicationInvite.initiator,
+                    name = applicationInvite.name
+                )
+            ).map(Callback(_))
+        }
+
+        def publishApplication(application: ApplicationState): Callback = Callback.future {
+            val request = PublishApplicationRequest(
+                application.applicationName,
+                application.applicationType
+            )
+            ServiceNodeRemote.publishApplication(request).map(Callback(_))
+        }
+
+        def downloadApplication(application: ApplicationState): Callback = Callback.future {
+            val request = DownloadApplicationRequest(
+                application.distributorAddress,
+                application.applicationType
+            )
+            ServiceNodeRemote.downloadApplication(request).map(Callback(_))
+        }
+
+        def applicationButton(application: ApplicationState): VdomTagOf[HTMLElement] = {
+            application.status match {
+                case status if status == "Downloaded" =>
+                    <.button(^.className := "btn btn-sm btn-outline-success",
+                        ^.onClick --> publishApplication(application),
+                        "Publish application"
+                    )
+
+                case status if status == "Not Downloaded" =>
+                    <.button(^.className := "btn btn-sm btn-outline-success",
+                        "Download application",
+                        ^.onClick --> downloadApplication(application),
+                    )
+
+                case status if status == "Published" => <.div
+            }
         }
     }
 

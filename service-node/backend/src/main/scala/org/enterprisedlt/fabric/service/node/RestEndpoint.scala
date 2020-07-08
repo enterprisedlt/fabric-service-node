@@ -2,31 +2,32 @@ package org.enterprisedlt.fabric.service.node
 
 import java.io._
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Paths, StandardOpenOption}
 import java.time.Instant
 import java.util
+import java.util.Base64
 import java.util.concurrent.atomic.AtomicReference
 
 import com.google.gson.GsonBuilder
 import javax.servlet.http.Part
-import org.eclipse.jetty.util.IO
-import org.enterprisedlt.fabric.service.model.{Contract, Organization, UpgradeContract}
+import org.enterprisedlt.fabric.service.model._
 import org.enterprisedlt.fabric.service.node.configuration._
 import org.enterprisedlt.fabric.service.node.flow.Constant.{DefaultConsortiumName, ServiceChainCodeName, ServiceChannelName}
 import org.enterprisedlt.fabric.service.node.flow.{Bootstrap, Join}
 import org.enterprisedlt.fabric.service.node.model._
-import org.enterprisedlt.fabric.service.node.process.{CustomComponentRequest, ProcessManager, StartCustomComponentRequest}
+import org.enterprisedlt.fabric.service.node.process.{ComponentsDistributor, CustomComponentRequest, ProcessManager, StartCustomComponentRequest}
 import org.enterprisedlt.fabric.service.node.proto.FabricChannel
-import org.enterprisedlt.fabric.service.node.rest.{Get, Post, PostMultipart}
+import org.enterprisedlt.fabric.service.node.rest.{Get, JsonRestClient, Post, PostMultipart}
 import org.enterprisedlt.fabric.service.node.shared._
 import org.hyperledger.fabric.sdk.Peer
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
+import scala.language.postfixOps
 import scala.util.Try
 
 /**
  * @author Alexey Polubelov
+ * @author Maxim Fedin
  */
 class RestEndpoint(
     bindPort: Int,
@@ -36,71 +37,217 @@ class RestEndpoint(
     cryptoManager: CryptoManager,
     hostsManager: HostsManager,
     profilePath: String,
-    processManager: ProcessManager,
+    processManager: ProcessManager
 ) {
     private val logger = LoggerFactory.getLogger(this.getClass)
     private val serviceNodeName = s"service.${organizationConfig.name}.${organizationConfig.domain}"
 
-
-    @PostMultipart("/admin/upload-chaincode")
-    def uploadChaincode(multipart: java.util.Collection[Part]): Either[String, Unit] = {
-        val fileDir = "/opt/profile/chain-code"
-        Util.mkDirs(fileDir)
-        val outputDir = Paths.get(fileDir)
+    @PostMultipart("/admin/upload-application")
+    def uploadApplication(multipart: Iterable[Part]): Either[String, Unit] = {
+        val fileDir = "/opt/profile/application-distributives"
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
-            _ <- Try {
-                multipart.forEach { part =>
-                    Option(part.getSubmittedFileName).foreach { filename =>
-                        logger.debug(s"Got Part ${part.getName} with size = ${part.getSize}, contentType = ${part.getContentType}, submittedFileName $filename")
-                        val outputFile = outputDir.resolve(filename)
-                        val is = part.getInputStream
-                        val os = Files.newOutputStream(outputFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
-                        IO.copy(is, os)
-                        logger.debug(s"Saved Part ${part.getName} to ${outputFile.toString}")
-                        is.close()
-                        os.close()
-                    }
-                }
-            }.toEither.left.map(_.getMessage)
-        } yield globalState.eventsMonitor.updateCustomComponentDescriptors()
+            _ <- Util.saveParts(multipart, fileDir)
+        } yield FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateApplications())
+
+    }
+
+    @PostMultipart("/admin/upload-chaincode")
+    def uploadChaincode(multipart: Iterable[Part]): Either[String, Unit] = {
+        val fileDir = "/opt/profile/chain-code"
+        for {
+            globalState <- globalState.toRight("Node is not initialized yet")
+            _ <- Util.saveParts(multipart, fileDir)
+        } yield FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateCustomComponentDescriptors())
 
     }
 
 
     @PostMultipart("/admin/upload-custom-component")
-    def uploadCustomComponent(multipart: java.util.Collection[Part]): Either[String, Unit] = {
+    def uploadCustomComponent(multipart: Iterable[Part]): Either[String, Unit] = {
         val fileDir = "/opt/profile/components"
-        Util.mkDirs(fileDir)
-        val outputDir = Paths.get(fileDir)
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
-            tgzPart <- multipart
-              .iterator()
-              .asScala
-              .find(_.getSubmittedFileName.endsWith(".tgz"))
-              .toRight("No tgz in multipart")
-            _ <- Try {
-                Option(tgzPart.getSubmittedFileName).map { filename =>
-                    logger.info(s"Got Part ${tgzPart.getName} with size = ${tgzPart.getSize}, contentType = ${tgzPart.getContentType}, submittedFileName $filename")
-                    val outputFile = outputDir.resolve(filename)
-                    val is = tgzPart.getInputStream
-                    val os = Files.newOutputStream(outputFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
-                    IO.copy(is, os)
-                    logger.info(s"Saved Part ${tgzPart.getName} to ${outputFile.toString}")
-                    is.close()
-                    os.close()
+            _ <- Util.saveParts(multipart, fileDir)
+        } yield FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateCustomComponentDescriptors())
+    }
+
+    @Post("/admin/create-application")
+    def createApplication(applicationRequest: CreateApplicationRequest): Either[String, String] = {
+        logger.info("Creating application ...")
+        val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
+        logger.info(s"applicationRequest =  ${applicationRequest.toString}")
+        for {
+            state <- globalState.toRight("Node is not initialized yet")
+            applicationDescriptor <- FabricServiceStateHolder.fullState.applications.find(_.applicationType == applicationRequest.applicationType)
+              .toRight(s"No such application type ${applicationRequest.applicationType} in application registry")
+            _ <- applicationDescriptor.contracts.foldRight[Either[String, String]](Right("")) { case (contract, current) =>
+                current.flatMap { _ =>
+                    val contractCreateRequest = CreateContractRequest(
+                        name = contract.name,
+                        version = applicationRequest.version,
+                        contractType = contract.contractType,
+                        channelName = applicationRequest.channelName,
+                        parties = applicationRequest.parties,
+                        initArgs = contract.initArgsNames
+                    )
+                    createContract(contractCreateRequest,true)
                 }
-            }.toEither.left.map(_.getMessage)
-        } yield globalState.eventsMonitor.updateCustomComponentDescriptors()
+            }
+            mergedApplicationProperties = applicationDescriptor.properties.map { property =>
+                applicationRequest.properties.find(_.key == property.key)
+                  .getOrElse(property)
+            }
+            _ <- applicationDescriptor.components.foldRight[Either[String, String]](Right("")) { case (component, current) =>
+                current.flatMap { _ =>
+                    val enrichedProperties = Util.fillPropertiesPlaceholders(
+                        component.environmentVariables,
+                        mergedApplicationProperties,
+                    )
+                    val request = CustomComponentRequest(
+                        box = applicationRequest.box,
+                        name = s"${applicationRequest.name}.${component.componentType}.$organizationFullName",
+                        componentType = component.componentType,
+                        properties = enrichedProperties
+                    )
+                    startCustomNode(request)
+                }
+            }
+            _ <- {
+                logger.info(s"Invoking 'createApplication' method...")
+                val application = ApplicationInvite(
+                    founder = organizationFullName,
+                    name = applicationRequest.name,
+                    channel = applicationRequest.channelName,
+                    applicationType = applicationRequest.applicationType,
+                    version = applicationRequest.version,
+                    participants = applicationRequest.parties.map(_.mspId),
+                    timestamp = Instant.now.toEpochMilli
+                )
+                state.networkManager.invokeChainCode(
+                    ServiceChannelName,
+                    ServiceChainCodeName,
+                    "createApplicationInvite",
+                    Util.codec.toJson(application)
+                )
+            }
+        } yield {
+            FabricServiceStateHolder.updateStateFull(state =>
+                state.copy(
+                    deployedApplications = state.deployedApplications :+ ApplicationInfo(
+                        name = applicationRequest.name,
+                        version = applicationRequest.version,
+                        channelName = applicationRequest.channelName
+                    )
+                )
+            )
+            s"Creating application ${applicationRequest.applicationType} has been completed successfully"
+        }
+    }
+
+    @Post("/admin/application-join")
+    def applicationJoin(joinReq: JoinApplicationRequest): Either[String, String] = {
+        logger.info("Joining deployed application ...")
+        val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
+        for {
+            state <- globalState.toRight("Node is not initialized yet")
+            network = state.networkManager
+            queryResult <- {
+                logger.info(s"Querying application with getApplication...")
+                network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getApplicationInvite", joinReq.name, joinReq.founder)
+                  .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getApplicationInvite method in system chain-code"))
+            }
+            applicationDetails <- Try(Util.codec.fromJson(queryResult, classOf[ApplicationInvite])).toEither.left.map(_.getMessage)
+            applicationDescriptorPath = s"/opt/profile/applications/${applicationDetails.applicationType}.json"
+            _ <- ensureApplicationDownloaded(applicationDetails.applicationType, applicationDescriptorPath)
+            applicationDescriptor <- Try(
+                Util.codec.fromJson(new FileReader(applicationDescriptorPath)
+                    , classOf[ApplicationDescriptor])
+            ).toEither.left.map(_.getMessage)
+            _ <- applicationDescriptor.contracts.foldRight[Either[String, String]](Right("")) { case (contract, current) =>
+                logger.info(s"Contract is $contract")
+                current.flatMap { _ =>
+                    val filePath = s"/opt/profile/chain-code/${contract.contractType}.tgz"
+                    for {
+                        chaincodeFile <- Option(new File(filePath)).filter(_.exists()).toRight(s"File $filePath does not exist ")
+                        chaincodeDescriptor <- Try(Util.codec.fromJson(
+                            new FileReader(s"/opt/profile/chain-code/${contract.contractType}.json"),
+                            classOf[ContractDeploymentDescriptor]
+                        )).toEither.left.map(_.getMessage)
+                        chainCodePkg = new BufferedInputStream(new FileInputStream(chaincodeFile))
+                        _ = logger.info(s"[ $organizationFullName ] - Installing ${contract.name}:${applicationDetails.version} chaincode ...")
+                        _ <- network.installChainCode(
+                            applicationDetails.channel,
+                            contract.name,
+                            applicationDetails.version,
+                            chaincodeDescriptor.language,
+                            chainCodePkg
+                        )
+                        invokeResultFuture <- network.invokeChainCode(
+                            ServiceChannelName,
+                            ServiceChainCodeName,
+                            "delContract",
+                            joinReq.name,
+                            joinReq.founder
+                        )
+                        invokeAwait <- Try(invokeResultFuture.get()).toEither.left.map(_.getMessage)
+                    } yield s"invokeResult is $invokeAwait"
+                }
+            }
+            mergedProperties = applicationDescriptor.properties.map { property =>
+                joinReq.properties.find(_.key == property.key)
+                  .getOrElse(property)
+            }
+            _ <- applicationDescriptor.components.foldRight[Either[String, String]](Right("")) { case (component, current) =>
+                current.flatMap { _ =>
+                    val enrichedProperties = Util.fillPropertiesPlaceholders(
+                        component.environmentVariables,
+                        mergedProperties,
+                    )
+                    val request = CustomComponentRequest(
+                        box = joinReq.box,
+                        name = s"${joinReq.name}.${component.componentType}.${organizationFullName}",
+                        componentType = component.componentType,
+                        properties = enrichedProperties
+                    )
+                    startCustomNode(request)
+                }
+            }
+            invokeResultFuture <- network.invokeChainCode(
+                ServiceChannelName,
+                ServiceChainCodeName,
+                "delApplicationInvite",
+                joinReq.name,
+                joinReq.founder
+            )
+            invokeAwait <- Try(invokeResultFuture.get()).toEither.left.map(_.getMessage)
+        } yield {
+            FabricServiceStateHolder.updateStateFullOption(
+                FabricServiceStateHolder.compose(
+                    state =>
+                        Some(
+                            state.copy(
+                                deployedApplications = state.deployedApplications :+ ApplicationInfo(
+                                    name = applicationDetails.name,
+                                    version = applicationDetails.version,
+                                    channelName = applicationDetails.channel
+                                )
+                            )
+                        ),
+                    state.eventsMonitor.updateApplications()
+                )
+            )
+            s"Joining to application ${joinReq.name} has been completed successfully $invokeAwait"
+        }
     }
 
     @Post("/admin/start-custom-node")
     def startCustomNode(request: CustomComponentRequest): Either[String, String] = {
+        //
         val crypto = cryptoManager.generateCustomComponentCrypto(request.box)
         val startCustomComponentRequest = StartCustomComponentRequest(
             serviceNodeName,
-            request,
+            request.copy(properties = addDefaultProperties(request.properties)),
             crypto
         )
         processManager.startCustomNode(request.box, startCustomComponentRequest)
@@ -118,6 +265,45 @@ class RestEndpoint(
           .toRight("Node is not initialized yet")
           .map(_.network)
 
+
+    @Post("/admin/download-application")
+    def downloadApplication(request: DownloadApplicationRequest): Either[String, Unit] = {
+        val distributorClient = JsonRestClient.create[ComponentsDistributor](request.componentsDistributorUrl)
+        val destinationDir = s"/opt/profile/application-distributives"
+        for {
+            globalState <- globalState.toRight("Node is not initialized yet")
+            distributiveBase64 <- distributorClient.getApplicationDistributive(request.applicationFileName)
+            applicationDistributive <- Try(Base64.getDecoder.decode(distributiveBase64)).toEither.left.map(_.getMessage)
+        } yield {
+            Util.storeToFile(s"$destinationDir/${request.applicationFileName}.tgz", applicationDistributive)
+            logger.info(s"Application ${request.applicationFileName} has been successfully downloaded")
+            FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateApplications())
+        }
+    }
+
+    @Post("/admin/publish-application")
+    def publishApplication(request: PublishApplicationRequest): Either[String, String] = {
+        val componentsDistributorAddress = externalAddress
+          .map(ea => s"http://${ea.host}:$componentsDistributorBindPort")
+          .getOrElse(s"http://service.${organizationConfig.name}.${organizationConfig.domain}:$componentsDistributorBindPort")
+        val application = ApplicationDistributive(
+            applicationName = request.applicationName,
+            applicationType = request.applicationType,
+            founder = serviceNodeName,
+            componentsDistributorAddress = componentsDistributorAddress
+        )
+        for {
+            globalState <- globalState.toRight("Node is not initialized yet")
+            _ <- globalState.networkManager.invokeChainCode(
+                ServiceChannelName,
+                ServiceChainCodeName,
+                "publishApplicationDistributive",
+                Util.codec.toJson(application))
+        } yield {
+            FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateApplications())
+            s"Application ${request.applicationName} has been successfully published"
+        }
+    }
 
     @Get("/service/list-channels")
     def listChannels: Either[String, Array[String]] = {
@@ -240,7 +426,7 @@ class RestEndpoint(
             ).foldRight(Right(Nil): Either[String, List[Peer]]) {
                 (e, p) => for (xs <- p.right; x <- e.right) yield x :: xs
             }
-        } yield s"Sucessfully has been joined to channel $channelName"
+        } yield s"Successfully has been joined to channel $channelName"
     }
 
     @Get("/service/list-messages")
@@ -276,6 +462,26 @@ class RestEndpoint(
             result <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[Contract]])).toEither.left.map(_.getMessage)
         } yield result
     }
+
+
+    @Get("/service/list-applications")
+    def listApplications: Either[String, Array[ApplicationInfo]] = {
+        Try(FabricServiceStateHolder.fullState.deployedApplications)
+          .toEither.left.map(_.getMessage)
+    }
+
+    @Get("/service/list-application-state")
+    def listApplicationState: Either[String, Array[ApplicationState]] = {
+        Try(FabricServiceStateHolder.fullState.applicationState)
+          .toEither.left.map(_.getMessage)
+    }
+
+    @Get("/service/list-custom-component-descriptors")
+    def listCustomComponentDescriptors: Either[String, Array[CustomComponentDescriptor]] = {
+        Try(FabricServiceStateHolder.fullState.customComponentDescriptors)
+          .toEither.left.map(_.getMessage)
+    }
+
 
     @Get("/service/list-chain-codes")
     def listChainCodes: Either[String, Array[ChainCodeInfo]] =
@@ -486,7 +692,7 @@ class RestEndpoint(
 
 
     @Post("/admin/create-contract")
-    def createContract(contractRequest: CreateContractRequest): Either[String, String] = {
+    def createContract(contractRequest: CreateContractRequest, applicationCreation: Boolean = false): Either[String, String] = {
         logger.info("Creating contract ...")
         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
         logger.info(s"createContractRequest =  $contractRequest")
@@ -534,32 +740,12 @@ class RestEndpoint(
                 collectionConfig = Option(Util.createCollectionsConfig(collections)),
                 arguments = contractRequest.initArgs
             )
-            response <- {
-                logger.info(s"Invoking 'createContract' method...")
-                val contract = Contract(
-                    founder = organizationConfig.name,
-                    name = contractRequest.name,
-                    channel = contractRequest.channelName,
-                    lang = deploymentDescriptor.language,
-                    contractType = contractRequest.contractType,
-                    version = contractRequest.version,
-                    participants = contractRequest.parties.map(_.mspId),
-                    timestamp = Instant.now.toEpochMilli
-                )
-                state.networkManager.invokeChainCode(
-                    ServiceChannelName,
-                    ServiceChainCodeName,
-                    "createContract",
-                    Util.codec.toJson(contract)
-                )
-            }
-            r <- Try(response.get()).toEither.left.map(_.getMessage)
+            r <- if (!applicationCreation) createInvitations(state, contractRequest, deploymentDescriptor) else Right("")
         } yield {
             FabricServiceStateHolder.incrementVersion()
-            s"Creating contract ${contractRequest.contractType} has been completed successfully $r"
+            s"Creating contract ${contractRequest.contractType} has been completed successfully ${r}"
         }
     }
-
 
     @Post("/admin/contract-join")
     def contractJoin(joinReq: ContractJoinRequest): Either[String, String] = {
@@ -697,13 +883,77 @@ class RestEndpoint(
 
     @Get("/service/get-events")
     def getEvents: Either[String, Events] = {
+        FabricServiceStateHolder.fullState.events
         logger.info(s"Querying events for ${organizationConfig.name}...")
-        globalState
-          .toRight("Node is not initialized yet")
-          .map(_.eventsMonitor.getEvents)
+        Try(FabricServiceStateHolder.fullState.events).toEither.left.map { ex =>
+            val msg = s"Failed to query events: ${ex.getMessage}"
+            logger.error(msg, ex)
+            msg
+        }
     }
 
     // ================================================================================================================
+
+    private def ensureApplicationDownloaded(applicationType: String, applicationDescriptorPath: String): Either[String, Unit] = {
+        val applicationDescriptorFile = new File(applicationDescriptorPath).getAbsoluteFile
+        if (applicationDescriptorFile.exists()) {
+            logger.info(s"Application type $applicationType is already downloaded")
+            Right(())
+        } else {
+            logger.info(s"Component type $applicationType isn't downloaded...")
+            for {
+                state <- globalState.toRight("Node is not initialized yet")
+                network = state.networkManager
+                queryResult <- {
+                    logger.info(s"Querying application with getApplication...")
+                    network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getApplicationDistributive", applicationType)
+                      .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getApplication method in system chain-code"))
+                }
+                applicationDistributive <- Try(Util.codec.fromJson(queryResult, classOf[ApplicationDistributive])).toEither.left.map(_.getMessage)
+            } yield {
+                val request = DownloadApplicationRequest(
+                    componentsDistributorUrl = applicationDistributive.componentsDistributorAddress,
+                    applicationFileName = applicationType
+                )
+                downloadApplication(request)
+                FabricServiceStateHolder.updateStateFullOption(state.eventsMonitor.updateApplications())
+            }
+        }
+    }
+
+    private def addDefaultProperties(props: Array[Property]): Array[Property] = {
+        val orgNameDescriptor = Property("org", organizationConfig.name)
+        val domainDescriptor = Property("domain", organizationConfig.domain)
+        // TODO add other properties
+        props ++ Array(orgNameDescriptor, domainDescriptor)
+    }
+
+
+    private def createInvitations(state: GlobalState, contractRequest: CreateContractRequest, deploymentDescriptor: ContractDeploymentDescriptor): Either[String, String] = {
+        for {
+            response <- {
+                logger.info(s"Invoking 'createContract' method...")
+                val contract = Contract(
+                    founder = organizationConfig.name,
+                    name = contractRequest.name,
+                    channel = contractRequest.channelName,
+                    lang = deploymentDescriptor.language,
+                    contractType = contractRequest.contractType,
+                    version = contractRequest.version,
+                    participants = contractRequest.parties.map(_.mspId),
+                    timestamp = Instant.now.toEpochMilli
+                )
+                state.networkManager.invokeChainCode(
+                    ServiceChannelName,
+                    ServiceChainCodeName,
+                    "createContract",
+                    Util.codec.toJson(contract)
+                )
+            }
+            r <- Try(response.get()).toEither.left.map(_.getMessage)
+        } yield r.toString
+    }
+
 
     private val _globalState = new AtomicReference[GlobalState]()
 

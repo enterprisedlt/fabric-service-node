@@ -9,7 +9,7 @@ import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.handler.AbstractHandler
 import org.enterprisedlt.fabric.service.node.UnitsHelper._
 import org.slf4j.LoggerFactory
-
+import collection.JavaConverters._
 /**
  * @author Alexey Polubelov
  */
@@ -113,10 +113,10 @@ class JsonRestEndpoint(
     private def createUploadHandler(o: AnyRef, m: Method): (HttpServletRequest, HttpServletResponse) => Unit = {
         logger.info(s"Creating handler for: ${m.getName}")
         val returnTypeClazz = classOf[Either[String, Any]]
-        val parameterClazz = classOf[java.util.Collection[Part]]
+        val parameterClazz = classOf[Iterable[Part]]
         m.getParameterTypes match {
             case x if x.length != 1 =>
-                throw new Exception(s"There should be only one supported parameter with type java.util.Collection[Part]")
+                throw new Exception(s"There should be only one supported parameter with type Iterable[Part]")
             case x if x.head == parameterClazz =>
                 m.getReturnType match {
                     case x if x.isAssignableFrom(returnTypeClazz) =>
@@ -126,16 +126,15 @@ class JsonRestEndpoint(
                                 val params: Seq[AnyRef] = m
                                   .getParameters
                                   .headOption
-                                  .map { _ => request.getParts }
                                   .toSeq
-                                m.invoke(o, params: _*) match {
+                                m.invoke(o, request.getParts.asScala) match {
                                     case Right(_) =>
                                         response.setContentType(MimeTypes.Type.TEXT_PLAIN.asString())
                                         response.setCharacterEncoding("utf-8")
                                         response.setStatus(HttpServletResponse.SC_OK)
 
                                     case Left(ex) =>
-                                        val msg = s"Unable to process file: ${ex}"
+                                        val msg = s"Unable to process file: $ex"
                                         logger.warn(msg, ex)
                                         response.getWriter.println(msg)
                                         response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR)
@@ -154,7 +153,7 @@ class JsonRestEndpoint(
                         throw new Exception(s"Unsupported return type ${other.getCanonicalName} the only supported return type is Either[String, Any+]")
                 }
             case other =>
-                throw new Exception(s"Unsupported parameter type ${other.head.getCanonicalName} the only supported parameter type is java.util.Collection[Part]")
+                throw new Exception(s"Unsupported parameter type ${other.head.getCanonicalName} the only supported parameter type is Iterable[Part]")
 
         }
     }

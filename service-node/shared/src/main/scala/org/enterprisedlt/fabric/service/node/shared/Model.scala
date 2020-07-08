@@ -156,6 +156,17 @@ object ChainCodeInfo {
 }
 
 // ------------------------------------------------------------------------
+case class ApplicationInfo(
+    name: String,
+    version: String,
+    channelName: String
+)
+
+object ApplicationInfo {
+    implicit val rw: RW[ApplicationInfo] = macroRW
+}
+
+// ------------------------------------------------------------------------
 @Lenses case class Box(
     name: String,
     information: BoxInformation
@@ -238,7 +249,7 @@ object ContractParticipant {
 case class Events(
     messages: Array[PrivateMessageEvent] = Array.empty,
     contractInvitations: Array[ContractInvitation] = Array.empty,
-    customComponentDescriptors: Array[CustomComponentDescriptor] = Array.empty
+    applicationInvitations: Array[ApplicationInvitation] = Array.empty
 )
 
 object Events {
@@ -267,6 +278,18 @@ object ContractInvitation {
     implicit val rw: RW[ContractInvitation] = macroRW
 }
 
+// ------------------------------------------------------------------------
+case class ApplicationInvitation(
+    initiator: String,
+    name: String,
+    applicationType: String,
+    applicationVersion: String,
+    participants: Array[String]
+)
+
+object ApplicationInvitation {
+    implicit val rw: RW[ApplicationInvitation] = macroRW
+}
 
 @Lenses case class PortBind(
     externalPort: String,
@@ -286,13 +309,13 @@ object VolumeBind {
     implicit val rw: RW[VolumeBind] = macroRW
 }
 
-@Lenses case class EnvironmentVariable(
+@Lenses case class Property(
     key: String,
     value: String
 )
 
-object EnvironmentVariable {
-    implicit val rw: RW[EnvironmentVariable] = macroRW
+object Property {
+    implicit val rw: RW[Property] = macroRW
 }
 
 // ------------------------------------------------------------------------
@@ -301,7 +324,8 @@ case class CustomComponentDescriptor(
     image: Image,
     command: String,
     workingDir: String,
-    environmentVariablesDescriptor: Array[EnvironmentVariable],
+    properties: Array[Property],
+    environmentVariablesDescriptor: Array[Property],
     portBindDescriptor: Array[PortBind],
     volumeBindDescriptor: Array[VolumeBind]
 )
@@ -311,7 +335,7 @@ object CustomComponentDescriptor {
     implicit val rw: RW[CustomComponentDescriptor] = macroRW
 }
 
-
+// ------------------------------------------------------------------------
 case class Image(
     name: String,
     tag: String = "latest"
@@ -319,8 +343,94 @@ case class Image(
     def getName = s"$name:$tag"
 }
 
-
 object Image {
-
     implicit val rw: RW[Image] = macroRW
+}
+
+// ------------------------------------------------------------------------
+case class ApplicationState(
+    applicationName: String,
+    applicationType: String,
+    status: String,
+    applicationRoles: Array[String] = Array.empty[String],
+    properties: Array[Property] = Array.empty[Property],
+    contracts: Array[ContractsState] = Array.empty[ContractsState],
+    components: Array[CustomComponentState] = Array.empty[CustomComponentState],
+    distributorAddress: String = ""
+)
+
+object ApplicationState {
+
+    implicit val rw: RW[ApplicationState] = macroRW
+}
+
+// ------------------------------------------------------------------------
+@Lenses case class ContractsState(
+    name: String,
+    contractType: String,
+    initArgsNames: Array[String] = Array.empty[String]
+)
+
+object ContractsState {
+
+    implicit val rw: RW[ContractsState] = macroRW
+}
+
+// ------------------------------------------------------------------------
+@Lenses case class CustomComponentState(
+    componentName: String,
+    componentType: String,
+    environmentVariables: Array[Property]
+)
+
+object CustomComponentState {
+
+    implicit val rw: RW[CustomComponentState] = macroRW
+}
+
+// ------------------------------------------------------------------------
+@Lenses case class CreateApplicationRequest(
+    name: String,
+    version: String,
+    applicationType: String,
+    box: String,
+    channelName: String,
+    properties: Array[Property],
+    parties: Array[ContractParticipant]
+)
+
+object CreateApplicationRequest {
+    implicit val rw: RW[CreateApplicationRequest] = macroRW
+}
+
+// ------------------------------------------------------------------------
+@Lenses case class JoinApplicationRequest(
+    name: String,
+    founder: String,
+    box: String,
+    properties: Array[Property]
+)
+
+object JoinApplicationRequest {
+    implicit val rw: RW[JoinApplicationRequest] = macroRW
+}
+
+// ------------------------------------------------------------------------
+@Lenses case class DownloadApplicationRequest(
+    componentsDistributorUrl: String,
+    applicationFileName: String,
+)
+
+object DownloadApplicationRequest {
+    implicit val rw: RW[DownloadApplicationRequest] = macroRW
+}
+
+// ------------------------------------------------------------------------
+@Lenses case class PublishApplicationRequest(
+    applicationName: String,
+    applicationType: String,
+)
+
+object PublishApplicationRequest {
+    implicit val rw: RW[PublishApplicationRequest] = macroRW
 }

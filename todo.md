@@ -18,13 +18,17 @@
 - [ ] Custom components 
     - [x] Custom component deployment
     - [x] Form for custom component
-    - [ ] Custom component 
+    - [x] Custom component 
     - [ ] Peer and OSN support for custom component 
 
-- [ ] Applications 
+- [x] Applications 
     - [x] Upload mechanism
     - [x] Descriptor 
-    - [ ] Extract chaincode/component to the proper folders
-    - [ ] Form for application deployment
+    - [x] Extract chaincode/component to the proper folders
+    - [x] Form for application deployment
 
 - [ ] Invite channel UI
+
+- Chaincode 
+    - [ ] Put descriptor into tarball
+    - [ ] Download chaincode ad hoc

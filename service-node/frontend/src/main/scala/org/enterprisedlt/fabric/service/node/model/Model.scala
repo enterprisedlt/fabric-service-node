@@ -1,7 +1,7 @@
 package org.enterprisedlt.fabric.service.node.model
 
 import monocle.macros.Lenses
-import org.enterprisedlt.fabric.service.node.shared.{EnvironmentVariable, PortBind, VolumeBind}
+import org.enterprisedlt.fabric.service.node.shared.Property
 import upickle.default.{macroRW, ReadWriter => RW}
 
 /**
@@ -14,9 +14,7 @@ import upickle.default.{macroRW, ReadWriter => RW}
     port: Int,
     componentType: String,
     //
-    environmentVariables: Array[EnvironmentVariable],
-    ports: Array[PortBind],
-    volumes: Array[VolumeBind]
+    properties: Array[Property]
 )
 
 object ComponentCandidate {
@@ -95,4 +93,18 @@ object ContractJoinRequest {
     )
 
     implicit val rw: RW[ContractJoinRequest] = macroRW
+}
+
+@Lenses case class Application(
+    founder: String,
+    name: String,
+    channel: String,
+    applicationType: String,
+    version: String,
+    participants: Array[String],
+    timestamp: Long
+)
+
+object Application {
+    implicit val rw: RW[Application] = macroRW
 }

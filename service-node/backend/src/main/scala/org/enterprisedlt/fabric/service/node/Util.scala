@@ -2,6 +2,7 @@ package org.enterprisedlt.fabric.service.node
 
 import java.io._
 import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Path, Paths, StandardOpenOption}
 import java.security.KeyStore
 import java.security.cert.X509Certificate
 import java.time._
@@ -11,6 +12,7 @@ import com.google.gson.{Gson, GsonBuilder}
 import com.google.protobuf.{ByteString, MessageLite}
 import javax.security.auth.x500.X500Principal
 import javax.servlet.ServletRequest
+import javax.servlet.http.Part
 import org.apache.commons.compress.archivers.tar.{TarArchiveEntry, TarArchiveInputStream}
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import org.apache.commons.compress.utils.IOUtils
@@ -23,9 +25,10 @@ import org.apache.http.util.EntityUtils
 import org.bouncycastle.asn1.ASN1ObjectIdentifier
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x500.style.{BCStyle, IETFUtils}
+import org.eclipse.jetty.util.IO
 import org.enterprisedlt.fabric.service.node.endorsement.EndorsementPolicyCompiler
 import org.enterprisedlt.fabric.service.node.rest.JsonServerCodec
-import org.enterprisedlt.fabric.service.node.shared.ContractParticipant
+import org.enterprisedlt.fabric.service.node.shared.{ContractParticipant, PortBind, Property}
 import org.hyperledger.fabric.protos.common.Collection.{CollectionConfig, CollectionConfigPackage, CollectionPolicyConfig, StaticCollectionConfig}
 import org.hyperledger.fabric.protos.common.Common.{Block, Envelope, Payload}
 import org.hyperledger.fabric.protos.common.Configtx
@@ -40,6 +43,8 @@ import oshi.SystemInfo
 
 import scala.collection.JavaConverters._
 import scala.language.postfixOps
+import scala.reflect.{ClassTag, classTag}
+import scala.util.Try
 import scala.util.control.NonFatal
 
 /**
@@ -316,6 +321,36 @@ object Util {
     }
 
     //=========================================================================
+    def fillPropertiesPlaceholders(values: Array[Property], dictionary: Array[Property]): Array[Property] = {
+        values.map(x => fillPropertiesPlaceholders(x, dictionary))
+    }
+
+    def fillPropertiesPlaceholders(value: Property, dictionary: Array[Property]): Property = {
+        value.copy(
+            value =
+              dictionary.foldRight(value.value) { case (term, current) =>
+                  current.replaceAll(s"\\$$\\{${term.key}\\}", term.value)
+              }
+        )
+    }
+
+    def fillPortBindPlaceholders(values: Array[PortBind], dictionary: Array[Property]): Array[PortBind] = {
+        values.map(x => fillPortBindPlaceholders(x, dictionary))
+    }
+
+    def fillPortBindPlaceholders(portBind: PortBind, dictionary: Array[Property]): PortBind = {
+        portBind.copy(
+            externalPort =
+              dictionary.foldRight(portBind.externalPort) { case (term, current) =>
+                  current.replaceAll(s"\\$$\\{${term.key}\\}", term.value)
+              },
+            internalPort =
+              dictionary.foldRight(portBind.externalPort) { case (term, current) =>
+                  current.replaceAll(s"\\$$\\{${term.key}\\}", term.value)
+              }
+        )
+    }
+    //=========================================================================
     def withResources[T <: AutoCloseable, V](r: => T)(f: T => V): V = {
         val resource: T = r
         require(resource != null, "resource is null")
@@ -345,6 +380,24 @@ object Util {
         }
     }
 
+
+    def saveParts(multipart: Iterable[Part], fileDir: String): Either[String, Unit] = Try {
+        Util.mkDirs(fileDir)
+        val outputDir = Paths.get(fileDir)
+        multipart.foreach { part =>
+            Option(part.getSubmittedFileName).foreach { filename =>
+                logger.debug(s"Got Part ${part.getName} with size = ${part.getSize}, contentType = ${part.getContentType}, submittedFileName $filename")
+                val outputFile = outputDir.resolve(filename)
+                val is = part.getInputStream
+                val os = Files.newOutputStream(outputFile, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)
+                IO.copy(is, os)
+                logger.debug(s"Saved Part ${part.getName} to ${outputFile.toString}")
+                is.close()
+                os.close()
+            }
+        }
+    }.toEither.left.map(_.getMessage)
+
     def findInTar[T](tarArchiveInputStream: TarArchiveInputStream, filename: String)(f: InputStream => T): Option[T] = {
         new TarIterator(tarArchiveInputStream)
           .find(_.name == filename)
@@ -368,7 +421,7 @@ object Util {
                           f.mkdirs()
                       case entry if entry.isFile =>
                           val outputFile = new File(s"$destinationDir/${entry.getName}")
-                          logger.info(s"Untarring file ${entry.getName} into ${destinationDir}")
+                          logger.info(s"Untarring file ${entry.getName} into $destinationDir")
                           val fos = new FileOutputStream(outputFile)
                           IOUtils.copy(inputStream, fos)
                           fos.close()
@@ -376,6 +429,43 @@ object Util {
               }
             Right(())
         }
+
+    def readFromTarAs[T: ClassTag](filePath: Path, filename: String): Option[T] = {
+        val targetClazz = classTag[T].runtimeClass.asInstanceOf[Class[T]]
+        withResources(
+            new TarArchiveInputStream(
+                new GzipCompressorInputStream(
+                    Files.newInputStream(filePath)
+                )
+            )
+        ) { inputStream =>
+            Util.findInTar(inputStream, filename)(descriptorInputStream =>
+                Util.codec.fromJson(new InputStreamReader(descriptorInputStream), targetClazz)
+            )
+        }
+    }
+
+    def extractFileFromTar(tarPath: String, filename: String, destPath: String): Unit = {
+        withResources(
+            new TarArchiveInputStream(
+                new GzipCompressorInputStream(
+                    Files.newInputStream(Paths.get(tarPath))
+                )
+            )
+        ) { inputStream =>
+            Util.findInTar(inputStream, filename) { in =>
+                val out = new FileOutputStream(s"$destPath/$filename")
+                try {
+                    IO.copy(in, out)
+                }
+                finally {
+                    out.close()
+                }
+            }
+        }
+    }
+
+
 }
 
 
@@ -440,4 +530,3 @@ object UnitsHelper {
     }
 
 }
-

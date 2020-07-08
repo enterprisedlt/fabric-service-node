@@ -19,7 +19,7 @@ import com.github.dockerjava.okhttp.OkHttpDockerCmdExecFactory
 import org.enterprisedlt.fabric.service.model.KnownHostRecord
 import org.enterprisedlt.fabric.service.node.configuration.DockerConfig
 import org.enterprisedlt.fabric.service.node.rest.JsonRestClient
-import org.enterprisedlt.fabric.service.node.shared.{BoxInformation, CustomComponentDescriptor, Image}
+import org.enterprisedlt.fabric.service.node.shared.{BoxInformation, CustomComponentDescriptor, Image, Property}
 import org.enterprisedlt.fabric.service.node.{HostsManager, Util}
 import org.slf4j.LoggerFactory
 
@@ -106,7 +106,10 @@ class DockerManagedBox(
                 new FileReader(s"$innerDistibutivePath/${request.componentType}.json"),
                 classOf[CustomComponentDescriptor]
             )).toEither.left.map(_.getMessage)
-            _ <- pullImageIfNeeded(descriptor.image)
+            propertiesWithDefault = addDefaultProperties(descriptor.properties)
+            mergedProperties = mergeProperties(propertiesWithDefault, customComponentRequest.request.properties)
+            enrichedDescriptor = enrichCustomComponentDescriptor(descriptor, mergedProperties)
+            _ <- pullImageIfNeeded(enrichedDescriptor.image)
             osnContainerId <- Try {
                 Util.mkDirs(innerComponentPath)
                 storeCustomComponentCryptoMaterial(s"$innerComponentPath/crypto", request.componentType, customComponentRequest.crypto)
@@ -117,28 +120,28 @@ class DockerManagedBox(
                           new Bind(hostDistibutivePath, new Volume("/opt/config")),
                           new Bind(s"$hostPath/hosts", new Volume("/etc/hosts"))
                       ) ++
-                        request.volumes.map { bind =>
+                        enrichedDescriptor.volumeBindDescriptor.map { bind =>
                             new Bind(s"$hostComponentPath/${bind.externalHost}/", new Volume(bind.internalHost))
                         }
                         ).toList.asJava
                   )
                   .withPortBindings(
-                      request.ports.map { port =>
+                      enrichedDescriptor.portBindDescriptor.map { port =>
                           new PortBinding(new Binding("0.0.0.0", port.externalPort), new ExposedPort(port.internalPort.toInt, InternetProtocol.TCP))
                       }.toList.asJava
                   )
                   .withNetworkMode(networkName)
                   .withLogConfig(logConfig)
-                val osnContainerId: String = docker.createContainerCmd(descriptor.image.getName)
+                val osnContainerId: String = docker.createContainerCmd(enrichedDescriptor.image.getName)
                   .withName(request.name)
                   .withEnv(
-                      request.environmentVariables.map { envVar =>
+                      enrichedDescriptor.environmentVariablesDescriptor.map { envVar =>
                           s"${envVar.key}=${envVar.value}"
                       }.toList.asJava
                   )
-                  .withWorkingDir(descriptor.workingDir)
-                  .withCmd(descriptor.command.split(" ").toList.asJava)
-                  .withExposedPorts(request.ports.map(port => new ExposedPort(port.externalPort.toInt, InternetProtocol.TCP)).toList.asJava)
+                  .withWorkingDir(enrichedDescriptor.workingDir)
+                  .withCmd(enrichedDescriptor.command.split(" ").toList.asJava)
+                  .withExposedPorts(enrichedDescriptor.portBindDescriptor.map(port => new ExposedPort(port.externalPort.toInt, InternetProtocol.TCP)).toList.asJava)
                   .withHostConfig(configHost)
                   .exec().getId
                 docker.startContainerCmd(osnContainerId).exec
@@ -479,6 +482,28 @@ class DockerManagedBox(
         }
     }
 
+    // =================================================================================================================
+    private def enrichCustomComponentDescriptor(descriptor: CustomComponentDescriptor, properties: Array[Property]): CustomComponentDescriptor = {
+        descriptor.copy(
+            environmentVariablesDescriptor = Util.fillPropertiesPlaceholders(
+                descriptor.environmentVariablesDescriptor,
+                properties,
+            ),
+            portBindDescriptor = Util.fillPortBindPlaceholders(
+                descriptor.portBindDescriptor,
+                properties,
+            )
+        )
+    }
+
+    private def mergeProperties(descriptorProperties: Array[Property], requestProperties: Array[Property]): Array[Property] = {
+        descriptorProperties.map { property =>
+            requestProperties.find(_.key == property.key)
+              .getOrElse(property)
+        }
+    }
+
+    // =================================================================================================================
 
     private def pullImageIfNeeded(image: Image, forcePull: Boolean = false): Either[String, Unit] = {
         if (!forcePull && findImage(image.getName).isDefined) {
@@ -582,6 +607,11 @@ class DockerManagedBox(
         } yield {
             logger.info(s"Component type $componentType has been successfully downloaded")
         }
+    }
+
+    private def addDefaultProperties(props: Array[Property]): Array[Property] = {
+        // TODO add properties
+        props ++ Array(Property("network_name", networkName))
     }
 
     // =================================================================================================================

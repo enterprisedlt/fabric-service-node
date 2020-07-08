@@ -7,7 +7,7 @@ import japgolly.scalajs.react.{Callback, CallbackTo}
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node.Ready
 import org.enterprisedlt.fabric.service.node.model.ComponentCandidate
-import org.enterprisedlt.fabric.service.node.shared.{Box, EnvironmentVariable, PortBind, VolumeBind}
+import org.enterprisedlt.fabric.service.node.shared.{Box, PortBind, Property, VolumeBind}
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
 import org.scalajs.dom.html.Select
 
@@ -16,7 +16,7 @@ import org.scalajs.dom.html.Select
  */
 
 @Lenses case class ComponentFormState(
-    environmentVariable: EnvironmentVariable,
+    environmentVariable: Property,
     port: PortBind,
     volume: VolumeBind,
 
@@ -26,7 +26,7 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
 
     override def initState(c: ComponentCandidate, data: Ready): ComponentFormState = {
         ComponentFormState(
-            environmentVariable = new EnvironmentVariable(
+            environmentVariable = new Property(
                 key = "",
                 value = ""
             ),
@@ -47,7 +47,7 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
         <.div(
             <.div(^.className := "form-group row",
                 <.label(^.`for` := "componentType", ^.className := "col-sm-4 col-form-label", "Type"),
-                <.div(^.className := "col-sm-8", renderComponentType(p, data.events.customComponentDescriptors.map(_.componentType)))
+                <.div(^.className := "col-sm-8", renderComponentType(p, data.customComponentDescriptors.map(_.componentType)))
             ),
             <.div(^.className := "form-group row",
                 <.label(^.`for` := "componentBox", ^.className := "col-sm-4 col-form-label", "Server"),
@@ -65,7 +65,7 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
                 )
             ),
             <.div(^.className := "form-group row",
-                <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Environment variables"))
+                <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Properties"))
             ),
             <.table(^.className := "table table-sm",
                 <.thead(^.className := "thead-light",
@@ -76,13 +76,13 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
                     )
                 ),
                 <.tbody(
-                    p.environmentVariables.map { envVar =>
+                    p.properties.map { envVar =>
                         <.tr(
                             <.td(envVar.key),
                             <.td(envVar.value),
                             <.td(
                                 <.button(^.className := "btn btn-sm btn-outline-danger float-right", //^.aria.label="remove">
-                                    ^.onClick --> removeEnvironmentVariable(envVar),
+                                    ^.onClick --> removeProperty(envVar),
                                     <.i(^.className := "fas fa-minus-circle")
                                 )
                             )
@@ -91,105 +91,17 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
                     <.tr(
                         <.td(
                             <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                bind(s) := ComponentFormState.environmentVariable / EnvironmentVariable.key
+                                bind(s) := ComponentFormState.environmentVariable / Property.key
                             )
                         ),
                         <.td(
                             <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                bind(s) := ComponentFormState.environmentVariable / EnvironmentVariable.value
+                                bind(s) := ComponentFormState.environmentVariable / Property.value
                             )
                         ),
                         <.td(
                             <.button(^.className := "btn btn-sm btn-outline-success float-right", //^.aria.label="remove">
-                                ^.onClick --> addEnvironmentVariable(s),
-                                <.i(^.className := "fas fa-plus-circle")
-                            )
-                        )
-                    )
-                )
-            ),
-            <.div(^.className := "form-group row",
-                <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Ports"))
-            ),
-            <.table(^.className := "table table-sm",
-                <.thead(^.className := "thead-light",
-                    <.tr(
-                        <.th(^.scope := "col", "External port", ^.width := "45%"),
-                        <.th(^.scope := "col", "Internal port", ^.width := "45%"),
-                        <.th(^.scope := "col", "", ^.width := "10%"),
-                    )
-                ),
-                <.tbody(
-                    p.ports.map { portBind =>
-                        <.tr(
-                            <.td(portBind.externalPort),
-                            <.td(portBind.internalPort),
-                            <.td(
-                                <.button(^.className := "btn btn-sm btn-outline-danger float-right", //^.aria.label="remove">
-                                    ^.onClick --> removePortBind(portBind),
-                                    <.i(^.className := "fas fa-minus-circle")
-                                )
-                            )
-                        )
-                    }.toTagMod,
-                    <.tr(
-                        <.td(
-                            <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                bind(s) := ComponentFormState.port / PortBind.externalPort
-                            )
-                        ),
-                        <.td(
-                            <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                bind(s) := ComponentFormState.port / PortBind.internalPort
-                            )
-                        ),
-                        <.td(
-                            <.button(^.className := "btn btn-sm btn-outline-success float-right", //^.aria.label="remove">
-                                ^.onClick --> addPortBind(s),
-                                <.i(^.className := "fas fa-plus-circle")
-                            )
-                        )
-                    )
-                )
-            ),
-            <.div(^.className := "form-group row",
-                <.div(^.className := "col-sm-12 h-separator", ^.color := "Gray", <.i("Volumes"))
-            ),
-            <.table(^.className := "table table-sm",
-                <.thead(^.className := "thead-light",
-                    <.tr(
-                        <.th(^.scope := "col", "External volume", ^.width := "45%"),
-                        <.th(^.scope := "col", "Internal volume", ^.width := "45%"),
-                        <.th(^.scope := "col", "", ^.width := "10%"),
-                    )
-                ),
-                <.tbody(
-                    p.volumes.map { volumeBind =>
-                        <.tr(
-                            <.td(volumeBind.externalHost),
-                            <.td(volumeBind.internalHost),
-                            <.td(
-                                <.button(^.className := "btn btn-sm btn-outline-danger float-right", //^.aria.label="remove">
-                                    ^.onClick --> removeVolumeBind(volumeBind),
-                                    <.i(^.className := "fas fa-minus-circle")
-                                )
-                            )
-                        )
-                    }.toTagMod,
-                    <.tr(
-                        <.td(
-                            <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                bind(s) := ComponentFormState.volume / VolumeBind.externalHost
-                            )
-                        ),
-                        <.td(
-                            <.input(^.`type` := "text", ^.className := "form-control form-control-sm",
-                                bind(s) := ComponentFormState.volume / VolumeBind.internalHost
-                            )
-                        ),
-                        <.td(
-                            <.button(^.className := "btn btn-sm btn-outline-success float-right", //^.aria.label="remove">
-                                ^.onClick --> addVolumeBind(s),
+                                ^.onClick --> addProperty(s),
                                 <.i(^.className := "fas fa-plus-circle")
                             )
                         )
@@ -198,68 +110,22 @@ object ComponentFormDashboard extends StateFullFormExt[ComponentCandidate, Ready
             )
         )
 
-
-    private def removeVolumeBind(volumeBind: VolumeBind)
+    private def removeProperty(environmentVariable: Property)
       (implicit modState: (ComponentCandidate => ComponentCandidate) => Callback)
     : CallbackTo[Unit] =
         modState(
-            ComponentCandidate.volumes.modify(
-                _.filter(p => !(p.internalHost == volumeBind.internalHost && p.externalHost == volumeBind.externalHost))
-            )
-        )
-
-    private def addVolumeBind(s: ComponentFormState)
-      (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
-    : CallbackTo[Unit] =
-        modP(ComponentCandidate.volumes.modify(_ :+ s.volume)) >>
-          modS(
-              ComponentFormState.volume.modify(_ =>
-                  VolumeBind(
-                      externalHost = "",
-                      internalHost = ""
-                  )
-              )
-          )
-
-
-    private def removePortBind(portBind: PortBind)
-      (implicit modState: (ComponentCandidate => ComponentCandidate) => Callback)
-    : CallbackTo[Unit] =
-        modState(
-            ComponentCandidate.ports.modify(
-                _.filter(p => !(p.internalPort == portBind.internalPort && p.externalPort == portBind.externalPort))
-            )
-        )
-
-    private def addPortBind(s: ComponentFormState)
-      (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
-    : CallbackTo[Unit] =
-        modP(ComponentCandidate.ports.modify(_ :+ s.port)) >>
-          modS(
-              ComponentFormState.port.modify(_ =>
-                  PortBind(
-                      externalPort = "",
-                      internalPort = ""
-                  )
-              )
-          )
-
-    private def removeEnvironmentVariable(environmentVariable: EnvironmentVariable)
-      (implicit modState: (ComponentCandidate => ComponentCandidate) => Callback)
-    : CallbackTo[Unit] =
-        modState(
-            ComponentCandidate.environmentVariables.modify(
+            ComponentCandidate.properties.modify(
                 _.filter(p => !(p.value == environmentVariable.value && p.key == environmentVariable.key))
             )
         )
 
 
-    private def addEnvironmentVariable(s: ComponentFormState)
+    private def addProperty(s: ComponentFormState)
       (implicit modP: (ComponentCandidate => ComponentCandidate) => Callback, modS: (ComponentFormState => ComponentFormState) => Callback)
     : CallbackTo[Unit] =
-        modP(ComponentCandidate.environmentVariables.modify(_ :+ s.environmentVariable)) >>
+        modP(ComponentCandidate.properties.modify(_ :+ s.environmentVariable)) >>
           modS(ComponentFormState.environmentVariable.modify(_ =>
-              EnvironmentVariable(
+              Property(
                   key = "",
                   value = ""
               ))

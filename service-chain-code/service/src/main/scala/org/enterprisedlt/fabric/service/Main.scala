@@ -6,8 +6,8 @@ import org.enterprisedlt.fabric.service.operations._
 import org.slf4j.{Logger, LoggerFactory}
 
 /**
-  * @author Andrew Pudovikov
-  */
+ * @author Andrew Pudovikov
+ */
 object Main extends ContractBase
   with App
   with ContractInitialize
@@ -16,6 +16,8 @@ object Main extends ContractBase
   with ServiceOperations
   with MessagingOperations
   with ContractOperations
+  with ApplicationDistributivesOperations
+  with ApplicationInviteOperations
   //
 {
 
@@ -36,7 +38,7 @@ object Main extends ContractBase
       .asInstanceOf[ch.qos.logback.classic.Logger]
       .setLevel(ch.qos.logback.classic.Level.INFO)
 
-//    ================================================================================
+    //    ================================================================================
     def getOwnOrganization: Either[String, Organization] = {
         val mspId = OperationContext.clientIdentity.mspId
         OperationContext.store.get[Organization](mspId).toRight(s"There isn't such org")
