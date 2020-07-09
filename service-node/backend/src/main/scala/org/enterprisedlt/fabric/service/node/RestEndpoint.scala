@@ -155,7 +155,7 @@ class RestEndpoint(
             queryResult <- {
                 logger.info(s"Querying application with getApplication...")
                 network.queryChainCode(ServiceChannelName, ServiceChainCodeName, "getApplicationInvite", joinReq.name, joinReq.founder)
-                  .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getAppli§cationInvite method in system chain-code"))
+                  .flatMap(_.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight(s"There is an error with querying getApplicationInvite method in system chain-code"))
             }
             applicationDetails <- Util.try2EitherWithLogging(Util.codec.fromJson(queryResult, classOf[ApplicationInvite]))
             applicationDescriptorPath = s"/opt/profile/applications/${applicationDetails.applicationType}.json"
