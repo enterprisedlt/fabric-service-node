@@ -91,7 +91,7 @@ class RestEndpoint(
                         parties = applicationRequest.parties,
                         initArgs = contract.initArgsNames
                     )
-                    createContract(contractCreateRequest)
+                    createContract(contractCreateRequest,true)
                 }
             }
             mergedApplicationProperties = applicationDescriptor.properties.map { property =>
@@ -679,7 +679,7 @@ class RestEndpoint(
 
 
     @Post("/admin/create-contract")
-    def createContract(contractRequest: CreateContractRequest): Either[String, String] = {
+    def createContract(contractRequest: CreateContractRequest, applicationCreation: Boolean = false): Either[String, String] = {
         logger.info("Creating contract ...")
         val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
         logger.info(s"createContractRequest =  $contractRequest")
@@ -727,32 +727,12 @@ class RestEndpoint(
                 collectionConfig = Option(Util.createCollectionsConfig(collections)),
                 arguments = contractRequest.initArgs
             )
-            response <- {
-                logger.info(s"Invoking 'createContract' method...")
-                val contract = Contract(
-                    founder = organizationConfig.name,
-                    name = contractRequest.name,
-                    channel = contractRequest.channelName,
-                    lang = deploymentDescriptor.language,
-                    contractType = contractRequest.contractType,
-                    version = contractRequest.version,
-                    participants = contractRequest.parties.map(_.mspId),
-                    timestamp = Instant.now.toEpochMilli
-                )
-                state.networkManager.invokeChainCode(
-                    ServiceChannelName,
-                    ServiceChainCodeName,
-                    "createContract",
-                    Util.codec.toJson(contract)
-                )
-            }
-            r <- Util.try2EitherWithLogging(response.get())
+            r <- if (!applicationCreation) createInvitations(state, contractRequest, deploymentDescriptor) else Right("")
         } yield {
             FabricServiceStateHolder.incrementVersion()
-            s"Creating contract ${contractRequest.contractType} has been completed successfully $r"
+            s"Creating contract ${contractRequest.contractType} has been completed successfully ${r}"
         }
     }
-
 
     @Post("/admin/contract-join")
     def contractJoin(joinReq: ContractJoinRequest): Either[String, String] = {
@@ -928,6 +908,32 @@ class RestEndpoint(
         val domainDescriptor = Property("domain", organizationConfig.domain)
         // TODO add other properties
         props ++ Array(orgNameDescriptor, domainDescriptor)
+    }
+
+
+    private def createInvitations(state: GlobalState, contractRequest: CreateContractRequest, deploymentDescriptor: ContractDeploymentDescriptor): Either[String, String] = {
+        for {
+            response <- {
+                logger.info(s"Invoking 'createContract' method...")
+                val contract = Contract(
+                    founder = organizationConfig.name,
+                    name = contractRequest.name,
+                    channel = contractRequest.channelName,
+                    lang = deploymentDescriptor.language,
+                    contractType = contractRequest.contractType,
+                    version = contractRequest.version,
+                    participants = contractRequest.parties.map(_.mspId),
+                    timestamp = Instant.now.toEpochMilli
+                )
+                state.networkManager.invokeChainCode(
+                    ServiceChannelName,
+                    ServiceChainCodeName,
+                    "createContract",
+                    Util.codec.toJson(contract)
+                )
+            }
+            r <- Util.try2EitherWithLogging(response.get())
+        } yield r.toString
     }
 
 
