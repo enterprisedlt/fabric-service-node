@@ -113,9 +113,7 @@ class EventsMonitor(
     }
 
     def updateCustomComponentDescriptors(): StateChangeFunction = { current: FabricServiceStateFull =>
-        Try(getCustomComponentDescriptors)
-          .toEither
-          .left.map(_.getMessage) match {
+        Util.try2EitherWithLogging(getCustomComponentDescriptors) match {
             case Right(descriptors) if current.customComponentDescriptors.length != descriptors.length =>
                 Option(current.copy(customComponentDescriptors = descriptors))
 
@@ -159,7 +157,7 @@ class EventsMonitor(
         }
         apps match {
             case Right(apps) if current.applicationState.length != apps.length || current.applicationState.exists(app =>
-                !apps.exists(application => application.applicationType == app.applicationType && application.status == app.status))  =>
+                !apps.exists(application => application.applicationType == app.applicationType && application.status == app.status)) =>
                 val applicationDescriptors = getApplicationDescriptors
                 applicationDescriptors.foreach {
                     applicationDescriptor =>
@@ -230,7 +228,7 @@ class EventsMonitor(
           .listFiles()
           .filter(_.getName.endsWith(".tgz"))
           .flatMap { file =>
-              val filename = file.getName.substring(0,file.getName.length - 4)
+              val filename = file.getName.substring(0, file.getName.length - 4)
               Util.readFromTarAs[ContractDescriptor](file.toPath, s"$filename.json")
           }
     }
