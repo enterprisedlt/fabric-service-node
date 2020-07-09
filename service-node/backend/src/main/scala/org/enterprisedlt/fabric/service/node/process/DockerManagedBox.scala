@@ -102,10 +102,10 @@ class DockerManagedBox(
         logger.info(s"Starting ${request.name}...")
         for {
             _ <- checkComponentTypeExists(customComponentRequest.serviceNodeName, request.componentType, innerDistibutivePath)
-            descriptor <- Try(Util.codec.fromJson(
+            descriptor <- Util.try2EitherWithLogging(Util.codec.fromJson(
                 new FileReader(s"$innerDistibutivePath/${request.componentType}.json"),
                 classOf[CustomComponentDescriptor]
-            )).toEither.left.map(_.getMessage)
+            ))
             propertiesWithDefault = addDefaultProperties(descriptor.properties)
             mergedProperties = mergeProperties(propertiesWithDefault, customComponentRequest.request.properties)
             enrichedDescriptor = enrichCustomComponentDescriptor(descriptor, mergedProperties)
@@ -602,7 +602,7 @@ class DockerManagedBox(
         for {
             distributorClient <- distributorClients.get(serviceNodeName).toRight(s"Service node $serviceNodeName is not registered in box manager")
             distributiveBase64 <- distributorClient.getComponentTypeDistributive(componentType)
-            distributive <- Try(Base64.getDecoder.decode(distributiveBase64)).toEither.left.map(_.getMessage)
+            distributive <- Util.try2EitherWithLogging(Base64.getDecoder.decode(distributiveBase64))
             _ <- Util.untarFile(distributive, componentNameFolder.getAbsolutePath)
         } yield {
             logger.info(s"Component type $componentType has been successfully downloaded")

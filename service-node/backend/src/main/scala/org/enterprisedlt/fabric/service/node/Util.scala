@@ -44,8 +44,8 @@ import oshi.SystemInfo
 import scala.collection.JavaConverters._
 import scala.language.postfixOps
 import scala.reflect.{ClassTag, classTag}
-import scala.util.Try
 import scala.util.control.NonFatal
+import scala.util.{Failure, Success, Try}
 
 /**
  * @author Alexey Polubelov
@@ -350,6 +350,7 @@ object Util {
               }
         )
     }
+
     //=========================================================================
     def withResources[T <: AutoCloseable, V](r: => T)(f: T => V): V = {
         val resource: T = r
@@ -381,7 +382,7 @@ object Util {
     }
 
 
-    def saveParts(multipart: Iterable[Part], fileDir: String): Either[String, Unit] = Try {
+    def saveParts(multipart: Iterable[Part], fileDir: String): Either[String, Unit] = Util.try2EitherWithLogging {
         Util.mkDirs(fileDir)
         val outputDir = Paths.get(fileDir)
         multipart.foreach { part =>
@@ -396,7 +397,7 @@ object Util {
                 os.close()
             }
         }
-    }.toEither.left.map(_.getMessage)
+    }
 
     def findInTar[T](tarArchiveInputStream: TarArchiveInputStream, filename: String)(f: InputStream => T): Option[T] = {
         new TarIterator(tarArchiveInputStream)
@@ -465,7 +466,15 @@ object Util {
         }
     }
 
-
+    def try2EitherWithLogging[T](obj: => T): Either[String, T] = {
+        Try(obj) match {
+            case Success(something) => Right(something)
+            case Failure(err) =>
+                val msg = s"Error: ${err.getMessage}"
+                logger.error(msg, err)
+                Left(msg)
+        }
+    }
 }
 
 

@@ -14,8 +14,6 @@ import org.enterprisedlt.fabric.service.node.shared._
 import org.enterprisedlt.fabric.service.node.{process, _}
 import org.slf4j.LoggerFactory
 
-import scala.util.Try
-
 /**
  * @author Alexey Polubelov
  */
@@ -249,12 +247,9 @@ object Join {
 
         for {
             // join new org to service channel
-            caCerts <- Try(joinRequest.organizationCertificates.caCerts.map(Util.base64Decode).toIterable)
-              .toEither.left.map(_.getMessage)
-            tlsCACerts <- Try(joinRequest.organizationCertificates.tlsCACerts.map(Util.base64Decode).toIterable)
-              .toEither.left.map(_.getMessage)
-            adminCerts <- Try(joinRequest.organizationCertificates.adminCerts.map(Util.base64Decode).toIterable)
-              .toEither.left.map(_.getMessage)
+            caCerts <- Util.try2EitherWithLogging(joinRequest.organizationCertificates.caCerts.map(Util.base64Decode).toIterable)
+            tlsCACerts <- Util.try2EitherWithLogging(joinRequest.organizationCertificates.tlsCACerts.map(Util.base64Decode).toIterable)
+            adminCerts <- Util.try2EitherWithLogging(joinRequest.organizationCertificates.adminCerts.map(Util.base64Decode).toIterable)
             _ <- state.networkManager.joinToChannel(
                 ServiceChannelName,
                 joinRequest.organization.mspId,
