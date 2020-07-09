@@ -48,8 +48,12 @@ class RestEndpoint(
         for {
             globalState <- globalState.toRight("Node is not initialized yet")
             _ <- Util.saveParts(multipart, fileDir)
-        } yield FabricServiceStateHolder.updateStateFullOption(globalState.eventsMonitor.updateApplications())
-
+        } yield FabricServiceStateHolder.updateStateFullOption(
+            FabricServiceStateHolder.compose(
+                globalState.eventsMonitor.updateApplications(),
+                globalState.eventsMonitor.updateContractDescriptors()
+            )
+        )
     }
 
     @PostMultipart("/admin/upload-chaincode")
@@ -169,10 +173,9 @@ class RestEndpoint(
                     val filePath = s"/opt/profile/chain-code/${contract.contractType}.tgz"
                     for {
                         chaincodeFile <- Option(new File(filePath)).filter(_.exists()).toRight(s"File $filePath does not exist ")
-                        chaincodeDescriptor <- Util.try2EitherWithLogging(Util.codec.fromJson(
-                            new FileReader(s"/opt/profile/chain-code/${contract.contractType}.json"),
-                            classOf[ContractDeploymentDescriptor]
-                        ))
+                        path = chaincodeFile.toPath
+                        chaincodeDescriptor <- Util.readFromTarAs[ContractDeploymentDescriptor](chaincodeFile.toPath,
+                            s"${contract.contractType}.json").toRight(s"Descriptor hasn't been found in $path")
                         chainCodePkg = new BufferedInputStream(new FileInputStream(chaincodeFile))
                         _ = logger.info(s"[ $organizationFullName ] - Installing ${contract.name}:${applicationDetails.version} chaincode ...")
                         _ <- network.installChainCode(
@@ -233,7 +236,8 @@ class RestEndpoint(
                                 )
                             )
                         ),
-                    state.eventsMonitor.updateApplications()
+                    state.eventsMonitor.updateApplications(),
+                    state.eventsMonitor.updateContractDescriptors()
                 )
             )
             s"Joining to application ${joinReq.name} has been completed successfully $invokeAwait"
@@ -484,28 +488,7 @@ class RestEndpoint(
     @Get("/admin/list-contract-packages")
     def getListContractPackages: Either[String, Array[ContractDescriptor]] = {
         logger.info("Listing contract packages...")
-        val chaincodePath = new File(s"/opt/profile/chain-code/").getAbsoluteFile
-        if (!chaincodePath.exists()) chaincodePath.mkdirs()
-        Util.try2EitherWithLogging(
-            chaincodePath
-              .listFiles()
-              .filter(_.getName.endsWith(".json"))
-              .map(_.getName)
-              .flatMap { packageName =>
-                  Try {
-                      val descriptor = Util.codec.fromJson(
-                          new FileReader(s"/opt/profile/chain-code/$packageName"),
-                          classOf[ContractDeploymentDescriptor]
-                      )
-                      val name = packageName.substring(0, packageName.length - 5)
-                      ContractDescriptor(
-                          name = name,
-                          roles = descriptor.roles,
-                          initArgsNames = descriptor.initArgsNames
-                      )
-                  }.toOption
-              }
-        )
+        Util.try2EitherWithLogging(FabricServiceStateHolder.fullState.contractDescriptors)
     }
 
 
@@ -688,12 +671,10 @@ class RestEndpoint(
             _ = logger.info(s"[ $organizationFullName ] - Preparing ${contractRequest.name} chain code ...")
             filesBaseName = s"${contractRequest.contractType}" // -${contractRequest.version}
             chainCodeName = s"${contractRequest.name}-${contractRequest.version}" //
-            deploymentDescriptor <- Util.try2EitherWithLogging(Util.codec.fromJson(
-                new FileReader(s"/opt/profile/chain-code/$filesBaseName.json"),
-                classOf[ContractDeploymentDescriptor]
-            ))
             path = s"/opt/profile/chain-code/$filesBaseName.tgz"
             file <- Option(new File(path)).filter(_.exists()).toRight(s"File $filesBaseName.tgz doesn't exist")
+            deploymentDescriptor <- Util.readFromTarAs[ContractDeploymentDescriptor](file.toPath,
+                s"$filesBaseName.json").toRight(s"Descriptor hasn't been found in $path")
             chainCodePkg <- Option(new BufferedInputStream(new FileInputStream(file))).toRight(s"Can't prepare cc pkg stream")
             _ <- {
                 logger.info(s"[ $organizationFullName ] - Installing $chainCodeName chain code ...")

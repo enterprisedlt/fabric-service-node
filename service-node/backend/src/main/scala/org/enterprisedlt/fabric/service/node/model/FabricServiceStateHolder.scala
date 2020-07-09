@@ -96,6 +96,7 @@ object FabricServiceStateHolder {
 case class FabricServiceStateFull(
     applications: Array[ApplicationDescriptor] = Array.empty[ApplicationDescriptor],
     deployedApplications: Array[ApplicationInfo] = Array.empty[ApplicationInfo],
+    contractDescriptors: Array[ContractDescriptor] = Array.empty[ContractDescriptor],
     customComponentDescriptors: Array[CustomComponentDescriptor] = Array.empty[CustomComponentDescriptor],
     applicationState: Array[ApplicationState] = Array.empty[ApplicationState],
     events: Events = Events(
