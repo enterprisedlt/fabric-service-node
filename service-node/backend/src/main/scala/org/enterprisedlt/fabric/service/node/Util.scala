@@ -466,7 +466,7 @@ object Util {
         }
     }
 
-    def try2EitherWithLogging[T](obj: T): Either[String, T] = {
+    def try2EitherWithLogging[T](obj: => T): Either[String, T] = {
         Try(obj) match {
             case Success(something) => Right(something)
             case Failure(err) =>
