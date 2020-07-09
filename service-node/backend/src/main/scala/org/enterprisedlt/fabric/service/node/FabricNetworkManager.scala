@@ -22,7 +22,6 @@ import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
 import scala.collection.concurrent.TrieMap
-import scala.util.Try
 
 
 /**
@@ -63,11 +62,11 @@ class FabricNetworkManager(
         val bootstrapOsnName = mkOSN(bootstrapOsn)
         val chCfg = new ChannelConfiguration(channelTx.toByteArray)
         val sign = fabricClient.getChannelConfigurationSignature(chCfg, admin)
-        Try {
+        Util.try2EitherWithLogging {
             val channel = fabricClient.newChannel(channelName, bootstrapOsnName, chCfg, sign)
             channels += channelName -> channel
             channel.getName
-        }.toEither.left.map(_.getMessage)
+        }
     }
 
     //=========================================================================

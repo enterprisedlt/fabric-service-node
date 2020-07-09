@@ -42,7 +42,7 @@ class EventsMonitor(
         val applicationInvs = for {
             queryResult <- networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listApplicationInvites")
             contracts <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
-            applicationInvitations <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[ApplicationInvite]])).toEither.left.map(_.getMessage)
+            applicationInvitations <- Util.try2EitherWithLogging((new GsonBuilder).create().fromJson(contracts, classOf[Array[ApplicationInvite]]))
         } yield {
             applicationInvitations.map { application =>
                 ApplicationInvitation(
@@ -72,7 +72,7 @@ class EventsMonitor(
         val contractInvs = for {
             queryResult <- networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listContracts")
             contracts <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
-            contractInvitations <- Try((new GsonBuilder).create().fromJson(contracts, classOf[Array[Contract]])).toEither.left.map(_.getMessage)
+            contractInvitations <- Util.try2EitherWithLogging((new GsonBuilder).create().fromJson(contracts, classOf[Array[Contract]]))
         } yield {
             contractInvitations.map {
                 contract =>
@@ -130,7 +130,7 @@ class EventsMonitor(
 
     def updateApplications(): StateChangeFunction = { current: FabricServiceStateFull =>
         val apps = for {
-            applicationDescriptors <- Try(getApplicationDescriptors).toEither.left.map(_.getMessage)
+            applicationDescriptors <- Util.try2EitherWithLogging(getApplicationDescriptors)
             applications <- getApplications
         } yield {
             applicationDescriptors.map { applicationDescriptor =>
@@ -192,7 +192,7 @@ class EventsMonitor(
         for {
             queryResult <- networkManager.queryChainCode(ServiceChannelName, ServiceChainCodeName, "listApplicationDistributives")
             applications <- queryResult.headOption.map(_.toStringUtf8).filter(_.nonEmpty).toRight("No results")
-            applications <- Try((new GsonBuilder).create().fromJson(applications, classOf[Array[ApplicationDistributive]])).toEither.left.map(_.getMessage)
+            applications <- Util.try2EitherWithLogging((new GsonBuilder).create().fromJson(applications, classOf[Array[ApplicationDistributive]]))
         } yield applications
     }
 
