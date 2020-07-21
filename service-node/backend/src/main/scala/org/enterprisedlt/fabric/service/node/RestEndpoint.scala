@@ -23,7 +23,6 @@ import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConverters._
 import scala.language.postfixOps
-import scala.util.Try
 
 /**
  * @author Alexey Polubelov
@@ -95,7 +94,9 @@ class RestEndpoint(
                         parties = applicationRequest.parties,
                         initArgs = contract.initArgsNames
                     )
-                    createContract(contractCreateRequest,true)
+                    for {deploymentDescriptor <- getDeploymentDescriptor(contractCreateRequest.contractType)
+                         _ <- createContractBase(contractCreateRequest, deploymentDescriptor)
+                         } yield s"Successfully created contract ${contract.name}"
                 }
             }
             mergedApplicationProperties = applicationDescriptor.properties.map { property =>
@@ -662,53 +663,13 @@ class RestEndpoint(
 
 
     @Post("/admin/create-contract")
-    def createContract(contractRequest: CreateContractRequest, applicationCreation: Boolean = false): Either[String, String] = {
+    def createContract(contractRequest: CreateContractRequest): Either[String, String] = {
         logger.info("Creating contract ...")
-        val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
-        logger.info(s"createContractRequest =  $contractRequest")
         for {
             state <- globalState.toRight("Node is not initialized yet")
-            _ = logger.info(s"[ $organizationFullName ] - Preparing ${contractRequest.name} chain code ...")
-            filesBaseName = s"${contractRequest.contractType}" // -${contractRequest.version}
-            chainCodeName = s"${contractRequest.name}-${contractRequest.version}" //
-            path = s"/opt/profile/chain-code/$filesBaseName.tgz"
-            file <- Option(new File(path)).filter(_.exists()).toRight(s"File $filesBaseName.tgz doesn't exist")
-            deploymentDescriptor <- Util.readFromTarAs[ContractDeploymentDescriptor](file.toPath,
-                s"$filesBaseName.json").toRight(s"Descriptor hasn't been found in $path")
-            chainCodePkg <- Option(new BufferedInputStream(new FileInputStream(file))).toRight(s"Can't prepare cc pkg stream")
-            _ <- {
-                logger.info(s"[ $organizationFullName ] - Installing $chainCodeName chain code ...")
-                state.networkManager.installChainCode(
-                    contractRequest.channelName,
-                    contractRequest.name,
-                    contractRequest.version,
-                    deploymentDescriptor.language,
-                    chainCodePkg
-                )
-            }
-            endorsementPolicy <- Util.makeEndorsementPolicy(
-                deploymentDescriptor.endorsement,
-                contractRequest.parties
-            )
-            collections = deploymentDescriptor.collections.map { cd =>
-                PrivateCollectionConfiguration(
-                    name = cd.name,
-                    memberIds = cd.members.flatMap(m =>
-                        contractRequest.parties.filter(_.role == m).map(_.mspId)
-                    )
-                )
-            }
-            _ = logger.info(s"[ $organizationFullName ] - Instantiating $chainCodeName chain code ...")
-            _ <- state.networkManager.instantiateChainCode(
-                contractRequest.channelName,
-                contractRequest.name,
-                contractRequest.version,
-                deploymentDescriptor.language,
-                endorsementPolicy = Option(endorsementPolicy),
-                collectionConfig = Option(Util.createCollectionsConfig(collections)),
-                arguments = contractRequest.initArgs
-            )
-            r <- if (!applicationCreation) createInvitations(state, contractRequest, deploymentDescriptor) else Right("")
+            deploymentDescriptor <- getDeploymentDescriptor(contractRequest.contractType)
+            _ <- createContractBase(contractRequest, deploymentDescriptor)
+            r <- createInvitations(state, contractRequest, deploymentDescriptor)
         } yield {
             FabricServiceStateHolder.incrementVersion()
             s"Creating contract ${contractRequest.contractType} has been completed successfully ${r}"
@@ -891,6 +852,60 @@ class RestEndpoint(
         props ++ Array(orgNameDescriptor, domainDescriptor)
     }
 
+
+    private def getDeploymentDescriptor(contractType: String): Either[String, ContractDeploymentDescriptor] = {
+        val path = s"/opt/profile/chain-code/${contractType}.tgz"
+        for {
+            file <- Option(new File(path)).filter(_.exists()).toRight(s"File $contractType.tgz doesn't exist")
+            deploymentDescriptor <- Util.readFromTarAs[ContractDeploymentDescriptor](file.toPath,
+                s"$contractType.json").toRight(s"Descriptor hasn't been found in $path")
+        } yield deploymentDescriptor
+    }
+
+
+    private def createContractBase(contractRequest: CreateContractRequest, deploymentDescriptor: ContractDeploymentDescriptor): Either[String, Unit] = {
+        val organizationFullName = s"${organizationConfig.name}.${organizationConfig.domain}"
+        val chainCodeName = s"${contractRequest.name}-${contractRequest.version}" //
+        val path = s"/opt/profile/chain-code/${contractRequest.contractType}.tgz"
+        for {
+            state <- globalState.toRight("Node is not initialized yet")
+            file <- Option(new File(path)).filter(_.exists()).toRight(s"File ${contractRequest.contractType}.tgz doesn't exist")
+            chainCodePkg <- Option(new BufferedInputStream(new FileInputStream(file))).toRight(s"Can't prepare cc pkg stream")
+            _ <- {
+                logger.info(s"[ $organizationFullName ] - Installing $chainCodeName chain code ...")
+                state.networkManager.installChainCode(
+                    contractRequest.channelName,
+                    contractRequest.name,
+                    contractRequest.version,
+                    deploymentDescriptor.language,
+                    chainCodePkg
+                )
+            }
+            endorsementPolicy <- Util.makeEndorsementPolicy(
+                deploymentDescriptor.endorsement,
+                contractRequest.parties
+            )
+            collections = deploymentDescriptor.collections.map { cd =>
+                PrivateCollectionConfiguration(
+                    name = cd.name,
+                    memberIds = cd.members.flatMap(m =>
+                        contractRequest.parties.filter(_.role == m).map(_.mspId)
+                    )
+                )
+            }
+            _ = logger.info(s"[ $organizationFullName ] - Instantiating $chainCodeName chain code ...")
+            _ <- state.networkManager.instantiateChainCode(
+                contractRequest.channelName,
+                contractRequest.name,
+                contractRequest.version,
+                deploymentDescriptor.language,
+                endorsementPolicy = Option(endorsementPolicy),
+                collectionConfig = Option(Util.createCollectionsConfig(collections)),
+                arguments = contractRequest.initArgs
+            )
+        } yield {
+        }
+    }
 
     private def createInvitations(state: GlobalState, contractRequest: CreateContractRequest, deploymentDescriptor: ContractDeploymentDescriptor): Either[String, String] = {
         for {
