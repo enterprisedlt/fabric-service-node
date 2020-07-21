@@ -38,8 +38,6 @@ object Dashboard {
 
         contractFile: File,
         contractName: String,
-        descriptorFile: File,
-        descriptorName: String,
 
         // Goverment
         registerOrganizationRequest: JoinRequest,
@@ -95,8 +93,6 @@ object Dashboard {
               ),
               contractFile = null,
               contractName = "Choose file",
-              descriptorFile = null,
-              descriptorName = "Choose file",
               //
               registerOrganizationRequest = JoinRequest(
                   organization = Organization(
@@ -371,17 +367,6 @@ object Dashboard {
                                                             ^.onChange ==> changeContractFile
                                                         ),
                                                         <.label(^.className := "custom-file-label", s.contractName)
-                                                    )
-                                                )
-                                            ),
-                                            <.div(^.className := "form-group row",
-                                                <.label(^.className := "col-sm-4 col-form-label", "Descriptor"),
-                                                <.div(^.className := "input-group input-group-sm col-sm-8",
-                                                    <.div(^.className := "custom-file",
-                                                        <.input(^.`type` := "file", ^.className := "custom-file-input",
-                                                            ^.onChange ==> changeDescriptorFile
-                                                        ),
-                                                        <.label(^.className := "custom-file-label", s.descriptorName)
                                                     )
                                                 )
                                             ),
@@ -665,12 +650,7 @@ object Dashboard {
             }
         }
 
-        def changeDescriptorFile(event: ReactEventFromInput): CallbackTo[Unit] = {
-            val file: UndefOr[File] = event.target.files(0)
-            file.map { f =>
-                $.modState(x => x.copy(descriptorName = f.name, descriptorFile = f))
-            }.getOrElse(Callback())
-        }
+
 
         def changeContractFile(event: ReactEventFromInput): CallbackTo[Unit] = {
             val file: UndefOr[File] = event.target.files(0)
@@ -721,7 +701,6 @@ object Dashboard {
         def uploadContract(s: State)(r: Callback): Callback = Callback.future {
             val formData = new FormData
             formData.append("contractFile", s.contractFile)
-            formData.append("descriptorFile", s.descriptorFile)
             ServiceNodeRemote.uploadContract(formData).map(_ => r)
         }
 
