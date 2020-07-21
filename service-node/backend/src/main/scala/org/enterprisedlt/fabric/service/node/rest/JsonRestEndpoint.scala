@@ -65,7 +65,7 @@ class JsonRestEndpoint(
     }
 
     type HandleFunction = (HttpServletRequest, HttpServletResponse) => Unit
-    type ExtractParametersFunction = (Method, HttpServletRequest, ServerCodec) => Seq[AnyRef]
+    type ExtractParametersFunction = (Method, HttpServletRequest, ServerCodec) => Seq[(String, AnyRef)]
 
     private def createHandler(o: AnyRef, m: Method, parametersFunction: ExtractParametersFunction): (HttpServletRequest, HttpServletResponse) => Unit = {
         logger.info(s"Creating handler for: ${m.getName}")
@@ -75,9 +75,13 @@ class JsonRestEndpoint(
                 val f: (HttpServletRequest, HttpServletResponse) => Unit = { (request, response) =>
                     try {
                         val codec = createCodec()
-                        val params: Seq[AnyRef] = parametersFunction(m, request, codec)
+                        val paramsTuple: Seq[(String, AnyRef)] = parametersFunction(m, request, codec)
+                        val loggerMessage = paramsTuple.map { case (name, value) => s"$name = $value" }.mkString(", ")
+                        val params: Seq[AnyRef] = paramsTuple.map(_._2)
+                        logger.debug(s"Invoking ${m.getName} method with opts: $loggerMessage")
                         m.invoke(o, params: _*) match {
                             case Right(value) =>
+                                logger.debug(s"${m.getName} invocation has been successful, result: $value")
                                 Option(value)
                                   .filterNot(_.isInstanceOf[Unit])
                                   .foreach(v => codec.writeResult(v, response.getOutputStream))
@@ -159,16 +163,16 @@ class JsonRestEndpoint(
     }
 
 
-    private def mkPostParams(m: Method, request: HttpServletRequest, codec: ServerCodec): Seq[AnyRef] = {
+    private def mkPostParams(m: Method, request: HttpServletRequest, codec: ServerCodec): Seq[(String, AnyRef)] = {
         m.getParameters.headOption.map { p =>
-            codec.readParameter(request.getReader, p.getType).asInstanceOf[AnyRef]
+            (p.getName, codec.readParameter(request.getReader, p.getType).asInstanceOf[AnyRef])
         }.toSeq
     }
 
-    private def mkGetParams(m: Method, request: HttpServletRequest, codec: ServerCodec): Seq[AnyRef] = {
+    private def mkGetParams(m: Method, request: HttpServletRequest, codec: ServerCodec): Seq[(String, AnyRef)] = {
         m.getParameters.map { p =>
             val v = Option(request.getParameter(p.getName)).getOrElse(throw new Exception("mandatory parameter absent"))
-            codec.readParameter(v, p.getType).asInstanceOf[AnyRef]
+            (p.getName, codec.readParameter(v, p.getType).asInstanceOf[AnyRef])
         }
     }
 
