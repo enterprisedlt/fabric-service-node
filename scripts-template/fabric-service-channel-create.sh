@@ -12,12 +12,12 @@ fi
 echo "Creating channel ..."
 
 SERVICE_URL="localhost:${SERVICE_BIND_PORT}"
-curl -k -G --silent --show-error \
+curl -k --silent --show-error \
 --key ${PROFILE_PATH}/crypto/users/admin/admin.key \
 --cert ${PROFILE_PATH}/crypto/users/admin/admin.crt \
---request GET \
-https://${SERVICE_URL}/admin/create-channel \
--d channel=$2
+--request POST \
+--data-raw "$2" \
+https://${SERVICE_URL}/admin/create-channel
 
 if [[ "$?" -ne 0 ]]; then
   echo "Failed to create channel $2."
