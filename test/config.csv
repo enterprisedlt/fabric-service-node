@@ -1,5 +1,5 @@
-ORG,DOMAIN,SERVICE_EXTERNAL_ADDRESS,SERVICE_BIND_PORT,COMPONENTS_DISTRIBUTOR_BIND_PORT,ADMIN_PASSWORD
-org1,example.com,,8000,8010,admin
-org2,example.com,,8001,8011,admin
-org3,example.com,,8002,8012,admin
-org4,example.com,,8003,8013,admin
+ORG,DOMAIN,SERVICE_EXTERNAL_ADDRESS,SERVICE_BIND_PORT,COMPONENTS_DISTRIBUTOR_BIND_PORT,ADMIN_PASSWORD,BOX_MANAGER_NAME
+org1,example.com,,8000,8010,admin,default
+org2,example.com,,8001,8011,admin,default
+org3,example.com,,8002,8012,admin,default
+org4,example.com,,8003,8013,admin,default

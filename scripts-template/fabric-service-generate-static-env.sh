@@ -50,24 +50,24 @@ for ORG in $(cat ${TARGET_DIR}/shared/list); do
       {
         "name": "osn1.${ORG}.${DOMAIN}",
         "port": $((PORT + 1)),
-        "box": "default"
+        "box": ${BOX_MANAGER_NAME}
       },
       {
         "name": "osn2.${ORG}.${DOMAIN}",
         "port": $((PORT + 2)),
-        "box": "default"
+        "box": ${BOX_MANAGER_NAME}
       },
       {
         "name": "osn3.${ORG}.${DOMAIN}",
         "port": $((PORT + 3)),
-        "box": "default"
+        "box": ${BOX_MANAGER_NAME}
       }
     ],
     "peerNodes": [
       {
         "name": "peer0.${ORG}.${DOMAIN}",
         "port": $((PORT + 4)),
-        "box": "default",
+        "box": ${BOX_MANAGER_NAME},
         "couchDB": {
           "port": $((PORT + 5))
         }
