@@ -25,18 +25,6 @@ object ComponentCandidate {
     implicit val rw: RW[ComponentCandidate] = macroRW
 }
 
-
-@Lenses case class AddOrgToChannelRequest(
-    mspId: String,
-    channelName: String,
-    organizationCertificates: OrganizationCertificates
-)
-
-object AddOrgToChannelRequest {
-    implicit val rw: RW[AddOrgToChannelRequest] = macroRW
-}
-
-
 @Lenses case class JoinRequest(
     organization: Organization,
     organizationCertificates: OrganizationCertificates,

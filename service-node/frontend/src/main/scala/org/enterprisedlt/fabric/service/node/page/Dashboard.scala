@@ -6,7 +6,7 @@ import japgolly.scalajs.react.{BackendScope, Callback, CallbackTo, ReactEventFro
 import monocle.macros.Lenses
 import org.enterprisedlt.fabric.service.node._
 import org.enterprisedlt.fabric.service.node.connect.ServiceNodeRemote
-import org.enterprisedlt.fabric.service.node.model.{AddOrgToChannelRequest, _}
+import org.enterprisedlt.fabric.service.node.model._
 import org.enterprisedlt.fabric.service.node.page.form._
 import org.enterprisedlt.fabric.service.node.shared.{ApplicationState, _}
 import org.enterprisedlt.fabric.service.node.util.DataFunction._
@@ -41,7 +41,6 @@ object Dashboard {
 
         // Goverment
         registerOrganizationRequest: JoinRequest,
-        addOrgToChannelRequest: AddOrgToChannelRequest,
 
         // Applications
         applicationFile: File,
@@ -101,15 +100,6 @@ object Dashboard {
                       memberNumber = 0,
                       knownHosts = Array.empty[KnownHostRecord]
                   ),
-                  organizationCertificates = OrganizationCertificates(
-                      caCerts = Array.empty[String],
-                      tlsCACerts = Array.empty[String],
-                      adminCerts = Array.empty[String]
-                  )
-              ),
-              addOrgToChannelRequest = AddOrgToChannelRequest(
-                  mspId = "",
-                  channelName = "",
                   organizationCertificates = OrganizationCertificates(
                       caCerts = Array.empty[String],
                       tlsCACerts = Array.empty[String],
@@ -317,7 +307,7 @@ object Dashboard {
                               ),
                             actions = Seq(
                                 PageAction(
-                                    name = "Create Channel",
+                                    name = "Channel",
                                     id = "create-channel",
                                     actionForm = progress =>
                                         <.div(
@@ -340,29 +330,6 @@ object Dashboard {
                                                     ^.className := "btn btn-sm btn-outline-success float-right",
                                                     ^.onClick --> progress(createChannel(s.channelName)),
                                                     "Create channel",
-                                                )
-                                            )
-                                        )
-                                ),
-
-                                PageAction(
-                                    name = "Add to channel",
-                                    id = "add-to-channel",
-                                    actionForm = progress =>
-                                        <.div(
-                                            AddOrganizationToChannel(s, State.addOrgToChannelRequest, g),
-                                            <.hr(),
-                                            <.div(^.className := "form-group mt-1",
-                                                <.button(
-                                                    ^.className := "btn btn-sm btn-outline-secondary",
-                                                    data.toggle := "collapse", data.target := "#add-to-channel",
-                                                    ^.aria.expanded := true, ^.aria.controls := "add-to-channel",
-                                                    "Cancel"
-                                                ),
-                                                <.button(
-                                                    ^.className := "btn btn-sm btn-outline-success float-right",
-                                                    ^.onClick --> progress(addOrgToChannel(s.addOrgToChannelRequest)),
-                                                    "Add organization to channel",
                                                 )
                                             )
                                         )
@@ -684,6 +651,7 @@ object Dashboard {
         }
 
 
+
         def changeContractFile(event: ReactEventFromInput): CallbackTo[Unit] = {
             val file: UndefOr[File] = event.target.files(0)
             file.map { f =>
@@ -718,11 +686,6 @@ object Dashboard {
             ServiceNodeRemote.createInvite.map { invite =>
                 doDownload(invite, "invite.json")
             }
-        }
-
-
-        def addOrgToChannel(addToChannelRequest: AddOrgToChannelRequest)(r: Callback): Callback = Callback.future {
-            ServiceNodeRemote.addOrgToChannel(addToChannelRequest).map(_ => r)
         }
 
         def createChannel(channelName: String)(r: Callback): Callback = Callback.future {
