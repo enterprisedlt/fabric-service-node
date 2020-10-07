@@ -1,6 +1,6 @@
 package org.enterprisedlt.fabric.service.node.connect
 
-import org.enterprisedlt.fabric.service.node.model._
+import org.enterprisedlt.fabric.service.node.model.{AddOrgToChannelRequest, _}
 import org.enterprisedlt.fabric.service.node.shared._
 import org.scalajs.dom.FormData
 import org.scalajs.dom.ext.Ajax
@@ -178,6 +178,15 @@ object ServiceNodeRemote {
           .get("/service/list-chain-codes")
           .map(_.responseText)
           .map(r => upickle.default.read[Array[ChainCodeInfo]](r))
+
+
+    def addOrgToChannel(addToChannelRequest: AddOrgToChannelRequest): Future[String] = {
+        val req = upickle.default.write(addToChannelRequest)
+        Ajax
+          .post("/admin/add-to-channel", req)
+          .map(_.responseText)
+          .map(r => upickle.default.read[String](r))
+    }
 
     def createChannel(channelName: String): Future[String] = {
         val req = upickle.default.write(channelName)
