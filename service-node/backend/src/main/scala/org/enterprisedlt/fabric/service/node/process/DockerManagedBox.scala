@@ -153,7 +153,7 @@ class DockerManagedBox(
 
     override def startOrderingNode(request: StartOSNRequest): Either[String, String] = {
         logger.info(s"Starting ${request.component.fullName} ...")
-        pullImageIfNeeded(Image("hyperledger/fabric-orderer", "1.4.2"))
+        pullImageIfNeeded(Image("hyperledger/fabric-orderer", "1.4.4"))
         //        if (checkContainerExistence(osnFullName: String)) {
         //            stopAndRemoveContainer(osnFullName: String)
         //        }
@@ -180,7 +180,7 @@ class DockerManagedBox(
               .withNetworkMode(networkName)
               .withLogConfig(logConfig)
 
-            val osnContainerId: String = docker.createContainerCmd("hyperledger/fabric-orderer:1.4.2")
+            val osnContainerId: String = docker.createContainerCmd("hyperledger/fabric-orderer:1.4.4")
               .withName(request.component.fullName)
               .withEnv(
                   s"FABRIC_LOGGING_SPEC=${processConfig.fabricComponentsLogLevel}",
@@ -213,7 +213,7 @@ class DockerManagedBox(
     //=============================================================================
     override def startPeerNode(request: StartPeerRequest): Either[String, String] = {
         val peerFullName = request.component.fullName
-        pullImageIfNeeded(Image("hyperledger/fabric-peer", "1.4.2"))
+        pullImageIfNeeded(Image("hyperledger/fabric-peer", "1.4.4"))
         logger.info(s"Starting $peerFullName ...")
         //        if (checkContainerExistence(peerFullName: String)) {
         //            stopAndRemoveContainer(peerFullName: String)
@@ -251,7 +251,7 @@ class DockerManagedBox(
               .withNetworkMode(networkName)
               .withLogConfig(logConfig)
 
-            val peerContainerId: String = docker.createContainerCmd("hyperledger/fabric-peer:1.4.2")
+            val peerContainerId: String = docker.createContainerCmd("hyperledger/fabric-peer:1.4.4")
               .withName(peerFullName)
               .withEnv(
                   List(
