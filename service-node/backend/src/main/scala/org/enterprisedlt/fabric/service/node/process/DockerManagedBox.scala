@@ -180,7 +180,7 @@ class DockerManagedBox(
               .withNetworkMode(networkName)
               .withLogConfig(logConfig)
 
-            val osnContainerId: String = docker.createContainerCmd("hyperledger/fabric-orderer:1.4.2")
+            val osnContainerId: String = docker.createContainerCmd("hyperledger/fabric-orderer:1.4.4")
               .withName(request.component.fullName)
               .withEnv(
                   s"FABRIC_LOGGING_SPEC=${processConfig.fabricComponentsLogLevel}",
@@ -196,7 +196,8 @@ class DockerManagedBox(
                   "ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]",
                   "ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt",
                   "ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key",
-                  "ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]"
+                  "ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]",
+                  s"GODEBUG=netdns=go"
               )
               .withWorkingDir("/opt/gopath/src/github.com/hyperledger/fabric")
               .withCmd("orderer")
@@ -251,7 +252,7 @@ class DockerManagedBox(
               .withNetworkMode(networkName)
               .withLogConfig(logConfig)
 
-            val peerContainerId: String = docker.createContainerCmd("hyperledger/fabric-peer:1.4.2")
+            val peerContainerId: String = docker.createContainerCmd("hyperledger/fabric-peer:1.4.4")
               .withName(peerFullName)
               .withEnv(
                   List(
