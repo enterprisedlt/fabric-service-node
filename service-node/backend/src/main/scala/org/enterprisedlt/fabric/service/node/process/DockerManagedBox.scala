@@ -180,7 +180,7 @@ class DockerManagedBox(
               .withNetworkMode(networkName)
               .withLogConfig(logConfig)
 
-            val osnContainerId: String = docker.createContainerCmd("hyperledger/fabric-orderer:1.4.2")
+            val osnContainerId: String = docker.createContainerCmd("hyperledger/fabric-orderer:1.4.4")
               .withName(request.component.fullName)
               .withEnv(
                   s"FABRIC_LOGGING_SPEC=${processConfig.fabricComponentsLogLevel}",
@@ -251,7 +251,7 @@ class DockerManagedBox(
               .withNetworkMode(networkName)
               .withLogConfig(logConfig)
 
-            val peerContainerId: String = docker.createContainerCmd("hyperledger/fabric-peer:1.4.2")
+            val peerContainerId: String = docker.createContainerCmd("hyperledger/fabric-peer:1.4.4")
               .withName(peerFullName)
               .withEnv(
                   List(
